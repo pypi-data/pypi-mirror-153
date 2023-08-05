@@ -1,0 +1,56 @@
+image: python:latest
+
+services:
+  - postgres:latest
+
+variables:
+  POSTGRES_DB: database_name
+
+cache:
+  paths:
+    - ~/.cache/pip/
+
+before_script:
+  - python -V  # Print out python version for debugging
+  - pip install -r requirements.txt
+  - pip install -e .
+
+
+stages:
+  - test
+  - package
+
+test:
+  variables:
+    POSTGRES_DB: ci
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    DJANGO_SETTINGS_MODULE: 'tests.settings.ci'
+  script:
+    - flake8 .
+    - isort . -c
+    - coverage run --source='.' runtest.py
+    - coverage report
+    - coverage xml
+  coverage: '/TOTAL.*\s([.\d]+)%/'
+  artifacts:
+    when: always
+    reports:
+      junit: testreport.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+package:
+  only:
+    refs:
+      - master
+  script:
+    - apt-get update
+    - apt-get install -y gettext
+    - git fetch --prune --unshallow
+    - pip install --upgrade pip wheel setuptools twine
+    - pip install -r requirements.txt
+    - (cd pfx/pfxcore/ && django-admin compilemessages)
+    - python3 -m build
+    - TWINE_PASSWORD=${PYPI_DEPLOY_TOKEN} TWINE_USERNAME=__token__ python3 -m twine upload dist/*
