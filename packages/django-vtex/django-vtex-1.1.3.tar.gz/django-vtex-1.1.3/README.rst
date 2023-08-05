@@ -1,0 +1,122 @@
+
+# django-vtex
+
+## Starting
+_These instructions will allow you to install the library in your python project._
+
+### Current features
+
+-   Get tracking info.
+
+### Pre-requisitos
+
+-   Python >= 3.7
+-   Django >= 3
+-   requests >= 2
+***
+## Installation
+
+1. To get the latest stable release from PyPi:
+```
+pip install django-vtex
+```
+or
+
+2. From a build
+```
+git clone https://gitlab.com/linets/ecommerce/oms/integrations/django-vtex
+```
+
+```
+cd {{project}}
+```
+
+```
+python setup.py sdist
+```
+and, install in your project django
+```
+pip install {{path}}/django-vtex/dist/{{tar.gz file}}
+```
+
+3. Settings in django project
+
+```
+DJANGO_VTEX = {
+    'VTEX': {
+        'BASE_URL': '<VTEX_BASE_URL>',
+        'APP_KEY': '<VTEX_APP_KEY>',
+        'APP_TOKEN': '<VTEX_APP_TOKEN>',
+    }
+}
+```
+
+## Usage
+
+1. Get orders:
+```
+from vtex.handler import VtexHandler
+
+handler = VtexHandler()
+response = handler.get_orders(<offset>)
+```
+
+2. Get order detail:
+```
+from vtex.handler import VtexHandler
+
+handler = VtexHandler()
+response = handler.get_order_detail(<identifier>)
+```
+
+3. Create instance to be sent in create_invoice
+    ```
+    import json
+    from collections import namedtuple
+
+    dict_ = {
+        'invoice_number': 'NFe-00001',
+        'courier': '',
+        'tracking_number': '',
+        'tracking_url': '',
+        'items': [
+          {
+              'id': '345117',
+              'quantity': 1,
+              'price': 9003
+          }
+        ],
+        'total_value': 9508
+    }
+
+    instance = namedtuple('VtexInstance', dict_.keys())(*dict_.values())
+    ```
+
+4. Create invoice:
+```
+from vtex.handler import VtexHandler
+
+handler = VtexHandler()
+response = handler.create_invoice(<identifier>, <instance>)
+```
+
+5. Update order status:
+```
+from vtex.handler import VtexHandler
+
+handler = VtexHandler()
+
+response = handler.update_order_status(<identifier>, <status>)
+```
+
+6. Update tracking status:
+```
+from vtex.handler import VtexHandler
+
+handler = VtexHandler()
+
+# events = [] default
+# is_delivered = False default
+response = handler.update_tracking_status(
+    <identifier>, <wms_reference>, <events>, <is_delivered>)
+```
