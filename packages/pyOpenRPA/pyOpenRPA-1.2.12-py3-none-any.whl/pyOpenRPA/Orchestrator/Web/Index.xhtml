@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" >
+	<head>
+		<meta charset="utf-8">
+		<title>pyOpenRPA Orchestrator</title>
+		<link rel="stylesheet" type="text/css" href="3rdParty/Semantic-UI-CSS-master/semantic.min.css">
+		<script
+		  src="3rdParty/jQuery/jquery-3.1.1.min.js"
+		  crossorigin="anonymous"></script>
+		<script src="3rdParty/Semantic-UI-CSS-master/semantic.min.js"></script>
+		<script src="3rdParty/Handlebars/handlebars-v4.1.2.js"></script>
+		<script src = "Index.js"></script>
+
+		  <style type="text/css">
+		  body {
+			background-color: #FFFFFF;
+		  }
+		  .main.container {
+			margin-top: 2em;
+		  }
+		  .overlay {
+			float: left;
+			margin: 0em 3em 1em 0em;
+		  }
+		  .overlay .menu {
+			position: relative;
+			left: 0;
+			transition: left 0.5s ease;
+		  }
+		  .main.menu.fixed {
+			background-color: #FFFFFF;
+			border: 1px solid #DDD;
+			box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+		  }
+		  .overlay.fixed .menu {
+			left: 800px;
+		  }
+		  .text.container .left.floated.image {
+			margin: 2em 2em 2em -4em;
+		  }
+		  .text.container .right.floated.image {
+			margin: 2em -4em 2em 2em;
+		  }
+		  .ui.footer.segment {
+			margin: 5em 0em 0em;
+			padding: 5em 0em;
+		  }
+		  .ui.search.dropdown>input.search {
+			width:100%; 
+			font-family:monospace; 
+			font-weight: bold;
+		  }
+		  .ui.search.dropdown>.text {
+			width:100%; 
+			font-family:monospace; 
+			font-weight: bold;
+		  }
+		  </style>
+	</head>
+	<body>
+		<div class="ui internally celled grid">
+			<div class="row black">
+				<div class="sixteen wide column" style="display: flex;">
+					<img src="pyOpenRPA_logo.png" width="70px;" height="70px"></img>
+					&nbsp;&nbsp;&nbsp;
+					<h1 class="ui header inverted" style="cursor: pointer" onclick="window.open('https://gitlab.com/UnicodeLabs/OpenRPA','_blank');">pyOpenRPA</h1>
+					<h5 style="cursor: pointer" onclick="window.open('https://www.facebook.com/RU.IT4Business','_blank');">by Ivan Maslov</h5>
+					&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;
+					<h1 class="ui header inverted">ORCHESTRATOR WEB GUI</h1>
+				</div>
+			</div>
+			<div class="row">
+				<div class="sixteen wide column openrpa-control-panel-general UACClient-pyOpenRPADict-CPKeyDict" style="display:none;" >
+					<h4 class="ui horizontal divider header">
+						<i class="clipboard list icon"></i>
+						Dashboard (Robot control panel)
+					</h4>
+					<div class="openrpa-control-panel"></div>
+					<script class="openrpa-hidden-control-panel" style="display:none" type="text/x-handlebars-template">
+						<div class="ui cards">
+							{{#RenderRobotList}}
+							<div class="card">
+								<div class="content">
+									<div class="right floated mini ui ">
+										{{{HeaderRightText}}}
+									</div>
+									<div class="header">
+										{{{HeaderLeftText}}}
+										
+									</div>
+									<div class="meta">
+										{{{SubheaderText}}}
+									</div>
+									<div class="description">
+										<ul style="padding-inline-start:16px;margin:0px">
+											{{#BodyKeyValueList}}
+											<li>{{{Key}}}: {{{Value}}}</li>
+											{{/BodyKeyValueList}}
+										</ul>
+									</div>
+								</div>
+								<div class="extra content">
+									{{{FooterText}}}
+								</div>
+								<div class="extra content">
+									<div class="ui two buttons">
+									{{#FooterButtonX2List}}
+										<div class="ui basic {{Color}} button" onclick="{{OnClick}}">{{{Text}}}</div>
+									{{/FooterButtonX2List}}
+									</div>
+									<div class="ui horizontal divider">Add. controls</div>
+									<div class="ui one buttons">
+									{{#FooterButtonX1List}}
+										<div class="ui basic {{Color}} button" onclick="{{OnClick}}">{{{Text}}}</div>
+									{{/FooterButtonX1List}}
+									</div>
+								</div>
+							</div>
+							{{/RenderRobotList}}
+						</div>
+					</script>
+				</div>
+			</div>
+
+			<div class="row">
+
+				<script class="openrpa-hidden-monitor-table-general" style="display:none" type="text/x-handlebars-template">
+					<table class="ui celled table">
+						<thead>
+							<tr>
+								<th>Machine name</th>
+								<th>Machihe host</th>
+								<th>Status</th>
+								<th>Actions,length: {{childs.length}}</th>
+							</tr>
+						</thead>
+						<tbody>
+							{{#ListenURLList}}
+							<tr><td>{{Description}}</td><td>{{URL}}</td><td class="negative">None</td></tr>
+							{{/ListenURLList}}
+						</tbody>
+					</table>
+				</script>
+
+				<script class="openrpa-handlebar-template-table-filter" style="display:none" type="text/x-handlebars-template">
+					{{#if Title}}
+					<h1>{{{Title}}}</h1>
+					{{/if}}
+					{{#if FilterOnKeyUp}}
+					<div class="ui icon input search" style="width:500px;">
+						<input type="text" onkeyup="{{#if FilterOnKeyUp}}{{{FilterOnKeyUp}}}{{/if}}" placeholder="Search...">
+						<i class="inverted circular search link icon"></i>
+					</div>
+					{{/if}}
+					<table class="ui celled table selectable inverted">
+						<thead>
+							<tr>
+								{{#Columns}}
+								<th>{{{this}}}</th>
+								{{/Columns}}
+							</tr>
+						</thead>
+						<tbody>
+							{{#Rows}}
+							<tr>
+								{{#this}}
+								<td>
+									{{{this}}}
+								</td>
+								{{/this}}
+							</tr>
+							{{/Rows}}
+						</tbody>
+					</table>
+				</script>
+				<script class="openrpa-handlebar-template-list-filter" style="display:none" type="text/x-handlebars-template">
+					{{#if Title}}
+					<h1>{{{Title}}}</h1>
+					{{/if}}
+					{{#if FilterOnKeyUp}}
+					<div class="ui icon input search" style="width:500px;">
+						<input type="text" onkeyup="{{#if FilterOnKeyUp}}{{{FilterOnKeyUp}}}{{/if}}" placeholder="Search...">
+						<i class="inverted circular search link icon"></i>
+					</div>
+					{{/if}}
+					<div class="ui inverted segment">
+						<div class="ui inverted relaxed divided list">
+							{{#List}}
+							<div class="item">
+								<i class="map marker icon"></i>
+								<div class="content">
+									<a class="header">{{{Header}}}</a>
+									<div class="description">{{{Description}}}</div>
+								</div>
+							</div>
+							{{/List}}
+						</div>
+					</div>
+				</script>
+				<div class="eight wide column openrpa-robotrdpactive-control-panel-general UACClient-pyOpenRPADict-RDPKeyDict" style="display:none;">
+					<h2 class="ui header openrpa-rdpactive-title">
+						<i class="desktop icon"></i>
+						<div class="content">
+							RDP active list
+						</div>
+					</h2>
+					<div class="openrpa-robotrdpactive-control-panel"></div>
+					<script class="openrpa-hidden-robotrdpactive-control-panel" style="display:none" type="text/x-handlebars-template">
+						<div class="ui inverted segment" style="background: #368279">
+							<div class="ui inverted relaxed divided list">
+								{{#HandlebarsList}}
+								<div class="item">
+									<div class="right floated content">
+										<div class="ui button" onclick="mGlobal.Processor.ServerValueAppend(['RobotRDPActive','ActivityList'],{'DefNameStr': 'RDPSessionReconnect', 'ArgList': [], 'ArgDict': {'inRDPSessionKeyStr': '{{{SessionKeyStr}}}'} })" >Reconnect</div>
+									</div>
+									<div class="right floated content">
+										{{#if IsIgnoredBool}}
+										<div class="ui button red" onclick="mGlobal.Processor.ServerValueSet(['RobotRDPActive','RDPList','{{{SessionKeyStr}}}','SessionIsIgnoredBool'],false);">Ignore</div>
+										{{else}}
+										<div class="ui button" onclick="mGlobal.Processor.ServerValueSet(['RobotRDPActive','RDPList','{{{SessionKeyStr}}}','SessionIsIgnoredBool'],true);">Ignore</div>
+										{{/if}}
+									</div>
+									<div class="right floated content">
+										{{#if IsFullScreenBool}}
+										<div class="ui button green" onclick="mGlobal.Processor.ServerValueSet(['RobotRDPActive','FullScreenRDPSessionKeyStr'],null);">Full screen</div>
+										{{else}}
+										<div class="ui button" onclick="mGlobal.Processor.ServerValueSet(['RobotRDPActive','FullScreenRDPSessionKeyStr'],'{{{SessionKeyStr}}}');">Full screen</div>
+										{{/if}}
+									</div>
+									<div class="content">
+										<div class="header">Session key: {{{SessionKeyStr}}}</div>
+										{{{SessionHexStr}}}
+									</div>
+								</div>
+								{{/HandlebarsList}}
+							</div>
+						</div>
+					</script>
+				</div>
+				<div class="eight wide column UACClient-pyOpenRPADict-AgentKeyDict" style="display:none">
+					<h2 class="ui header " style="">
+						<i class="bug icon"></i>
+						<div class="content">
+							Agent active list
+						</div>
+					</h2>
+					<div class="pyOpenRPA-Agent-List"></div>
+					<script class="pyOpenRPA-Agent-ListTemplate" style="display:none" type="text/x-handlebars-template">
+						<div class="ui inverted segment" style="background: #368279">
+							<div class="ui inverted relaxed divided list">
+								{{#HandlebarsList}}
+								<div class="item">
+									<div class="right floated content">
+										{{#if IsListenBool}}
+										<i class="circle icon green"></i>
+										Online
+										{{else}}
+										<i class="circle icon red"></i>
+										Offline
+										{{/if}}
+									</div>
+									<div class="content">
+										<div class="header">Hostname: {{{HostnameUpperStr}}}, User: {{{UserUpperStr}}}</div>
+									</div>
+								</div>
+								{{/HandlebarsList}}
+							</div>
+						</div>
+					</script>
+				</div>
+			</div>
+
+
+			<div class="row openrpa-monitor">
+
+			</div>
+			<div class="row">
+				<div class="sixteen wide column" style="">
+					<h2 class="ui header">
+						<i class="settings icon"></i>
+						<div class="content">
+							Administration
+						</div>
+					</h2>
+
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="sixteen wide column" style="">
+					<h4 class="ui horizontal divider header" >
+						<i class="clipboard list icon"></i>
+						Logs
+					</h4>
+
+					<textarea class="mGlobal-pyOpenRPA-ServerLogList UACClient-pyOpenRPADict-AdminDict-LogViewerBool" readonly="readonly" style="width:100%; display:none; resize: none; font-family:monospace; font-weight: bold;"  id="textarea_id" rows="20">
+
+					</textarea>
+					<a class="mGlobal-pyOpenRPA-ServerLogListDoRender" onclick="" style="cursor: pointer;">Freeze textarea</a>
+					<div class="ui fluid action input UACClient-pyOpenRPADict-AdminDict-CMDInputBool" style="display:none;">
+						<input class="openrpa-controller-cmd-run-input" type="text" placeholder="CMD Code...">
+						<div class="ui button" onclick="mGlobal.Controller.CMDRun();">Run!</div>
+						<div class="ui button" onclick="mGlobal.Controller.CMDRunGUILogout();">GUI Logout</div>
+					</div>
+				</div>
+			</div>
+			<div class="row UACClient-pyOpenRPADict-AdminDict-Debugging" style= "display:none;">
+				<div class="twelve wide column">
+					<h4 class="ui horizontal divider header" >
+						<i class="bug icon"></i>
+						Debugging - Send
+					</h4>
+					<div class="ui labeled input">
+						<div class="ui label">Def</div>
+					</div>
+					<div class="ui fluid search selection dropdown mGlobal-pyOpenRPA-Debugging-Def-Dropdown" style="margin-bottom:10px;">
+						<input class="mGlobal-pyOpenRPA-Debugging-Def" type="hidden" name="country" style="width:100%; font-family:monospace; font-weight: bold;">
+						<i class="dropdown icon"></i>
+						<div class="default text">Def</div>
+						<div class="menu">
+							<div class="item" data-value="eh">pyOpenRPA... sys.. os.. </div>
+						</div>
+					</div>
+					<div class="ui fluid labeled input" style="margin-bottom:10px;">
+					  <div class="ui label">
+						ArgList
+					  </div>
+					  <input type="text" placeholder="[1,2,3]" class="mGlobal-pyOpenRPA-Debugging-ArgList" style="width:100%; font-family:monospace; font-weight: bold;">
+					</div>
+					<div class="ui fluid labeled input" style="margin-bottom:10px;">
+					  <div class="ui label">
+						ArgDict
+					  </div>
+					  <input type="text" placeholder="{&quot;Key1&quot;:&quot;Value1&quot;}" class="mGlobal-pyOpenRPA-Debugging-ArgDict" style="width:100%; font-family:monospace; font-weight: bold;">
+					</div>
+					<div class="ui fluid labeled input" style="margin-bottom:10px;">
+					  <div class="ui label">
+						ArgGSettingsStr
+					  </div>
+					  <input type="text" placeholder="inGSettings" class="mGlobal-pyOpenRPA-Debugging-ArgGSettingsStr" style="width:100%; font-family:monospace; font-weight: bold;">
+					</div>
+					<div class="ui fluid labeled input" style="margin-bottom:10px;">
+					  <div class="ui label">
+						ArgLoggerStr
+					  </div>
+					  <input type="text" placeholder="inLogger" class="mGlobal-pyOpenRPA-Debugging-ArgLoggerStr" style="width:100%; font-family:monospace; font-weight: bold;">
+					</div>
+					<div class="ui fluid button" onclick="mGlobal.pyOpenRPA.DebuggingExecute();">Execute</div>
+				</div>
+				<div class="four wide column">
+					<h4 class="ui horizontal divider header" >
+						<i class="bug icon"></i>
+						Debugging - Output
+					</h4>
+					<p><textarea class="mGlobal-pyOpenRPA-Debugging-Output" readonly="readonly" style="width:100%; font-family:monospace; font-weight: bold;" rows="16" cols="60"></textarea></p>
+				</div>
+			</div>
+
+			<h4 class="ui horizontal divider header">
+				<i class="clipboard list icon"></i>
+				Controls
+			</h4>
+			<div class="four ui buttons">
+				<div class="ui animated button openrpa-control-lookmachinescreenshot green UACClient-pyOpenRPADict-AdminDict-ScreenshotViewerBool" onclick="mGlobal.Monitor.ScreenshotModal.Show();" style="display: none; margin-top: 5px;">
+					<div class="visible content">Show live screenshots</div>
+						<div class="hidden content">
+						<i class="right arrow icon"></i>
+					</div>
+				</div>
+				<div class="ui animated button openrpa-control-restartorchestrator orange UACClient-pyOpenRPADict-AdminDict-RestartOrchestratorBool" onclick="mGlobal.Controller.OrchestratorRestart();" style="display: none; margin-top: 5px;">
+					<div class="visible content">Restart orchestrator</div>
+						<div class="hidden content">
+						<i class="right arrow icon"></i>
+					</div>
+				</div>
+				<div class="ui animated button openrpa-control-gitrestartorchestrator teal UACClient-pyOpenRPADict-AdminDict-RestartOrchestratorGITPullBool" onclick="mGlobal.Controller.OrchestratorGITPullRestart();" style="display: none; margin-top: 5px;">
+					<div class="visible content">Git pull, restart orchestrator</div>
+						<div class="hidden content">
+						<i class="right arrow icon"></i>
+					</div>
+				</div>
+				<div class="ui animated button openrpa-control-restartpc red UACClient-pyOpenRPADict-AdminDict-RestartPCBool" onclick="mGlobal.Controller.PCRestart();" style="display: none; margin-top: 5px;">
+					<div class="visible content">Restart PC</div>
+						<div class="hidden content">
+						<i class="right arrow icon"></i>
+					</div>
+				</div>
+			</div>
+
+			<div class="row black">
+				
+
+
+			</div>
+		</div>
+		<div class="ui inverted vertical footer segment">
+			<div class="ui center aligned container">
+			  <div class="ui stackable inverted divided grid">
+				<div class="three wide column">
+				  <h4 class="ui inverted header">Pywinauto</h4>
+				  <div class="ui inverted link list">
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/pywinauto.findwindows.html" class="item" target="_blank">Specification manual</a>
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/code.html#main-user-modules" class="item" target="_blank">Classes manual</a>
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/code.html#main-user-modules" class="item" target="_blank">How to use manual</a>
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/pywinauto.base_wrapper.html" class="item" target="_blank">Base wrapper manual</a>
+				  </div>
+				</div>
+				<div class="three wide column">
+				  <h4 class="ui inverted header">Semantic UI</h4>
+				  <div class="ui inverted link list">
+					<a href="https://semantic-ui.com/usage/theming.html" class="item" target="_blank">Color manual</a>
+					<a href="https://semantic-ui.com/elements/input.html" class="item" target="_blank">Input manual</a>
+					<a href="https://semantic-ui.com/elements/icon.html" class="item" target="_blank">Icon list</a>
+					<a href="https://semantic-ui.com/elements/button.html" class="item" target="_blank">Button manual</a>
+				  </div>
+				</div>
+				<div class="three wide column">
+				  <h4 class="ui inverted header">GitLab</h4>
+				  <div class="ui inverted link list">
+					<a href="https://gitlab.com/UnicodeLabs/OpenRPA" class="item" target="_blank">pyOpenRPA repository</a>
+					<a href="https://www.facebook.com/RU.IT4Business" class="item" target="_blank">Ivan Maslov</a>
+					<a href="#" class="item">Link -</a>
+					<a href="#" class="item">Link -</a>
+				  </div>
+				</div>
+				<div class="seven wide column">
+				  <h4 class="ui inverted header">pyOpenRPA</h4>
+				  <p>Open source Robotic Process Automation software by the pyOpenRPA LLC (Created by Ivan Maslov in Russia). Licensed under LICENSE.PDF or https://pyopenrpa.ru/license/oferta.pdf #IT4Business</p>
+				</div>
+			  </div>
+			  <div class="ui inverted section divider"></div>
+			  <div class="ui horizontal inverted small divided link list">
+				<a class="item" href="#">Site Map</a>
+				<a class="item" href="#">Contact Us</a>
+				<a class="item" href="#">Terms and Conditions</a>
+				<a class="item" href="#">Privacy Policy</a>
+			  </div>
+			</div>
+		</div>
+		<div class="ui basic modal">
+			<div class="ui icon header">
+			</div>
+			<div class="content">
+				<p>Here is the message text!</p>
+			</div>
+			<div class="actions">
+				<div class="ui red basic cancel inverted button">
+					<i class="remove icon"></i>
+					No
+				</div>
+				<div class="ui green ok inverted button">
+					<i class="checkmark icon"></i>
+					Yes
+				</div>
+			</div>
+		</div>
+		<div class="ui daemon-screenshot modal">
+			<div class="ui icon header">
+			</div>
+			<div class="content">
+				<img src="GetScreenshot" class="ui fluid image">
+			</div>
+			<div class="actions">
+				<div class="ui green ok inverted button" onclick="mGlobal.Monitor.ScreenshotModal.Close()">
+					<i class="checkmark icon"></i>
+					Close
+				</div>
+				
+			</div>
+		</div>
+		
+		<div class="ui modal openrpa-code-list-gui-import-modal">
+			<i class="close icon"></i>
+			<div class="header">
+			Code list import
+			</div>
+			<div class="content">
+				<div class="description">
+					<div class="ui header">Insert your JSON specification here.</div>
+					<p><textarea style="width:100%" rows="6" cols="60"></textarea></p>
+				</div>
+			</div>
+			<div class="actions">
+				<div class="ui black deny button">
+					Cancel
+				</div>
+				<div class="ui positive right labeled icon button" onclick="mGlobal.CodeList.fActionSpecificationImportFromJSON();">
+					Parse
+					<i class="checkmark icon"></i>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
+
