@@ -1,0 +1,1 @@
+MIDDLEWARE = ['djangoldp_notification.middlewares.CurrentUserMiddleware']
