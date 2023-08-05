@@ -1,0 +1,676 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Splunk",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "default": 443,
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources-splunk.html"
+        },
+        "sni": {
+            "type": "text",
+            "optional": true
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 500000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 60,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "from_stix_map": {
+                        "directory": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "path": "file_path",
+                                "created": "file_create_time",
+                                "modified": "file_modify_time"
+                            }
+                        },
+                        "domain-name": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "host",
+                                    "url"
+                                ]
+                            }
+                        },
+                        "x-readable-payload": {
+                            "cim_type": "",
+                            "fields": {
+                                "value": "_raw"
+                            }
+                        },
+                        "email-addr": {
+                            "cim_type": "email",
+                            "fields": {
+                                "value": [
+                                    "src_user",
+                                    "recipient"
+                                ]
+                            }
+                        },
+                        "email-message": {
+                            "cim_type": "email",
+                            "fields": {
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.hashes.MD5": "file_hash",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.hashes.'SHA-1'": "file_hash",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.hashes.'SHA-256'": "file_hash",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.name": "file_name",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.size": "file_size",
+                                "to_refs.[*].value": "recipient",
+                                "cc_refs.[*].value": "recipient",
+                                "bcc_refs.[*].value": "recipient",
+                                "subject": "subject",
+                                "sender_ref.value": "src_user",
+                                "from_ref.value": "src_user"
+                            }
+                        },
+                        "file": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "hashes.MD5": "file_hash",
+                                "hashes.'SHA-1'": "file_hash",
+                                "hashes.'SHA-256'": "file_hash",
+                                "name": "file_name",
+                                "created": "file_create_time",
+                                "modified": "file_modify_time",
+                                "parent_directory_ref.path": "file_path",
+                                "size": "file_size"
+                            }
+                        },
+                        "ipv4-addr": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "src_ip",
+                                    "dest_ip"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "src_ipv6",
+                                    "dest_ipv6"
+                                ]
+                            }
+                        },
+                        "mac-addr": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "src_mac",
+                                    "dest_mac"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "cim_type": "network",
+                            "fields": {
+                                "src_ref.value": "src",
+                                "src_port": "src_port",
+                                "dst_ref.value": "src",
+                                "dst_port": "dest_port",
+                                "protocols[*]": "protocol",
+                                "start": "earliest",
+                                "end": "latest"
+                            }
+                        },
+                        "process": {
+                            "cim_type": "process",
+                            "fields": {
+                                "name": "process",
+                                "pid": "pid",
+                                "creator_user_ref.account_login": "user",
+                                "binary_ref.parent_directory_ref.path": "file_path",
+                                "binary_ref.name": "file_name"
+                            }
+                        },
+                        "url": {
+                            "cim_type": "web",
+                            "fields": {
+                                "value": "url"
+                            }
+                        },
+                        "user-account": {
+                            "cim_type": "authentication",
+                            "fields": {
+                                "user_id": "user"
+                            }
+                        },
+                        "windows-registry-key": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "key": "object",
+                                "values[*]": "result",
+                                "creator_user_ref.account_login": "user"
+                            }
+                        },
+                        "x509-certificate": {
+                            "cim_type": "certificate",
+                            "fields": {
+                                "hashes.'SHA-256'": "ssl_hash",
+                                "hashes.'SHA-1'": "ssl_hash",
+                                "version": "ssl_version",
+                                "serial_number": "ssl_serial",
+                                "signature_algorithm": "ssl_signature_algorithm",
+                                "issuer": "ssl_issuer",
+                                "subject": "ssl_subject",
+                                "subject_public_key_algorithm": "ssl_publickey_algorithm"
+                            }
+                        },
+                        "x-splunk": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "log_source": [
+                                    "source"
+                                ],
+                                "log_source_type": [
+                                    "_sourcetype"
+                                ],
+                                "direction": [
+                                    "Direction"
+                                ],
+                                "event_id": [
+                                    "EventID"
+                                ],
+                                "event_name": [
+                                    "EventName"
+                                ],
+                                "mitre_tactic_id": [
+                                    "TacticId"
+                                ],
+                                "mitre_tactic": [
+                                    "Tactic"
+                                ],
+                                "mitre_technique_id": [
+                                    "TechniqueId"
+                                ],
+                                "mitre_technique": [
+                                    "Technique"
+                                ]
+                            }
+                        },
+                        "x-ibm-finding": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "name": [
+                                    "ss_name"
+                                ],
+                                "src_device": [
+                                    "DeviceType"
+                                ],
+                                "severity": [
+                                    "severity"
+                                ]
+                            }
+                        }
+                    },
+                    "select_fields": {
+                        "default": [
+                            "src_ip",
+                            "src_port",
+                            "src_mac",
+                            "src_ipv6",
+                            "dest_ip",
+                            "dest_port",
+                            "dest_mac",
+                            "dest_ipv6",
+                            "file_hash",
+                            "user",
+                            "url",
+                            "protocol",
+                            "host",
+                            "source",
+                            "DeviceType",
+                            "Direction",
+                            "severity",
+                            "EventID",
+                            "EventName",
+                            "ss_name",
+                            "TacticId",
+                            "Tactic",
+                            "TechniqueId",
+                            "Technique"
+                        ]
+                    },
+                    "to_stix_map": {
+                        "event_count": {
+                            "key": "number_observed",
+                            "cybox": false,
+                            "transformer": "ToInteger"
+                        },
+                        "_raw": {
+                            "key": "artifact.payload_bin",
+                            "transformer": "ToBase64",
+                            "object": "artifact"
+                        },
+                        "mime_type_raw": {
+                            "key": "artifact.mime_type",
+                            "object": "artifact"
+                        },
+                        "dest_ip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "network-traffic.dst_ref",
+                                "object": "network-traffic",
+                                "references": "dst_ip"
+                            }
+                        ],
+                        "src_ip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "network-traffic.src_ref",
+                                "object": "network-traffic",
+                                "references": "src_ip"
+                            }
+                        ],
+                        "dest_port": {
+                            "key": "network-traffic.dst_port",
+                            "object": "network-traffic",
+                            "transformer": "ToInteger"
+                        },
+                        "src_port": {
+                            "key": "network-traffic.src_port",
+                            "object": "network-traffic",
+                            "transformer": "ToInteger"
+                        },
+                        "protocol": {
+                            "key": "network-traffic.protocols",
+                            "object": "network-traffic",
+                            "transformer": "ToLowercaseArray"
+                        },
+                        "_time": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "SplunkToTimestamp",
+                                "cybox": false
+                            },
+                            {
+                                "key": "last_observed",
+                                "transformer": "SplunkToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "user": [
+                            {
+                                "key": "user-account.account_login",
+                                "object": "authentication"
+                            },
+                            {
+                                "key": "x_splunk_spl.user",
+                                "cybox": false
+                            },
+                            {
+                                "key": "user-account.user_id",
+                                "object": "authentication"
+                            }
+                        ],
+                        "process_user": [
+                            {
+                                "key": "windows-registry-key.creator_user_ref",
+                                "object": "windows-registry-key",
+                                "references": "authentication"
+                            },
+                            {
+                                "key": "process.creator_user_ref",
+                                "object": "process",
+                                "references": "authentication"
+                            }
+                        ],
+                        "bytes": {
+                            "key": "x_splunk_spl.bytes",
+                            "cybox": false
+                        },
+                        "ssl_hash": [
+                            {
+                                "key": "x509-certificate.hashes.SHA-256",
+                                "object": "certificate"
+                            }
+                        ],
+                        "ssl_version": {
+                            "key": "x509-certificate.version",
+                            "object": "certificate"
+                        },
+                        "ssl_serial": {
+                            "key": "x509-certificate.serial_number",
+                            "object": "certificate"
+                        },
+                        "ssl_signature_algorithm": {
+                            "key": "x509-certificate.signature_algorithm",
+                            "object": "certificate"
+                        },
+                        "ssl_issuer": {
+                            "key": "x509-certificate.issuer",
+                            "object": "certificate"
+                        },
+                        "ssl_subject": {
+                            "key": "x509-certificate.subject",
+                            "object": "certificate"
+                        },
+                        "ssl_publickey_algorithm": {
+                            "key": "x509-certificate.subject_public_key_algorithm",
+                            "object": "certificate"
+                        },
+                        "process_name": {
+                            "key": "process.name",
+                            "object": "process"
+                        },
+                        "process_id": {
+                            "key": "process.pid",
+                            "object": "process"
+                        },
+                        "file_path": [
+                            {
+                                "key": "directory.path",
+                                "object": "directory"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "file",
+                                "references": "directory"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "process",
+                                "references": "file"
+                            }
+                        ],
+                        "file_create_time": [
+                            {
+                                "key": "directory.created",
+                                "object": "directory",
+                                "transformer": "SplunkToTimestamp"
+                            },
+                            {
+                                "key": "file.created",
+                                "object": "file",
+                                "transformer": "SplunkToTimestamp"
+                            }
+                        ],
+                        "file_modify_time": [
+                            {
+                                "key": "directory.modified",
+                                "object": "directory",
+                                "transformer": "SplunkToTimestamp"
+                            },
+                            {
+                                "key": "file.modified",
+                                "object": "file",
+                                "transformer": "SplunkToTimestamp"
+                            }
+                        ],
+                        "file_hash": {
+                            "key": "file.hashes.UNKNOWN",
+                            "object": "file"
+                        },
+                        "file_name": {
+                            "key": "file.name",
+                            "object": "file"
+                        },
+                        "file_size": {
+                            "key": "file.size",
+                            "object": "file"
+                        },
+                        "src_mac": [
+                            {
+                                "key": "mac-addr.value",
+                                "object": "src_mac"
+                            },
+                            {
+                                "key": "ipv4-addr.resolves_to_refs",
+                                "object": "src_ip",
+                                "references": [
+                                    "src_mac"
+                                ]
+                            },
+                            {
+                                "key": "ipv6-addr.resolves_to_refs",
+                                "object": "src_ip",
+                                "references": [
+                                    "src_mac"
+                                ]
+                            }
+                        ],
+                        "dest_mac": [
+                            {
+                                "key": "mac-addr.value",
+                                "object": "dst_mac"
+                            },
+                            {
+                                "key": "ipv4-addr.resolves_to_refs",
+                                "object": "dst_ip",
+                                "references": [
+                                    "dst_mac"
+                                ]
+                            },
+                            {
+                                "key": "ipv6-addr.resolves_to_refs",
+                                "object": "dst_ip",
+                                "references": [
+                                    "dst_mac"
+                                ]
+                            }
+                        ],
+                        "object_path": {
+                            "key": "windows-registry-key.key",
+                            "object": "windows-registry-key"
+                        },
+                        "url": [
+                            {
+                                "key": "url.value",
+                                "object": "web"
+                            },
+                            {
+                                "key": "domain-name.value",
+                                "transformer": "ToDomainName"
+                            }
+                        ],
+                        "src_user": [
+                            {
+                                "key": "email-addr.value",
+                                "object": "email-addr"
+                            },
+                            {
+                                "key": "email-message.sender_ref",
+                                "object": "email-message",
+                                "references": "email-addr"
+                            },
+                            {
+                                "key": "email-message.from_ref",
+                                "object": "email-message",
+                                "references": "email-addr"
+                            }
+                        ],
+                        "subject": {
+                            "key": "email-message.subject",
+                            "object": "email-message"
+                        },
+                        "is_multipart": {
+                            "key": "email-message.is_multipart",
+                            "object": "email-message",
+                            "transformer": "StringToBool"
+                        },
+                        "source": [
+                            {
+                                "key": "x-splunk.log_source",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "_sourcetype": [
+                            {
+                                "key": "x-splunk.log_source_type",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "Direction": [
+                            {
+                                "key": "x-splunk.direction",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "EventID": [
+                            {
+                                "key": "x-splunk.event_id",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "TacticId": [
+                            {
+                                "key": "x-splunk.mitre_tactic_id",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "Tactic": [
+                            {
+                                "key": "x-splunk.mitre_tactic",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "TechniqueId": [
+                            {
+                                "key": "x-splunk.mitre_technique_id",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "Technique": [
+                            {
+                                "key": "x-splunk.mitre_technique",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "EventName": [
+                            {
+                                "key": "x-splunk.event_name",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "ss_name": {
+                            "key": "x-ibm-finding.name",
+                            "object": "x-ibm-finding"
+                        },
+                        "DeviceType": [
+                            {
+                                "key": "x-ibm-finding.src_device",
+                                "object": "x-ibm-finding"
+                            }
+                        ],
+                        "severity": [
+                            {
+                                "key": "x-ibm-finding.severity",
+                                "object": "x-ibm-finding"
+                            }
+                        ]
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "password"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
