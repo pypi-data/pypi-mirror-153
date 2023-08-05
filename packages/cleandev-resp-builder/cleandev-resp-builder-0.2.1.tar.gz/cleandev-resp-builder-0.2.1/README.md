@@ -1,0 +1,105 @@
+# Cleandev Response Builder
+
+Con esta libreria podras constuir "Response" para las apis de una forma facil usando un fichero de codigos de error
+para retornar mensajes en tus APIS.
+
+| Properties         | Requerido          | Valor por defecto | Descripción                                |
+|--------------------|--------------------|:-----------------:|--------------------------------------------|
+| name_file_codes    | :heavy_check_mark: |       -           | Nombre del archivo de los codigos de error |
+
+Es una clase con un solo método y varios parametros que analizaremos a continuación
+
+## Configuracion
+
+El archivo `properties.ini` existe una varaible `name_file_codes` donde es la ruta de un fichero que contiene un `json`
+con codigos y mensajes predefinidos
+
+### properties.ini
+
+```properties
+[RESP_BUILDER]
+name_file_codes=resp_codes.json
+```
+
+### resp_codes.json
+
+```json
+{
+  "ERROR": {
+    "message": "Error"
+  },
+  "SUCCESS": {
+    "message": "Success"
+  }
+}
+```
+
+mediante esta configuracion podremos acceder al contenido mediante el codigo
+
+## Ejemplo
+
+Definimos el siguiente endpoint `/login` en nuestra Api
+
+```python
+
+from resp_builder import ResponseBuilder
+from flask import Response
+
+respose_builder = ResponseBuilder()
+response: Response = respose_builder.response(
+    code='SUCCESS',
+    data={'anykey': 'anyvalue'},
+    status_code=200,
+    is_merge=True
+)
+print(response.json)  # {"message": "Success", "anykey": "anyvalue"} http_code = 200
+```
+
+En este caso la salida de la request es `{"message": "Success", "anykey": "anyvalue"}` con un codigo `http 200 OK`
+
+## Parametros
+
+`code`: Este es el codigo que debe estar en el fichero `resp_codes.json` y retornara el valor asociado a dicho código
+`data`: Este parametro añade informacion extra a el response final, añadiendo los datos a la data que devuelve junto con
+el codigo del fichero antes mencionado.
+`status_code`: Codigo http del response
+`is_merge`: Por defecto `is_merge` es `False` su implicación es en la forma que se construye los datos que retorna el
+respone, en caso de ser `False` se genera por un lado los datos provenientes del codigo del fichero `resp_codes.json`
+y por otro los datos que pasamos en `data` dentro de una llave `data` en el json resultante.
+
+### Ejemplos
+
+Para el siguiente caso se mezclan el contenido que viene del fichero de codigos `{"message": "Success"}` + lo que se
+le pasa en la variable `data` y dado que `is merge` es `True` no crea la llave `data` en el json resultante
+
+```python
+
+from resp_builder import ResponseBuilder
+from flask import Response
+
+respose_builder = ResponseBuilder()
+response: Response = respose_builder.response(
+    code='SUCCESS',
+    data={'anykey': 'anyvalue'},
+    status_code=200,
+    is_merge=True
+)
+print(response.json)  # {"message": "Success", "anykey": "anyvalue"} http_code = 200
+```
+
+El mismo ejemplo pero `is_merge` es `False`
+
+```python
+
+from resp_builder import ResponseBuilder
+from flask import Response
+
+respose_builder = ResponseBuilder()
+response: Response = respose_builder.response(
+    code='SUCCESS',
+    data={'anykey': 'anyvalue'},
+    status_code=200,
+    is_merge=False
+)
+print(response.json)  # {"message": "Success", "data":{"anykey": "anyvalue"} http_code = 200
+```
