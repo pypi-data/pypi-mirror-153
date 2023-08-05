@@ -1,0 +1,1072 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Splunk",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "default": 443,
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources-splunk.html"
+        },
+        "sni": {
+            "type": "text",
+            "optional": true
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 500000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 60,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "from_stix_map": {
+                        "x-oca-event": {
+                            "cim_type": "alert",
+                            "fields": {
+                                "code": [
+                                    "signature_id"
+                                ],
+                                "action": [
+                                    "signature"
+                                ],
+                                "outcome": [
+                                    "result"
+                                ],
+                                "module": [
+                                    "source"
+                                ],
+                                "created": [
+                                    "_time"
+                                ],
+                                "process_ref.command_line": [
+                                    "process"
+                                ],
+                                "process_ref.binary_ref.name": [
+                                    "process_exec"
+                                ],
+                                "process_ref.parent_ref.command_line": [
+                                    "parent_process"
+                                ],
+                                "process_ref.creator_user_ref.user_id": [
+                                    "process_user"
+                                ],
+                                "process_ref.name": [
+                                    "process_name"
+                                ],
+                                "process_ref.pid": [
+                                    "process_id"
+                                ],
+                                "parent_process_ref.command_line": [
+                                    "parent_process"
+                                ],
+                                "parent_process_ref.binary_ref.name": [
+                                    "parent_process_exec"
+                                ],
+                                "parent_process_ref.pid": [
+                                    "parent_process_id"
+                                ],
+                                "parent_process_ref.name": [
+                                    "parent_process_name"
+                                ],
+                                "domain_ref.value": [
+                                    "url",
+                                    "url_domain"
+                                ],
+                                "file_ref.name": [
+                                    "file_name"
+                                ],
+                                "host_ref.hostname": [
+                                    "host"
+                                ],
+                                "host_ref.ip_refs[*].value": [
+                                    "src_ip"
+                                ],
+                                "registry_ref.key": [
+                                    "ObjectName",
+                                    "RegistryKey"
+                                ],
+                                "user_ref.user_id": [
+                                    "user"
+                                ],
+                                "url_ref.value": [
+                                    "url"
+                                ]
+                            }
+                        },
+                        "x-oca-asset": {
+                            "cim_type": "host",
+                            "fields": {
+                                "hostname": "host"
+                            }
+                        },
+                        "directory": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "path": "file_path",
+                                "created": "file_create_time",
+                                "modified": "file_modify_time"
+                            }
+                        },
+                        "domain-name": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "host",
+                                    "url"
+                                ]
+                            }
+                        },
+                        "x-readable-payload": {
+                            "cim_type": "",
+                            "fields": {
+                                "value": "_raw"
+                            }
+                        },
+                        "email-addr": {
+                            "cim_type": "email",
+                            "fields": {
+                                "value": [
+                                    "src_user",
+                                    "recipient"
+                                ]
+                            }
+                        },
+                        "email-message": {
+                            "cim_type": "email",
+                            "fields": {
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.hashes.MD5": "file_hash",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.hashes.'SHA-1'": "file_hash",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.hashes.'SHA-256'": "file_hash",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.name": "file_name",
+                                "body_multipart.[*].'mime-part-type'.body_raw_ref.size": "file_size",
+                                "to_refs.[*].value": "recipient",
+                                "cc_refs.[*].value": "recipient",
+                                "bcc_refs.[*].value": "recipient",
+                                "subject": "subject",
+                                "sender_ref.value": "src_user",
+                                "from_ref.value": "src_user"
+                            }
+                        },
+                        "file": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "hashes.MD5": "file_hash",
+                                "hashes.'SHA-1'": "file_hash",
+                                "hashes.'SHA-256'": "file_hash",
+                                "name": "file_name",
+                                "created": "file_create_time",
+                                "modified": "file_modify_time",
+                                "parent_directory_ref.path": "file_path",
+                                "size": "file_size"
+                            }
+                        },
+                        "ipv4-addr": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "src_ip",
+                                    "dest_ip"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "src_ipv6",
+                                    "dest_ipv6"
+                                ]
+                            }
+                        },
+                        "mac-addr": {
+                            "cim_type": "flow",
+                            "fields": {
+                                "value": [
+                                    "src_mac",
+                                    "dest_mac"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "cim_type": "network",
+                            "fields": {
+                                "src_ref.value": "src",
+                                "src_port": "src_port",
+                                "dst_ref.value": "src",
+                                "dst_port": "dest_port",
+                                "protocols[*]": "protocol",
+                                "start": "earliest",
+                                "end": "latest"
+                            }
+                        },
+                        "process": {
+                            "cim_type": "process",
+                            "fields": {
+                                "name": "process",
+                                "pid": "pid",
+                                "creator_user_ref.account_login": "user",
+                                "binary_ref.parent_directory_ref.path": "file_path",
+                                "binary_ref.name": "file_name"
+                            }
+                        },
+                        "url": {
+                            "cim_type": "web",
+                            "fields": {
+                                "value": "url"
+                            }
+                        },
+                        "user-account": {
+                            "cim_type": "authentication",
+                            "fields": {
+                                "user_id": "user"
+                            }
+                        },
+                        "windows-registry-key": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "key": "object",
+                                "values[*]": "result",
+                                "creator_user_ref.account_login": "user"
+                            }
+                        },
+                        "x509-certificate": {
+                            "cim_type": "certificate",
+                            "fields": {
+                                "hashes.'SHA-256'": "ssl_hash",
+                                "hashes.'SHA-1'": "ssl_hash",
+                                "version": "ssl_version",
+                                "serial_number": "ssl_serial",
+                                "signature_algorithm": "ssl_signature_algorithm",
+                                "issuer": "ssl_issuer",
+                                "subject": "ssl_subject",
+                                "subject_public_key_algorithm": "ssl_publickey_algorithm"
+                            }
+                        },
+                        "x-splunk": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "log_source": [
+                                    "source"
+                                ],
+                                "log_source_type": [
+                                    "_sourcetype"
+                                ],
+                                "direction": [
+                                    "Direction"
+                                ],
+                                "event_id": [
+                                    "EventID"
+                                ],
+                                "event_name": [
+                                    "EventName"
+                                ],
+                                "mitre_tactic_id": [
+                                    "TacticId"
+                                ],
+                                "mitre_tactic": [
+                                    "Tactic"
+                                ],
+                                "mitre_technique_id": [
+                                    "TechniqueId"
+                                ],
+                                "mitre_technique": [
+                                    "Technique"
+                                ]
+                            }
+                        },
+                        "x-ibm-finding": {
+                            "cim_type": "endpoint",
+                            "fields": {
+                                "name": [
+                                    "ss_name"
+                                ],
+                                "src_device": [
+                                    "DeviceType"
+                                ],
+                                "severity": [
+                                    "severity"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonComparators.GreaterThan": ">",
+                        "ComparisonComparators.GreaterThanOrEqual": ">=",
+                        "ComparisonComparators.LessThan": "<",
+                        "ComparisonComparators.LessThanOrEqual": "<=",
+                        "ComparisonComparators.Equal": "=",
+                        "ComparisonComparators.NotEqual": "!=",
+                        "ComparisonComparators.Like": "encoders.like",
+                        "ComparisonComparators.In": "encoders.set",
+                        "ComparisonComparators.Matches": "encoders.matches",
+                        "ComparisonExpressionOperators.And": "AND",
+                        "ComparisonExpressionOperators.Or": "OR",
+                        "ComparisonComparators.IsSubSet": "=",
+                        "ObservationOperators.And": "{expr1} OR {expr2}",
+                        "ObservationOperators.Or": "{expr1} OR {expr2}",
+                        "ObservationOperators.FollowedBy": "latest=[search {expr2} | append [makeresults 1 | eval _time=0] | head 1 | return $_time] | where {expr1}"
+                    },
+                    "select_fields": {
+                        "default": [
+                            "src_ip",
+                            "src_port",
+                            "src_mac",
+                            "src_ipv6",
+                            "dest_ip",
+                            "dest_port",
+                            "dest_mac",
+                            "dest_ipv6",
+                            "file_hash",
+                            "user",
+                            "url",
+                            "protocol",
+                            "host",
+                            "source",
+                            "DeviceType",
+                            "Direction",
+                            "severity",
+                            "EventID",
+                            "EventName",
+                            "ss_name",
+                            "TacticId",
+                            "Tactic",
+                            "TechniqueId",
+                            "Technique",
+                            "process",
+                            "process_id",
+                            "process_name",
+                            "process_exec",
+                            "process_path",
+                            "process_hash",
+                            "parent_process",
+                            "parent_process_id",
+                            "parent_process_name",
+                            "parent_process_exec",
+                            "description",
+                            "result",
+                            "signature",
+                            "signature_id",
+                            "query",
+                            "answer"
+                        ]
+                    },
+                    "to_stix_map": {
+                        "event_count": {
+                            "key": "number_observed",
+                            "cybox": false,
+                            "transformer": "ToInteger"
+                        },
+                        "_raw": [
+                            {
+                                "key": "artifact.payload_bin",
+                                "object": "artifact",
+                                "transformer": "ToBase64"
+                            },
+                            {
+                                "key": "x-oca-event.original_ref",
+                                "object": "event",
+                                "references": "artifact"
+                            }
+                        ],
+                        "mime_type_raw": {
+                            "key": "artifact.mime_type",
+                            "object": "artifact"
+                        },
+                        "dest_ip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "network-traffic.dst_ref",
+                                "object": "network-traffic",
+                                "references": "dst_ip"
+                            },
+                            {
+                                "key": "x-oca-event.ip_refs",
+                                "object": "event",
+                                "references": [
+                                    "dst_ip"
+                                ],
+                                "group": true
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            },
+                            {
+                                "key": "process.opened_connection_refs",
+                                "object": "process",
+                                "references": [
+                                    "network-traffic"
+                                ]
+                            }
+                        ],
+                        "src_ip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "network-traffic.src_ref",
+                                "object": "network-traffic",
+                                "references": "src_ip"
+                            },
+                            {
+                                "key": "x-oca-event.ip_refs",
+                                "object": "event",
+                                "references": [
+                                    "src_ip"
+                                ],
+                                "group": true
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            },
+                            {
+                                "key": "process.opened_connection_refs",
+                                "object": "process",
+                                "references": [
+                                    "network-traffic"
+                                ]
+                            }
+                        ],
+                        "dest_port": [
+                            {
+                                "key": "network-traffic.dst_port",
+                                "object": "network-traffic",
+                                "transformer": "ToInteger"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            },
+                            {
+                                "key": "process.opened_connection_refs",
+                                "object": "process",
+                                "references": [
+                                    "network-traffic"
+                                ]
+                            }
+                        ],
+                        "src_port": [
+                            {
+                                "key": "network-traffic.src_port",
+                                "object": "network-traffic",
+                                "transformer": "ToInteger"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            },
+                            {
+                                "key": "process.opened_connection_refs",
+                                "object": "process",
+                                "references": [
+                                    "network-traffic"
+                                ]
+                            }
+                        ],
+                        "protocol": [
+                            {
+                                "key": "network-traffic.protocols",
+                                "object": "network-traffic",
+                                "transformer": "ToLowercaseArray"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            },
+                            {
+                                "key": "process.opened_connection_refs",
+                                "object": "process",
+                                "references": [
+                                    "network-traffic"
+                                ]
+                            }
+                        ],
+                        "_time": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "SplunkToTimestamp",
+                                "cybox": false
+                            },
+                            {
+                                "key": "last_observed",
+                                "transformer": "SplunkToTimestamp",
+                                "cybox": false
+                            },
+                            {
+                                "key": "x-oca-event.created",
+                                "transformer": "SplunkToTimestamp",
+                                "object": "event"
+                            }
+                        ],
+                        "user": [
+                            {
+                                "key": "user-account.account_login",
+                                "object": "authentication"
+                            },
+                            {
+                                "key": "x_splunk_spl.user",
+                                "cybox": false
+                            },
+                            {
+                                "key": "user-account.user_id",
+                                "object": "authentication"
+                            },
+                            {
+                                "key": "x-oca-event.user_ref",
+                                "object": "event",
+                                "references": "authentication"
+                            }
+                        ],
+                        "process_user": [
+                            {
+                                "key": "process.creator_user_ref",
+                                "object": "process",
+                                "references": "authentication"
+                            }
+                        ],
+                        "bytes": {
+                            "key": "x_splunk_spl.bytes",
+                            "cybox": false
+                        },
+                        "ssl_hash": [
+                            {
+                                "key": "x509-certificate.hashes.SHA-256",
+                                "object": "certificate"
+                            }
+                        ],
+                        "ssl_version": {
+                            "key": "x509-certificate.version",
+                            "object": "certificate"
+                        },
+                        "ssl_serial": {
+                            "key": "x509-certificate.serial_number",
+                            "object": "certificate"
+                        },
+                        "ssl_signature_algorithm": {
+                            "key": "x509-certificate.signature_algorithm",
+                            "object": "certificate"
+                        },
+                        "ssl_issuer": {
+                            "key": "x509-certificate.issuer",
+                            "object": "certificate"
+                        },
+                        "ssl_subject": {
+                            "key": "x509-certificate.subject",
+                            "object": "certificate"
+                        },
+                        "ssl_publickey_algorithm": {
+                            "key": "x509-certificate.subject_public_key_algorithm",
+                            "object": "certificate"
+                        },
+                        "process_id": [
+                            {
+                                "key": "process.pid",
+                                "object": "process"
+                            },
+                            {
+                                "key": "x-oca-event.process_ref",
+                                "object": "event",
+                                "references": "process"
+                            }
+                        ],
+                        "process_name": [
+                            {
+                                "key": "process.name",
+                                "object": "process"
+                            },
+                            {
+                                "key": "x-oca-event.process_ref",
+                                "object": "event",
+                                "references": "process"
+                            }
+                        ],
+                        "process": {
+                            "key": "process.command_line",
+                            "object": "process"
+                        },
+                        "process_exec": [
+                            {
+                                "key": "file.name",
+                                "object": "process-exec"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "process",
+                                "references": "process-exec"
+                            },
+                            {
+                                "key": "x-oca-event.file_ref",
+                                "object": "event",
+                                "references": "process-exec"
+                            }
+                        ],
+                        "process_hash": {
+                            "key": "file.hashes",
+                            "object": "process-exec",
+                            "transformer": "SplunkHash"
+                        },
+                        "process_path": [
+                            {
+                                "key": "directory.path",
+                                "object": "process-path"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "process-exec",
+                                "references": "process-path"
+                            }
+                        ],
+                        "parent_process_id": [
+                            {
+                                "key": "process.pid",
+                                "object": "parent-process"
+                            },
+                            {
+                                "key": "x-oca-event.parent_process_ref",
+                                "object": "event",
+                                "references": "parent-process"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent-process"
+                            }
+                        ],
+                        "parent_process_name": [
+                            {
+                                "key": "process.name",
+                                "object": "parent-process"
+                            },
+                            {
+                                "key": "x-oca-event.parent_process_ref",
+                                "object": "event",
+                                "references": "parent-process"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent-process"
+                            }
+                        ],
+                        "parent_process": {
+                            "key": "process.command_line",
+                            "object": "parent-process"
+                        },
+                        "parent_process_exec": [
+                            {
+                                "key": "file.name",
+                                "object": "parent-process-exec"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "parent-process",
+                                "references": "parent-process-exec"
+                            }
+                        ],
+                        "parent_process_path": [
+                            {
+                                "key": "directory.path",
+                                "object": "parent-process-path"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "parent-process-exec",
+                                "references": "parent-process-path"
+                            }
+                        ],
+                        "file_path": [
+                            {
+                                "key": "directory.path",
+                                "object": "directory"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "file",
+                                "references": "directory"
+                            }
+                        ],
+                        "file_create_time": [
+                            {
+                                "key": "directory.created",
+                                "object": "directory",
+                                "transformer": "SplunkToTimestamp"
+                            },
+                            {
+                                "key": "file.created",
+                                "object": "file",
+                                "transformer": "SplunkToTimestamp"
+                            }
+                        ],
+                        "file_modify_time": [
+                            {
+                                "key": "directory.modified",
+                                "object": "directory",
+                                "transformer": "SplunkToTimestamp"
+                            },
+                            {
+                                "key": "file.modified",
+                                "object": "file",
+                                "transformer": "SplunkToTimestamp"
+                            }
+                        ],
+                        "file_hash": {
+                            "key": "file.hashes.UNKNOWN",
+                            "object": "file"
+                        },
+                        "file_name": [
+                            {
+                                "key": "file.name",
+                                "object": "file"
+                            },
+                            {
+                                "key": "x-oca-event.file_ref",
+                                "object": "event",
+                                "references": "file"
+                            }
+                        ],
+                        "file_size": {
+                            "key": "file.size",
+                            "object": "file"
+                        },
+                        "src_mac": [
+                            {
+                                "key": "mac-addr.value",
+                                "object": "src_mac"
+                            },
+                            {
+                                "key": "ipv4-addr.resolves_to_refs",
+                                "object": "src_ip",
+                                "references": [
+                                    "src_mac"
+                                ]
+                            },
+                            {
+                                "key": "ipv6-addr.resolves_to_refs",
+                                "object": "src_ip",
+                                "references": [
+                                    "src_mac"
+                                ]
+                            }
+                        ],
+                        "dest_mac": [
+                            {
+                                "key": "mac-addr.value",
+                                "object": "dst_mac"
+                            },
+                            {
+                                "key": "ipv4-addr.resolves_to_refs",
+                                "object": "dst_ip",
+                                "references": [
+                                    "dst_mac"
+                                ]
+                            },
+                            {
+                                "key": "ipv6-addr.resolves_to_refs",
+                                "object": "dst_ip",
+                                "references": [
+                                    "dst_mac"
+                                ]
+                            }
+                        ],
+                        "object_path": [
+                            {
+                                "key": "windows-registry-key.key",
+                                "object": "windows-registry-key"
+                            },
+                            {
+                                "key": "x-oca-event.registry_ref",
+                                "object": "event",
+                                "references": "windows-registry-key"
+                            }
+                        ],
+                        "url": [
+                            {
+                                "key": "url.value",
+                                "object": "web"
+                            },
+                            {
+                                "key": "domain-name.value",
+                                "transformer": "ToDomainName"
+                            }
+                        ],
+                        "src_user": [
+                            {
+                                "key": "email-addr.value",
+                                "object": "email-addr"
+                            },
+                            {
+                                "key": "email-message.sender_ref",
+                                "object": "email-message",
+                                "references": "email-addr"
+                            },
+                            {
+                                "key": "email-message.from_ref",
+                                "object": "email-message",
+                                "references": "email-addr"
+                            }
+                        ],
+                        "subject": {
+                            "key": "email-message.subject",
+                            "object": "email-message"
+                        },
+                        "is_multipart": {
+                            "key": "email-message.is_multipart",
+                            "object": "email-message",
+                            "transformer": "StringToBool"
+                        },
+                        "host": [
+                            {
+                                "key": "x-oca-asset.hostname",
+                                "object": "host"
+                            },
+                            {
+                                "key": "x-oca-event.host_ref",
+                                "object": "event",
+                                "references": "host"
+                            }
+                        ],
+                        "Direction": [
+                            {
+                                "key": "x-splunk.direction",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "EventID": [
+                            {
+                                "key": "x-splunk.event_id",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "TacticId": [
+                            {
+                                "key": "x-splunk.mitre_tactic_id",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "Tactic": [
+                            {
+                                "key": "x-splunk.mitre_tactic",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "TechniqueId": [
+                            {
+                                "key": "x-splunk.mitre_technique_id",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "Technique": [
+                            {
+                                "key": "x-splunk.mitre_technique",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "EventName": [
+                            {
+                                "key": "x-splunk.event_name",
+                                "object": "x-splunk"
+                            }
+                        ],
+                        "ss_name": {
+                            "key": "x-ibm-finding.name",
+                            "object": "x-ibm-finding"
+                        },
+                        "DeviceType": [
+                            {
+                                "key": "x-ibm-finding.src_device",
+                                "object": "x-ibm-finding"
+                            }
+                        ],
+                        "severity": [
+                            {
+                                "key": "x-ibm-finding.severity",
+                                "object": "x-ibm-finding"
+                            }
+                        ],
+                        "source": {
+                            "key": "x-oca-event.module",
+                            "object": "event"
+                        },
+                        "description": {
+                            "key": "x-oca-event.action",
+                            "object": "event"
+                        },
+                        "signature": {
+                            "key": "x-oca-event.action",
+                            "object": "event"
+                        },
+                        "signature_id": {
+                            "key": "x-oca-event.code",
+                            "object": "event"
+                        },
+                        "result": {
+                            "key": "x-oca-event.outcome",
+                            "object": "event"
+                        },
+                        "query": [
+                            {
+                                "key": "domain-name.value",
+                                "object": "domain"
+                            },
+                            {
+                                "key": "network-traffic.extensions.dns-ext.question.domain_ref",
+                                "object": "network-traffic",
+                                "references": "domain"
+                            },
+                            {
+                                "key": "x-oca-event.domain_ref",
+                                "object": "event",
+                                "references": "domain"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            },
+                            {
+                                "key": "process.opened_connection_refs",
+                                "object": "process",
+                                "references": [
+                                    "network-traffic"
+                                ]
+                            }
+                        ],
+                        "answer": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "resolved-ip"
+                            },
+                            {
+                                "key": "network-traffic.extensions.dns-ext.resolved_ip_refs",
+                                "object": "network-traffic",
+                                "references": [
+                                    "resolved-ip"
+                                ],
+                                "group": true
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            },
+                            {
+                                "key": "process.opened_connection_refs",
+                                "object": "process",
+                                "references": [
+                                    "network-traffic"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "password"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
