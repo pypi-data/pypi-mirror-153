@@ -1,0 +1,177 @@
+import os
+import sys
+import shutil
+from typing import List
+from pathlib import Path
+import datetime
+import re
+import subprocess
+import getpass
+import socket
+from IPython.terminal.prompts import Prompts, Token
+from IPython.core.magic import (register_line_magic, register_cell_magic, register_line_cell_magic)
+from xinstall.utils import is_linux, is_macos
+try:
+    import aiutil
+except:
+    pass
+HOME = Path.home()
+USER = getpass.getuser()
+HOST = re.sub("\.local$", "", socket.gethostname())
+
+
+class MyPrompt(Prompts):
+    """Customize command prompt for IPython.
+    """
+    def _git_status(self) -> List[bytes]:
+        try:
+            proc = subprocess.run(["git", "status"], stdout=subprocess.PIPE)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return []
+        lines = [line.strip() for line in proc.stdout.splitlines()]
+        # get rid of the leading #
+        for idx, line in enumerate(lines):
+            if line.startswith(b"#"):
+                lines[idx] = line[1:].strip()
+        return [line for line in lines if line != b""]
+
+    def _changed(self, line: bytes) -> bool:
+        """Check whether the line indicating changes in the Git Repository.
+        """
+        keywords = [
+            b"new file:",
+            b"deleted:",
+            b"modified:",
+            b"renamed:",
+            b"untracked files:",
+            b"your branch is ahead",
+        ]
+        line = line.lower().strip()
+        for key in keywords:
+            if line.startswith(key):
+                return True
+        return False
+
+    def _git_changed(self) -> bool:
+        for line in self._git_status():
+            if self._changed(line):
+                return True
+        return False
+
+    def _git_branch(self) -> str:
+        """Get the current branch the current Git repository.
+        :return: The name of the current branch.
+        """
+        try:
+            proc = subprocess.run(["git", "branch"], stdout=subprocess.PIPE)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return ""
+        for line in proc.stdout.splitlines():
+            line = line.strip()
+            if line.startswith(b"*"):
+                return line[1:].strip().decode()
+        return ""
+
+    def _git_remote(self) -> List[str]:
+        """Get the remote names of the current Git repository.
+        :return: A list of remote names.
+        """
+        try:
+            proc = subprocess.run(["git", "remote"], stdout=subprocess.PIPE)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return ""
+        return [line.strip().decode() for line in proc.stdout.splitlines() if line.strip() != b""]
+
+    def in_prompt_tokens(self, cli=None):
+        remotes = ""
+        branch = ""
+        # if Path(".git").is_dir():
+        if False:
+            remotes = "(" + "|".join(self._git_remote()) + ")"
+            branch = "[" + self._git_branch() + f"{'*' if self._git_changed() else ''}]"
+        cwd = Path.cwd()
+        return [
+            (Token, f"{USER}@{HOST} {cwd} {remotes} {branch}"),
+            (Token.Prompt, f"\nIn[{self.shell.execution_count}] >>> ")
+        ]
+
+
+@register_line_magic
+def trash(line: str):
+    """Define a trash magic as a better alternative to rm.
+
+    :param line: The parameter line passed to this magic.
+    """
+    path = Path(line)
+    trash_dir = Path.home() / ".Trash"
+    if is_linux():
+        trash_dir = Path.home() / ".local/share/Trash/files"
+    trash_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    backup = trash_dir / path.name
+    if backup.exists():
+        backup = backup.with_name(backup.name + "_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S%f"))
+    shutil.move(path, backup)
+    print(f"The path {path} has been moved into the trash directory {trash_dir}.")
+
+
+@register_line_magic
+def o(line: str) -> None:
+    """Open a file using the default application.
+    """
+    if is_macos():
+        run_cmd(f"open {line} &")
+        return
+    if is_linux():
+        if Path("/usr/bin/dolphin").is_file():
+            cmd = f"/usr/bin/dolphin {line} &"
+        elif Path("/usr/bin/nemo").is_file():
+            cmd = f"/usr/bin/nemo {line} &"
+        elif Path("/usr/bin/nautilus").is_file():
+            cmd = f"/usr/bin/nautilus {line} &"
+        elif Path("/usr/bin/thunar").is_file():
+            cmd = f"/usr/bin/thunar {line} &"
+        else:
+            raise FileNotFoundError("No valid file manager is found!")
+        run_cmd(cmd)
+        return
+
+
+def symlink_blog() -> None:
+    """Create symbolic link for the blog directory 
+        to make it easier to use.
+    """
+    dstfile = HOME / ".local/bin/blog"
+    paths = [
+        HOME / "archives/blog/blog.py",
+        Path("/workdir/archives/blog/blog.py"),
+        Path("/workdir/blog/blog.py"),
+    ]
+    for path in paths:
+        if path.is_file():
+            try:
+                dstfile.unlink()
+            except FileNotFoundError:
+                pass
+            dstfile.symlink_to(path)
+            return
+
+
+def set_path_env() -> None:
+    """Set the PATH environment variable.
+    """
+    delimiter = ";" if sys.platform == "win32" else ":"
+    paths = list(HOME.glob(".*/bin"))
+    paths.extend(HOME.glob("Library/Python/3.*/bin"))
+    paths.extend(Path("/").glob("apache/hadoop/bin"))
+    paths.extend(os.environ["PATH"].split(delimiter))
+    paths.append(HOME / ".pyenv/shims")
+    if "win" in sys.platform:
+        paths.append("C:\\Program Files\\osquery")
+    # use dict to dedup while keep the original order!!!
+    os.environ["PATH"] = delimiter.join({str(path): None for path in paths})
+
+
+get_ipython().prompts = MyPrompt(get_ipython())
+symlink_blog()
+set_path_env()
+%rehashx
