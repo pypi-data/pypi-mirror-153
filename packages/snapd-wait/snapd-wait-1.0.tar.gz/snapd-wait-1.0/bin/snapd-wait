@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+""" Wait for `snapd` autorefresh to complete """
+import argparse
+import datetime
+import errno
+import logging
+import os
+import subprocess
+import sys
+import time
+from datetime import timedelta, timezone
+
+# Defaults
+DELAY = 360  # minutes
+MAX_WAIT_TIME = 15  # minutes
+SLEEP = 5  # seconds
+TIMEOUT = 10  # seconds
+
+
+def process_line(line: str) -> bool:
+    """ Handle one line of `snap changes` output """
+    # Return true if running, false otherwise
+    tokens = line.split(maxsplit=2)
+    if len(tokens) < 2:
+        logging.error("Unrecognized line: %s", line)
+        return True
+
+    status = tokens[1]
+    if status in ("Done", "Abort", "Undone", "Hold", "Error"):
+        return False
+    if status in ("Do", "Doing", "Undo", "Undoing", "Default"):
+        return True
+
+    logging.error("Unrecognized status: %s", status)
+    return True
+
+
+def main() -> int:
+    """ Main application """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--delay", type=int, default=DELAY,
+        help="Delay updates for n minutes (<=0 disables)")
+    parser.add_argument(
+        "--max-wait-time", type=int, default=MAX_WAIT_TIME,
+        help="Maximum time in minutes to wait for snapd (<=0 disables)"
+    )
+    parser.add_argument(
+        "--sleep", type=int, default=SLEEP,
+        help="Time in seconds to sleep between calls to snap"
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=TIMEOUT,
+        help="Time in seconds to wait for snap to complete"
+    )
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    if os.geteuid() != 0:
+        logging.error("Must be run as root")
+        return errno.EACCES
+    if not os.path.exists("/usr/bin/snap"):
+        logging.error("Not found: /usr/bin/snap")
+        return errno.ENOENT
+
+    started_at = datetime.datetime.now(tz=timezone.utc)
+
+    if args.delay > 0:
+        hold = started_at + timedelta(minutes=args.delay)
+        cmd = "/usr/bin/snap set system refresh.hold=" + hold.isoformat()
+        subprocess.run(cmd, shell=True, check=True, timeout=args.timeout)
+
+    cmd = "/usr/bin/snap changes"
+
+    print_once = True
+
+    while True:
+        if args.max_wait_time > 0:
+            now = datetime.datetime.now(tz=timezone.utc)
+            if now > started_at + timedelta(minutes=args.max_wait_time):
+                logging.error(
+                    "Exceeded maximum wait time (%s minutes)",
+                    args.max_wait_time
+                )
+                return errno.ETIMEDOUT
+
+        process = subprocess.run(
+            cmd, shell=True, stdout=subprocess.PIPE,
+            timeout=args.timeout, encoding="utf-8", check=False
+        )
+        if process.returncode != 0:
+            time.sleep(args.sleep)
+            continue
+
+        # first line is the header or 'no changes found'
+        running = False
+        for line in process.stdout.splitlines()[1:]:
+            line = line.strip()
+            if line:
+                running = process_line(line)
+                if running:
+                    break
+
+        if not running:
+            break
+
+        if print_once:
+            print(process.stdout)
+            print_once = False
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())  # pragma: no cover
