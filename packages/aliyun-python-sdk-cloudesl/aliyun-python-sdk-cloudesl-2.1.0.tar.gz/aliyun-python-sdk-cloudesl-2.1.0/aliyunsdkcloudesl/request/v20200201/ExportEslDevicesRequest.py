@@ -1,0 +1,98 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+from aliyunsdkcore.request import RpcRequest
+from aliyunsdkcloudesl.endpoint import endpoint_data
+
+class ExportEslDevicesRequest(RpcRequest):
+
+	def __init__(self):
+		RpcRequest.__init__(self, 'cloudesl', '2020-02-01', 'ExportEslDevices')
+		self.set_method('POST')
+		if hasattr(self, "endpoint_map"):
+			setattr(self, "endpoint_map", endpoint_data.getEndpointMap())
+		if hasattr(self, "endpoint_regional"):
+			setattr(self, "endpoint_regional", endpoint_data.getEndpointRegional())
+
+
+	def get_ExtraParams(self):
+		return self.get_body_params().get('ExtraParams')
+
+	def set_ExtraParams(self,ExtraParams):
+		self.add_body_params('ExtraParams', ExtraParams)
+
+	def get_Language(self):
+		return self.get_body_params().get('Language')
+
+	def set_Language(self,Language):
+		self.add_body_params('Language', Language)
+
+	def get_Type(self):
+		return self.get_body_params().get('Type')
+
+	def set_Type(self,Type):
+		self.add_body_params('Type', Type)
+
+	def get_StoreId(self):
+		return self.get_body_params().get('StoreId')
+
+	def set_StoreId(self,StoreId):
+		self.add_body_params('StoreId', StoreId)
+
+	def get_EslBarCode(self):
+		return self.get_body_params().get('EslBarCode')
+
+	def set_EslBarCode(self,EslBarCode):
+		self.add_body_params('EslBarCode', EslBarCode)
+
+	def get_TypeEncode(self):
+		return self.get_body_params().get('TypeEncode')
+
+	def set_TypeEncode(self,TypeEncode):
+		self.add_body_params('TypeEncode', TypeEncode)
+
+	def get_EslStatus(self):
+		return self.get_body_params().get('EslStatus')
+
+	def set_EslStatus(self,EslStatus):
+		self.add_body_params('EslStatus', EslStatus)
+
+	def get_ToBatteryLevel(self):
+		return self.get_body_params().get('ToBatteryLevel')
+
+	def set_ToBatteryLevel(self,ToBatteryLevel):
+		self.add_body_params('ToBatteryLevel', ToBatteryLevel)
+
+	def get_LevelLower(self):
+		return self.get_body_params().get('LevelLower')
+
+	def set_LevelLower(self,LevelLower):
+		self.add_body_params('LevelLower', LevelLower)
+
+	def get_FromBatteryLevel(self):
+		return self.get_body_params().get('FromBatteryLevel')
+
+	def set_FromBatteryLevel(self,FromBatteryLevel):
+		self.add_body_params('FromBatteryLevel', FromBatteryLevel)
+
+	def get_LevelOrder(self):
+		return self.get_body_params().get('LevelOrder')
+
+	def set_LevelOrder(self,LevelOrder):
+		self.add_body_params('LevelOrder', LevelOrder)
