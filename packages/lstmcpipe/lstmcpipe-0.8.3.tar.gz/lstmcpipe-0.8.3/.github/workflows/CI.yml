@@ -1,0 +1,81 @@
+name: CI
+
+on: [push, pull_request]
+
+env:
+  PYTEST_ADDOPTS: --color=yes
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # lstchain dependency
+        python-version: [3.7]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+
+        run: |
+          . $CONDA/etc/profile.d/conda.sh
+          conda config --set always_yes yes --set changeps1 no
+          sed -i -e "s/- python=.*/- python=$PYTHON_VERSION/g" environment.yml
+
+          echo "Creating conda env"
+          conda env create -n ci -f environment.yml
+          conda activate ci
+
+          echo "Installing additional pip packages"
+          pip install \
+            pytest-cov \
+            pyflakes
+
+          echo "pip install ."
+          pip install .
+
+      - name: Static codechecks
+        run: |
+            source $CONDA/etc/profile.d/conda.sh
+            conda activate ci
+            pyflakes lstmcpipe
+
+      - name: Tests
+        run: |
+            source $CONDA/etc/profile.d/conda.sh
+            conda activate ci
+            pytest --cov=lstmcpipe --cov-report=xml lstmcpipe
+
+      - uses: codecov/codecov-action@v1
+
+      - name: Detect added configs
+        uses: tj-actions/changed-files@v18.2
+        id: verify-changed-files
+        with:
+          files: |
+            production_configs/*/*.yml
+            production_configs/*/*.yaml
+            production_configs/*/*.json
+      - name: Validate added configs.
+        if: steps.verify-changed-files.outputs.any_changed == 'true'
+        run: |
+          source $CONDA/etc/profile.d/conda.sh
+          conda activate ci
+          export filelist=${{ steps.verify-changed-files.outputs.all_changed_files }}
+          export filelist=`grep -E '\.yaml$|\.yml$' <<< ${filelist[*]}`
+          echo "Added yaml files: $filelist"
+          for file in $filelist; do
+            echo "Checking $file...";
+            lstmcpipe_validate_config $file -lc `dirname $file`/*lstchain*.json ;
+            echo "Valid!";
+          done
