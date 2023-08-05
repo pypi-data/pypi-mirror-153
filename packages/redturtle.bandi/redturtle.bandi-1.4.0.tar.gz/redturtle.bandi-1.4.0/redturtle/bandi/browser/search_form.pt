@@ -1,0 +1,215 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+      lang="en"
+      metal:use-macro="context/@@main_template/macros/master"
+      i18n:domain="redturtle.bandi">
+
+    <metal:head fill-slot="top_slot"
+                tal:define="dummy python:request.set('disable_border',1)" />
+    <metal:block fill-slot="column_one_slot" />
+    <metal:block fill-slot="column_two_slot" />
+    <metal:javascript_head_slot fill-slot="javascript_head_slot">
+        <script type="text/javascript"
+            tal:attributes="src string:${context/portal_url}/++resource++searchbandi.js">
+        </script>
+    </metal:javascript_head_slot>
+<div metal:fill-slot="main">
+
+    <h1 class="documentFirstHeading" i18n:translate="bandi_search_label">Announcements Search</h1>
+    
+	<p class="searchBandiDescription" i18n:translate="bandi_search_help">
+		This search mask allows to find announcements in the site that satisfy one or more search criteria.
+	</p>
+    <form action="search_bandi"
+          class="enableAutoFocus"
+          method="get"
+          name="search"
+          id="searchform"
+          tal:define="DateTime python:modules['DateTime'].DateTime">
+        
+            <div class="field">
+                <label for="SearchableText" i18n:translate="bandi_search_text_label">Search text</label>
+
+                <div class="formHelp" i18n:translate="bandi_search_text_help">
+					For a simple text search, enter your search term here.
+					Multiple words may be found by combining them with <strong>AND</strong> and <strong>OR</strong>.
+					The text in this field will be matched with Announcements' title, description and text.
+                </div>
+
+                <input type="text"
+                       name="SearchableText"
+                       size="50"
+                       />
+            </div>
+
+
+            <div class="field">
+
+              <label i18n:translate="bandi_search_state_label">State</label>
+              
+			  <div class="formHelp" i18n:translate="bandi_search_state_help">
+				Search announcements <strong>scheduled</strong> (with open date in the future),
+                <strong>open</strong> (with participation terms not expired),
+				<strong>in progress</strong> (participation terms expired, but the procedure isn't already closed) or
+				<strong>closed</strong> (the procedure is closed).
+              </div>
+              
+			  <select name="stato_bandi" id="stato_bandi" i18n:domain="redturtle.bandi">
+                <option value="" selected="selected" i18n:translate="bandi_search_state_all">All</option>
+                <option value="scheduled" i18n:translate="bandi_search_state_scheduled">Scheduled</option>
+                <option value="open" i18n:translate="bandi_search_state_open">Open</option>
+                <option value="inProgress" i18n:translate="bandi_search_state_inprogress">In progress</option>
+                <option value="closed" i18n:translate="bandi_search_state_closed">Closed</option>
+              </select>
+            </div>
+
+
+            <div class="field">
+                <label for="tipologia" i18n:translate="bandi_search_type_label">Type</label>
+
+                <div class="formHelp" i18n:translate="bandi_search_type_help">
+                Select an annonuncement type.
+                </div>
+
+                <tal:items repeat="t_tipo view/terms_tipologia">
+                <input class="noborder"
+                       type="checkbox"
+                       name="tipologia_bando"
+                       checked="checked"
+                       tal:attributes="value t_tipo/token;
+                                       id python:'tipol_%s' % t_tipo.token" />
+                <label tal:attributes="for python:'tipol_%s'% t_tipo.token"
+                       tal:content="t_tipo/title"
+                       />
+                <br />
+                </tal:items>
+            </div>
+
+
+            <div class="field">
+                <label for="destinatari" i18n:translate="bandi_search_recipients_label">Recipients</label>
+
+                <div class="formHelp" i18n:translate="bandi_search_recipients_help">
+                Select announcements recipients.
+                </div>
+
+                <tal:items repeat="t_dest view/terms_destinatari">
+                <input class="noborder"
+                       type="checkbox"
+                       name="destinatari_bando"
+                       tal:attributes="value t_dest/token;
+                                       id python:'tipol_%s' % t_dest.token" />
+                <label tal:attributes="for python:'tipol_%s'% t_dest.token"
+                       tal:content="t_dest/title"
+                       />
+                <br />
+                </tal:items>
+            </div>
+
+            <div class="field"
+                 tal:define="default_ente view/getDefaultEnte">
+                <label for="Subject" i18n:translate="bandi_search_authority_label">Authorities</label>
+
+                <div class="formHelp" i18n:translate="help_search_authorities">
+                Return items matching some or all of these authorities.
+                Multiple words may be found by pressing <strong>Ctrl</strong>
+                (or <strong>Apple</strong> key on Mac) while clicking the
+                keywords.
+                </div>
+
+                <select name="ente_bando:list"
+                        id="ente_bando"
+                        size="7"
+                        multiple="multiple"
+                        tal:define="usedEnti python:view.getUniqueValuesForIndex('ente_bando');"
+                        >
+                    <option tal:condition="default_ente"
+                            tal:content="default_ente"
+                            tal:attributes="value default_ente" />
+                    <tal:other_enti repeat="ente usedEnti">
+                      <option value="#"
+                              tal:content="ente"
+                              tal:condition="python: ente != default_ente"
+                              tal:attributes="value ente"
+                              i18n:domain="plone-metadata"
+                              i18n:translate=""
+                              >dummy</option>
+                    </tal:other_enti>
+                </select>
+                <br />
+            </div>
+
+            <div class="field" i18n:domain="plone">
+                <label for="Subject" i18n:translate="label_tags">Categories</label>
+
+                <div class="formHelp" i18n:translate="help_search_tags">
+                Return items matching some or all of these Categories.
+                Multiple words may be found by pressing <strong>Ctrl</strong>
+                (or <strong>Apple</strong> key on Mac) while clicking the
+                keywords.
+                </div>
+
+                <select name="Subject:list"
+                        id="Subject"
+                        size="7"
+                        multiple="multiple"
+                        tal:define="contentSubjects here/Subject;
+                                    usedSubjects python:view.getUniqueValuesForIndex('Subject');"
+                        >
+                    <option value="#"
+                            tal:repeat="subject usedSubjects"
+                            tal:content="subject"
+                            tal:attributes="value subject"
+                            i18n:domain="plone-metadata"
+                            i18n:translate=""
+                            >dummy</option>
+                </select>
+                <br />
+            </div>
+
+            <div class="field"
+                tal:condition="view/isSolrEnabled">
+                <input name="use_solr:boolean" id="use_solr" type="checkbox"/>
+                <label for="use_solr" i18n:translate="bandi_use_solr_label">Multisite search</label>
+                <div class="formHelp" i18n:translate="bandi_use_solr_help">
+                  If checked, the search will be made on a selected list of ER Sites. If not checked, the search will be made only on this site.
+                </div>
+
+                <div class="siteSelection"
+                     tal:define="sites python:view.getUniqueValuesForIndex('ploneSite');"
+                     tal:condition="sites">
+                  <label for="ploneSite" i18n:translate="bandi_searchsites_label">Available sites</label>
+                  <div class="formHelp" i18n:translate="bandi_searchsites_help">
+                  Select where to search.
+                  </div>
+                  <select name="ploneSite"
+                          id="ploneSite"
+                          i18n:domain="redturtle.bandi"
+                          multiple="multiple">
+                    <option tal:repeat="site sites" tal:content="site" />
+                  </select>
+                </div>
+            </div>
+
+            <input type="hidden" name="portal_type" value="Bando" />
+            <input type="hidden" name="sort_on" value="effective" />
+            <input type="hidden" name="sort_order" value="reverse" />
+
+            <div class="visualClear" id="clear-space-before-submit"><!-- --></div>
+
+            <div class="formControls">
+                <input class="context"
+                       type="submit"
+                       name="submit"
+                       value="Search"
+                       i18n:attributes="value label_search;"
+                       />
+            </div>
+
+    </form>
+
+</div>
+
+</html>

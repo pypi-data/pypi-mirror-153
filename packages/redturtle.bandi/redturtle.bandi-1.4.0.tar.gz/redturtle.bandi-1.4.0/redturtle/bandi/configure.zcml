@@ -1,0 +1,84 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    i18n_domain="redturtle.bandi">
+
+  <i18n:registerTranslations directory="locales" />
+
+  <!-- Load these here as permissions are used by .browser and .portlets -->
+
+  <permission
+    id="redturtle.bandi.addBando"
+    title="redturtle.bandi: Add Bando"
+    />
+
+  <permission
+    id="redturtle.bandi.addBandoFolderDeepening"
+    title="redturtle.bandi: Add Bando Folder Deepening"
+    />
+
+  <permission
+    id="redturtle.bandi.addBandiPortlet"
+    title="redturtle.bandi: Add Bandi Portlet"
+    />
+
+
+  <!-- Include the sub-packages that use their own configure.zcml files. -->
+  <include package=".browser" />
+  <include package=".content" />
+  <include package=".portlets" />
+  <include package=".restapi" />
+  <include zcml:condition="installed collective.tiles.collection" package=".tiles" />
+  <include file="upgrades.zcml" />
+
+  <!-- Register the installation GenericSetup extension profile -->
+  <genericsetup:registerProfile
+      name="default"
+      title="Redturtle: Bandi"
+      directory="profiles/default"
+      description=""
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      />
+
+  <genericsetup:registerProfile
+      name="uninstall"
+      title="redturtle.bandi uninstall"
+      directory="profiles/uninstall"
+      description="Uninstalls the redturtle.bandi package"
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      />
+
+  <genericsetup:registerProfile
+      name="to_1100"
+      title="Migrate to version 1100"
+      directory="profiles/to_1100"
+      description="RedTurtle Bandi migrate to version 1100"
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      />
+  <!-- registro i vocabolari -->
+  <utility
+    name="redturtle.bandi.tipologia.vocabulary"
+    component=".vocabularies.TipologiaBandoVocabularyFactory"
+    />
+
+  <utility
+    name="redturtle.bandi.destinatari.vocabulary"
+    component=".vocabularies.DestinatariVocabulary"
+    />
+
+  <utility
+    name="redturtle.bandi.enti.vocabulary"
+    component=".vocabularies.EnteVocabulary"
+    />
+
+  <!-- indexers -->
+  <adapter name="destinatari_bando" factory=".indexer.destinatari_bando" />
+  <adapter name="chiusura_procedimento_bando" factory=".indexer.chiusura_procedimento_bando" />
+  <adapter name="scadenza_bando" factory=".indexer.scadenza_bando" />
+  <adapter name="ente_bando" factory=".indexer.ente_bando" />
+  <adapter name="tipologia_bando" factory=".indexer.tipologia_bando" />
+  <adapter name="apertura_bando" factory=".indexer.apertura_bando" />
+</configure>

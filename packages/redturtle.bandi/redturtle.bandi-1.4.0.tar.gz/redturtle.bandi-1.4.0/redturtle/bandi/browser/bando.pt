@@ -1,0 +1,174 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en"
+      lang="en"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+      metal:use-macro="context/@@main_template/macros/master"
+      i18n:domain="redturtle.bandi">
+
+  <body>
+    <metal:fill fill-slot="main">
+      <metal:main_macro define-macro="main"
+            tal:define="portal_type python:here.getPortalTypeName().lower().replace(' ', '_');
+            view_template python:'%s_view' % portal_type;">
+
+        <div tal:replace="structure provider:plone.abovecontenttitle" />
+		<h1 class="documentFirstHeading" tal:content="here/Title">
+            Title
+        </h1>
+		<div tal:replace="structure provider:plone.belowcontenttitle" />
+
+		<div class="contextualbody">
+            <div class="documentDescription redturtle-contextual-description" tal:condition="here/Description"
+                      tal:content="here/Description">
+                      Description
+            </div>
+
+			<div tal:replace="structure provider:plone.abovecontentbody" />
+
+            <div class="redturtle-contextual-text">
+            	<div class="bandiColumnRight">
+					<table class="vertical listing tableRight">
+                        <tr tal:define="stato_bando view/getBandoState"
+                            tal:condition="stato_bando">
+                            <th i18n:translate="bando_status_label">Status</th>
+                            <td>
+                                <div class="bandoInfos">
+                                    <span tal:define="stato_class python:stato_bando[0];
+                                                      stato_str python:stato_bando[1]"
+                                          tal:attributes="class string:state-${stato_class} bandoStateClass">
+                                        ${stato_str}
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+		                <tr tal:condition="context/tipologia_bando">
+		                  <th i18n:translate="tipologia_bando_label">Announcement type</th>
+		                  <td tal:content="python:view.voc_tipologia.getTermByToken(context.tipologia_bando).title">
+		                    Tipologia bando
+		                  </td>
+		                </tr>
+
+		                <tr tal:condition="context/destinatari|nothing">
+		                  <th i18n:translate="destinatari_label">Recipients</th>
+		                  <td>
+		                    <ul>
+		                      <li tal:repeat="dest view/getDestinatariNames"
+		                          tal:content="dest">
+		                          Destinatario
+		                      </li>
+		                    </ul>
+		                  </td>
+		                </tr>
+		                <tr tal:condition="context/ente_bando|nothing">
+                      <th i18n:translate="ente_label">Authority</th>
+                      <td>
+                        <ul>
+                          <li tal:repeat="ente context/ente_bando"
+                              tal:content="ente">
+                              Authority
+                          </li>
+                        </ul>
+                      </td>
+                    </tr>
+		                <tr tal:condition="view/getEffectiveDate">
+		                  <th i18n:translate="bando_pub_date">Publication date</th>
+		                  <td>
+		                    <tal:pubblicazione content="view/getEffectiveDate">
+                          data di pubblicazione
+		                    </tal:pubblicazione>
+		                  </td>
+		                </tr>
+                    <tr tal:condition="context/apertura_bando|nothing">
+		                  <th i18n:translate="apertura_bando_label">Opening date</th>
+		                  <td>
+		                    <div tal:replace="view/getOpenDate">
+		                      apertura bando
+		                    </div>
+		                  </td>
+		                </tr>
+		                <tr tal:condition="context/scadenza_bando|nothing">
+		                  <th i18n:translate="bando_scadenza_partecipazione">Deadline participation terms</th>
+		                  <td>
+		                    <div tal:replace="view/getDeadLinePartecipationDate">
+		                      chiusura procedimento
+		                    </div>
+		                  </td>
+		                </tr>
+		                <tr tal:condition="context/chiusura_procedimento_bando|nothing">
+		                  <th i18n:translate="bando_chiusura_procedimento">Closing process</th>
+		                  <td>
+		                    <div tal:replace="view/getAnnouncementCloseDate">
+		                      scadenza bando
+		                    </div>
+		                  </td>
+		                </tr>
+                </table>
+                <table class="vertical listing tableRight" tal:define="foldeeps view/retrieveFolderDeepening" tal:condition="foldeeps">
+                    <tr>
+                      <td>
+                        <a href="#foldeeps" i18n:translate="bando_anchor_foldeeps">Consulta gli approfondimenti</a>
+                      </td>
+                    </tr>
+		            </table>
+				      </div>
+
+              <tal:text define="bando_text here/text|nothing;
+                                stato_bando view/getBandoState">
+                <div tal:condition="bando_text"
+                     tal:replace="structure bando_text/output"
+                     tal:on-error="python:''">
+                    Body text
+                </div>
+              </tal:text>
+
+                <hr />
+                <div tal:condition="context/riferimenti_bando"
+                     tal:content="structure context/riferimenti_bando/output"
+                     tal:on-error="python:''">
+                    Riferimenti bando
+                </div>
+            </div>
+            <div class="visualClear"></div>
+            <section id="foldeeps">
+              <div class="redturtle-contextual-portlets">
+                  <tal:foldeeps define="foldeeps view/retrieveFolderDeepening"
+                                condition="foldeeps">
+                      <tal:foldeep repeat="foldeep foldeeps">
+                          <div class="portlet portletNavigationTree">
+                              <h2 class="portletHeader">
+                                  <span tal:content="foldeep/title">
+                                      header
+                                  </span>
+                              </h2>
+                              <div class="portletItem lastItem"
+                                  tal:define="folder_path foldeep/path">
+                                  <ul class="navTree navTreeLevel0"
+                                      tal:define="objs python: view.retrieveContentsOfFolderDeepening(folder_path)"
+                                      tal:condition="objs">
+                                    <li class="navTreeItem visualNoMarker"
+                                        tal:repeat="obj objs">
+                                      <!-- <img tal:replace="structure obj/icon" /> -->
+                                      <a tal:attributes="href obj/url"
+                                         tal:content="obj/title">title</a>
+                                      <span tal:condition="obj/filesize|nothing"
+                                            tal:content="string:(${obj/filesize})">1Mb</span>
+                                      <div class="description"
+                                           tal:condition="obj/description"
+                                           tal:content="obj/description">description</div>
+                                    </li>
+                                  </ul>
+                              </div>
+                          </div>
+                      </tal:foldeep>
+                  </tal:foldeeps>
+              </div>
+            </section>
+        <div class="visualClear"></div>
+        <div tal:replace="structure provider:plone.belowcontentbody" />
+        </div>
+      </metal:main_macro>
+    </metal:fill>
+  </body>
+</html>
