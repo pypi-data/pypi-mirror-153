@@ -1,0 +1,42 @@
+#!python
+from gitz.git import combine
+from gitz.git import functions
+from gitz.git import root
+from gitz.program import ARGS
+from gitz.program import PROGRAM
+
+SUMMARY = 'Cherry-pick multiple commits, with an optional squash'
+
+HELP = """
+Cherry pick each commit one after another.
+
+If there is a -s/--squash argument, squash the commits down into one,
+using the argument to -s/--squash as the commit message.
+"""
+
+EXAMPLES = """
+git multi-pick d2dfe0c a2833bc
+  Cherry-picks the commit d2dfe0c and then a2833bc on top of it.
+
+git multi-pick d2dfe0c a2833bc --squash='Squashed commit!'
+  Cherry-picks the commit d2dfe0c and then a2833bc on top of it,
+  and then squashes them into one commit with the commit message
+  'Squashed commit!'
+"""
+
+
+def git_multi_pick():
+    root.check_clean_workspace()
+    commit_ids = functions.commit_ids(ARGS.commit_ids)
+    for args in combine.combine(commit_ids, ARGS.squash):
+        PROGRAM.message(*args)
+
+
+def add_arguments(parser):
+    add_arg = parser.add_argument
+    add_arg('commit_ids', nargs='+', help='List of commit IDs to cherry pick')
+    combine.add_arguments(parser)
+
+
+if __name__ == '__main__':
+    PROGRAM.start()
