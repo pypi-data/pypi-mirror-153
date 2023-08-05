@@ -1,0 +1,85 @@
+{% extends 'layout.html' %}
+{% import '_macros.html' as macros %}
+{% block head %}
+{% block script %}
+{% if config.DAILY_REPORTS_CHART_ENABLED %}
+<script src="{{url_for('static', filename='js/dailychart.js')}}"></script>
+{% endif %}
+{% endblock script %}
+{% endblock head %}
+{% block onload_script %}
+{% macro extra_options(caller) %}
+  'pagingType': 'simple',
+  "bFilter": false,
+{% endmacro %}
+{% macro facts_extra_options(caller) %}
+  'paging': false,
+  // No per page AJAX
+  'serverSide': false,
+{% endmacro %}
+{{ macros.datatable_init(table_html_id="reports_table", ajax_url=url_for('reports_ajax', env=current_env, node_name=node.name), data=None, default_length=config.LITTLE_TABLE_COUNT, length_selector=config.TABLE_COUNT_SELECTOR, extra_options=extra_options) }}
+{{ macros.datatable_init(table_html_id="facts_table", ajax_url=url_for('fact_ajax', env=current_env, node=node.name), data=None, default_length=config.LITTLE_TABLE_COUNT, length_selector=config.TABLE_COUNT_SELECTOR, extra_options=facts_extra_options) }}
+{% endblock onload_script %}
+
+{% block content %}
+<div class='ui two column grid'>
+  <div class='column'>
+    <div class='row'>
+      <h1>Details</h1>
+      <table class="ui very basic very compact table">
+        <tbody>
+          <tr>
+            <th>Certname</th>
+            <td style="word-wrap:break-word"><b>{{node.name}}</b></td>
+          </tr>
+          <tr>
+            <th>Facts &nbsp;&nbsp;&nbsp;&nbsp;<i title='uploaded at' class=' upload icon'></i></th>
+            <td rel="utctimestamp">{{node.facts_timestamp}}</td>
+          </tr>
+          <tr>
+            <th>Catalog <i title='uploaded at' class=' upload icon'></i></th>
+            <td rel="utctimestamp">{{node.catalog_timestamp}}</td>
+          </tr>
+          <tr>
+            <th>Report &nbsp;<i title='uploaded at' class=' upload icon'></i></th>
+            <td rel="utctimestamp">{{node.report_timestamp}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class='row' style="padding-top: 2em;">
+      <h1>Reports</h1>
+      {% if config.DAILY_REPORTS_CHART_ENABLED %}
+        <div id="dailyReportsChartContainer" class="one column row">
+        <div id="dailyReportsChart" data-certname="{{node.name}}"></div>
+        </div>
+      {% endif %}
+      <table  id="reports_table" class='ui very basic very condensed table stackable'>
+        <thead>
+          <tr>
+            {% for column in columns %}
+            <th>{{ column.name }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+      <a href="{{url_for('reports', env=current_env, node_name=node.name)}}">Show All</a>
+    </div>
+  </div>
+  <div class='column'>
+    <h1>Facts</h1>
+    <table id="facts_table" class='ui fixed very basic very compact table stackable'>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th class="fact_value">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock content %}
