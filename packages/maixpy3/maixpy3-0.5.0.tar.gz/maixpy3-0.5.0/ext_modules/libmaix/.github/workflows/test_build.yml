@@ -1,0 +1,78 @@
+name: test build
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [2.7, 3.8, 3.9]
+        cmake-version: [3.12.4]
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Get submodules
+      run: |
+        git submodule update --init --recursive
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        wget https://github.com/sipeed/libmaix/releases/download/v0.1.0/toolchain-sunxi-musl-pack-2021-01-09.tar.xz
+        tar -Jxvf toolchain-sunxi-musl-pack-2021-01-09.tar.xz -C /opt
+    - name: Test hello-world build
+      run: |
+        cd examples/hello-world
+        python project.py build
+        python project.py clean
+        python project.py distclean
+        cd ../..
+    - name: Test camera build
+      run: |
+        cd examples/camera
+        python project.py build
+        python project.py clean
+        python project.py distclean
+        cd ../..
+    - name: Test display build
+      run: |
+        cd examples/display
+        python project.py build
+        python project.py clean
+        python project.py distclean
+        cd ../..
+    - name: Test nn_resnet build
+      run: |
+        cd examples/nn_resnet
+        python project.py build
+        python project.py clean
+        python project.py distclean
+        cd ../..
+    - name: Test nn_retinaface build
+      run: |
+        cd examples/nn_retinaface
+        python project.py build
+        python project.py clean
+        python project.py distclean
+        cd ../..
+    - name: Test nn_yolo_20class build
+      run: |
+        cd examples/nn_yolo_20class_mdsc
+        python project.py build
+        python project.py clean
+        python project.py distclean
+        cd ../..
+    - name: Test self_learn_classifier build
+      run: |
+        cd examples/self_learn_classifier
+        python project.py build
+        python project.py clean
+        python project.py distclean
+        cd ../..
+
