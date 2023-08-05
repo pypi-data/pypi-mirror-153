@@ -1,0 +1,161 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# vim: set ts=4
+#
+# Copyright 2020-present Linaro Limited
+#
+# Author: Rémi Duraffort <remi.duraffort@linaro.org>
+#
+# SPDX-License-Identifier: MIT
+
+import argparse
+import fnmatch
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
+
+
+SKIP = ["*.swp", "*/__pycache__/*"]
+BASE = Path(".").resolve()
+
+
+##########
+# Helper #
+##########
+def append(archive, path, base=BASE):
+    if path.is_dir():
+        path = sorted(path.rglob("*"))
+    elif path.is_file():
+        path = [path]
+    else:
+        assert 0
+
+    prefix = "|"
+    for (index, p) in enumerate(path):
+        if index == len(path) - 1:
+            prefix = "-"
+        if not p.is_file():
+            print(f" {prefix} SKIP {p}")
+            continue
+        if any([fnmatch.fnmatch(p, skip) for skip in SKIP]):
+            print(f" {prefix} EXC  {p}")
+            continue
+        relative = p.relative_to(base)
+        print(f" {prefix} ADD  {relative}")
+        info = ZipInfo(filename=str(relative))
+        info.compress_type = ZIP_DEFLATED
+        # Add file size and permissions
+        st = os.stat(p)
+        info.external_attr = (st.st_mode & 0xFFFF) << 16
+        archive.writestr(info, p.read_bytes())
+
+
+##########
+# Setups #
+##########
+def setup_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="lambpy")
+    parser.add_argument(
+        "-r",
+        "--requirements",
+        type=Path,
+        action="append",
+        default=[],
+        help="requirements.txt file",
+    )
+    parser.add_argument(
+        "-p",
+        "--pipfile",
+        type=Path,
+        action="append",
+        default=[],
+        help="location of the Pipfile",
+    )
+    parser.add_argument(
+        "-i",
+        "--include",
+        type=Path,
+        action="append",
+        default=[],
+        help="include in the archive",
+    )
+    return parser
+
+
+##############
+# Entrypoint #
+##############
+def _main(options) -> int:
+    python_version = f"python{sys.version_info[0]}.{sys.version_info[1]}"
+    with ZipFile("lambda.zip", mode="w", compression=ZIP_DEFLATED) as archive:
+        print("Include:")
+        for include in sorted(options.include):
+            print(f"=> {include}")
+            append(archive, include.resolve())
+
+        print("Requirements:")
+        for req in sorted(options.requirements):
+            tmpdir = tempfile.mkdtemp(prefix="lambpy-")
+            print(f"=> {req} in {tmpdir}")
+            try:
+                subprocess.run(
+                    [
+                        "python3",
+                        "-m",
+                        "pip",
+                        "install",
+                        "--upgrade",
+                        "--no-compile",
+                        "-r",
+                        req,
+                        "--target",
+                        tmpdir,
+                    ],
+                    check=True,
+                )
+                append(archive, Path(tmpdir), Path(tmpdir))
+            finally:
+                shutil.rmtree(tmpdir)
+
+        print("Pipfile:")
+        for project in sorted(options.pipfile):
+            tmpdir = tempfile.mkdtemp(prefix="lambpy-")
+            print(f"=> {project} in {tmpdir}")
+            try:
+                pipfile = f"{project}/Pipfile"
+                pipfile_lock = f"{project}/Pipfile.lock"
+                subprocess.run(["cp", "-rf", pipfile, pipfile_lock, tmpdir], check=True)
+                os.environ["PIPENV_VENV_IN_PROJECT"] = "1"
+                subprocess.run(
+                    ["pipenv", "install", "--deploy"], cwd=tmpdir, check=True
+                )
+                lib_path = Path(f"{tmpdir}/.venv/lib/{python_version}/site-packages/")
+                append(archive, lib_path, lib_path)
+            finally:
+                shutil.rmtree(tmpdir)
+
+    return 0
+
+
+def main() -> int:
+    parser = setup_parser()
+    options = parser.parse_args()
+
+    if not options.include and not options.requirements:
+        parser.print_help()
+        return 1
+
+    try:
+        return _main(options)
+    except Exception as exc:
+        print("Unable to build the package")
+        Path("lambda.zip").unlink()
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
