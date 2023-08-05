@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+from gitz.git import GIT
+from gitz.git import combine
+from gitz.git import functions
+from gitz.git import root
+from gitz.program import ARGS
+from gitz.program import PROGRAM
+
+SUMMARY = 'Reorder and delete commits in the current branch'
+
+DANGER = 'Rewrites history!'
+
+HELP = """
+Permutes the commits in the current branch, perhaps deleting some.
+
+For example, ``git permute ba`` switches the first and second most
+recent commits, ``git permute cba`` swaps the first and third
+commits, ``git permute cab`` pops the third commit to be the most
+recent, top commit on the branch.
+
+"""
+
+EXAMPLES = """
+git permute 10
+git permute ba
+    Switches the first and second most recent commits
+
+git permute ab
+git permute abc
+git permute 01
+git permute 012
+    Do nothing
+
+git permute cab
+git permute 201
+    Cycles the three most recent commits so the third one is first
+
+git permute edcg
+git permute 5437
+    Deletes the most recent two commeits, reverses the next three, and
+    deletes the sixth.
+
+git permute edcg -s 'My message'
+git permute edcg --squash='My message'
+git permute 5437 -s "My message"
+    Same as the previous command, but squashes the three commits into
+    one with the commit message 'My message'
+"""
+
+
+def git_permute():
+    def report(name, items, symbol):
+        if items:
+            s = '' if len(items) == 1 else 's'
+            PROGRAM.message(len(items), 'commit%s %s' % (s, name))
+            for id, msg in items:
+                PROGRAM.message('%s %s: %s' % (symbol, id, msg))
+            return True
+
+    root.check_clean_workspace()
+    perm = combine.permutation(ARGS.permutation, ARGS.squash)
+
+    if not perm:
+        PROGRAM.message('No change')
+        return
+
+    count = max(perm) + 1
+    id_msgs = functions.commit_messages(count)
+    ids = [id for id, _ in id_msgs]
+
+    base, *perm_ids = (ids[i] for i in reversed(perm))
+
+    for i in range(count):
+        if i not in perm:
+            print('-', *id_msgs[i])
+
+    GIT.reset('--hard', base)
+    results = []
+    for symbol, commit_id, msg in combine.combine(perm_ids, ARGS.squash):
+        print(f'{symbol}{commit_id}', end=' ', flush=True)
+        results.append((symbol, commit_id, msg))
+
+    PROGRAM.message()
+    for args in reversed(results):
+        PROGRAM.message(*args)
+
+
+def add_arguments(parser):
+    add_arg = parser.add_argument
+    add_arg('permutation', help=_HELP_PERMUTATION)
+    combine.add_arguments(parser)
+
+
+_HELP_PERMUTATION = 'Pattern string to permute'
+
+if __name__ == '__main__':
+    PROGRAM.start()

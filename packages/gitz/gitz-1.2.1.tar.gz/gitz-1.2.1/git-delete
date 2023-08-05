@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+from gitz.git import GIT
+from gitz.git import delete
+from gitz.git import functions
+from gitz.git import root
+from gitz.program import ARGS
+from gitz.program import ENV
+from gitz.program import PROGRAM
+
+SUMMARY = 'Delete one or more branches locally and remotely'
+
+DANGER = 'Deletes remote branches!'
+
+HELP = """
+Delete each branch specified together with its remote branch.
+
+By default, branches named `main`, `master` and `develop` are protected,
+which means they cannot be deleted.
+
+Using the --protected/-p flag allows protected branches to be deleted.
+
+It's also possible to change which branches are protected by setting
+the environment variable GITZ_PROTECTED_BRANCHES to a list of
+branches separated by colons, or to an empty string to turn off
+protection entirely.
+
+The special branch name `.` means the current branch.
+
+"""
+
+EXAMPLES = """
+git delete foo bar
+    Delete the branches foo and bar locally and remotely
+"""
+
+_HELP_PROTECTED = 'Delete all, even protected remotes or branches'
+
+
+def git_delete():
+    branch = functions.branch_name()
+    branches = functions.branches()
+
+    target = [branch if b == '.' else b for b in ARGS.target]
+
+    remaining_branches = set(branches).difference(target)
+    if not remaining_branches:
+        PROGRAM.exit('This would delete all the branches')
+
+    if not ARGS.protected:
+        protected = set(ENV.protected_branches()).intersection(target)
+        if protected:
+            PROGRAM.exit('Protected:', *protected)
+
+    if branch not in remaining_branches:
+        root.check_clean_workspace()
+        for b in ENV.reference_branches():
+            if b in remaining_branches:
+                GIT.checkout(b)
+                break
+        else:
+            GIT.checkout(min(remaining_branches))
+
+    deleted = delete.delete_all(target)
+    if deleted:
+        s = '' if deleted == 1 else 'es'
+        PROGRAM.message('git-delete: %d branch%s deleted' % (deleted, s))
+
+
+def add_arguments(parser):
+    parser.add_argument('target', nargs='+')
+    parser.add_argument(
+        '--protected', action='store_true', help=_HELP_PROTECTED
+    )
+
+
+if __name__ == '__main__':
+    PROGRAM.start()

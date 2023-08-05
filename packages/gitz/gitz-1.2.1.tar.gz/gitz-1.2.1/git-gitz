@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+from gitz import config
+from gitz.program import PROGRAM
+from gitz.program import env
+from gitz.program import summaries
+import platform
+
+SUMMARY = 'Print information about the gitz git commands'
+
+COMMANDS = (
+    ('commands', 'All the gitz commands'),
+    ('defaults', 'Default values: protected branches and remotes'),
+    ('executable_directory', 'The path to the gitz executables,'),
+    ('home_page', 'The home page of the gitz project'),
+    ('library_directory', 'The path to the gitz Python library,'),
+    ('python', 'About the version of Python used'),
+    ('version', 'The version number of gitz'),
+)
+
+ALL = tuple(c for c, d in COMMANDS)
+
+HELP = """
+`git gitz` lists information about the gitz commands.
+
+By default it lists everything, or you can select one or more subcommands:
+
+""" + '\n'.join(
+    '    %s:\n        %s\n' % c for c in COMMANDS
+)
+
+_JOINER = '        * '
+_LINES = _JOINER + ('\n' + _JOINER).join(a[1] for a in COMMANDS)
+
+EXAMPLES = """
+git gitz commands
+git gitz c
+    Prints the list of gitz commands
+
+git gitz
+git gitz %s
+git gitz %s
+    Prints everything:
+%s
+
+git gitz version exec
+    Print just the version number and the git executable directory
+""" % (
+    ' '.join(ALL),
+    ' '.join(a[0] for a in ALL),
+    _LINES,
+)
+
+INDENT = '    '
+SKIP_EVERY = 4
+
+
+def git_gitz():
+    errors, items = [], []
+    for i in PROGRAM.args.items:
+        for c in ALL:
+            if c.startswith(i):
+                items.append(c)
+                break
+        else:
+            errors.append(i)
+            continue
+    if errors:
+        PROGRAM.exit('Do not understand:', *errors)
+
+    indent = INDENT if len(items) > 1 else ''
+    for i, item in enumerate(items):
+        if indent:
+            if i:
+                PROGRAM.message()
+            title = item.capitalize().replace('_', ' ')
+            PROGRAM.message(title + ':')
+        globals()['_' + item](indent)
+
+
+def add_arguments(parser):
+    parser.add_argument('items', nargs='*', default=ALL)
+
+
+def _commands(indent):
+    for i, c in enumerate(config.COMMANDS):
+        if i and not (i % SKIP_EVERY):
+            PROGRAM.message()
+
+        msg = summaries.SUMMARIES[c]
+        PROGRAM.message('%s%s:' % (indent, c))
+        PROGRAM.message('%s    %s' % (indent, msg))
+
+
+def _defaults(indent):
+    for e in sorted(env.ENV.DEFAULTS):
+        PROGRAM.message(indent + env.PREFIX + e, '=', env.ENV.get(e))
+
+
+def _executable_directory(indent):
+    PROGRAM.message(indent + str(config.EXECUTABLE_DIRECTORY))
+
+
+def _library_directory(indent):
+    PROGRAM.message(indent + str(config.LIBRARY_DIRECTORY))
+
+
+def _home_page(indent):
+    PROGRAM.message(indent + config.HOME_PAGE)
+
+
+def _python(indent):
+    pv = platform.python_version()
+    PROGRAM.message(indent + 'Python v%s on %s' % (pv, platform.platform()))
+
+
+def _version(indent):
+    PROGRAM.message(indent + config.__version__)
+
+
+if __name__ == '__main__':
+    PROGRAM.start()

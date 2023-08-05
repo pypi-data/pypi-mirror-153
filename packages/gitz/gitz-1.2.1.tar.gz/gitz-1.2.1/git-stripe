@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+from gitz.git import GIT
+from gitz.git import delete
+from gitz.git import functions
+from gitz.git import guess_origin
+from gitz.git import root
+from gitz.program import ARGS
+from gitz.program import PROGRAM
+
+SUMMARY = 'Push a sequence of commit IDs to a remote repository'
+
+HELP = """
+Starting with a given commit ID, and moving backwards from there,
+push each commit ID to its own disposable branch name.
+
+Useful to bring these commits to the attention of your continuous integration
+if it has missed some of your commit IDs because you rebased or pushed a
+sequences of commits too fast.
+"""
+
+PREFIX = '_gitz_stripe_'
+BAD_BRANCH_CHARS = frozenset('~^: ')
+
+
+def git_stripe():
+    root.check_git()
+    Stripe().stripe()
+
+
+class Stripe:
+    def __init__(self):
+        self.remote_branches = functions.remote_branches()
+        self.remotes = list(self._remotes())
+
+    def stripe(self):
+        if ARGS.delete + ARGS.list + ARGS.safe > 1:
+            raise ValueError(_ERROR_ARGS_INCONSISTENT)
+
+        if ARGS.delete:
+            self._delete()
+            return
+
+        if ARGS.list:
+            self._list()
+            return
+
+        self.safe_offset = self._safe_offet() if ARGS.safe else 0
+        commits = functions.commit_ids(ARGS.commits or ['HEAD~'])
+        for i, commit in enumerate(commits):
+            for j in range(ARGS.count):
+                self._create_one(i, j, commit)
+
+    def _create_one(self, i, j, commit):
+        index = self.safe_offset + ARGS.offset + ARGS.count * i + j
+        branch = '%s%d' % (PREFIX, index)
+        refspec = '%s~%d:refs/heads/%s' % (commit, j, branch)
+
+        id = ''
+        for remote in self.remotes:
+            GIT.push('--force-with-lease', remote, refspec)
+            if not id:
+                striped = '%s/%s' % (remote, branch)
+                id, msg = functions.commit_message(striped)
+
+        PROGRAM.log.message('+ %s@%s: %s' % (striped, id, msg))
+
+    def _safe_offet(self):
+        branches = set()
+        for r in self.remotes:
+            branches.update(self.remote_branches[r])
+
+        stripes = [b for b in branches if b.startswith(PREFIX)]
+        stripes = [s[len(PREFIX) :] for s in stripes]
+        stripes = [int(s) for s in stripes if s.isnumeric()]
+        return max(stripes) + 1 if stripes else 0
+
+    def _remotes(self):
+        for remote in ARGS.remotes.split(':'):
+            if remote == '^':
+                yield guess_origin.guess_origin()
+            elif remote == '.' or remote in self.remote_branches:
+                yield remote
+            else:
+                PROGRAM.exit('Unknown remote', remote)
+
+    def _delete(self):
+        if ARGS.commits:
+            PROGRAM.exit(_ERROR_DELETE_ARGS)
+
+        if ARGS.count != 1:
+            PROGRAM.exit(_ERROR_DELETE_COUNT)
+
+        for remote in self.remotes:
+            for branch in self.remote_branches[remote]:
+                if branch.startswith(PREFIX):
+                    delete.delete_remote_branch(remote, branch)
+
+    def _list(self):
+        for remote in self.remotes:
+            for branch in self.remote_branches[remote]:
+                if branch.startswith(PREFIX):
+                    rbranch = '%s/%s' % (remote, branch)
+                    id, msg = functions.commit_message(rbranch)
+                    PROGRAM.log.message('%s@%s: %s' % (branch, id, msg))
+
+
+def add_arguments(parser):
+    add = parser.add_argument
+
+    add('commits', nargs='*', help=_HELP_COMMITS)
+    add('-c', '--count', default=1, type=int, help=_HELP_COUNT)
+    add('-d', '--delete', action='store_true', help=_HELP_DELETE)
+    add('-l', '--list', action='store_true', help=_HELP_LIST)
+    add('-o', '--offset', default=0, type=int, help=_HELP_OFFSET)
+    add('-r', '--remotes', default='^', help=_HELP_REMOTE)
+    add('-s', '--safe', action='store_true', help=_HELP_SAFE)
+
+
+_ERROR_ARGS_INCONSISTENT = """\
+At most one of --delete, --list, or --safe may be set"""
+_ERROR_BRANCH_NAME = 'Illegal character in branch name'
+_ERROR_DELETE_ARGS = 'git stripe -d takes no arguments'
+_ERROR_DELETE_COUNT = 'git stripe -d ignores --count/-c'
+
+_HELP_COMMITS = 'Branch/commit IDs to be striped (defaults to HEAD~)'
+_HELP_COUNT = 'The number of striped branches to be created'
+_HELP_DELETE = 'Delete all striped branches'
+_HELP_LIST = 'List all remote stripes'
+_HELP_OFFSET = 'Offset to start numbering stripes'
+_HELP_REMOTE = (
+    'One or more remote remotes to push to, separated by colon. '
+    '  "." means the local repo, "^" means the upstream repo'
+)
+_HELP_SAFE = (
+    'Do not push over existing stripes: find an unused range of indices'
+)
+
+EXAMPLES = """
+git stripe
+    Pushes HEAD~ into its own branch named _gitz_stripe_0
+
+git stripe --count=3
+git stripe -c3
+    Pushes HEAD~, HEAD~2 and HEAD~3 into their own branches named
+    _gitz_stripe_0, _gitz_stripe_1 and _gitz_stripe_2
+
+git stripe --offset=5
+git stripe -o5
+    Pushes HEAD~, HEAD~2 and HEAD~3 into their own branches named
+    _gitz_stripe_5, _gitz_stripe_6 and _gitz_stripe_7
+
+git stripe 2 HEAD~3
+git stripe HEAD~3 2
+    Pushes HEAD~3 and HEAD~4 into two branches named _gitz_stripe_0
+    and  _gitz_stripe_1
+
+git stripe --delete-all
+git stripe -D
+    Delete all stripes
+"""
+
+if __name__ == '__main__':
+    PROGRAM.start()

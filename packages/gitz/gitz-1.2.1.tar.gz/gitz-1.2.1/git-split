@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+from gitz.git import GIT
+from gitz.git import functions
+from gitz.git import root
+from gitz.program import ARGS
+from gitz.program import PROGRAM
+
+SUMMARY = 'Split a range of commits into many single-file commits'
+
+DANGER = 'Rewrites history!'
+HELP = """
+`git split` squashes together a range of commits and the staging area, then
+splits out a sequence of individual commits, one for each file changed.
+"""
+EXAMPLES = """
+git split
+    Split the staging area if it's not empty, otherwise HEAD
+
+git split HEAD
+    Split the squash of the staging area and HEAD
+
+git split HEAD~
+    Split the squash of the staging area, HEAD and HEAD~
+"""
+
+
+def git_split():
+    root.cd_root()
+    not_added = []
+
+    for line in GIT.status('--porcelain', info=True):
+        mode, filenames = line.split(maxsplit=1)
+        if mode == '??':
+            not_added.append(filenames)
+
+    if ARGS.commit:
+        commit = ARGS.commit + '~'
+    elif root.is_workspace_dirty():
+        commit = 'HEAD'
+    else:
+        commit = 'HEAD~'
+
+    commit_id = functions.commit_id(commit)
+    functions.check_is_ancestor(commit_id)
+
+    removed_commits = []
+    cid = functions.commit_id()
+    while cid != commit_id:
+        removed_commits.append('%s: %s' % functions.commit_message(cid))
+        cid = functions.commit_id(cid + '~')
+
+    GIT.reset('--soft', commit_id)
+    lines = GIT.status('--porcelain', info=True)
+
+    GIT.reset(commit_id)
+    commit_count = 0
+
+    PROGRAM.message('Added:')
+    for line in lines:
+        mode, filenames = line.split(maxsplit=1)
+        filenames_split = filenames.split(' -> ')
+        mode = mode.strip()
+        if mode == '??':
+            if filenames in not_added:
+                continue
+            mode = 'R' if len(filenames_split) > 1 else 'A'
+        mode_name = NAMES[mode[0]]
+
+        # Renaming is a special case with two files on a line
+        # separated by -> and with mode = '??'
+        try:
+            GIT.add(*filenames_split)
+            pre = ARGS.prefix
+            pre += bool(pre) * ' '
+            msg = '%s%s %s' % (pre, mode_name, filenames)
+            GIT.commit('-m', msg)
+            PROGRAM.message('+', functions.commit_id() + ':', msg)
+            commit_count += 1
+
+        except Exception:
+            PROGRAM.error("couldn't commit filenames", filenames)
+            raise
+
+    if removed_commits:
+        PROGRAM.message('')
+        PROGRAM.message('Removed:')
+        for rc in removed_commits:
+            PROGRAM.message('-', rc)
+
+
+def add_arguments(parser):
+    parser.add_argument('commit', nargs='?', default='', help=_HELP_COMMIT)
+    parser.add_argument('-p', '--prefix', default='', help=_HELP_PREFIX)
+
+
+NAMES = 'Add', 'Delete', 'Modify', 'Rename'
+NAMES = {name[0]: name for name in NAMES}
+_HELP_COMMIT = 'Optional commit ID to split from'
+_HELP_PREFIX = 'Prefix for each commit message'
+
+
+if __name__ == '__main__':
+    PROGRAM.ALLOW_NO_RUN = False
+    PROGRAM.start()
