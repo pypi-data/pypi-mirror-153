@@ -1,0 +1,102 @@
+Metadata-Version: 2.1
+Name: django-huey-email-backend
+Version: 0.1.1
+Summary: Django email backend using Huey
+Home-page: https://github.com/chris-mcdo/django-huey-email-backend
+Author: Christopher McDonald
+Author-email: cmcdonal33@gmail.com
+License: MIT
+Project-URL: Source, https://github.com/chris-mcdo/django-huey-email-backend
+Project-URL: Tracker, https://github.com/chris-mcdo/django-huey-email-backend/issues
+Keywords: django,huey,email,backend
+Platform: win32
+Platform: linux
+Platform: osx
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Internet
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 4
+Classifier: Framework :: Django :: 4.0
+Requires-Python: >=3.4
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: huey (>=2)
+
+django-huey-email-backend
+=========================
+
+A simple Django email backend which uses Huey.
+
+Usage
+-----
+
+Add the app to your settings:
+
+.. code-block:: python
+
+    # settings.py
+
+    INSTALLED_APPS = [
+        ...
+        "huey.contrib.djhuey",
+        "hueymail",
+        ...
+    ]
+
+
+and use it as your email backend:
+
+.. code-block:: python
+
+    # settings.py
+
+    EMAIL_BACKEND = 'hueymail.backends.EmailBackend'
+
+
+Last, choose which email backend Huey should dispatch to via the ``HUEY_EMAIL_BACKEND``
+setting:
+
+.. code-block:: python
+
+    # settings.py
+
+    HUEY_EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+
+How it works
+------------
+
+What happens when you send an email?
+Basically this:
+
+- Django creates a new instance of ``hueymail.backends.EmailBackend``, and calls its
+  ``send_messages()`` method with the email messages it wants to send.
+
+- The ``send_messages()`` method of the ``hueymail.backends.EmailBackend`` instance
+  dispatches a Huey task called ``dispatch_messages()``, which is responsible for
+  sending those messages.
+
+- The ``dispatch_messages()`` task creates an instance of ``HUEY_EMAIL_BACKEND`` and
+  calls its ``send_messages()`` method with the original email messages.
+
+
+License
+-------
+
+Copyright (c) 2022 Christopher McDonald
+
+Distributed under the terms of the
+`MIT <https://github.com/chris-mcdo/django-overcomingbias-pages/blob/main/LICENSE>`_
+license.
