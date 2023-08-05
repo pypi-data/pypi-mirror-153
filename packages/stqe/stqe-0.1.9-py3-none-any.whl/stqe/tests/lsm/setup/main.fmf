@@ -1,0 +1,156 @@
+description: These are common scripts to configure LSM for specific protocol.
+time: 1 min
+setup: True
+
+# common variables used in LSM tests
+fs_name: test_fs
+fs_size: 1G
+fs_cloned_name: cloned_fs
+fs_snap_name: snap_fs
+fs_export_path: export_fs
+rw_host: localhost
+ag_name: test_ag
+ag_name_2: test_ag_2
+vol_name: test_vol
+vol_name_2: test_vol_2
+vol_size: 100M
+vol_size_2: 100M
+vol_rep_name: test_vol_rep
+system_read_pct: 51
+chap_in_user: redhat_in_user
+chap_in_pass: redhat_in_pass
+chap_out_user: redhat_out_user
+chap_out_pass: redhat_out_pass
+
+/sim:
+  description: This script sets up LSM for sim protocol.
+  protocols: [sim, sim+ssl]
+  test: configure_lsm.py
+  requires_cleanup: lsm/setup/cleanup_configure
+  username: root
+  password: ""
+  target: l
+  pool_name: "Pool 1"
+  pool_id: POOL_ID_00001
+  pool_id_volume: POOL_ID_00002
+  sys_id: sim-01
+  init_id: iqn.1986-05.com.example:test-init
+  init_id_chap: iqn.1986-05.com.example:lsm-chap
+  init_id_2: 50:0a:09:a2:ff:ff:88:88
+
+/ontap:
+  # Place ontap specific values here, follow the 'sim' example above
+  # Please specify all the variables to make all tests work properly
+
+/smispy:
+  # Place smispy specific values here, follow the 'sim' example above
+  # Please specify all the variables to make all tests work properly
+
+/local:
+  test: configure_lsm.py
+  protocols: []
+  username: ""
+  password: ""
+  target: ""
+
+/cleanup_storage:
+  description: Cleans up LSM storage.
+  test: cleanup_storage.py
+
+/cleanup_configure:
+  description: Cleans up LSM configuration.
+  test: cleanup_configure.py
+
+/create_fs:
+  description: Create filesystem on $POOL_ID with $FS_SIZE size
+  test: create_fs.py
+  requires_cleanup: lsm/setup/remove_fs
+
+/remove_fs:
+  description: Removes fs $FS_ID
+  test: remove_fs.py
+  fs_id: FS_ID
+
+/clone_fs:
+  description: Clones filesystem from $FS_ID to $FS_CLONED_NAME
+  test: clone_fs.py
+  requires_cleanup: lsm/setup/remove_cloned_fs
+  fs_id: FS_ID
+
+/remove_cloned_fs:
+  description: Removes fs $FS_CLONED_ID
+  test: remove_fs.py
+  fs_id: FS_CLONED_ID
+
+/create_fs_snap:
+  description: Create snapshot from $FS_ID with $FS_SNAP_NAME name
+  test: create_fs_snap.py
+  requires_cleanup: lsm/setup/remove_fs_snap
+
+/remove_fs_snap:
+  description: Removes snapshot $FS_SNAP_ID from $FS_ID
+  test: remove_fs_snap.py
+  fs_id: FS_ID
+  fs_snap_id: FS_SNAP_ID
+
+/export_fs:
+  description: Exports FS $FS_ID with $FS_EXPORT_PATH path
+  test: export_fs.py
+  requires_cleanup: lsm/setup/unexport_fs
+
+/unexport_fs:
+  description: Unexports $EXPORT_ID
+  test: unexport_fs.py
+  export_id: EXPORT_ID
+
+/create_access_group:
+  description: Create access group on $SYS_ID with $INIT_ID and $AG_NAME
+  test: create_access_group.py
+  requires_cleanup: lsm/setup/remove_access_group
+  init: ""
+
+/create_access_group_chap:
+  description: Create access group on $SYS_ID with $INIT_ID_CHAP and $AG_NAME
+  test: create_access_group.py
+  requires_cleanup: lsm/setup/remove_access_group_chap
+  init: _chap
+
+/remove_access_group:
+  description: Removes access group $AG_ID
+  test: remove_access_group.py
+  ag_id: AG_ID
+
+/remove_access_group_chap:
+  description: Removes access group $AG_ID
+  test: remove_access_group.py
+  ag_id: AG_ID_CHAP
+
+/create_volume:
+  description: Create volume on $POOL_ID_VOLUME with $VOL_SIZE size
+  test: create_volume.py
+  requires_cleanup: lsm/setup/remove_volume
+
+/create_volume_2:
+  description: Create another volume on $POOL_ID_VOLUME with $VOL_SIZE_2 size
+  test: create_volume.py
+  requires_cleanup: lsm/setup/remove_volume_2
+  id: 2
+
+/remove_volume:
+  description: Removes volume $VOL_ID
+  test: remove_volume.py
+  vol_id: VOL_ID
+
+/remove_volume_2:
+  description: Removes volume $VOL_ID_2
+  test: remove_volume.py
+  vol_id: VOL_ID_2
+
+/mask_volume:
+  description: Masks volume $VOL_ID to access group $AG_ID
+  test: mask_volume.py
+  requires_cleanup: lsm/setup/unmask_volume
+
+/unmask_volume:
+  description: Unmasks volume $VOL_ID from access group $AG_ID
+  test: unmask_volume.py

@@ -1,0 +1,33 @@
+requires_setup: [stratis/setup/storage/setup_*]
+test: /stratis/stratis_cli/stratis_cli.py
+
+/list:
+  description: Testing 'stratis blockdev list'
+  command: blockdev_list
+  /success:
+    description+: ", commands should succeed."
+    message: Listing blockdevs of STRATIS_POOL.
+    tier: 1
+    expected_ret: 0
+    /no_params:
+      message+: " without any arguments."
+      expected_out: ["Pool Name", "Device Node", "Physical Size", "Tier"]
+    /specific_pool:
+      requires_setup+: [stratis/setup/pool_create]
+      pool_name: STRATIS_POOL
+      expected_out: ["Pool Name","Device Node","Physical Size","Tier"]
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail listing blockdevs
+    tier: 2
+    expected_ret: 1
+    requires_setup+: [stratis/setup/pool_create]
+    /wrong_pool_name:
+      message+: " with pool_name 'wrong'."
+      pool_name: wrong
+      expected_out: ["No unique match found for interface", "found []"]
+    /device_instead_of_name:
+      message+: " with STRATIS_DEVICE instead of pool name."
+      pool_name: STRATIS_DEVICE
+      expected_out: ["No unique match found for interface", "found []"]
+      tags: [single_device]

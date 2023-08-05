@@ -1,0 +1,125 @@
+description: Testing device-mapper-persistent-data cache CLI tools.
+time: 1 min
+test: /lvm/device_mapper_persistent_data/cli.py
+
+### ALIASES ###
+/storage_setup_alias: &storage_setup
+  requires_setup+:
+    - lvm/setup/create_loopdev/500
+    - lvm/setup/create_loopdev/12
+    - lvm/setup/create_vg/two_loopdevs
+    - lvm/setup/create_lv/cache_meta
+    - lvm/setup/create_lv/cache_origin
+    - lvm/setup/create_lv/cache_data
+    - lvm/setup/convert_lv/cache_pool
+    - lvm/setup/convert_lv/cache_origin
+    - lvm/setup/create_fs/ext4/cache
+    - lvm/setup/convert_lv/cache_split
+    - lvm/setup/create_lv/swap
+    - lvm/setup/convert_lv/swap_metadata/cache/setup
+    - lvm/setup/activate_lv/swap
+
+/success_alias: &success
+  tier: 1
+  expected_ret: 0
+
+### TEST DEFINITIONS ###
+
+/check:
+  description: Testing 'cache_check' command.
+  command: cache_check
+  <<: *storage_setup
+  /success:
+    <<: *success
+    source_vg: VG_NAME
+    source_lv: SWAPVOL
+    expected_out: ["examining superblock", "examining devices tree", "examining mapping tree", "checking space map counts"]
+    /basic:
+      message: Checking cache metadata without any extra params
+      expected_out: ["examining superblock", "examining mapping array", "examining hint array", "examining discard bitset"]
+    /super_block_only:
+      message: Checking just superblock of cache metadata
+      super_block_only: True
+      expected_out: ["examining superblock"]
+    /skip_hints:
+      message: Checking cache metadata without hints
+      skip_hints: True
+      expected_out: ["examining superblock", "examining mapping array", "examining discard bitset"]
+    /skip_discards:
+      message: Checking cache metadata without discards
+      skip_discards: True
+      expected_out: ["examining superblock", "examining mapping array", "examining hint array"]
+    /clear_needs_check_flag:
+      message: Checking cache metadata and cleaning 'needs check' flag.
+      clear_needs_check_flag: True
+      expected_out: ["examining superblock", "examining mapping array", "examining hint array", "examining discard bitset"]
+
+/dump:
+  description: Testing 'cache_dump' command.
+  command: cache_dump
+  <<: *storage_setup
+  /success:
+    <<: *success
+    source_vg: VG_NAME
+    source_lv: SWAPVOL
+    /basic:
+      message: Dumping cache metadata without any extra params
+      expected_out: ["<superblock uuid=", "block_size=", "nr_cache_blocks=", "policy=", "hint_width=", "<mappings>", "<mapping cache_block=", "origin_block=", "dirty=", "</mappings>", "<hints>", "<hint cache_block=", "data=", "</hints>", "</superblock>"]
+    /repair:
+      message: Dumping cache metadata while repairing it
+      repair: True
+      expected_out: ["<superblock uuid=", "block_size=", "nr_cache_blocks=", "policy=", "hint_width=", "<mappings>", "<mapping cache_block=", "origin_block=", "dirty=", "</mappings>", "<hints>", "<hint cache_block=", "data=", "</hints>", "</superblock>"]
+    /output:
+      message: Dumping cache metadata to output file
+      output: /var/tmp/cache_dump
+      setup: True
+
+/metadata_size:
+  description: Testing 'cache-metadata-size' command.
+  command: cache_metadata_size
+  block_size: 1
+  device_size: 100
+  nr_blocks: 100
+  max_hint_width: 4
+  /success:
+    <<: *success
+    message: Calculating metadata size for cache
+    /basic:
+      expected_out: ["8197 sectors"]
+
+/repair:
+  description: Testing 'cache_repair' command.
+  command: cache_repair
+  <<: *storage_setup
+  /success:
+    <<: *success
+    /to_file:
+      message: Repairing metadata to file
+      output: /var/tmp/metadata_repair
+      input: /dev/mapper/VG_NAME-SWAPVOL
+      setup: True
+    /from_file:
+      message: Repairing metadata from file
+      requires_setup+:
+        - lvm/setup/create_file/empty/metadata_repair
+        - lvm/device_mapper_persistent_data/cache/repair/success/to_file
+      input: /var/tmp/metadata_repair
+      output: /dev/mapper/VG_NAME-SWAPVOL
+
+/restore:
+  description: Testing 'cache_restore' command.
+  command: cache_restore
+  <<: *storage_setup
+  /success:
+    <<: *success
+    /from_file:
+      message: Restoring metadata from file
+      requires_setup+:
+        - lvm/setup/create_file/empty/cache_dump
+        - lvm/device_mapper_persistent_data/cache/dump/success/output
+      input: /var/tmp/cache_dump
+      output: /dev/mapper/VG_NAME-SWAPVOL
+      /1:
+        metadata_version: 1
+      /2:
+        metadata_version: 2

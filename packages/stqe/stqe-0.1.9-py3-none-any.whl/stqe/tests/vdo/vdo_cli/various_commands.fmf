@@ -1,0 +1,496 @@
+description: Testing various commands for 'vdo'
+time: 1 min
+test: /vdo/vdo_cli/vdo_cli.py
+
+# CLI failures are already covered by 'vdo create' tests.
+
+#### alias definitions ####
+
+#### test specifications ####
+/activate:
+  description: Testing 'vdo activate'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: activate
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    message: Activating
+    expected_out: "Activating VDO"
+    cleanup: True
+    /single:
+      message+: " single VDO device."
+      vdo_name: vdo_test
+    /all:
+      message+: " all VDO devices."
+      all: True
+
+/compression:
+  description: Testing 'vdo enableCompression' and 'vdo disableCompression'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: compression
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    /enable:
+      message: Enabling compression of
+      enable: True
+      cleanup: True
+      expected_out: ["Enabling compression", "Starting compression on VDO"]
+      /single:
+        message+: " single VDO device."
+        vdo_name: vdo_test
+      /all:
+        message+: " all VDO devices."
+        all: True
+    /disable:
+      message: Disabling compression of
+      enable: False
+      expected_out: ["Disabling compression", "Stopping compression on VDO"]
+      /single:
+        message+: " single VDO device."
+        vdo_name: vdo_test
+        requires_cleanup: [vdo/vdo_cli/various_commands/compression/success/enable/single]
+      /all:
+        message+: " all VDO devices."
+        all: True
+        requires_cleanup: [vdo/vdo_cli/various_commands/compression/success/enable/all]
+
+/deactivate:
+  description: Testing 'vdo deactivate'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: deactivate
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    message: Deactivating
+    expected_out: "Deactivating VDO"
+    /single:
+      message+: " single VDO device."
+      vdo_name: vdo_test
+      requires_cleanup: [vdo/vdo_cli/various_commands/activate/success/single]
+    /all:
+      message+: " all VDO devices."
+      all: True
+      requires_cleanup: [vdo/vdo_cli/various_commands/activate/success/all]
+
+/deduplication:
+  description: Testing 'vdo enableDeduplication' and 'vdo disableDeduplication'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: deduplication
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    /enable:
+      message: Enabling deduplication of
+      enable: True
+      cleanup: True
+      expected_out: "Enabling deduplication"
+      /single:
+        message+: " single VDO device."
+        vdo_name: vdo_test
+      /all:
+        message+: " all VDO devices."
+        all: True
+    /disable:
+      message: Disabling deduplication of
+      enable: False
+      expected_out: "Disabling deduplication"
+      /single:
+        message+: " single VDO device."
+        vdo_name: vdo_test
+        requires_cleanup: [vdo/vdo_cli/various_commands/deduplication/success/enable/single]
+      /all:
+        message+: " all VDO devices."
+        all: True
+        requires_cleanup: [vdo/vdo_cli/various_commands/deduplication/success/enable/all]
+
+/grow_logical:
+  description: Testing 'vdo growLogical'
+  command: grow
+  grow_type: logical
+  requires_setup+: [vdo/setup/create_vdo]
+  /success:
+    description+: ", commands should succeed."
+    tier: 1
+    message: Growing VDO logical size
+    vdo_name: vdo_test
+    /maximum:
+      message+: " to maximum allowed (based on memory available)."
+      logical_size: maximum
+      requires_cleanup:
+        - vdo/vdo_cli/various_commands/remove/success/normal
+        - vdo/vdo_cli/create/success
+  /fail:
+    description+: ", commands should fail."
+    tier: 2
+    message: Trying to fail growing VDO logical size
+    expected_ret: 2
+    /no_size:
+      message+: " without size."
+      vdo_name: vdo_test
+      expected_out: ["vdo growLogical: error:", "argument", "required", "--vdoLogicalSize"]
+    /no_name:
+      message+: " without VDO name."
+      logical_size: maximum
+      expected_out: ["vdo growLogical: error:", "argument", "required", "-n/--name"]
+    /shrinking:
+      message+: " with size smaller than real (shrinking)."
+      logical_size: 3G
+      vdo_name: vdo_test
+      expected_ret: 7
+      expected_out: ["ERROR - Can", " shrink a VDO volume"]
+
+/grow_physical:
+  description: Testing 'vdo growPhysical'
+  /success:
+    description+: ", commands should succeed."
+    command: grow_physical
+    message: Growing physical size of VDO
+    tier: 1
+    requires_setup+:
+     - vdo/setup/create_vg
+     - vdo/setup/create_lv/thinpool
+     - vdo/setup/create_lv/thinvol
+  /fail:
+    command: grow
+    grow_type: physical
+    description+: ", commands should fail."
+    message: Trying to fail growing physical size of VDO
+    tier: 2
+    requires_setup+: [vdo/setup/create_vdo]
+    expected_ret: 2
+    /no_space:
+      message+: " without any extra space."
+      vdo_name: vdo_test
+      expected_ret: 7
+    /no_name:
+      message+: " without VDO name."
+
+
+/list:
+  description: Testing 'vdo list'
+  command: list
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    message: Listing VDOs
+    /no_name:
+      message+: " without VDO name."
+      requires_setup+: [vdo/setup/create_vdo]
+    /all:
+      message+: " all VDO devices."
+      requires_setup+: [vdo/setup/create_vdo]
+      all: True
+    /list_changing:
+      tier: 3
+      command: list_not_changing
+      description+: " Checking if the list output is not changing."
+      expected_out: "Checking listing passed"
+      requires_setup+:
+        - vdo/setup/create_vg
+      count: 10
+      iterations: 100
+      tags: [iscsi_2T, raid] # need at 60G (10* 6G) device under
+  /fail:
+    tier: 2
+    description+: ", commands should fail."
+    message: Trying to fail listing VDOs
+    expected_ret: 2
+    /name:
+      message+: " with name."
+      vdo_name: vdo_test
+      expected_out: "error: unrecognized arguments: --name="
+
+/print_config:
+  description: Testing 'vdo printConfig'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: print_config_file
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    message: Printing VDO config
+    expected_out: ["config: !Configuration"]
+    /no_params:
+      message+: " without any params."
+    /verbose:
+      message+: " with --verbose."
+      verbose: True
+    /correct_conf_file:
+      message+: " with correct config file."
+      conf_file: /etc/vdoconf.yml
+  /fail:
+    tier: 2
+    description+: ", commands should fail."
+    expected_ret: 2
+    /name:
+      message+: " with name."
+      vdo_name: vdo_test
+      expected_out: ["printConfigFile: error: unrecognized arguments: --name="]
+    /wrong_conf_file:
+      message+: " with wrong config file."
+      conf_file: /root/RECIPE.TXT
+      expected_ret: 5
+      expected_out: ["ERROR - Not a valid configuration file"]
+    /nonexistent_conf_file:
+      message+: " with nonexistent config file."
+      conf_file: nonexistent
+      expected_out: ["ERROR - Configuration file", "nonexistent does not exist"]
+      expected_ret: 7
+    /directory:
+      requires_setup+: [vdo/setup/mkdir/mount_vdo]
+      message: " conf file '/mnt/vdo_test'."
+      conf_file: /mnt/vdo_test
+      expected_out: ["argument -f/--confFile: FS_DIR is a directory"]
+
+/remove:
+  description: Tests 'vdo remove'
+  message: Removing VDO device on VDO_DEVICE
+  command: remove
+  vdo_name: vdo_test
+  /success:
+    tier: 1
+    /normal:
+      cleanup: True
+    /conf_file_empty:
+      conf_file: empty
+      cleanup: True
+  /fail:
+    /interrupt:
+      tier: 2
+      force: False
+      description+: " without --force on failed 'vdo create' (requires --force) and cleans with --force."
+      expected_out: ["vdo: ERROR - VDO volume", "previous operation (create) is incomplete; recover by performing", "remove --force"]
+      expected_ret: 5
+      /fast:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/fast]
+        tags: [local]
+      /slow:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/slow]
+        tags: [crypt, fcoe, iscsi_10G, iscsi_2T, multipath, raid]
+      # These are to find the correct time to trigger issue on RHEL-8
+      /1.10:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.10]
+        tags: [raid_test]
+      /1.11:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.11]
+        tags: [raid_test]
+      /1.12:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.12]
+        tags: [raid_test]
+      /1.13:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.13]
+        tags: [raid_test]
+      /1.14:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.14]
+        tags: [raid_test]
+      /1.15:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.15]
+        tags: [raid_test]
+      /1.16:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.16]
+        tags: [raid_test]
+      /1.17:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.17]
+        tags: [raid_test]
+      /1.18:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.18]
+        tags: [raid_test]
+      /1.19:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.19]
+        tags: [raid_test]
+      /1.20:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.20]
+        tags: [raid_test]
+      /1.21:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.21]
+        tags: [raid_test]
+      /1.22:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.22]
+        tags: [raid_test]
+      /1.23:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.23]
+        tags: [raid_test]
+      /1.24:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.24]
+        tags: [raid_test]
+      /1.25:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.25]
+        tags: [raid_test]
+      /1.26:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.26]
+        tags: [raid_test]
+      /1.27:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.27]
+        tags: [raid_test]
+      /1.28:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.28]
+        tags: [raid_test]
+      /1.29:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.29]
+        tags: [raid_test]
+      /1.30:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.30]
+        tags: [raid_test]
+      /1.31:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.31]
+        tags: [raid_test]
+      /1.32:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.32]
+        tags: [raid_test]
+      /1.33:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.33]
+        tags: [raid_test]
+      /1.34:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.34]
+        tags: [raid_test]
+      /1.35:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.35]
+        tags: [raid_test]
+      /1.36:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.36]
+        tags: [raid_test]
+      /1.37:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.37]
+        tags: [raid_test]
+      /1.38:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.38]
+        tags: [raid_test]
+      /1.39:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.39]
+        tags: [raid_test]
+      /1.40:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.40]
+        tags: [raid_test]
+      /1.41:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.41]
+        tags: [raid_test]
+      /1.42:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.42]
+        tags: [raid_test]
+      /1.43:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.43]
+        tags: [raid_test]
+      /1.44:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.44]
+        tags: [raid_test]
+      /1.45:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.45]
+        tags: [raid_test]
+      /1.46:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.46]
+        tags: [raid_test]
+      /1.47:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.47]
+        tags: [raid_test]
+      /1.48:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.48]
+        tags: [raid_test]
+      /1.49:
+        requires_setup+: [vdo/setup/interrupt_command/vdo_creation/1.49]
+        tags: [raid_test]
+
+/start:
+  description: Testing 'vdo start'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: start
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    message: Starting
+    cleanup: True
+    expected_out: ["Starting VDO "]
+    /single:
+      message+: " single VDO device."
+      vdo_name: vdo_test
+    /all:
+      message+: " all VDO devices."
+      all: True
+  /fail:
+    tier: 2
+    description+: ", commands should fail."
+    expected_ret: 2
+    message: Trying to fail starting VDO
+    /no_params:
+      message+: " without any params."
+      expected_out: ["start: error: one of the arguments -a/--all -n/--name is required"]
+    /wrong_name:
+      message+: " with wrong name."
+      vdo_name: wrong
+      expected_ret: 7
+      expected_out: ["ERROR - VDO volume wrong not found"]
+
+/stop:
+  description: Testing 'vdo stop'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: stop
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    message: Stopping
+    expected_out: ["Stopping VDO"]
+    /single:
+      message+: " single VDO device."
+      vdo_name: vdo_test
+      requires_cleanup: [vdo/vdo_cli/various_commands/start/success/single]
+    /all:
+      message+: " all VDO devices."
+      all: True
+      requires_cleanup: [vdo/vdo_cli/various_commands/start/success/all]
+  /fail:
+    tier: 2
+    description+: ", commands should fail."
+    expected_ret: 2
+    message: Trying to fail stopping VDO
+    /no_params:
+      message+: " without any params."
+      expected_out: ["stop: error: one of the arguments -a/--all -n/--name is required"]
+    /wrong_name:
+      message+: " with wrong name."
+      vdo_name: wrong
+      expected_ret: 7
+      expected_out: ["ERROR - VDO volume wrong not found"]
+
+/write_policy:
+  description: Testing 'vdo changeWritePolicy'
+  requires_setup+: [vdo/setup/create_vdo]
+  command: change_write_policy
+  /success:
+    tier: 1
+    description+: ", commands should succeed."
+    message: Changing write policy to
+    vdo_name: vdo_test
+    /auto:
+      message+: " auto."
+      write_policy: auto
+      cleanup: True
+    /sync:
+      message+: " sync."
+      write_policy: sync
+      requires_cleanup: [vdo/vdo_cli/various_commands/write_policy/success/auto]
+    /async:
+      message+: " async."
+      write_policy: async
+      requires_cleanup: [vdo/vdo_cli/various_commands/write_policy/success/auto]
+  /fail:
+    tier: 2
+    description+: ", commands should fail."
+    expected_ret: 2
+    message: Trying to fail changing write policy
+    /no_policy:
+      message+: " without policy."
+      vdo_name: vdo_test
+      expected_out: ["vdo changeWritePolicy: error:", "argument", "required", "--writePolicy"]
+    /no_device:
+      message+: " without device."
+      write_policy: auto
+      expected_out: ["vdo changeWritePolicy: error:", "argument", "-a/--all -n/--name", "required"]
+    /wrong_device:
+      message+: " with wrong device."
+      vdo_name: wrong
+      write_policy: auto
+      expected_ret: 7
+      expected_out: ["ERROR - VDO volume wrong not found"]
+    /wrong_policy:
+      message+: " with wrong policy."
+      write_policy: wrong
+      expected_out: ["vdo changeWritePolicy: error: argument --writePolicy: invalid choice: ", "choose from", "async", "sync", "auto"]

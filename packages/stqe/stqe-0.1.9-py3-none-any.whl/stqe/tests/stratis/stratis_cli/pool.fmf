@@ -1,0 +1,447 @@
+requires_setup: [stratis/setup/storage/setup_*]
+test: /stratis/stratis_cli/stratis_cli.py
+
+
+/add_cache:
+  description: Testing 'stratis pool add-cache' command
+  command: pool_add_cache
+  tags: [multiple_device]
+  /success:
+    description+: ", commands should succeed."
+    tier: 2
+    #cleanup: True
+    requires_setup+: [stratis/setup/pool_create_single_blockdev/1, stratis/setup/init_cache]
+    requires_cleanup:
+      - stratis/setup/pool_destroy_single_blockdev/1
+      - stratis/setup/pool_create_single_blockdev/1
+      - stratis/setup/init_cache
+    pool_name: STRATIS_POOL
+    blockdevs: STRATIS_FREE
+    #blockdevs: STRATIS_DEVICE_2
+    /single:
+      description+: Adds single blockdev.
+      message: Adding single cache device to pool.
+    /multiple:
+      description+: Adds multiple blockdevs.
+      message: Adding multiple cache device to pool.
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail adding cache to pool
+    tier: 2
+    expected_ret: 1
+    /no_init:
+      description+: Tests without init-cache.
+      message+: " without  init."
+      expected_ret: 1
+      pool_name: STRATIS_POOL
+      blockdevs: STRATIS_FREE
+      expected_out: ["ERROR: Error: No cache has been initialized for pool"]
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+    /add_encryption_pool:
+      description+: Tests add cache to encryption pool.
+      message+: " add cache encryption pool."
+      expected_ret: 1
+      expected_out: ["ERROR: Error: No cache has been initialized for pool"]
+      pool_name: STRATIS_POOL
+      blockdevs: STRATIS_FREE
+      requires_setup+: [stratis/setup/general_key/1,stratis/setup/set_key,stratis/setup/encryption_pool_create_single_blockdev/1]
+
+
+/init_cache:
+  description: Testing 'stratis pool init-cache' command
+  command: pool_init_cache
+  tags: [multiple_device]
+  /success:
+    description+: ", commands should succeed."
+    tier: 1
+    requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+    requires_cleanup:
+      - stratis/setup/pool_destroy_single_blockdev/1
+      - stratis/setup/pool_create_single_blockdev/1
+    pool_name: STRATIS_POOL
+    blockdevs: STRATIS_FREE
+    /single:
+      description+: Adds single blockdev.
+      message: Adding single cache device to pool.
+    /multiple:
+      description+: Adds multiple blockdevs.
+      message: Adding multiple cache device to pool.
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail adding cache to pool
+    tier: 2
+    expected_ret: 1
+    /no_params:
+      description+: Tests without any arguments.
+      message+: " without any params at all."
+      expected_ret: 2
+      expected_out: ["error: the following arguments are required: pool_name, blockdev"]
+    /no_pool_name:
+      description+: Tests without pool_name.
+      message+: " without pool name."
+      blockdevs: STRATIS_FREE
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      expected_out: ["No unique match found for interface", "Name"]
+    /no_blockdevs:
+      description+: Tests without any blockdevs.
+      message+: " without any blockdevs."
+      # This makes no sense until there is keyword support
+      active: False
+      pool_name: STRATIS_POOL
+      expected_ret: 2
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+    /wrong_blockdev:
+      description+: Tests with block device 'wrong'.
+      message+: " with blockdev 'wrong'."
+      pool_name: STRATIS_POOL
+      blockdevs: /dev/wrong
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      expected_out: ["Engine error: Could not obtain udev information for block device"]
+    /wrong_pool_name:
+      description+: Tests with pool name 'wrong'.
+      message+: " with pool name 'wrong'."
+      pool_name: wrong
+      blockdevs: STRATIS_FREE
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      expected_out: ["No unique match found for interface", "Name",]
+    /blockdev_in_use:
+      description+: Tries to add device that is already in
+      message+: " with blockdev already in use."
+      pool_name: STRATIS_POOL
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      /same_pool:
+        blockdevs: STRATIS_DEVICE
+        description+: " the same pool as data dev."
+        # FIXME: Add correct expected_out
+      /different_pool:
+        description+: " the different pool as data dev."
+        blockdevs: STRATIS_DEVICE_2
+        requires_setup+: [stratis/setup/pool_create_single_blockdev/2]
+        expected_out: ["would be added to the Cache tier but is already in use in the Data tier"]
+    #/too_big:
+    #  description+: Tries to add to big cache.
+    #  message+: " with blockdev too big to be added."
+    #  pool_name: STRATIS_POOL
+    #  blockdevs: STRATIS_FREE
+    #  requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+    #  expected_out: ["ERROR: The size of the cache sub-device may not exceed 68719476736 sectors"]
+    # TODO: Try to add cache device
+    /add_encryption_pool:
+      description+: Tests add cache to encryption pool.
+      message+: " add cache encryption pool."
+      expected_ret: 1
+      pool_name: STRATIS_POOL
+      blockdevs: STRATIS_FREE
+      expected_out: ["ERROR: Engine error: Use of a cache is not supported with an encrypted pool"]
+      requires_setup+: [stratis/setup/general_key/1,stratis/setup/set_key,stratis/setup/encryption_pool_create_single_blockdev/1]
+
+
+/add_data:
+  description: Testing 'stratis pool add_data' command
+  command: pool_add_data
+  tags: [multiple_device]
+  /success:
+    description+: ", commands should succeed."
+    tier: 1
+    requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+    requires_cleanup:
+      - stratis/setup/pool_destroy_single_blockdev/1
+      - stratis/setup/pool_create_single_blockdev/1
+    pool_name: STRATIS_POOL
+    blockdevs: STRATIS_FREE
+    /single:
+      description+: Adds single blockdev.
+      message: Adding single data device to pool.
+    /multiple:
+      description+: Adds multiple blockdevs.
+      message: Adding multiple data device to pool.
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail adding data dev to pool
+    tier: 2
+    expected_ret: 1
+    /no_params:
+      description+: Tests without any arguments.
+      message+: " without any params at all."
+      expected_ret: 2
+      expected_out: ["error: the following arguments are required: pool_name, blockdev"]
+    /no_pool_name:
+      description+: Tests without pool_name.
+      message+: " without pool name."
+      blockdevs: STRATIS_FREE
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      expected_out: ["No unique match found for interface", "Name"]
+    /no_blockdevs:
+      description+: Tests without any blockdevs.
+      message+: " without any blockdevs."
+      # This makes no sense until there is keyword support
+      active: False
+      pool_name: STRATIS_POOL
+      expected_ret: 2
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+    /wrong_blockdev:
+      description+: Tests with block device 'wrong'.
+      message+: " with blockdev 'wrong'."
+      pool_name: STRATIS_POOL
+      blockdevs: wrong
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      expected_out: ["Engine error: Could not obtain udev information for block device"]
+    /wrong_pool_name:
+      description+: Tests with pool name 'wrong'.
+      message+: " with pool name 'wrong'."
+      pool_name: wrong
+      blockdevs: STRATIS_FREE
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      expected_out: ["No unique match found for interface", "Name"]
+    /blockdev_in_use:
+      description+: Tries to add device that is already in
+      message+: " with blockdev already in use."
+      pool_name: STRATIS_POOL
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      /same_pool:
+        blockdevs: STRATIS_DEVICE
+        description+: " the same pool as data dev."
+        expected_out: ["The 'add to data' action has no effect for resource"]
+      /different_pool:
+        description+: " the different pool as data dev."
+        blockdevs: STRATIS_DEVICE_2
+        requires_setup+: [stratis/setup/pool_create_single_blockdev/2]
+        expected_out: ["already owned by an existing pool's Data tier"]
+      # TODO: Try to add cache device as data
+
+
+/create:
+  description: Testing 'stratis pool create'
+  command: pool_create
+  /success:
+    description+: ", commands should succeed."
+    message: Creating pool
+    tier: 1
+    expected_ret: 0
+    blockdevs: STRATIS_DEVICE
+    pool_name: test_pool
+    requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail creating pool
+    tier: 2
+    expected_ret: 1
+    /no_params:
+      expected_ret: 2
+      message+: " without any arguments."
+      expected_out: ["error: the following arguments are required: pool_name, blockdevs"]
+    /no_pool_name:
+      expected_ret: 2
+      message+: " without pool_name."
+      blockdevs: STRATIS_DEVICE
+      expected_out: ["error: the following arguments are required: blockdevs"]
+      tags: [single_device]
+    /no_blockdevs:
+      message+: " without any blockdevs."
+      # This makes no sense until there is keyword support
+      active: False
+      pool_name: STRATIS_POOL
+      expected_out: ["error: the following arguments are required: pool_name"]
+    /wrong_blockdev:
+      message+: " with block device 'wrong'."
+      pool_name: STRATIS_POOL
+      blockdevs: wrong
+      expected_out: ["Engine error: Could not obtain udev information"]
+    /existing_pool:
+      message+: " with same name that already exists."
+      requires_setup+: [stratis/setup/pool_create]
+      pool_name: STRATIS_POOL
+      blockdevs: STRATIS_DEVICE
+      expected_out: ["A pool named","already exists"]
+    /device_in_use:
+      message+: " on device that already has pool on top."
+      requires_setup+: [stratis/setup/pool_create]
+      pool_name: test_pool_duplicate
+      blockdevs: STRATIS_DEVICE
+      expected_out: ["already owned by an existing pool's Data tier", "already in use in the Data tier of pool"]
+
+
+/destroy:
+  description: Testing 'stratis pool destroy'
+  command: pool_destroy
+  /success:
+    description+: ", commands should succeed."
+    message: Destroying pool
+    tier: 1
+    cleanup: True
+    expected_ret: 0
+    pool_name: test_pool
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail destroying pool
+    tier: 2
+    expected_ret: 1
+    /no_pool_name:
+      message+: " without pool name."
+      expected_ret: 2
+      tags: [single_device]
+      expected_out: ["error: the following arguments are required: pool_name"]
+    /nonexistent_name:
+      message+: " with pool name that does not exist."
+      pool_name: nonexistent
+      expected_out: ["No unique match found for interface", "Name", "nonexistent"]
+    /device_instead_of_name:
+      message+: " with the device instead of pool name."
+      pool_name: STRATIS_DEVICE
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      expected_out: ["No unique match found for", "Name", "STRATIS_DEVICE"]
+    /pool_in_use:
+      message+: " that is already in use (has FS)."
+      pool_name: STRATIS_POOL
+      requires_setup+:
+        - stratis/setup/pool_create
+        - stratis/setup/fs_create
+      expected_out: ["BUSY: Engine error: filesystems remaining on pool"]
+
+
+/list:
+  description: Testing 'stratis pool list' command.
+  command: pool_list
+  /success:
+    message: Listing stratis pools
+    tier: 1
+    expected_ret: 0
+    expected_out: ["Name", "Total", "Physical"]
+
+
+/rename:
+  description: Testing 'stratis pool rename' command
+  command: pool_rename
+  /success:
+    description+: ", commands should succeed."
+    message: Renaming pool
+    tier: 1
+    expected_ret: 0
+    requires_setup+: [stratis/setup/pool_create]
+    /new_name:
+      message+: " to new name."
+      current: STRATIS_POOL
+      new: test_pool_new
+      requires_cleanup: [stratis/stratis_cli/pool/rename/success/return]
+    /return:
+      message+: " back to old name."
+      cleanup: True
+      current: test_pool_new
+      new: STRATIS_POOL
+    /long_return:
+      message+: " back to short name."
+      cleanup: True
+      current: STRATIS_POOL1234567890
+      new: STRATIS_POOL
+    /long_name:
+      description+: Tries to rename to the long name.
+      message+: " to the long name."
+      current: STRATIS_POOL
+      new: STRATIS_POOL1234567890
+      requires_cleanup: [stratis/stratis_cli/pool/rename/success/long_return]
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail renaming pool
+    tier: 2
+    expected_ret: 1
+    /no_params:
+      description+: Do not use any params at all.
+      message+: " without any params at all."
+      expected_out: "error: the following arguments are required: current, new"
+      expected_ret: 2
+    /nonexistent_name:
+      description+: Gives pool_name that does not exist.
+      message+: " with nonexistent name."
+      current: nonexistent
+      new: test_pool_new
+      expected_out: ["No unique match found for interface", "Name", "nonexistent"]
+    /device_instead_of_name:
+      requires_setup+: [stratis/setup/pool_create_single_blockdev/1]
+      description+: Uses the device instead of pool name.
+      message+: " with device instead of name."
+      current: STRATIS_DEVICE
+      new: test_pool_new
+      expected_out: ["No unique match found for", "Name"]
+    /existing_pool:
+      description+: Tries to rename pool to different existing pool.
+      message+: " to pool name that is already taken by another existing pool."
+      tags: [multiple_device]
+      requires_setup+:
+        - stratis/setup/pool_create_single_blockdev/1
+        - stratis/setup/pool_create_single_blockdev/2
+      current: STRATIS_POOL
+      new: STRATIS_POOL_2
+      #expected_out: ["ALREADY EXISTS"]
+
+/bind:
+  description: PLACEHOLDER
+  command: pool_bind
+  /success:
+    active: False
+    tier: 1
+    message: pool bind success
+  /fail:
+    message: pool bind fail
+    tier: 2
+    expected_ret: 1
+    expected_out: ["Requested pool does not appear to be encrypted"]
+    /tang:
+      message+: using tang server
+      binding_method: tang
+      pool_name: test_pool
+      thumbprint: TANG_THUMBPRINT
+      tang_url: TANG_URL
+      requires_setup+:
+        - stratis/setup/set_up_tang
+        - stratis/setup/pool_create
+    /keyring:
+      message+: using keyring
+      binding_method: keyring
+      pool_name: test_pool
+      key_desc: test_key
+      requires_setup+:
+        - stratis/setup/general_key/1
+        - stratis/setup/set_key
+        - stratis/setup/pool_create
+
+/unbind:
+  description: PLACEHOLDER
+  command: pool_unbind
+  message: pool unbind
+  /success:
+    tier: 1
+    expected_ret: 0
+    message+: success
+    /keyring:
+      binding_method: keyring
+      pool_name: test_pool
+      requires_setup+:
+        - stratis/setup/general_key/1
+        - stratis/setup/set_key
+        - stratis/setup/encryption_pool_create
+        - stratis/setup/set_up_tang
+        - stratis/setup/pool_bind_clevis
+    /tang:
+      binding_method: clevis
+      pool_name: test_pool
+      requires_setup+:
+        - stratis/setup/general_key/1
+        - stratis/setup/set_key
+        - stratis/setup/set_up_tang
+        - stratis/setup/encrypted_pool_keyring_tang
+  /fail:
+    tier: 2
+    expected_ret: 1
+    message+: trying to fail unbinding pool
+    /keyring:
+      expected_out: ["Error: No Clevis binding was found; removing the keyring binding would remove the ability to open this device"]
+      binding_method: keyring
+      pool_name: test_pool
+      requires_setup+:
+        - stratis/setup/encryption_pool_create
+    /tang:
+      binding_method: clevis
+      pool_name: test_pool
+      requires_setup+:
+        - stratis/setup/set_up_tang
+        - stratis/setup/encrypted_pool_clevis_create_single_blockdev

@@ -1,0 +1,232 @@
+description: Testing device-mapper-persistent-data thin CLI tools.
+time: 1 min
+test: /lvm/device_mapper_persistent_data/cli.py
+
+### ALIASES ###
+/with_snapshot_alias: &with_snapshot
+  requires_setup+:
+    - lvm/setup/create_loopdev/512
+    - lvm/setup/create_vg/single_loopdev
+    - lvm/setup/create_lv/thinpool
+    - lvm/setup/create_lv/thinvols
+    - lvm/setup/snapshot_metadata
+    - lvm/setup/create_lv/swap
+    - lvm/setup/deactivate_lv/swap
+    - lvm/setup/deactivate_lv/thinpool
+    - lvm/setup/convert_lv/swap_metadata/thin/setup
+    - lvm/setup/activate_lv/swap
+    - lvm/setup/create_file/empty/metadata
+    - lvm/setup/backup_metadata
+/without_snapshot_alias: &without_snapshot
+  requires_setup+:
+    - lvm/setup/create_loopdev/512
+    - lvm/setup/create_vg/single_loopdev
+    - lvm/setup/create_lv/thinpool
+    - lvm/setup/create_lv/thinvols
+    - lvm/setup/create_lv/swap
+    - lvm/setup/deactivate_lv/swap
+    - lvm/setup/deactivate_lv/thinpool
+    - lvm/setup/convert_lv/swap_metadata/thin/setup
+    - lvm/setup/activate_lv/swap
+    - lvm/setup/create_file/empty/metadata
+    - lvm/setup/backup_metadata
+
+/success_alias: &success
+  tier: 1
+  expected_ret: 0
+
+### TEST DEFINITIONS ###
+
+/check:
+  description: Testing 'thin_check' command.
+  command: thin_check
+  <<: *without_snapshot
+  /success:
+    <<: *success
+    source_vg: VG_NAME
+    source_lv: SWAPVOL
+    expected_out: ["examining superblock", "examining devices tree", "examining mapping tree", "checking space map counts"]
+    /basic:
+      message: Checking thin metadata without any extra params
+    /super_block_only:
+      message: Checking just superblock of thin metadata
+      super_block_only: True
+      expected_out: ["examining superblock"]
+    /skip_mappings:
+      message: Checking thin metadata without mappings
+      skip_mappings: True
+      expected_out: ["examining superblock", "examining devices tree", "examining top level of mapping tree"]
+    /ignore_non_fatal_errors:
+      message: Checking thin metadata while skiping non-fatal errors
+      ignore_non_fatal_errors: True
+
+/delta:
+  description: Testing 'thin_delta' command.
+  command: thin_delta
+  /success:
+    <<: *success
+    source_vg: VG_NAME
+    source_lv: SWAPVOL
+    thin1: 1
+    thin2: 9
+    /basic:
+      <<: *without_snapshot
+      message: Getting differences in thin metadata for LVs
+      expected_out: ["<superblock uuid=", "time=", "transaction=", "data_block_size=", "nr_data_blocks=", "diff left=", "right=", "different begin=", "length=", "</diff>", "</superblock>"]
+    /verbose:
+      <<: *without_snapshot
+      message: Getting differences in thin metadata for LVs with --verbose
+      verbose: True
+      expected_out: ["<superblock uuid=", "time=", "transaction=", "data_block_size=", "nr_data_blocks=", "diff left=", "right=", "different", "range begin=", "left_data_begin=", "right_data_begin=", "length=", "</diff>", "</superblock>"]
+    /same:
+      <<: *without_snapshot
+      message: Getting differences in thin metadata for the same LV
+      thin2: 1
+      expected_out: ["<superblock uuid=", "time=", "transaction=", "data_block_size=", "nr_data_blocks=", "diff left=", "right=", "same begin=", "length=", "</diff>", "</superblock>"]
+    /snapshot:
+      <<: *with_snapshot
+      message: Getting differences in thin metadata for LVs from snapshot
+      snapshot: True
+      expected_out: ["<superblock uuid=", "time=", "transaction=", "data_block_size=", "nr_data_blocks=", "diff left=", "right=", "different begin=", "length=", "</diff>", "</superblock>"]
+
+/dump:
+  description: Testing 'thin_dump' command.
+  command: thin_dump
+  /success:
+    <<: *success
+    source_vg: VG_NAME
+    source_lv: SWAPVOL
+    expected_out: ["<superblock uuid=", "<device dev_id=", "mapped_blocks=", "transaction=", "creation_time=", "snap_time=", "</device>", "</superblock>"]
+    /basic:
+      <<: *without_snapshot
+      message: Dumping thin metadata without any extra params
+      expected_out+: ["range_mapping origin_begin=", "data_begin=", "length=", "time=", "<single_mapping origin_block="]
+    /skip_mappings:
+      <<: *without_snapshot
+      message: Dumping thin metadata without mappings
+      skip_mappings: True
+    /format:
+      <<: *without_snapshot
+      expected_out+: ["range_mapping origin_begin=", "data_begin=", "length=", "time=", "<single_mapping origin_block="]
+      /xml:
+        message: Dumping thin metadata in XML format
+        formatting: xml
+      /human_readable:
+        message: Dumping thin metadata in human readable format
+        formatting: human_readable
+    /snapshot:
+      <<: *with_snapshot
+      message: Dumping thin metadata from snapshot
+      snapshot: True
+      expected_out+: ["range_mapping origin_begin=", "data_begin=", "length=", "time=", "<single_mapping origin_block="]
+    /dev_id:
+      <<: *without_snapshot
+      /single:
+        message: Dumping thin metadata from specific device
+        dev_id: 2
+        expected_out+: ["range_mapping origin_begin=", "data_begin=", "length=", "time=", "<single_mapping origin_block="]
+      /multiple:
+        active: False
+        # TODO
+
+/ls:
+  description: Testing 'thin_ls' command.
+  command: thin_ls
+  /success:
+    <<: *success
+    source_vg: VG_NAME
+    source_lv: SWAPVOL
+    /basic:
+      <<: *without_snapshot
+      message: Listing thin metadata without any extra params
+      expected_out: ["DEV", "MAPPED", "CREATE_TIME", "SNAP_TIME"]
+    /no_headers:
+      <<: *without_snapshot
+      message: Listing thin metadata without headers
+      no_headers: True
+    /snapshot:
+      <<: *with_snapshot
+      message: Listing thin metadata from snapshot
+      snapshot: True
+      expected_out: ["DEV", "MAPPED", "CREATE_TIME", "SNAP_TIME"]
+
+/metadata_size:
+  description: Testing 'thin-metadata-size' command.
+  command: thin_metadata_size
+  block_size: 64k
+  pool_size: 100m
+  max_thins: 1
+  unit: m
+  /success:
+    <<: *success
+    message: Calculating metadata size for pool of 64k blocks and 100M size
+    /basic:
+      expected_out: ["thin_metadata_size - 0.05 mebibytes estimated metadata area size for --block-size=64kibibytes --pool-size=100mebibytes --max-thins=1"]
+    /numeric_only:
+      /basic:
+          message+: " without units"
+          numeric_only: True
+          expected_out: "0.05"
+      /long:
+          message+: " without units, long"
+          numeric_only_type: long
+          expected_out: ["0.05mebibytes"]
+      /short:
+          message+: " without units, short"
+          numeric_only_type: short
+          expected_out: ["0.05m"]
+
+/repair:
+  description: Testing 'thin_repair' command.
+  command: thin_repair
+  <<: *without_snapshot
+  /success:
+    <<: *success
+    /to_file:
+      message: Repairing metadata to file
+      output: /var/tmp/metadata_repair
+      input: /dev/mapper/VG_NAME-SWAPVOL
+      setup: True
+    /from_file:
+      message: Repairing metadata from file
+      requires_setup+:
+        - lvm/setup/create_file/empty/metadata_repair
+        - lvm/device_mapper_persistent_data/thin/repair/success/to_file
+      input: /var/tmp/metadata_repair
+      output: /dev/mapper/VG_NAME-SWAPVOL
+  /fail:
+    active: False
+    input: METADATA_BACKUP
+    output: /dev/mapper/VG_NAME-SWAPVOL
+    /not_large_enough:
+      message: Repairing metadata from file to swap LV
+      expected_out: ["Metadata is not large enough for superblock."]
+      expected_ret: 1
+
+/restore:
+  description: Testing 'thin_restore' command.
+  command: thin_restore
+  <<: *without_snapshot
+  /success:
+    <<: *success
+    input: METADATA_BACKUP
+    output: /dev/mapper/VG_NAME-SWAPVOL
+    /basic:
+      message: Restoring metadata from file to swap LV
+
+/trim:
+  description: Testing 'thin_trim' command.
+  command: thin_trim
+  <<: *without_snapshot
+  /success:
+    <<: *success
+    requires_setup+:
+      - lvm/setup/create_file/empty/metadata_repair
+      - lvm/device_mapper_persistent_data/thin/repair/success/to_file
+      - lvm/setup/convert_lv/swap_metadata/thin/setup
+      - lvm/setup/activate_lv/thinpool
+    data_dev: /dev/mapper/VG_NAME-THINPOOL
+    metadata_dev: /var/tmp/metadata_repair
+    /basic:
+      message: Restoring metadata from file to swap LV
+      expected_out: ["in trim", "emitting discard for blocks"]

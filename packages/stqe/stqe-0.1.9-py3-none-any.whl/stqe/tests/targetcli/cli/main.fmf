@@ -1,0 +1,122 @@
+compose: [rhel-7, rhel-8, rhel-9, fedora]
+
+/saveconfig_backup:
+    description: Checking number of backups in backup directory
+    test: saveconfig_backup.py
+    number_of_backups: 5
+    tier: 1
+    tags: [targetcli_basic]
+
+/saveconfig_compare:
+    description: Compares last saved configuration with backup file
+    test: saveconfig_compare.py
+    tags: [waive]
+
+/block_attributes:
+    description: Changes parameters in group attribute and checks if change succeed
+    test: block_attributes.py
+    tags: [targetcli_basic]
+    requires_setup:
+    - targetcli/setup/create_loopdev
+    - targetcli/setup/create_block
+
+/fileio_attributes:
+    description: Changes parameters in group attribute and checks if change succeed
+    test: fileio_attributes.py
+    tags: [targetcli_basic]
+    requires_setup:
+    - targetcli/setup/create_fileio
+
+/ramdisk_attributes:
+    description: Changes parameters in group attribute and checks if change succeed
+    test: ramdisk_attributes.py
+    tags: [targetcli_basic]
+    requires_setup:
+    - targetcli/setup/create_ramdisk
+
+/create_pscsi:
+    description: Creates pscsi backstore object
+    test: create_pscsi.py
+    tags: [targetcli_basic]
+    pscsi_name: pscsi_test
+    requires_setup:
+    - targetcli/setup/stop_multipath
+    - targetcli/setup/create_fileio
+    - targetcli/setup/create_loopback
+
+/iscsi_qcown_lun_stress:
+    description: Creates qcow2 image and uses it as a lun in iscsi target.
+    test: iscsi_local_target.py
+    tags: [waive]
+    requires_setup:
+    - targetcli/setup/stop_multipath
+    - targetcli/setup/install_tcmu_runner
+    - targetcli/setup/create_qcow
+    - targetcli/setup/create_qcow_backstore
+    - targetcli/setup/create_qcow_target
+
+/iscsi_fileio_lun_stress:
+    description: Creates fileio backstore and uses it as a lun in iscsi target.
+    test: iscsi_local_target.py
+    tags: [targetcli_basic]
+    requires_setup:
+    - targetcli/setup/stop_multipath
+    - targetcli/setup/create_fileio_1g
+    - targetcli/setup/create_fileio_target
+
+/iscsi_chap:
+    description: Test tries to discover and login into iscsi target with 1-way CHAP
+    target_ip: 127.0.0.1
+    expected_ret: True  # Change to False if you expect the test to fail.
+    test: iscsi_chap.py
+    tags: [targetcli_basic, chap]
+    compose: [rhel-8, rhel-9, fedora]
+    requires_setup:
+    - targetcli/setup/stop_multipath
+    - targetcli/setup/create_fileio_1g
+    - targetcli/setup/create_fileio_target
+    - targetcli/setup/configure_chap
+
+/iscsi_chap_2way:
+    description: Test tries to discover and login into iscsi target with 2-way CHAP.
+    target_ip: 127.0.0.1
+    expected_ret: True  # Change to False if you expect the test to fail.
+    test: iscsi_chap_2ways.py
+    tags: [targetcli_basic, chap]
+    compose: [rhel-8, rhel-9, fedora]
+    requires_setup:
+    - targetcli/setup/stop_multipath
+    - targetcli/setup/create_fileio_1g
+    - targetcli/setup/create_fileio_target
+    - targetcli/setup/configure_chap_2ways
+
+/iscsi_chap_random:
+    description: Test tries to discover and login into iscsi target with 1-way CHAP. Password and userid are random.
+    target_ip: 127.0.0.1
+    expected_ret: True  # Change to False if you expect the test to fail.
+    test: iscsi_chap.py
+    tags: [targetcli_basic, chap]
+    compose: [rhel-8, rhel-9, fedora]
+    requires_setup:
+    - targetcli/setup/stop_multipath
+    - targetcli/setup/create_fileio_1g
+    - targetcli/setup/create_fileio_target
+    - targetcli/setup/configure_chap_random
+
+/iscsi_chap_2way_random:
+    description: Test tries to discover and login into iscsi target with 2-way CHAP. Password and userid are random.
+    target_ip: 127.0.0.1
+    expected_ret: True  # Change to False if you expect the test to fail.
+    test: iscsi_chap_2ways.py
+    tags: [targetcli_basic, chap]
+    compose: [rhel-8, rhel-9, fedora]
+    requires_setup:
+    - targetcli/setup/stop_multipath
+    - targetcli/setup/create_fileio_1g
+    - targetcli/setup/create_fileio_target
+    - targetcli/setup/configure_chap_2ways_random
+
+/python_kmod:
+    description: Check if python kmod successfully loads targetcli_core_mod kernel module
+    test: python-kmod.py
+    tags: [python_kmod]

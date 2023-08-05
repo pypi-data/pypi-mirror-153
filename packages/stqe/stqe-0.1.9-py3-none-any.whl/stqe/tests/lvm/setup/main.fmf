@@ -1,0 +1,339 @@
+description: LVM setups
+setup: True
+test: /lvm/setup/setup.py
+
+### STORAGE SETUPS ###
+
+/create_loopdev:
+  description: Creates loopdev 'loop1'.
+  message: Creating loopdev 'loop1'
+  loop_name: loop1
+  command: create_loopdev
+  expected_ret: "/dev/loop1"
+  requires_cleanup: [lvm/setup/delete_loopdev/loop1]
+  possible_image_paths: ["/var/tmp", "/home", "/tmp"] # list of possible paths for the image location to try, starts from beginning
+  /2048:
+    size: 2048
+  /512:
+    size: 512
+  /4096:
+    size: 4096
+  /500:
+    size: 500
+  /12:
+    size: 12
+    loop_name: loop2
+    expected_ret: "/dev/loop2"
+    requires_cleanup: [lvm/setup/delete_loopdev/loop2]
+
+/delete_loopdev:
+  description: Deletes loopdev.
+  message: Deleting loopdev
+  command: libsan.host.loopdev.delete_loopdev
+  cleanup: True
+  /loop1:
+    description+: " loop1."
+    message+: " loop1."
+    loop_name: loop1
+  /loop2:
+    description+: " loop2."
+    message+: " loop2."
+    loop_name: loop2
+
+/create_fs:
+  description: Sets up filesystem on given device.
+  command: libsan.host.linux.run
+  /ext4:
+    /cache:
+      message: Creating ext4 filesystem on cache origin LV.
+      cmd: "mkfs.ext4 /dev/VG_NAME/CACHE_ORIGIN"
+      requires_cleanup: lvm/setup/remove_fs/cache
+
+/remove_fs:
+  description: Removes filesystem.
+  command: libsan.host.linux.run
+  /cache:
+    message: "Removing fs from CACHE_ORIGIN."
+    cmd: "dd if=/dev/zero of=/dev/VG_NAME/CACHE_ORIGIN bs=4k count=100"
+
+### LVM GENERAL SETUPS ###
+
+/create_vg:
+  requires_install+: [lvm2]
+  description: Sets up LVM VG on LOOPX
+  message: Creating VG on LOOPX
+  command: libsan.host.lvm.vg_create
+  requires_cleanup:
+    - lvm/setup/remove_vg
+    - lvm/setup/remove_pv/loop1
+  vg_name: vgtest
+  /single_loopdev:
+    pv_name: LOOP1
+  /two_loopdevs:
+    pv_name: "LOOP1 LOOP2"
+    requires_cleanup+: [lvm/setup/remove_pv/loop2]
+
+/remove_vg:
+  requires_install+: [lvm2]
+  description: Removes LVM VG VG_NAME
+  message: Removing VG
+  command: libsan.host.lvm.vg_remove
+  vg_name: VG_NAME
+  force: True
+  cleanup: True
+
+/remove_pv:
+  requires_install+: [lvm2]
+  description: Removes PV on device
+  message: Removing PV on LOOP1
+  command: libsan.host.lvm.pv_remove
+  force: True
+  cleanup: True
+  /loop1:
+    pv_name: LOOP1
+  /loop2:
+    pv_name: LOOP2
+
+/create_lv:
+  requires_install+: [lvm2]
+  description: Sets up LVM LV on VG_DEVICE
+  command: libsan.host.lvm.lv_create
+  vg_name: VG_NAME
+  /thinpool:
+    requires_cleanup: lvm/setup/remove_lv/thinpool
+    message: Creating LVM thinpool on 100MB of VG_DEVICE.
+    options: ["-T", "-L 100"]
+    lv_name: thinpool
+  /thinvols:
+    command: create_lvs
+    message: Creating LVM thinvol on 10MB of THINPOOL.
+    options: ["-V 10"]
+    number_of_vols: 10
+    vg_name: VG_NAME
+    thinpool: THINPOOL
+    lv_name: thinvol
+  /swap:
+    requires_cleanup: lvm/setup/remove_lv/swap
+    message: Creating swap LV on VG_DEVICE.
+    options: ["-L 75"]
+    lv_name: swapvol
+  /cache_meta:
+    requires_cleanup: lvm/setup/remove_lv/cache_meta
+    message: Creating cache meta LV on VG_DEVICE.
+    options: ["-L 12"]
+    lv_name: cache_meta
+  /cache_origin:
+    requires_cleanup: lvm/setup/remove_lv/cache_origin
+    message: Creating cache origin LV on VG_DEVICE.
+    options: ["-L 300"]
+    lv_name: cache_origin
+  /cache_data:
+    requires_cleanup: lvm/setup/remove_lv/cache_data
+    message: Creating cache_data LV on VG_DEVICE.
+    options: ["-L 100"]
+    lv_name: cache_data
+
+/convert_lv:
+  requires_install+: [lvm2]
+  command: libsan.host.lvm.lv_convert
+  /cache_pool:
+    message: Merging CACHE_DATA and CACHE_META to create cache_pool
+    vg_name: VG_NAME
+    lv_name: CACHE_DATA
+    options: ["-y", "--type cache-pool", "--cachemode writeback", "--poolmetadata VG_NAME/CACHE_META"]
+  /cache_origin:
+    message: Adding CACHE_ORIGIN to cache pool from CACHE_DATA
+    vg_name: VG_NAME
+    lv_name: CACHE_ORIGIN
+    options: ["-y", "--type cache", "--cachepool VG_NAME/CACHE_DATA"]
+  /cache_split:
+    message: Splitting CACHE_ORIGIN LV cache.
+    vg_name: VG_NAME
+    lv_name: CACHE_ORIGIN
+    options: ["-y", "--splitcache"]
+  /swap_metadata:
+    vg_name: VG_NAME
+    lv_name: SWAPVOL
+    /cache:
+      message: Swapping cache metadata to SWAPVOL.
+      options: ["-y", "--cachepool VG_NAME/CACHE_DATA", "--poolmetadata"]
+      /setup:
+        requires_cleanup: [lvm/setup/convert_lv/swap_metadata/cache/cleanup]
+      /cleanup:
+        cleanup: True
+    /thin:
+      message: Swapping thin metadata to SWAPVOL.
+      options: ["-y", "--thinpool VG_NAME/THINPOOL", "--poolmetadata"]
+      /setup:
+        requires_cleanup:
+          - lvm/setup/convert_lv/swap_metadata/thin/cleanup
+          - lvm/setup/activate_lv/thinpool
+          - lvm/setup/activate_lv/swap
+      /cleanup:
+        cleanup: True
+
+/remove_lv:
+  requires_install+: [lvm2]
+  description: Removes LVM LV from env var.
+  message: Removing LVM LV
+  command: libsan.host.lvm.lv_remove
+  vg_name: VG_NAME
+  cleanup: True
+  /thinpool:
+    message+: " LV_THINPOOL."
+    lv_name: THINPOOL
+  /swap:
+    message+: " LV_SWAP."
+    lv_name: SWAPVOL
+  /cache_meta:
+    message+: " LV_CACHE_META."
+    lv_name: CACHE_META
+  /cache_origin:
+    message+: " LV_CACHE_ORIGIN."
+    lv_name: CACHE_ORIGIN
+  /cache_data:
+    message+: " LV_CACHE_DATA."
+    lv_name: CACHE_DATA
+
+/activate_lv:
+  requires_install+: [lvm2]
+  description: Activates LVM LV.
+  command: libsan.host.lvm.lv_activate
+  /swap:
+    message: Activating swap LV.
+    lv_name: SWAPVOL
+    vg_name: VG_NAME
+    requires_cleanup: [lvm/setup/deactivate_lv/swap]
+  /thinpool:
+    message: Activating thinpool.
+    lv_name: THINPOOL
+    vg_name: VG_NAME
+    requires_cleanup: [lvm/setup/deactivate_lv/thinpool]
+  /cache_data:
+    message: Activating cache data LV.
+    lv_name: CACHE_DATA
+    vg_name: VG_NAME
+    requires_cleanup: [lvm/setup/deactivate_lv/cache_data]
+  /cache_origin:
+    message: Activating cache origin LV.
+    lv_name: CACHE_ORIGIN
+    vg_name: VG_NAME
+    requires_cleanup: [lvm/setup/deactivate_lv/cache_origin]
+
+/deactivate_lv:
+  requires_install+: [lvm2]
+  description: Deactivates LVM LV.
+  command: libsan.host.lvm.lv_deactivate
+  /swap:
+    message: Deactivating swap LV.
+    lv_name: SWAPVOL
+    vg_name: VG_NAME
+  /thinpool:
+    message: Deactivating thinpool.
+    lv_name: THINPOOL
+    vg_name: VG_NAME
+  /cache_data:
+    message: Deactivating cache data LV.
+    lv_name: CACHE_DATA
+    vg_name: VG_NAME
+  /cache_origin:
+    message: Deactivating cache origin LV.
+    lv_name: CACHE_ORIGIN
+    vg_name: VG_NAME
+
+### THIN SPECIFIC ###
+
+/metadata_snapshot:
+  description: Creates metadata snapshot.
+  message: Creating metadata snapshot.
+  command: metadata_snapshot
+  expected_ret: 0
+  vg_name: VG_NAME
+  lv_name: THINPOOL
+
+/swap_metadata:
+  description: Swap metadata from thinpool to create swap vol.
+  message: Swapping metadata"
+  command: swap_metadata
+  vg_name: VG_NAME
+  lv_swap: SWAPVOL
+  thinpool: THINPOOL
+  /setup:
+    requires_cleanup:
+      - lvm/setup/swap_metadata/cleanup
+      - lvm/setup/activate/thinpool
+      - lvm/setup/activate/swap
+  /cleanup:
+    cleanup: True
+
+/backup_metadata:
+  description: Backs up working metadata.
+  message: Backing up metadata
+  format: xml
+  source_vg: VG_NAME
+  source_lv: SWAPVOL
+  repair: True
+  output: /var/tmp/metadata
+  command: thin_dump
+  # requires_cleanup: [lvm/setup/restore_metadata]
+
+/restore_metadata:
+  description: Restores metadata to original correct state.
+  message: Restoring metadata to original correct state
+  command: thin_restore
+  quiet: True
+  output: /dev/mapper/VG_NAME-SWAPVOL
+  input: METADATA_BACKUP
+
+/snapshot_metadata:
+  description: Creates metadata snapshot of thin pool.
+  message: Creating metadata snapshot
+  command: metadata_snapshot
+  vg_name: VG_NAME
+  thinpool: THINPOOL
+
+### FILE HANDLING ###
+
+/create_file:
+  command: libsan.host.cmdline.run
+  /empty:
+    description: Fallocates empty file
+    message: Creating empty file
+    cmd: "fallocate -l 5M "
+    /metadata:
+      cmd+: "/var/tmp/metadata"
+      requires_cleanup: lvm/setup/delete_file/metadata
+    /metadata_repair:
+      cmd+: "/var/tmp/metadata_repair"
+      requires_cleanup: lvm/setup/delete_file/metadata_repair
+    /cache_dump:
+      cmd+: "/var/tmp/cache_dump"
+      requires_cleanup: lvm/setup/delete_file/cache_dump
+  /data:
+    description: Creates file with pseudo random data from /dev/urandom
+    message: Creating pseudo random file
+    cmd: "dd if=/dev/urandom bs=1M count="
+    /100M_file:
+      cmd+: "100 of=/var/tmp/100M_file"
+      requires_cleanup: lvm/setup/delete_file/100M_file
+
+
+/delete_file:
+  description: Removes leftover files.
+  message: Removing leftover file
+  cleanup: True
+  command: os.remove
+  /metadata:
+    message+: " metadata."
+    path: METADATA_BACKUP
+  /metadata_repair:
+    message+: " metadata_repair."
+    path: /var/tmp/metadata_repair
+  /cache_dump:
+    message: " cache_dump."
+    path: /var/tmp/cache_dump
+  /100M_file:
+    message: " 100M_file."
+    path: /var/tmp/100M_file
+
+
