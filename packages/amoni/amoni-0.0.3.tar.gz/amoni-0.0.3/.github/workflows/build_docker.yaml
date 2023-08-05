@@ -1,0 +1,51 @@
+name: Build and publish Docker images
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - docker/**
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Login to Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Build and push app server image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: docker/app_server/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/anvilistas/amoni/app-server:latest
+      -
+        name: Build and push test runner image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: docker/test_runner/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/anvilistas/amoni/test_runner:latest
