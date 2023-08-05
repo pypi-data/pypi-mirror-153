@@ -1,0 +1,2 @@
+def subtract():
+    return None
