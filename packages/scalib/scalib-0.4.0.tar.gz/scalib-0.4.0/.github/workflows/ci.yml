@@ -1,0 +1,198 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:        
+      - v**
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python: [3.7,]
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/cache@v3
+              with:
+                  path: |
+                      ~/.cargo
+                      .cargo_build
+                  key: test-cache-rust-build-cargo-v0
+            - name: Setup Python
+              uses: actions/setup-python@v3
+              with:
+                  python-version: ${{ matrix.python }}
+            - name: Install Tox
+              run: pip install tox
+            - name: Run tests
+              # Run tox using the version of Python in `PATH`
+              run: tox -e codestyle,build_docs,test
+              env:
+                RUST_BACKTRACE: full
+                CARGO_TARGET_DIR: ${{ github.workspace }}/cargo_build
+                CARGO_HOME: ${{ github.workspace }}/cargo_home
+
+    build_wheel_windows:
+        name: Build wheel on Windows
+        runs-on: windows-2019
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-python@v3
+              with:
+                  python-version: "3.7"
+            - name: wheels Windows ${{ matrix.vers }}
+              uses: pypa/cibuildwheel@v2.5.0
+              env:
+                  CARGO_TARGET_DIR: ${{ github.workspace }}\cargo_build
+                  CIBW_ARCHS_WINDOWS: native
+                  CIBW_BUILD_VERBOSITY: "1"
+                  CIBW_ENVIRONMENT: 'RUST_BACKTRACE=full SCALIB_AVX2=1'
+                  CIBW_BUILD: "cp37-win_amd64"
+                  # I don't know how to make both normal and doctring tests
+                  # work with only one command, so I use shell &&.
+                  CIBW_TEST_COMMAND: pytest -ra {project}/tests && pytest -ra --pyargs --doctest-modules scalib
+                  CIBW_TEST_EXTRAS: test
+            - uses: actions/upload-artifact@v2
+              with:
+                  name: dist
+                  path: ./wheelhouse/*.whl
+
+    build_wheel_linux:
+        name: Build wheel on linux ${{ matrix.vers }}
+        runs-on: ubuntu-20.04
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - vers: x86_64 
+                    #- vers: aarch64 # This is too slow on github CI
+        env:
+            #CIBW_MANYLINUX_X86_64_IMAGE: "ghcr.io/simple-crypto/manylinux2014_x86_64:rust-1.51.0"
+            CIBW_MANYLINUX_X86_64_IMAGE: "ghcr.io/simple-crypto/manylinux2014_x86_64-clang:rust-1.60.0"
+            CIBW_BUILD_VERBOSITY: "1"
+            CIBW_ENVIRONMENT: 'RUST_BACKTRACE=full CARGO_TARGET_DIR=/host${{ github.workspace }}/cargo_build CARGO_HOME=/host${{ github.workspace }}/cargo_home SCALIB_AVX2=1'
+            CIBW_BUILD: "cp37-manylinux_x86_64*"
+            # I don't know how to make both normal and doctring tests work with only one command,
+            # so I use shell &&.
+            CIBW_TEST_COMMAND: pytest -ra {project}/tests && pytest -ra --pyargs --doctest-modules scalib
+            CIBW_TEST_EXTRAS: test
+            #CIBW_BEFORE_ALL: "yum -y install "
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/cache@v3
+              with:
+                  path: |
+                      cargo_build
+                      cargo_home
+                  key: linux-wheel-cache-rust-build-cargo-v0-${{ matrix.vers }}
+            - uses: actions/setup-python@v3
+              with:
+                  python-version: "3.7"
+            - name: wheels Linux ${{ matrix.vers }}
+              uses: pypa/cibuildwheel@v2.5.0
+            - uses: actions/upload-artifact@v2
+              with:
+                  name: dist
+                  path: ./wheelhouse/*.whl
+
+# Mac Os wheels do not work currently (maybe due to missing LAPACK in OpenBLAS build.
+#    build_wheel_macos:
+#        name: Build wheels on macos ${{ matrix.vers }}
+#        runs-on: macos-10.15
+#        strategy:
+#            fail-fast: false
+#            matrix:
+#                include:
+#                   #- vers: arm64
+#                   - vers: x86_64
+#        env:
+#            CIBW_BUILD_VERBOSITY: "1"
+#            CIBW_ENVIRONMENT: 'RUST_BACKTRACE=full'
+#            CIBW_BUILD: "cp36-*"
+#            # I don't know how to make both normal and doctring tests work with only one command,
+#            # so I use shell &&.
+#            CIBW_TEST_COMMAND: pytest -ra {project}/tests && pytest -ra --pyargs --doctest-modules scalib
+#            CIBW_TEST_EXTRAS: test
+#            CIBW_ARCHS_MACOS: ${{ matrix.vers }}
+#            CARGO_TARGET_DIR: ${{ github.workspace }}/cargo_build
+#        steps:
+#            - uses: actions/checkout@v2
+#            - uses: actions/cache@v2
+#              with:
+#                  path: |
+#                      ~/.cargo/registry
+#                      ~/.cargo/git
+#                      ${{ github.workspace }}/cargo_build
+#                  key: cache-macos-cargo-v0
+#            - uses: actions/setup-python@v2
+#              with:
+#                  python-version: "3.6"
+#            - name: wheels Macos ${{ matrix.vers }}
+#              uses: joerick/cibuildwheel@v1.10.0
+#            - uses: actions/upload-artifact@v2
+#              with:
+#                  name: dist
+#                  path: ./wheelhouse/*.whl
+
+    build_sdist:
+        name: Build source distribution
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - name: Install rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: stable
+                  profile: minimal
+            - name: Build sdist
+              run: |
+                  python -m pip install build
+                  python -m build --sdist .
+            - uses: actions/upload-artifact@v3
+              with:
+                  name: dist
+                  path: dist/*.tar.gz
+
+    check_dist:
+        needs: [build_wheel_linux, build_wheel_windows, build_sdist]
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/download-artifact@v3
+              with:
+                  name: dist
+                  path: dist
+            - name: Install twine
+              run: pip install twine
+            - name: Check dist
+              run: twine check dist/*
+
+    release:
+        needs: [check_dist, test]
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/download-artifact@v3
+              with:
+                  name: dist
+                  path: dist
+            - name: Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  body: |
+                      view the CHANGELOG.rst for full changes
+                  files: |
+                      dist/*
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - uses: pypa/gh-action-pypi-publish@release/v1
+              with:
+                  user: __token__
+                  password: ${{ secrets.PYPI_API_TOKEN }}
+
