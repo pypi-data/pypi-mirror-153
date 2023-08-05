@@ -1,0 +1,97 @@
+{% macro ip_addr(v,ip,ifname) %}
+{% set _ip = ip|ipaddr('address') %}
+{% set _pre = ip|ipaddr('prefix') %}
+   ipv{{v}}:
+{% if v=='4' %}
+    primary:
+     address: "{{ _ip }}"
+     prefix-length: {{ _pre }}
+{% else %}
+    address:
+    - ipv6-address: "{{ _ip }}"
+      prefix-length: {{ 128 if ifname=='system' else _pre }}
+{% endif %}
+{% endmacro %}
+
+{% macro interface(name,desc,ip_v4,ip_v6,port,l) -%}
+- path: configure/router[router-name=Base]/interface[interface-name={{name}}]
+  val:
+   admin-state: enable
+   description: "{{desc}}"
+{% if port %}
+   port: "{{port}}"
+{% elif name!='system' %}
+   loopback: [null]
+{% endif %}
+{% if ip_v4|ipv4 or ip_v6|ipv6 %}
+{% if ip_v4|ipv4 %}
+{{ ip_addr('4',ip_v4,name) }}
+{% endif %}
+{% if ip_v6|ipv6 %}
+{{ ip_addr('6',ip_v6,name) }}
+{% endif %}
+{% elif l.unnumbered|default(0)|bool or ip_v4 == True or ip_v6 == True %}
+{% if l.unnumbered|default(0)|bool or ip_v4 == True %}
+   ipv4:
+    unnumbered:
+     system: [null]
+{% endif %}
+{% if l.unnumbered|default(0)|bool or ip_v6 == True %}
+   ipv6: { }
+{% endif %}
+{% endif %}
+{%- endmacro -%}
+
+updates:
+{% if 'ixr' in clab.type %}
+- path: configure/system/resource
+  val:
+   ecmp-profile:
+   - profile-id: 1
+     type: ip # or mpls
+     links: 16
+     groups: 64
+{% endif %}
+
+{# Enable ECMP=64 by default #}
+- path: configure/router[router-name=Base]
+  val:
+   ecmp: {{ 1 if 'ixr' in clab.type else 64 }}
+{% if loopback.ipv4|default('')|ipv4 or 'ipv6' in loopback %}
+{% set v4 = loopback.ipv4|default('') %}
+{% set v6 = loopback.ipv6|default('') %}
+{# The interface name 'system' is special, also used for IP unnumbered #}
+{{ interface("system","system interface",v4,v6,'',loopback) }}
+{% endif %}
+{% for l in interfaces|default([]) %}
+{% set v4 = l.ipv4|default('') %}
+{% set v6 = l.ipv6|default('') %}
+{% if l.name is defined %}
+{% set desc = l.name|replace('->','~') + " (" + l.role|default('') + ")" %}
+{% elif l.type|default("") == "stub" %}
+{% set desc = "Stub interface" %}
+{% endif %}
+{% if 'c' in l.ifname %}
+- path: configure/port[port-id={{l.ifname}}]
+  val:
+   connector:
+    breakout: "c1-100g"
+{% set portname = l.ifname + '/1' %}
+{% else %}
+{% set portname = l.ifname %}
+{% endif %}
+{% if l.mtu is defined and l.mtu <= (9800-14) %}
+- path: configure/port[port-id={{ portname }}]
+  val:
+   ethernet:
+    mtu: {{ l.mtu + 14 }} # max 9800
+{% endif %}
+{% if v4|ipv4 or v6|ipv6 or l.unnumbered|default(0) or v4==True or v6==True %}
+{{ interface('i'+l.ifname,desc,v4,v6,portname) }}
+{% else %}
+- path: configure/port[port-id={{ portname }}]
+  val:
+   ethernet:
+    mode: access # no IP, assume this is an access port
+{% endif %}
+{% endfor %}

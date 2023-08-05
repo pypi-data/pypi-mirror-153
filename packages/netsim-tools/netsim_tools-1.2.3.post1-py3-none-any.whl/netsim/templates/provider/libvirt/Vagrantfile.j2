@@ -1,0 +1,66 @@
+Vagrant.configure("2") do |config|
+
+VAGRANT_COMMAND = ARGV[0]
+
+$cumulus_script = <<-SCRIPT
+function set_cumulus_password(){
+    echo "### Setting cumulus user password to 'cumulus' ###"
+    echo "cumulus ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/10_cumulus
+    echo "cumulus:cumulus" | chpasswd
+    mkdir /home/cumulus/.ssh/
+    cat /home/vagrant/.ssh/authorized_keys >> /home/cumulus/.ssh/authorized_keys
+    chown -R cumulus:cumulus /home/cumulus/.ssh/
+    chmod 0700 /home/cumulus/.ssh/
+    chmod 0600 /home/cumulus/.ssh/authorized_keys
+}
+function disable_ztp(){
+    echo "### Disabling ZTP service..."
+    systemctl stop ztp.service
+    ztp -d 2>&1
+}
+if grep -q -i 'cumulus' /etc/lsb-release &> /dev/null; then
+    echo "### RUNNING CUMULUS EXTRA CONFIG ###"
+    set_cumulus_password
+    disable_ztp
+fi
+SCRIPT
+
+{% for name,n in nodes.items() %}
+{%   set name = name.split('.')[0] %}
+{%   set box  = n.box %}
+  config.vm.define "{{ name }}" do |{{name}}|
+{%   if n.mgmt is defined and n.mgmt.mac is defined %}
+    {{ name }}.vm.provider :libvirt do |domain|
+      domain.management_network_mac = "{{n.mgmt.mac}}"
+      domain.qemu_use_session = false
+    end
+{%   endif %}
+    {{ name }}.vm.box = "{{ box }}"
+{% if 'box_version' in n %}
+    {{ name }}.vm.box_version = "{{ n.box_version }}"
+{% endif %}
+{%  include n.device ~ "-domain.j2" %}
+
+    {{ name }}.vm.provider :libvirt do |domain|
+{% if 'cpu' in n %}
+      domain.cpus = {{ n.cpu }}
+{% endif %}
+{% if 'memory' in n %}
+      domain.memory = {{ n.memory }}
+{% endif %}
+{% if n.libvirt is defined and 'nic_model' in n.libvirt %}
+      domain.nic_model_type = "{{ n.libvirt.nic_model }}"
+{% endif %}
+    end
+
+{%   for l in n.interfaces|default([]) if l.virtual_interface is not defined %}
+{%     if 'remote_ifindex' in l: %}
+{%       include "libvirt-tunnel.j2" %}
+{%     else %}
+{%       include "libvirt-bridge.j2" %}
+{%     endif %}
+
+{%   endfor %}
+  end
+{% endfor %}
+end

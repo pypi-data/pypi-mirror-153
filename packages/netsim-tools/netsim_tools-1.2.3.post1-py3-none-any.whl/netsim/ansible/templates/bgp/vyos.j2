@@ -1,0 +1,62 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+fi
+
+# Configuration items start here
+{% import "vyos.macro.j2" as bgpcfg %}
+
+configure
+
+set protocols bgp local-as {{ bgp.as }}
+
+{% if bgp.router_id|ipv4 %}
+set protocols bgp parameters router-id {{ bgp.router_id }}
+{% endif %}
+
+{% for n in bgp.neighbors %}
+{%   for af in ['ipv4','ipv6'] if n[af] is defined %}
+{{     bgpcfg.neighbor(n,n[af],bgp) }}
+{%   endfor %}
+{% endfor %}
+
+{# Activate address families #}
+{% for af in ['ipv4','ipv6'] %}
+{%   if bgp[af] is defined %}
+
+# Work on Family {{ af }}
+
+{%     if loopback[af] is defined and bgp.advertise_loopback %}
+{{       bgpcfg.bgp_network(af,loopback[af]) }}
+{%     endif %}
+
+{%     for l in interfaces|default([]) if l.bgp.advertise|default("") and l[af] is defined and not 'vrf' in l %}
+{{       bgpcfg.bgp_network(af,l[af]) }}
+{%     endfor %}
+
+{%     for pfx in bgp.originate|default([]) if af == 'ipv4' %}
+{{       bgpcfg.bgp_network(af,pfx) }}
+{%     endfor %}
+
+{%     for n in bgp.neighbors if n[af] is defined %}
+{{       bgpcfg.neighbor_af(n,n[af],bgp,af) }}
+{%     endfor %}
+
+{%   endif %}
+{% endfor %}
+
+{#
+  Add extra IPv4 prefixes
+#}
+{% for pfx in bgp.originate|default([]) %}
+set protocols static route {{ pfx|ipaddr('0') }} blackhole
+{% endfor %}
+
+# Commit, save and exit from subshell
+
+commit
+save
+exit
+

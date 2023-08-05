@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+set -e
+#
+# Create bash profile script
+#
+cat <<SCRIPT >/root/.bash_profile
+#!/bin/bash
+#
+export PS1="\h(bash)#"
+echo "Use vtysh to connect to FRR daemon"
+echo
+SCRIPT
+#
+# Build hosts file
+#
+hostname {{ inventory_hostname }}
+awk '/127.0.1.1/,/^$/' /etc/hosts >/tmp/hosts
+echo "127.0.0.1 {{ inventory_hostname }}" >>/tmp/hosts
+{% for k,v in hostvars.items() if k != inventory_hostname and v.af.ipv4|default(False) %}
+echo "{%- if v.loopback.ipv4 is defined %}{{ v.loopback.ipv4|ipaddr('address') }} {% endif %}
+{%- for l in v.interfaces|default([]) if 'ipv4' in l and l.ipv4 != True and l.ipv4|ipv4 %}{{ l.ipv4|ipaddr('address') }} {% endfor %}{{ k }}" >>/tmp/hosts
+{% endfor %}
+cat /etc/hosts | awk '/localhost/,/^$/' >/tmp/hosts-start
+{% if ansible_connection != "docker" %}
+mv /tmp/hosts-start /etc/hosts
+{% endif %}
+sort /tmp/hosts|uniq >>/etc/hosts
+#
+# Enable LLDP
+#
+cat <<CONFIG >/etc/lldpd.d/system.conf
+configure lldp tx-interval 30
+configure lldp tx-hold 3
+configure system interface pattern *,!eth0,swp*
+CONFIG
+service lldpd restart
+#
+# Enable FRR modules
+#
+{% set modlist = {'bgp':'bgpd','ospf':'ospfd','isis':'isisd'} %}
+{% for m in module|default([]) if modlist[m] is defined %}
+echo "{{ modlist[m] }}=yes" >>/etc/frr/daemons
+{% endfor %}
+systemctl enable frr.service
+systemctl start frr.service
+systemctl reload frr.service
+#
+# Set Ethernet interface MTU
+{% for l in interfaces|default([]) if l.mtu is defined %}
+ip link set {{ l.ifname }} mtu {{ l.mtu }}
+{% endfor %}
+#
+# Rest of initial configuration done through VTYSH
+#
+cat >/tmp/config <<CONFIG
+ipv6 forwarding
+!
+interface lo
+ no shutdown
+{% if 'ipv4' in loopback %}
+ ip address {{ loopback.ipv4 }}
+{% endif %}
+{% if 'ipv6' in loopback %}
+ ipv6 address {{ loopback.ipv6 }}
+{% endif %}
+!
+{% for l in interfaces|default([]) %}
+interface {{ l.ifname }}
+! no shutdown
+{% if l.name is defined %}
+ description {{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}
+{% elif l.type|default("") == "stub" %}
+ description Stub interface
+{% endif %}
+{% if l.ipv4 is defined %}
+{%   if l.ipv4 == True %}
+ ip address {{ loopback.ipv4 }}
+{%   else %}
+ ip address {{ l.ipv4 }}
+{%   endif %}
+{% endif %}
+{% if l.ipv6 is defined %}
+{%   if l.ipv6 == True %}
+ ip address {{ loopback.ipv6 }}
+{%   else %}
+ ipv6 address {{ l.ipv6 }}
+{%   endif %}
+ ipv6 nd ra-interval 5
+ no ipv6 nd suppress-ra
+{% endif %}
+{% if l.bandwidth is defined %}
+ bandwidth {{ l.bandwidth  }}
+{% endif %}
+!
+{% endfor %}
+do write
+CONFIG
+vtysh -f /tmp/config
