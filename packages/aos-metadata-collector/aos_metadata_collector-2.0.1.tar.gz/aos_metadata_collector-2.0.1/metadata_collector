@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+from collector.elasticsearch_data_collector import list_domains,collect_data,archive_files
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("sub_cmd",help='sub_cmd {list_domains,collect_data},list_domain: list the domains in the Amazon OpenSearch;collect_data:collect Amazon OpenSearch metadata data')
+    parser.add_argument("-r", "--region", action="store", help="the region name where Amazon OpenSearch cluster installed")
+    parser.add_argument("-d","--domain",action="store", help="the domain name to be collected data")
+    parser.add_argument("-c","--fgac", action="store_true", help='Fine-grained access control is enabled')
+    parser.add_argument("-i","--iam", action="store_true", help='domain is using iam for fined grain access')
+    parser.add_argument("-b", "--database", action="store_true", help='domain is using iam for fined grain access')
+    parser.add_argument("-u", "--user", action="store", help='Amazon OpenSearch user name')
+    parser.add_argument("-p", "--password", action="store", help='Amazon OpenSearch password')
+    parser.add_argument("-o", "--output", action="store", help='Output file directory')
+    args = parser.parse_args()
+
+    if args.region:
+        print("region: " + args.region)
+
+    if(args.sub_cmd == "list_domains"):
+        list_domains(args.region)
+    elif(args.sub_cmd == "collect_data"):
+        print("domain: " + args.domain)
+        print("fgac:" + str(args.fgac))
+        print("iam:" + str(args.iam))
+        print("database:" + str(args.database))
+        output_folder = str(args.output)
+        if output_folder.endswith("/"):
+            output_folder = output_folder[:-1]
+
+        print("output:" + output_folder)
+        if os.path.exists(output_folder):
+            print("WARN: output folder exist. Data will be overwritten.")
+        else:
+            print("INFO: output folder does not exist. Creating folder:  " + output_folder)
+            os.mkdir(output_folder)
+
+        collect_data(args.region,args.domain,args.fgac,args.iam,args.user,args.password,output_folder)
+        archive_files(output_folder)
