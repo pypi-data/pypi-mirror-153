@@ -1,0 +1,336 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Alertflex",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "default": 8181,
+            "type": "number",
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "default": "https://alertflex.github.io/doc/pages/integration.html",
+            "type": "link"
+        },
+        "sni": {
+            "type": "text",
+            "optional": true
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 500000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 60,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "from_stix_map": {
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "a.dstIp",
+                                    "a.srcIp"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "fields": {
+                                "src_port": [
+                                    "a.srcPort"
+                                ],
+                                "dst_port": [
+                                    "a.dstPort"
+                                ],
+                                "src_ref": [
+                                    "a.srcIp"
+                                ],
+                                "dst_ref": [
+                                    "a.dstIp"
+                                ]
+                            }
+                        },
+                        "file": {
+                            "fields": {
+                                "name": [
+                                    "a.fileName"
+                                ],
+                                "hashes.'SHA-256'": [
+                                    "a.hashSha256"
+                                ],
+                                "hashes.'SHA-1'": [
+                                    "a.hashSha1"
+                                ],
+                                "hashes.MD5": [
+                                    "a.hashMd5"
+                                ]
+                            }
+                        },
+                        "process": {
+                            "fields": {
+                                "name": [
+                                    "a.processName"
+                                ],
+                                "pid": [
+                                    "a.processId"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "user_id": [
+                                    "a.userName"
+                                ]
+                            }
+                        },
+                        "x_org_alertflex": {
+                            "fields": {
+                                "agent": [
+                                    "a.agentName"
+                                ],
+                                "node": [
+                                    "a.nodeId"
+                                ],
+                                "source": [
+                                    "a.alertSource"
+                                ],
+                                "type": [
+                                    "a.alertType"
+                                ],
+                                "id": [
+                                    "a.eventId"
+                                ],
+                                "severity": [
+                                    "a.alertSeverity"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "AND",
+                        "ComparisonExpressionOperators.Or": "OR",
+                        "ComparisonComparators.GreaterThan": ">",
+                        "ComparisonComparators.GreaterThanOrEqual": ">=",
+                        "ComparisonComparators.LessThan": "<",
+                        "ComparisonComparators.LessThanOrEqual": "<=",
+                        "ComparisonComparators.Equal": "=",
+                        "ComparisonComparators.NotEqual": "!=",
+                        "ComparisonComparators.Like": "LIKE",
+                        "ComparisonComparators.In": "IN",
+                        "ComparisonComparators.Matches": "LIKE",
+                        "ObservationOperators.Or": "OR",
+                        "ObservationOperators.And": "OR"
+                    },
+                    "to_stix_map": {
+                        "create_time": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "EpochToTimestamp",
+                                "cybox": false
+                            },
+                            {
+                                "key": "last_observed",
+                                "transformer": "EpochToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "srcip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "network-traffic.src_ref",
+                                "object": "nt",
+                                "references": "src_ip"
+                            }
+                        ],
+                        "dstip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "network-traffic.dst_ref",
+                                "object": "nt",
+                                "references": "dst_ip"
+                            }
+                        ],
+                        "srcport": {
+                            "key": "network-traffic.src_port",
+                            "object": "nt",
+                            "transformer": "ToInteger"
+                        },
+                        "dstport": {
+                            "key": "network-traffic.dst_port",
+                            "object": "nt",
+                            "transformer": "ToInteger"
+                        },
+                        "protocol": {
+                            "key": "network-traffic.protocols",
+                            "object": "nt",
+                            "transformer": "ToLowercaseArray"
+                        },
+                        "domain-name": {
+                            "fields": {
+                                "value": [
+                                    "url.domain"
+                                ]
+                            }
+                        },
+                        "user": {
+                            "key": "user-account.user_id"
+                        },
+                        "file": {
+                            "key": "file.name",
+                            "object": "file"
+                        },
+                        "process": {
+                            "key": "process.name",
+                            "object": "process"
+                        },
+                        "sha1": {
+                            "key": "file.hashes.SHA-1",
+                            "object": "file"
+                        },
+                        "sha256": {
+                            "key": "file.hashes.SHA-256",
+                            "object": "file"
+                        },
+                        "md5": {
+                            "key": "file.hashes.MD5",
+                            "object": "file"
+                        },
+                        "event": {
+                            "key": "x-org-alertflex.event",
+                            "object": "x_org_alertflex"
+                        },
+                        "severity": {
+                            "key": "x-org-alertflex.severity",
+                            "object": "x_org_alertflex"
+                        },
+                        "category": {
+                            "key": "x-org-alertflex.category",
+                            "object": "x_org_alertflex"
+                        },
+                        "description": {
+                            "key": "x-org-alertflex.description",
+                            "object": "x_org_alertflex"
+                        },
+                        "info": {
+                            "key": "x-org-alertflex.info",
+                            "object": "x_org_alertflex"
+                        },
+                        "agent": {
+                            "key": "x-org-alertflex.agent",
+                            "object": "x_org_alertflex"
+                        },
+                        "source": {
+                            "key": "x-org-alertflex.source",
+                            "object": "x_org_alertflex"
+                        },
+                        "type": {
+                            "key": "x-org-alertflex.finding_type",
+                            "object": "x_org_alertflex"
+                        },
+                        "node": {
+                            "key": "x-org-alertflex.node",
+                            "object": "x_org_alertflex"
+                        }
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "password"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
