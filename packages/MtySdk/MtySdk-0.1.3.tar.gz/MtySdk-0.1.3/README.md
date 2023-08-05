@@ -1,0 +1,275 @@
+# MtySdk介绍
+
+- MtySdk目前是为麦田云际公司内部成员公司开发的局域网服务API.
+
+# 安装
+`pip install MtySdk`
+
+# 快速入门
+
+## 数据回测
+```py
+#encoding: utf-8
+from MtySdk import *
+
+# 使用员工账号连接系统
+api = MtyApi(auth=MtyAuth('account', 'password'))
+# 按需求注册服务
+math = api.query_math('kq_m_shfe_au','2018-01-02','2018-01-04')
+
+# 注册成功情况下消费服务
+while api.is_having():
+    result = api.get_math(math)
+    print(result)
+
+# 关闭服务
+api.close();
+```
+
+## 开仓平仓
+```py
+#encoding: utf-8
+from MtySdk import *
+
+# 使用员工账号连接系统
+api = MtyApi(auth=MtyAuth('account', 'password'))
+# 1 . 开仓 按需求注册服务
+math = api.query_math('CZCE.MA209C2850',None,None)
+print(math)
+
+# 注册成功情况下消费服务
+while True:
+    result = api.get_math(math)
+    print(result)
+
+    if result is None :
+        api.close();
+        break
+
+    if result['datetime'] == '2018-01-02 09:10:00':
+        # 开仓
+        api.openoptions(math, result, 'BUY', result['close'], 1)
+
+    if result['datetime'] == '2018-01-02 09:25:00':
+        # 平仓
+        api.closeposition(math, result, 'SELL', result['close'], 1)
+
+# 展示收益曲线
+showline(math['testplanid'])
+```
+
+## 期货交易手续费
+```py
+#encoding: utf-8
+from MtySdk import *
+
+# 使用员工账号连接系统
+api = MtyApi(auth=MtyAuth('account', 'password'))
+print('CZCE.RM209手续费：',api.queryServiceCharge(1,"CZCE.RM209","OPEN",3847.0))
+
+api.close();
+```
+
+## 期货交易保证金
+```py
+#encoding: utf-8
+from MtySdk import *
+
+# 使用员工账号连接系统
+api = MtyApi(auth=MtyAuth('account', 'password'))
+print('CZCE.RM209交易所需保证金：',api.queryEarnestMoney(1,"CZCE.RM209",3847.0,"BUY",None))
+print('CZCE.RM209C3700交易所需保证金：', api.queryEarnestMoney(1, "CZCE.RM209C3700", 287, "SELL", 3847.0))
+
+api.close();
+```
+
+## 历史数据上传
+```py
+from MtySdk import *
+
+#   上传文件本地地址
+filePath   = 'E:\\CZCE.CF107P12600.csv';
+#   品种名称
+sysbolname = 'CZCE.CF107P12600';
+
+#   数据清洗
+dataApi = DataApi()
+list = dataApi.clearMath(filePath)
+
+#   数据上传
+dataApi.upload(symboname=sysbolname,username='accountname',password='password',mathlist=list)
+```
+
+
+
+# 回测系统第二版
+## 历史数据上传模块
+### 期权历史数据上传
+```py
+from MtySdk import *
+
+SYMBOLNAME  =   "CZCE.CF107P12600"
+FILEPATH    =   "E://CZCE.CF107P12600.csv"
+USERNAME    =   "请输入你的账号"
+PASSWORD    =   "请输入你的密码"
+
+# 注册信息模型
+auth = MtyAuth(USERNAME,PASSWORD)
+# 声明数据操作工具
+data2Api = Data2Api(auth);
+
+# A . 期权数据上传
+# 从本地csv文件加载期权数据
+mathlist = data2Api.clearMath(FILEPATH)
+# 为期权挂载手续费和保证金计算结果
+for item in mathlist:
+    item['earnestmoney']       = "请在这里填写期权卖时保证金计算结果"
+    item['servicechargeshare'] = "请在这里填写期权手续费计算结果"
+    print(item)
+
+# 上传数据到云
+uploadresult = data2Api.upload(symboname=SYMBOLNAME,mathlist=mathlist);
+print(uploadresult)
+
+```
+
+### 期货历史数据上传
+```py
+from MtySdk import *
+
+SYMBOLNAME  =   "CZCE.CF107"
+FILEPATH    =   "E://%s.csv" %SYMBOLNAME
+USERNAME    =   "请输入你的账号"
+PASSWORD    =   "请输入你的密码"
+
+# 注册信息模型
+auth = MtyAuth(USERNAME,PASSWORD)
+# 声明数据操作工具
+data2Api = Data2Api(auth);
+
+# B . 期货数据上传
+# 从本地csv文件加载期货数据
+mathlist = data2Api.clearMath(FILEPATH)
+# 为期货挂载手续费和保证金计算结果
+for item in mathlist:
+    item['earnestmoney']            = "请在这里填写期货保证金计算结果"
+    item['servicechargeOpenclose']  = "请在这里填写期货开仓/平昨手续费计算结果"
+    item['servicechargeClosetoday'] = "请在这里填写期货平今手续费计算结果"
+    print(item)
+
+# 上传数据到云
+uploadresult = data2Api.upload(symboname=SYMBOLNAME,mathlist=mathlist);
+print(uploadresult)
+```
+
+### 寻找一个期货期权指定时间的数据
+```py
+from MtySdk import *
+import time
+import datetime
+
+USERNAME    = "请输入你的账号"
+PASSWORD    = "请输入你的密码"
+SYMBOLNAME  = "CZCE.CF107"
+
+# 注册信息模型
+auth = MtyAuth(USERNAME,PASSWORD)
+# 注册操作工厂
+data2Api = Data2Api(auth);
+# 注册一个品种的数据池
+data2Api.registerData(symbolname=SYMBOLNAME);
+
+# 在业务中快速的通过10位时间戳寻找这个时间的历史数据
+for num in range(0,10):
+    item = data2Api.getResiterDataByTime(1622011560)
+    print(item);
+```
+## 数据回测模板
+### 数据推送
+```py
+from MtySdk import *
+
+USERNAME    =   "请输入你的账号"
+PASSWORD    =   "请输入你的密码"
+
+# 注册信息模型
+auth = MtyAuth(USERNAME,PASSWORD)
+# 声明数据操作工具
+mty2Api = Mty2Api(auth);
+
+# 目标品种
+symbolnames  = ["CZCE.CF107","CZCE.CF107P12600"]
+# 时间颗粒度  mty2Api.FIVE_MINUTE： 5分钟，  mty2Api.SIXTY_MINUTE： 整点
+timeStepSize = mty2Api.FIVE_MINUTE;
+
+# 数据时间段
+starttime    =  "2020-10-09 09:00:00"
+endtime      =  "2020-10-12 09:00:00"
+
+# 数据挂载数据工厂
+mty2Api.initmath(symbolnames=symbolnames , starttime=starttime , endtime=endtime ,timeStepSize=timeStepSize);
+
+# 消费数据
+while mty2Api.ishaving():
+    # 获取下一条数据的时间间隔 ， 秒为单位
+    item = mty2Api.getmath(None);
+    print(item)
+```
+
+### 开仓平仓
+```py
+from MtySdk import *
+
+USERNAME    =   "请输入用户名"
+PASSWORD    =   "请输入密码"
+
+# 注册信息模型
+auth = MtyAuth(USERNAME,PASSWORD)
+# 声明数据操作工具
+mty2Api = Mty2Api(auth);
+
+# 目标品种
+symbolnames  =  ["DCE.i2203","DCE.i2203-C-1000"]
+# 时间颗粒度  mty2Api.FIVE_MINUTE： 5分钟，  mty2Api.SIXTY_MINUTE： 整点
+timeStepSize = mty2Api.SIXTY_MINUTE;
+
+# 数据时间段
+starttime    =  "2021-04-06 14:55:00"
+endtime      =  "2022-02-11 14:55:00"
+
+# 账户初始资金
+amount = 100000;
+
+# 数据挂载数据工厂
+mty2Api.initmath(symbolnames=symbolnames , starttime=starttime , endtime=endtime ,timeStepSize=timeStepSize);
+
+# 消费数据
+while mty2Api.ishaving():
+    # 获取下一条数据的时间间隔 ， 秒为单位
+    item = mty2Api.getmath(None);
+
+    if(item['time'] == '2021-04-08 14:00:00'):
+        # 开仓
+        symbol = 'DCE.i2203-C-1000';
+        mty2Api.openorder(symbol,mty2Api.BUY,2,item[symbol]);
+
+    if (item['time'] == '2021-04-08 14:00:00'):
+        # 开仓
+        symbol = 'DCE.i2203';
+        mty2Api.openorder(symbol, mty2Api.BUY, 1, item[symbol]);
+
+    if (item['time'] == '2021-10-25 21:00:00'):
+        # 平仓
+        symbol = 'DCE.i2203';
+        mty2Api.closeorder(symbol, mty2Api.SELL, 1, item[symbol]);
+
+    if (item['time'] == '2021-10-25 21:00:00'):
+        # 平仓
+        symbol = 'DCE.i2203-C-1000';
+        mty2Api.closeorder(symbol, mty2Api.SELL, 2, item[symbol]);
+    print(item)
+
+# 保存数据
+mty2Api.saveplan(amount);
+
+```
