@@ -1,0 +1,8 @@
+from . import SensorDeviceClass as SensorDeviceClass
+from _typeshed import Incomplete
+from datetime import date, datetime
+from homeassistant.core import callback as callback
+
+_LOGGER: Incomplete
+
+def async_parse_date_datetime(value: str, entity_id: str, device_class: Union[SensorDeviceClass, str, None]) -> Union[datetime, date, None]: ...
