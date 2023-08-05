@@ -1,0 +1,99 @@
+stages:
+#  - prepare
+#  - build
+  - test
+
+# update:
+#   image: python:3.9
+#   stage: prepare
+#   script:
+#     - apt-get update -qq -y
+#     - apt-get install -qq -y build-essential gcc make apt-utils
+#     - apt-get install -y software-properties-common xvfb libgtk2.0-0 libnotify4 freeglut3 libsdl1.2debian pkg-config
+#     - add-apt-repository -y -r ppa:deadsnakes/ppa
+#     - apt update -q -y
+#     - apt-get update -qq -y
+#     - apt-get install -qq -y libbz2-dev zlib1g-dev libncurses5-dev libncursesw5-dev liblzma-dev libgtk-3-dev dpkg-dev libjpeg-dev libtiff-dev libsdl1.2-dev libnotify-dev freeglut3 freeglut3-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev libgtk-3-0 mlocate libwebkit2gtk-4.0 libwebkit2gtk-4.0-dev
+#     - apt-get install -qq -y python3-wxgtk4.0
+#     - echo "-----"
+#     - updatedb
+#     - echo "-----"
+#     - cat /etc/os-release
+#     - echo "-----"
+#     - cat $(locate gtk+-3.0.pc)
+#     - echo "-----"
+#     - pkg-config gtk+-3.0 --cflags
+
+# build_htslib:
+#   image: python:3.9
+#   stage: build
+#   script:
+#     - cd ..
+#     - wget https://github.com/samtools/htslib/archive/refs/tags/1.10.2.tar.gz
+#     - tar xzf 1.10.2.tar.gz
+#     - ls
+#     - cd htslib-1.10.2
+#     - autoreconf
+#     - ./configure
+#     - make
+#     - make install
+#     - cd ..
+#     - echo "////////////////////"
+#     - ls
+    
+# before_script:
+#   - python3 -V  # Print out python version for debugging
+#   - python3 -m venv venv
+#   - source venv/bin/activate
+#   - pip install pip --upgrade
+#   - pip install flit
+#   - FLIT_ROOT_INSTALL=1 flit install
+
+# python38:
+#   image: python:3.8
+#   stage: test
+#   script:
+#     - tox -e py38-unit
+#     - tox -e py38-functional
+
+python39:
+  image: python:3.9
+  stage: test
+  script:
+    - apt-get update -qq -y
+    - apt-get install -qq -y build-essential gcc make apt-utils
+    - apt-get install -y software-properties-common xvfb libgtk2.0-0 libnotify4 freeglut3 libsdl1.2debian pkg-config
+    - add-apt-repository -y -r ppa:deadsnakes/ppa
+    - apt-get update -qq -y
+    - apt-get install -qq -y libbz2-dev zlib1g-dev libncurses5-dev libncursesw5-dev liblzma-dev libgtk-3-dev dpkg-dev libjpeg-dev libtiff-dev libsdl1.2-dev libnotify-dev freeglut3 freeglut3-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev libgtk-3-0 libwebkit2gtk-4.0 libwebkit2gtk-4.0-dev
+    - apt-get install -qq -y samtools
+    - pip install pip --upgrade
+    - pip install https://itp.uni-frankfurt.de/~palao/python/wxPython-4.1.1-cp39-cp39-linux_x86_64.whl
+    - pip install flit
+    - pip install git+https://github.com/PacificBiosciences/pbcore.git
+    - pip install git+https://github.com/PacificBiosciences/pbcommand.git
+    - pip install git+https://github.com/PacificBiosciences/kineticsTools.git
+    - FLIT_ROOT_INSTALL=1 flit install --deps=all
+    - tox -e py39-unit
+    - tox -e py39-functional
+
+# run:
+#   script:
+#     - python setup.py bdist_wheel
+#     # an alternative approach is to install and run:
+#     - pip install dist/*
+#     # run the command here
+#   artifacts:
+#     paths:
+#       - dist/*.whl
+
+# pages:
+#   script:
+#     - pip install sphinx sphinx-rtd-theme
+#     - cd docs ; make html
+#     - mv _build/html/ ../public/
+#   artifacts:
+#     paths:
+#       - public
+#   only:
+#     - master

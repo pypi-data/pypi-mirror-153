@@ -1,0 +1,239 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Single molecule analysis &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using the package as a library" href="as_library.html" />
+    <link rel="prev" title="Filtering Bam files with bam-filter" href="bam_filter.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="single-molecule-analysis">
+<span id="sm-analysis"></span><h1>Single molecule analysis<a class="headerlink" href="#single-molecule-analysis" title="Permalink to this headline">¶</a></h1>
+<section id="id1">
+<h2><code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code><a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code> is the main program provided by <strong>PacBio Data Processing</strong>. It analyzes a
+given input BAM file evaluating the methylation status of <em>each molecule</em>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code> expects a PacBio BAM file as input and the corresponding
+<code class="docutils literal notranslate"><span class="pre">fasta</span></code> file containing the reference. One of the first things that
+the program will do is to ensure that this input BAM is aligned. Actually
+two alignment processes will be carried out with the help of
+<a class="reference internal" href="../indepth/blasr.html#blasr"><span class="std std-ref">Blasr</span></a> : a <em>straight</em> alignment and another alignment with a rotated
+reference, the so-called <em>pi shifted</em> alignment, where the origin of the
+reference is rotated by 180 degrees. The aim of this second alignment
+process is to catch molecules that cross the origin with the help of those
+two files.</p>
+<p>Before running <a class="reference internal" href="../indepth/blasr.html#blasr"><span class="std std-ref">Blasr</span></a> the program will try to find the two aligned
+versions of the input file, <em>if it is</em> unaligned.</p>
+<p>On the other hand, if the input file is actually aligned, a <em>pi shifted</em>
+version of it will be sought. And if found, it will be used.</p>
+<p>If only a <em>straight</em> aligned file is at hand, the circular topology of the
+reference will not be considered.</p>
+<p>To find the aligned versions of the input BAM, the program tries to answer
+three questions:</p>
+<ol class="arabic simple">
+<li><p>Is there a candidate with the expected filename?</p></li>
+<li><p>Is the candidate aligned?</p></li>
+<li><p>Are the molecules in it a subset of the molecules in the input BAM?</p></li>
+</ol>
+<p>If the answer to the three questions is yes, the candidate is considered
+a <em>plausible aligned version</em> of the input BAM, and it is as such used
+within the rest of the analysis. If not, the alignment process is carried
+out.</p>
+<p>WIP: comments on CCS files…</p>
+<section id="command-line-options">
+<h3>Command line options<a class="headerlink" href="#command-line-options" title="Permalink to this headline">¶</a></h3>
+<p>The program has a <a class="reference external" href="https://en.wikipedia.org/wiki/Command-line_interface">Command Line Interface (CLI)</a> with the
+following options:</p>
+<blockquote>
+<div><p>$ sm-analysis -h
+usage: sm-analysis [-h] [-M MODEL] [-b PATH] [-p PATH] [-i PATH] [-N NUM] [-n NUM] [–nprocs-blasr NUM] [-P PARTITION:NUMBER-OF-PARTITIONS] [-C BAM-FILE] [-c BAM-FILE]
+[–keep-temp-dir] [-m MOD-TYPE [MOD-TYPE …]] [–only-produce-methylation-report] [-v] [–version]
+BAM-FILE ALIGNMENT-FILE</p>
+<p>Single Molecule Analysis. This program splits a BAM into ‘molecules’, aligns them individually with blasr (if wanted), generates indices and processes each molecule thru
+ipdSummary producing a joined gff file, a csv file with columns: molecule name, ?, ?, ?, ?, …and a so-called methylation report. For this last part an aligned CCS BAM
+file is required. It can be passed in the command line or produced with the aligner from the CCS BAM file. If the CCS BAM file is not found –or not given–, it will be
+tried to be produced using ‘ccs’.</p>
+<p>positional arguments:
+BAM-FILE              input file in BAM format
+ALIGNMENT-FILE        input file containing the alignment in FASTA format (typically a file ending in ‘.fa’ or ‘.fasta’). A ‘.fai’ file (‘ALIGNMENT-FILE.fai’) is also
+expected to be found side-by-side to ALIGNMENT-FILE.</p>
+<p>optional arguments:
+-h, –help            show this help message and exit
+-M MODEL, –ipd-model MODEL</p>
+<blockquote>
+<div><p>model to be used by ipdSummary to identify the type of modification. MODEL must be either the model name or the path to the ipd model. First, the</p>
+</div></blockquote>
+<p>program will make an attempt to interprete MODEL as a path to a file defining a model; if that fails, MODEL will be understood to be the name of
+a model that must be accessible in the resources directory of kineticsTools (e.g. ‘-M SP3-C3’ would trigger a search for a file called
+‘SP3-C3.npz.gz’ within the directory with models provided by kineticsTools). If this option is not given, the default model in ipdSummary is
+used.
+-b PATH, –blasr-path PATH</p>
+<blockquote>
+<div><p>path to blasr program (default: ‘blasr’)</p>
+</div></blockquote>
+<dl class="option-list">
+<dt><kbd><span class="option">-p <var>PATH</var></span>, <span class="option">--pbindex-path <var>PATH</var></span></kbd></dt>
+<dd><p>path to pbindex program (default: ‘pbindex’)</p>
+</dd>
+<dt><kbd><span class="option">-i <var>PATH</var></span>, <span class="option">--ipdsummary-path <var>PATH</var></span></kbd></dt>
+<dd><p>path to ipdSummary program (default: ‘ipdSummary’)</p>
+</dd>
+<dt><kbd><span class="option">-N <var>NUM</var></span>, <span class="option">--num-simultaneous-ipdsummarys <var>NUM</var></span></kbd></dt>
+<dd><p>number of simultaneous instances of ipdSummary that will cooperate to process the molecules (default: 1)</p>
+</dd>
+<dt><kbd><span class="option">-n <var>NUM</var></span>, <span class="option">--num-workers-per-ipdsummary <var>NUM</var></span></kbd></dt>
+<dd><p>number of worker processes that each instance of ipdSummary will spawn (default: 1)</p>
+</dd>
+<dt><kbd><span class="option">--nprocs-blasr <var>NUM</var></span></kbd></dt>
+<dd><p>number of worker processes that each instance of blasr will spawn (default: 1)</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>-P PARTITION:NUMBER-OF-PARTITIONS, –partition PARTITION:NUMBER-OF-PARTITIONS</dt><dd><p>this option instructs the program to only analyze a fraction (partition) of the molecules present in the input bam file. The file is divided in
+<cite>NUMBER OF PARTITIONS</cite> (almost) equal pieces but ONLY the PARTITION-th partition (fraction) is analyzed. For instance, <cite>–partition 3:7</cite> means
+that the bam file is divided in seven pieces but only the third piece is analyzed (by default all the file is analyzed)</p>
+</dd>
+</dl>
+<dl class="option-list">
+<dt><kbd><span class="option">-C <var>BAM-FILE</var></span>, <span class="option">--aligned-CCS-bam-file <var>BAM-FILE</var></span></kbd></dt>
+<dd><p>aligned CCS file in BAM format used to produce a report of methylation states. If provided, it is used in the production of the methylation
+states report. If missing, one is generated from the CCS file using ‘blasr’</p>
+</dd>
+<dt><kbd><span class="option">-c <var>BAM-FILE</var></span>, <span class="option">--CCS-bam-file <var>BAM-FILE</var></span></kbd></dt>
+<dd><blockquote>
+<div><p>CCS file in BAM format used to produce a report of methylation states. If provided, and the aligned version of it is not provided, it is aligned
+and the result is used in the production of the methylation states report. If missing, one is generated from the original BAM file using the</p>
+</div></blockquote>
+<p>‘ccs’ program</p>
+</dd>
+<dt><kbd><span class="option">--keep-temp-dir</span></kbd></dt>
+<dd><p>should we make a copy of the temporary files generated? (default: False)</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>-m MOD-TYPE [MOD-TYPE …], –modification-types MOD-TYPE [MOD-TYPE …]</dt><dd><p>focus only in the requested modification types (default: [‘m6A’])</p>
+</dd>
+</dl>
+<dl class="option-list">
+<dt><kbd><span class="option">--only-produce-methylation-report</span></kbd></dt>
+<dd><p>use this flag to only produce the methylation report from the per detection csv file (default: False)</p>
+</dd>
+</dl>
+<p>-v, –verbose
+–version             show program’s version number and exit</p>
+</div></blockquote>
+</section>
+</section>
+<section id="graphical-user-interface-sm-analysis-gui">
+<h2>Graphical User Interface: <code class="docutils literal notranslate"><span class="pre">sm-analysis-gui</span></code><a class="headerlink" href="#graphical-user-interface-sm-analysis-gui" title="Permalink to this headline">¶</a></h2>
+<p>Despite the power, beauty and <em>vintage</em> flavor of the command line, <strong>PacBio Data Processing</strong> offers
+a <a class="reference external" href="https://en.wikipedia.org/wiki/Graphical_user_interface">Graphical User Interface (GUI)</a> for its main executable <code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code>:
+<code class="docutils literal notranslate"><span class="pre">sm-analysis-gui</span></code> which, upon execution, will open a window that will allow
+you to drive the single molecule analysis.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../indepth/index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../devel/index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Usage</a><ul>
+      <li>Previous: <a href="bam_filter.html" title="previous chapter">Filtering Bam files with <code class="docutils literal notranslate"><span class="pre">bam-filter</span></code></a></li>
+      <li>Next: <a href="as_library.html" title="next chapter">Using the package as a library</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/usage/sm_analysis.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

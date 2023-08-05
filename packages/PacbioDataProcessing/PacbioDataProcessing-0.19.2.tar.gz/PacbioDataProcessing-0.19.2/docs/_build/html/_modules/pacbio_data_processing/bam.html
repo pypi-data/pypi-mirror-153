@@ -1,0 +1,404 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pacbio_data_processing.bam &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for pacbio_data_processing.bam</h1><div class="highlight"><pre>
+<span></span><span class="c1">#######################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2021, 2022 David Palao</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of PacBio data processing.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBioDataProcessing is free software: you can redistribute it and/or modify</span>
+<span class="c1">#  it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#  the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#  (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBio data processing is distributed in the hope that it will be useful,</span>
+<span class="c1">#  but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#  GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#  You should have received a copy of the GNU General Public License</span>
+<span class="c1">#  along with PacBioDataProcessing. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">#######################################################################</span>
+
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">cached_property</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">hashlib</span> <span class="kn">import</span> <span class="n">md5</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span> <span class="nn">pysam</span>
+
+<span class="kn">from</span> <span class="nn">pacbio_data_processing.constants</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SAMTOOLS_GET_HEADER</span><span class="p">,</span> <span class="n">SAMTOOLS_GET_BODY</span><span class="p">,</span> <span class="n">SAMTOOLS_WRITE_BAM</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">BAM_POS_COLUMN</span> <span class="o">=</span> <span class="mi">3</span>
+
+
+<div class="viewcode-block" id="pack_lines"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam.pack_lines">[docs]</a><span class="k">def</span> <span class="nf">pack_lines</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">line</span><span class="p">)</span><span class="o">+</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span></div>
+
+
+<div class="viewcode-block" id="set_pysam_verbosity"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam.set_pysam_verbosity">[docs]</a><span class="k">def</span> <span class="nf">set_pysam_verbosity</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Ad-hoc function to remove unpleasant errors messages by pysam.&quot;&quot;&quot;</span>
+    <span class="n">api_error_common_msg</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;You might see some non-critical error messages from pysam.&quot;</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">pysam</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">api_error_common_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">&quot;&#39;pysam.set_verbosity&#39; failed. It looks like pysam changed its&quot;</span>
+            <span class="s2">&quot; API. Continuing without setting the verbosity. &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">api_error_common_msg</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Unexpected error calling &#39;pysam.set_verbosity&#39;:</span><span class="se">\n</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Continuing without setting the verbosity. </span><span class="si">{</span><span class="n">api_error_common_msg</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BamFile"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam.BamFile">[docs]</a><span class="k">class</span> <span class="nc">BamFile</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Proxy class for _BamFileSamtools and _BamFilePysam. This is a</span>
+<span class="sd">    high level class whose only roles are to choose among _ReadableBamFile</span>
+<span class="sd">    and _WritableBamFile and to select the underlying implementation to</span>
+<span class="sd">    interact with the BAM file::</span>
+
+<span class="sd">      - _BamFileSamtools: implementation that simply wraps the &#39;samtools&#39;</span>
+<span class="sd">       command line, and</span>
+<span class="sd">      - _BamFilePysam: implementation that uses &#39;pysam&#39;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="BamFile.__init__"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam.BamFile.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bam_file_name</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="n">_ReadableBamFile</span>
+        <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;w&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="n">_WritableBamFile</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;invalid mode: &#39;</span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real_subject</span> <span class="o">=</span> <span class="n">_BamFilePysam</span><span class="p">(</span><span class="n">bam_file_name</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_real_subject</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">_ReadableBamFile</span><span class="p">(</span><span class="n">BamFile</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This class provides the attributes necessary for BamFile to be</span>
+<span class="sd">    readable. Most attributes, e.g.</span>
+
+<span class="sd">    - header</span>
+<span class="sd">    - _BamLine</span>
+<span class="sd">    - molecule_column</span>
+<span class="sd">    - num_columns</span>
+
+<span class="sd">    are cached, to avoid unnecessary IO ops (in the case of being a</span>
+<span class="sd">    _BamFileSamtools object, an IO op would imply calling &quot;samtools&quot; each</span>
+<span class="sd">    time the given attribute is read, which makes no sense since that would</span>
+<span class="sd">    mean that the file has been modified after being opened, i.e. it has been</span>
+<span class="sd">    most probably corrupted).</span>
+
+<span class="sd">    The &#39;body&#39; property is not cached as it is a generator of lines and it</span>
+<span class="sd">    might make sense to read several times the same file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">MOLECULE_MARKER</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;zm:i:&quot;</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_header</span><span class="p">()</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">_BamLine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">line_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;attr</span><span class="si">{</span><span class="n">_</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_columns</span><span class="p">)]</span>
+        <span class="n">line_attrs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">molecule_column</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;zmw&quot;</span>
+
+        <span class="k">class</span> <span class="nc">BamLine</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;BamLine&quot;</span><span class="p">,</span> <span class="n">line_attrs</span><span class="p">)):</span>
+            <span class="nd">@property</span>
+            <span class="k">def</span> <span class="nf">molecule_id</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="n">zmw</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MOLECULE_MARKER</span><span class="p">):]</span>
+
+            <span class="nd">@property</span>
+            <span class="k">def</span> <span class="nf">flag</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">instance</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">BamLine</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_body</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_BamLine</span><span class="p">(</span><span class="o">*</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">body</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">num_items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">mols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">mols</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">molecule_id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;molecules&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">mols</span><span class="p">),</span> <span class="s2">&quot;subreads&quot;</span><span class="p">:</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">}</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">molecule_column</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_body</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">MOLECULE_MARKER</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">i</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">num_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_body</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">num_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_items</span><span class="p">[</span><span class="s2">&quot;molecules&quot;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">num_subreads</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_items</span><span class="p">[</span><span class="s2">&quot;subreads&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_items</span><span class="p">[</span><span class="s2">&quot;subreads&quot;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">all_molecules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">mol_id</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">molecule_id</span>
+            <span class="k">if</span> <span class="n">mol_id</span> <span class="o">!=</span> <span class="n">last</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">mol_id</span>
+                <span class="n">last</span> <span class="o">=</span> <span class="n">mol_id</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">is_aligned</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="n">BAM_POS_COLUMN</span><span class="p">]</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;0&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">is_plausible_aligned_version_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">BamFile</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The main purpose of this *ad-hoc method* is to help</span>
+<span class="sd">        SingleMoleculeAnalysis by providing a plausible answer to</span>
+<span class="sd">        the question: *Does this BamFile look like an aligned version*</span>
+<span class="sd">        *of another BamFile?*</span>
+
+<span class="sd">        The implementation checks that the subject is aligned, the other</span>
+<span class="sd">        is not and that the subject&#39;s set of molecules is a (proper)</span>
+<span class="sd">        subset of the molecules in the other BamFile.</span>
+
+<span class="sd">        Exceptions are propagated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_aligned</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">other</span><span class="o">.</span><span class="n">is_aligned</span><span class="p">):</span>
+            <span class="n">mols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all_molecules</span><span class="p">)</span>
+            <span class="n">other_mols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">all_molecules</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mols</span> <span class="o">&lt;=</span> <span class="n">other_mols</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">md5sum_body</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;MD5 checksum of only the body of the BAM file, excluding the</span>
+<span class="sd">        header&quot;&quot;&quot;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="n">md5</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pack_lines</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_body</span><span class="p">()):</span>
+            <span class="n">checksum</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">checksum</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">full_md5sum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;MD5 checksum of the full file.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">md5</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+
+    <span class="c1"># It would be good to have something like:</span>
+    <span class="c1"># def __getitem__(self, mol_id):</span>
+    <span class="c1">#     for line in self:</span>
+    <span class="c1">#         if line.molecule_id == mol_id:</span>
+    <span class="c1">#             yield line</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">size_in_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span>
+
+
+<span class="k">class</span> <span class="nc">_WritableBamFile</span><span class="p">(</span><span class="n">BamFile</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">_BamFileSamtools</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Implementation that wraps &#39;samtools view&#39;.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bam_file_name</span><span class="p">):</span>
+        <span class="c1"># A refactor of __init__ would probably need an ABC...</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span> <span class="o">=</span> <span class="n">bam_file_name</span>
+
+    <span class="k">def</span> <span class="nf">_read_header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># check for errors and report them if any. Need FT!</span>
+        <span class="k">return</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">SAMTOOLS_GET_HEADER</span><span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span><span class="p">,),</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">stdout</span>
+
+    <span class="k">def</span> <span class="nf">_read_body</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+                <span class="n">SAMTOOLS_GET_BODY</span><span class="o">+</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span><span class="p">,),</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span>
+                <span class="p">)</span> <span class="k">as</span> <span class="n">body</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">body</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bam_file</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+                    <span class="n">SAMTOOLS_WRITE_BAM</span><span class="p">,</span> <span class="n">stdin</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">bam_file</span>
+                    <span class="p">)</span> <span class="k">as</span> <span class="n">proc</span><span class="p">:</span>
+                <span class="n">proc</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pack_lines</span><span class="p">(</span><span class="n">body</span><span class="p">):</span>
+                    <span class="n">proc</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">_BamFilePysam</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Implementation that wraps &#39;pysam&#39;.&quot;&quot;&quot;</span>
+    <span class="n">_PYSAM_VERBOSITY_SET</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bam_file_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span> <span class="o">=</span> <span class="n">bam_file_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_pysam_verbosity_once</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">set_pysam_verbosity_once</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;This class method helps to ensure that set_pysam_verbosity</span>
+<span class="sd">        is called only once, the first time an instance is created.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_PYSAM_VERBOSITY_SET</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">set_pysam_verbosity</span><span class="p">()</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">_PYSAM_VERBOSITY_SET</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_ralignment_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;An AlignmentFile instance is created for READING.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">,</span> <span class="n">check_sq</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_read_header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ralignment_file</span><span class="o">.</span><span class="n">header</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_read_body</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ralignment_file</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">line</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">body</span><span class="p">):</span>
+        <span class="c1"># Need to be sure that there is a single &quot;\n&quot; at the end:</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentHeader</span><span class="o">.</span><span class="n">from_text</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bam_file_name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">h</span><span class="p">)</span> <span class="k">as</span> <span class="n">g</span><span class="p">:</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">header</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pack_lines</span><span class="p">(</span><span class="n">body</span><span class="p">):</span>
+                <span class="n">g</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">pysam</span><span class="o">.</span><span class="n">AlignedSegment</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span>
+                    <span class="c1"># Need to be sure that there is no &quot;\n&quot; between lines:</span>
+                    <span class="n">line</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">header</span><span class="p">)</span>
+                <span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/index.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indepth/index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../devel/index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

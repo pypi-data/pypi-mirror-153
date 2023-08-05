@@ -1,0 +1,621 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pacbio_data_processing.bam_utils &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for pacbio_data_processing.bam_utils</h1><div class="highlight"><pre>
+<span></span><span class="c1">#######################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2020-2022 David Palao</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of PacBio data processing.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBioDataProcessing is free software: you can redistribute it and/or modify</span>
+<span class="c1">#  it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#  the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#  (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBio data processing is distributed in the hope that it will be useful,</span>
+<span class="c1">#  but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#  GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#  You should have received a copy of the GNU General Public License</span>
+<span class="c1">#  along with PacBioDataProcessing. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">#######################################################################</span>
+
+<span class="sd">&quot;&quot;&quot;Some helper functions to manipulate BAM files</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Generator</span><span class="p">,</span> <span class="n">Iterable</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">cached_property</span>
+
+<span class="kn">from</span> <span class="nn">.bam</span> <span class="kn">import</span> <span class="n">BamFile</span>
+<span class="kn">from</span> <span class="nn">.constants</span> <span class="kn">import</span> <span class="n">DNA_SEQ_COLUMN</span><span class="p">,</span> <span class="n">ASCII_QUALS_COLUMN</span>
+<span class="kn">from</span> <span class="nn">.cigar</span> <span class="kn">import</span> <span class="n">Cigar</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">shift_me_back</span><span class="p">,</span> <span class="n">find_gatc_positions</span>
+
+
+<span class="n">REVERSE_COMPLEMENTED_FLAG</span> <span class="o">=</span> <span class="mh">0x10</span>
+<span class="n">DIRECT_PRIMARY_FLAG</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">SECONDARY_ALIGNMENT_FLAG</span> <span class="o">=</span> <span class="mh">0x100</span>
+
+
+<div class="viewcode-block" id="CircularDNAPosition"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.CircularDNAPosition">[docs]</a><span class="k">class</span> <span class="nc">CircularDNAPosition</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;A type that allows to do arithmetics with postitions</span>
+<span class="sd">    in a circular topology.</span>
+
+<span class="sd">    &gt;&gt;&gt; p = CircularDNAPosition(5, ref_len=9)</span>
+
+<span class="sd">    The class has a decent repr:</span>
+
+<span class="sd">    &gt;&gt;&gt; p</span>
+<span class="sd">    CircularDNAPosition(5, ref_len=9)</span>
+
+<span class="sd">    And we can use it in arithmetic contexts:</span>
+
+<span class="sd">    &gt;&gt;&gt; p + 1</span>
+<span class="sd">    CircularDNAPosition(6, ref_len=9)</span>
+<span class="sd">    &gt;&gt;&gt; int(p+1)</span>
+<span class="sd">    6</span>
+<span class="sd">    &gt;&gt;&gt; int(p+5)</span>
+<span class="sd">    1</span>
+<span class="sd">    &gt;&gt;&gt; int(20+p)</span>
+<span class="sd">    7</span>
+<span class="sd">    &gt;&gt;&gt; p - 1</span>
+<span class="sd">    CircularDNAPosition(4, ref_len=9)</span>
+<span class="sd">    &gt;&gt;&gt; int(p-6)</span>
+<span class="sd">    8</span>
+<span class="sd">    &gt;&gt;&gt; int(p-16)</span>
+<span class="sd">    7</span>
+<span class="sd">    &gt;&gt;&gt; int(2-p)</span>
+<span class="sd">    6</span>
+<span class="sd">    &gt;&gt;&gt; int(8-p)</span>
+<span class="sd">    3</span>
+
+<span class="sd">    Also boolean equality is supported:</span>
+
+<span class="sd">    &gt;&gt;&gt; p == CircularDNAPosition(5, ref_len=9)</span>
+<span class="sd">    True</span>
+<span class="sd">    &gt;&gt;&gt; p == CircularDNAPosition(6, ref_len=9)</span>
+<span class="sd">    False</span>
+<span class="sd">    &gt;&gt;&gt; p == CircularDNAPosition(14, ref_len=9)</span>
+<span class="sd">    True</span>
+<span class="sd">    &gt;&gt;&gt; p == CircularDNAPosition(5, ref_len=8)</span>
+<span class="sd">    False</span>
+<span class="sd">    &gt;&gt;&gt; p == 5</span>
+<span class="sd">    False</span>
+
+<span class="sd">    But also &lt; is supported:</span>
+
+<span class="sd">    &gt;&gt;&gt; p &lt; p+1</span>
+<span class="sd">    True</span>
+<span class="sd">    &gt;&gt;&gt; p &lt; p</span>
+<span class="sd">    False</span>
+<span class="sd">    &gt;&gt;&gt; p &lt; p-1</span>
+<span class="sd">    False</span>
+
+<span class="sd">    Of course two instances cannot be compared if their underlying</span>
+<span class="sd">    references are not equally long:</span>
+
+<span class="sd">    &gt;&gt;&gt; s = CircularDNAPosition(5, ref_len=10)</span>
+<span class="sd">    &gt;&gt;&gt; p &lt; s</span>
+<span class="sd">    Traceback (most recent call last):</span>
+<span class="sd">    ...</span>
+<span class="sd">    ValueError: cannot compare positions if topologies differ</span>
+
+<span class="sd">    or if they are not both CircularDNAPosition&#39;s:</span>
+
+<span class="sd">    &gt;&gt;&gt; s &lt; 6</span>
+<span class="sd">    Traceback (most recent call last):</span>
+<span class="sd">    ...</span>
+<span class="sd">    TypeError: &#39;&lt;&#39; not supported between instances of &#39;CircularDNAPosition&#39; and &#39;int&#39;</span>
+
+<span class="sd">    The class has a convenience method:</span>
+
+<span class="sd">    &gt;&gt;&gt; p.as_1base()</span>
+<span class="sd">    6</span>
+
+<span class="sd">    If the ref_len input parameter is less than or equal to 0, the</span>
+<span class="sd">    topology is assumed to be linear:</span>
+
+<span class="sd">    &gt;&gt;&gt; q = CircularDNAPosition(5, ref_len=-1)</span>
+<span class="sd">    &gt;&gt;&gt; q</span>
+<span class="sd">    CircularDNAPosition(5, ref_len=0)</span>
+<span class="sd">    &gt;&gt;&gt; q + 1001</span>
+<span class="sd">    CircularDNAPosition(1006, ref_len=0)</span>
+<span class="sd">    &gt;&gt;&gt; q - 100</span>
+<span class="sd">    CircularDNAPosition(-95, ref_len=0)</span>
+<span class="sd">    &gt;&gt;&gt; int(10-q)</span>
+<span class="sd">    5</span>
+
+<span class="sd">    Linear topology is the default behaviour:</span>
+
+<span class="sd">    &gt;&gt;&gt; r = CircularDNAPosition(5)</span>
+<span class="sd">    &gt;&gt;&gt; r</span>
+<span class="sd">    CircularDNAPosition(5, ref_len=0)</span>
+
+<span class="sd">    It is possitble to use them as indices in slices:</span>
+
+<span class="sd">    &gt;&gt;&gt; seq = &quot;ABCDEFGHIJ&quot;</span>
+<span class="sd">    &gt;&gt;&gt; seq[r:r+2]</span>
+<span class="sd">    &#39;FG&#39;</span>
+
+<span class="sd">    And CircularDNAPosition instances can be hashed (so that they can</span>
+<span class="sd">    be elements of a set or keys in a dictionary):</span>
+
+<span class="sd">    &gt;&gt;&gt; positions = {p, q, r}</span>
+
+<span class="sd">    And, very conveniently, a CircularDNAPosition converts tp str as</span>
+<span class="sd">    ints do:</span>
+
+<span class="sd">    &gt;&gt;&gt; str(r) == &#39;5&#39;</span>
+<span class="sd">    True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="CircularDNAPosition.__init__"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.CircularDNAPosition.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ref_len</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The parameter &#39;ref_len&#39; represents the length of the sequence,</span>
+<span class="sd">        which has full meaning only if the reference is truly circular.</span>
+<span class="sd">        If the length is 0 or less, it is set to 0 and it is understood</span>
+<span class="sd">        that the reference has a linear topology.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">ref_len</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrap_around</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_wrap_around</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">pos</span> <span class="o">%=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span>
+        <span class="k">return</span> <span class="n">pos</span>
+
+    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">new_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrap_around</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos</span><span class="o">+</span><span class="nb">int</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">new_pos</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">+</span><span class="n">other</span>
+
+    <span class="k">def</span> <span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">new_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrap_around</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos</span><span class="o">-</span><span class="nb">int</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">new_pos</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">)</span><span class="o">-</span><span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos</span><span class="si">}</span><span class="s2">, ref_len=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__int__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span>
+
+<div class="viewcode-block" id="CircularDNAPosition.as_1base"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.CircularDNAPosition.as_1base">[docs]</a>    <span class="k">def</span> <span class="nf">as_1base</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;It returns the raw 1-based position.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span><span class="o">+</span><span class="mi">1</span></div>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">epos</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_pos</span><span class="p">)</span>
+            <span class="n">eref</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_n</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">epos</span> <span class="ow">and</span> <span class="n">eref</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="fm">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">same_n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_n</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">type_self</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="n">type_other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;&#39;&lt;&#39; not supported between instances of &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">type_self</span><span class="si">}</span><span class="s2">&#39; and &#39;</span><span class="si">{</span><span class="n">type_other</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">same_n</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">_pos</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cannot compare positions if topologies differ&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__index__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span>
+
+    <span class="k">def</span> <span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Molecule"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.Molecule">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">Molecule</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Abstraction around a single molecule from a Bam file&quot;&quot;&quot;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">src_bam_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">_best_ccs_line</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gff_path</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">had_processing_problems</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cigar</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Cigar</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Cigar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_best_ccs_line</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dna</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_best_ccs_line</span><span class="p">[</span><span class="n">DNA_SEQ_COLUMN</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dna</span><span class="p">)</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CircularDNAPosition</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Readable/Writable attribute. It was originally only readable</span>
+<span class="sd">        but the ``SingleMoleculeAnalysis`` class relies on it being</span>
+<span class="sd">        writable to make easier the shift back of *pi-shifted* positions,</span>
+<span class="sd">        that are computed from this attribute.</span>
+<span class="sd">        The logic is: by default, the value is taken from the</span>
+<span class="sd">        ``_best_ccs_line`` attribute, until it is modified, in which</span>
+<span class="sd">        case the value is simply stored and returned upon request.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">CircularDNAPosition</span><span class="p">(</span>
+            <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_best_ccs_line</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="c1"># aligner indices start at 1</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CircularDNAPosition</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Computes the end of a molecule as</span>
+<span class="sd">        CircularDNAPosition(start+lenght of reference)</span>
+<span class="sd">        which, obviously takes into account the possible circular</span>
+<span class="sd">        topology of the reference.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ascii_quals</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Ascii qualities of sequencing the molecule. Each symbol</span>
+<span class="sd">        refers to one base.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_best_ccs_line</span><span class="p">[</span><span class="n">ASCII_QUALS_COLUMN</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Molecule.find_gatc_positions"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.Molecule.find_gatc_positions">[docs]</a>    <span class="k">def</span> <span class="nf">find_gatc_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">CircularDNAPosition</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;The function returns the position of all the GATCs found in the</span>
+<span class="sd">        Molecule&#39;s sequence, taking into account the topology of the</span>
+<span class="sd">        reference.</span>
+
+<span class="sd">        The return value is is the 0-based index of the GATC motif, ie,</span>
+<span class="sd">        the index of the G in the Python convention.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">find_gatc_positions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dna</span><span class="p">))</span>
+        <span class="n">positions</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">CircularDNAPosition</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">ref_len</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="p">))</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span>
+            <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">positions</span>
+        <span class="p">]</span></div>
+
+<div class="viewcode-block" id="Molecule.is_crossing_origin"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.Molecule.is_crossing_origin">[docs]</a>    <span class="k">def</span> <span class="nf">is_crossing_origin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">ori_pi_shifted</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;This method answers the question of whether the molecule</span>
+<span class="sd">        crosses the origin, assuming a circular topology of the</span>
+<span class="sd">        chromosome.</span>
+<span class="sd">        The answer is ``True`` if the last base of the molecue is</span>
+<span class="sd">        located *before* the first base. Otherwise the answer is</span>
+<span class="sd">        ``False``.</span>
+<span class="sd">        It will return ``False`` if the molecule *starts at* the origin;</span>
+<span class="sd">        but it will be ``True`` if it *ends at* the origin.</span>
+<span class="sd">        There is an optional keyword-only boolean parameter, namely</span>
+<span class="sd">        ``ori_pi_shifted`` to indicate that the reference has been</span>
+<span class="sd">        shifted by pi radians, or not.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ori_pi_shifted</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">CircularDNAPosition</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="p">))</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="o">-</span><span class="n">offset</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="n">offset</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="Molecule.pi_shift_back"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.Molecule.pi_shift_back">[docs]</a>    <span class="k">def</span> <span class="nf">pi_shift_back</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Method that shifts back the (start, end) positions of</span>
+<span class="sd">        the molecule assuming that they were shifted before by</span>
+<span class="sd">        pi radians.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">shift_me_back</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">start</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">CircularDNAPosition</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="p">))</span></div></div>
+
+
+<span class="n">MoleculeWorkUnit</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span>
+<span class="n">WorkUnitGenerator</span> <span class="o">=</span> <span class="n">Generator</span><span class="p">[</span><span class="n">MoleculeWorkUnit</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="write_one_molecule_bam"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.write_one_molecule_bam">[docs]</a><span class="k">def</span> <span class="nf">write_one_molecule_bam</span><span class="p">(</span>
+        <span class="n">buf</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">,</span>
+        <span class="n">header</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">in_file_name</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">suffix</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Given a sequence of BAM lines, a header, the source name and a</span>
+<span class="sd">    suffix, a new ``bamFile`` is created containg the data provided</span>
+<span class="sd">    an a suitable name.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
+    <span class="n">out_bam_file</span> <span class="o">=</span> <span class="n">in_file_name</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">suffix</span><span class="o">+</span><span class="n">in_file_name</span><span class="o">.</span><span class="n">suffix</span><span class="p">)</span>
+    <span class="n">out_bam</span> <span class="o">=</span> <span class="n">BamFile</span><span class="p">(</span><span class="n">out_bam_file</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span>
+    <span class="n">out_bam</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">buf</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;One-molecule BAM file written: </span><span class="si">{</span><span class="n">out_bam_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">buf</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">out_bam_file</span></div>
+
+
+<div class="viewcode-block" id="gen_index_single_molecule_bams"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.gen_index_single_molecule_bams">[docs]</a><span class="k">def</span> <span class="nf">gen_index_single_molecule_bams</span><span class="p">(</span>
+        <span class="n">molecules</span><span class="p">:</span> <span class="n">WorkUnitGenerator</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WorkUnitGenerator</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;It generates indices in the form of ``.pbi`` files using</span>
+<span class="sd">    ``program``, which must be the path to a working ``pbindex``</span>
+<span class="sd">    executable.</span>
+<span class="sd">    For each *molecule* read from the input *pipe*, ``program`` is</span>
+<span class="sd">    called like follows (the argument is the BAM associated with the</span>
+<span class="sd">    current molecule)::</span>
+
+<span class="sd">       pbindex blasr.pMA683.subreads.bam</span>
+
+<span class="sd">    The success of the operation is determined inspecting the return</span>
+<span class="sd">    code.</span>
+<span class="sd">    If the call succeeds (ie, the return code is ``0``), the corresponding</span>
+<span class="sd">    ``MoleculeWorkUnit`` is yielded.</span>
+
+<span class="sd">    If the call fails (the return code is NOT ``0``), an error is</span>
+<span class="sd">    reported.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">mol_id</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span> <span class="ow">in</span> <span class="n">molecules</span><span class="p">:</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">molecule</span><span class="o">.</span><span class="n">src_bam_path</span>
+        <span class="n">process_res</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">program</span><span class="p">),</span> <span class="n">file_name</span><span class="p">),</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">process_res</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="n">mol_id</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">molecule</span><span class="o">.</span><span class="n">had_processing_problems</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] Molecule </span><span class="si">{</span><span class="n">mol_id</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="s2">&quot;could not be processed&quot;</span>
+            <span class="p">)</span>
+            <span class="n">err_msg</span> <span class="o">=</span> <span class="n">process_res</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] The reported error was:&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">]     &#39;</span><span class="si">{</span><span class="n">err_msg</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="subreads_per_molecule"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.subreads_per_molecule">[docs]</a><span class="k">def</span> <span class="nf">subreads_per_molecule</span><span class="p">(</span>
+        <span class="n">lines</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">,</span>
+        <span class="n">header</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">file_name_prefix</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">todo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WorkUnitGenerator</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;This generator yields 2-tuples of (mol-id, Molecule) after</span>
+<span class="sd">    having isolated the subreads corresponding to that molecule id</span>
+<span class="sd">    from the ``lines`` (coming from the iteration over a ``BamFile``</span>
+<span class="sd">    instance). Before yielding, a one-molecule BAM file is created.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">prev_mol_id</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mol_id</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">mol_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">molecule_id</span><span class="p">)</span>
+        <span class="n">first_time</span> <span class="o">=</span> <span class="n">prev_mol_id</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="n">diff_id</span> <span class="o">=</span> <span class="p">(</span><span class="n">mol_id</span> <span class="o">!=</span> <span class="n">prev_mol_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">first_time</span><span class="p">)</span> <span class="ow">and</span> <span class="n">diff_id</span><span class="p">:</span>
+            <span class="c1"># then, we know we have lines in the buffer and the</span>
+            <span class="c1"># mol id changed. Time to clean the buffer or write a file:</span>
+            <span class="k">if</span> <span class="n">prev_mol_id</span> <span class="ow">in</span> <span class="n">todo</span><span class="p">:</span>
+                <span class="n">new_file</span> <span class="o">=</span> <span class="n">write_one_molecule_bam</span><span class="p">(</span>
+                    <span class="n">buf</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">file_name_prefix</span><span class="p">,</span> <span class="n">prev_mol_id</span><span class="p">)</span>
+                <span class="n">mol</span> <span class="o">=</span> <span class="n">todo</span><span class="p">[</span><span class="n">prev_mol_id</span><span class="p">]</span>
+                <span class="n">mol</span><span class="o">.</span><span class="n">src_bam_path</span> <span class="o">=</span> <span class="n">new_file</span>
+                <span class="k">yield</span> <span class="p">(</span><span class="n">prev_mol_id</span><span class="p">,</span> <span class="n">mol</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">buf</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">buf</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="n">prev_mol_id</span> <span class="o">=</span> <span class="n">mol_id</span>
+    <span class="k">if</span> <span class="n">mol_id</span> <span class="ow">in</span> <span class="n">todo</span><span class="p">:</span>
+        <span class="n">new_file</span> <span class="o">=</span> <span class="n">write_one_molecule_bam</span><span class="p">(</span>
+            <span class="n">buf</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">file_name_prefix</span><span class="p">,</span> <span class="n">mol_id</span><span class="p">)</span>
+        <span class="n">mol</span> <span class="o">=</span> <span class="n">todo</span><span class="p">[</span><span class="n">mol_id</span><span class="p">]</span>
+        <span class="n">mol</span><span class="o">.</span><span class="n">src_bam_path</span> <span class="o">=</span> <span class="n">new_file</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="n">mol_id</span><span class="p">,</span> <span class="n">mol</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="split_bam_file_in_molecules"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.split_bam_file_in_molecules">[docs]</a><span class="k">def</span> <span class="nf">split_bam_file_in_molecules</span><span class="p">(</span>
+        <span class="n">in_bam_file</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">tempdir</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">todo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Molecule</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WorkUnitGenerator</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;All the individual molecules in the bam file path given,</span>
+<span class="sd">    ``in_bam_file``, that are found in ``todo``, will be isolated</span>
+<span class="sd">    and stored individually in the directory ``tempdir``.</span>
+<span class="sd">    The yielded Molecule instances will have their ``src_bam_path``</span>
+<span class="sd">    updated accordingly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name_prefix</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tempdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="n">in_bam_file</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">inbam</span> <span class="o">=</span> <span class="n">BamFile</span><span class="p">(</span><span class="n">in_bam_file</span><span class="p">)</span>
+    <span class="n">subreads</span> <span class="o">=</span> <span class="n">subreads_per_molecule</span><span class="p">(</span>
+        <span class="n">inbam</span><span class="o">.</span><span class="n">body</span><span class="p">,</span> <span class="n">inbam</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">name_prefix</span><span class="p">,</span> <span class="n">todo</span><span class="p">)</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">mol_id</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span> <span class="ow">in</span> <span class="n">subreads</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;BAM file &#39;</span><span class="si">{</span><span class="n">molecule</span><span class="o">.</span><span class="n">src_bam_path</span><span class="si">}</span><span class="s2">&#39; generated&quot;</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="n">mol_id</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="join_gffs"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.join_gffs">[docs]</a><span class="k">def</span> <span class="nf">join_gffs</span><span class="p">(</span>
+        <span class="n">work_units</span><span class="p">:</span> <span class="n">WorkUnitGenerator</span><span class="p">,</span>
+        <span class="n">out_file_path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;The gff files related to the molecules provided in the input</span>
+<span class="sd">    are read and joined in a single file.</span>
+<span class="sd">    The individual gff files are yielded back.</span>
+
+<span class="sd">    Probably this function is useless and should be removed in the</span>
+<span class="sd">    future: it only provides a joint gff file that is not a valid gff</span>
+<span class="sd">    file and that is never used in the rest of the processing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_file_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">mol_id</span><span class="p">,</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">work_units</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">molecule</span><span class="o">.</span><span class="n">gff_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+            <span class="k">yield</span> <span class="n">molecule</span><span class="o">.</span><span class="n">gff_path</span></div>
+
+
+<div class="viewcode-block" id="flag2strand"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.flag2strand">[docs]</a><span class="k">def</span> <span class="nf">flag2strand</span><span class="p">(</span><span class="n">flag</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a ``FLAG`` (see the</span>
+<span class="sd">    `BAM format &lt;https://samtools.github.io/hts-specs/SAMv1.pdf&gt;`_</span>
+<span class="sd">    specification), it transforms it to the corresponding strand.</span>
+
+<span class="sd">    :return: ``+``, ``-`` or ``?`` depending on the strand the input</span>
+<span class="sd">             ``FLAG`` can be assigned to (``?`` means: it could not</span>
+<span class="sd">             be assigned to any strand).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_reverse</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">flag</span> <span class="o">&amp;</span> <span class="n">REVERSE_COMPLEMENTED_FLAG</span><span class="p">)</span> <span class="o">==</span> <span class="n">REVERSE_COMPLEMENTED_FLAG</span>
+    <span class="p">)</span>
+    <span class="n">is_direct</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">flag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">flag</span> <span class="o">&amp;</span> <span class="n">SECONDARY_ALIGNMENT_FLAG</span><span class="p">)</span> <span class="o">==</span> <span class="n">SECONDARY_ALIGNMENT_FLAG</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_reverse</span><span class="p">:</span>
+        <span class="n">category</span> <span class="o">=</span> <span class="s2">&quot;-&quot;</span>
+    <span class="k">elif</span> <span class="n">is_direct</span><span class="p">:</span>
+        <span class="c1"># This case must come after checking reverse because, eg 272 is</span>
+        <span class="c1"># not 0, and it is secondary, so it would be classified as</span>
+        <span class="c1"># secondary direct if not checking first if it is reverse.</span>
+        <span class="c1"># I don&#39;t know a better way to check it for now...</span>
+        <span class="n">category</span> <span class="o">=</span> <span class="s2">&quot;+&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># This case (&#39;?&#39;) is not tested from the FTs point of view:</span>
+        <span class="n">category</span> <span class="o">=</span> <span class="s2">&quot;?&quot;</span>
+    <span class="k">return</span> <span class="n">category</span></div>
+
+
+<div class="viewcode-block" id="count_subreads_per_molecule"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.bam_utils.count_subreads_per_molecule">[docs]</a><span class="k">def</span> <span class="nf">count_subreads_per_molecule</span><span class="p">(</span><span class="n">bam</span><span class="p">:</span> <span class="n">BamFile</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">defaultdict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Counter</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Given a read-open BamFile instance, it returns a defaultdict</span>
+<span class="sd">    with keys being molecule ids (str) and values, a counter with</span>
+<span class="sd">    subreads classified by strand.</span>
+<span class="sd">    The possible keys of the returned counter are:</span>
+<span class="sd">    +, -, ?</span>
+<span class="sd">    meaning direct strand, reverse strand and unknown, respectively.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">Counter</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">bam</span><span class="p">:</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">category</span> <span class="o">=</span> <span class="n">flag2strand</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span>
+        <span class="n">count</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">molecule_id</span><span class="p">)][</span><span class="n">category</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">count</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/index.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indepth/index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../devel/index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

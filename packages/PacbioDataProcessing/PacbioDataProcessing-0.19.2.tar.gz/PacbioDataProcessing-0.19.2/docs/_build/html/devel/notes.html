@@ -1,0 +1,188 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Miscellaneous notes &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="HOW to release a version" href="release.html" />
+    <link rel="prev" title="Development notes" href="development.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="miscellaneous-notes">
+<span id="misc-notes"></span><h1>Miscellaneous notes<a class="headerlink" href="#miscellaneous-notes" title="Permalink to this headline">¶</a></h1>
+<section id="bam-files">
+<h2>BAM files<a class="headerlink" href="#bam-files" title="Permalink to this headline">¶</a></h2>
+<section id="modification-of-headers">
+<h3>Modification of headers<a class="headerlink" href="#modification-of-headers" title="Permalink to this headline">¶</a></h3>
+<p>When a a tool must modify a bam file, it seems to be agreed that
+the header must contain some information about the process that
+modified the file. This information is stored as a <code class="docutils literal notranslate"><span class="pre">&#64;PG</span></code> record.
+The following is an example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@PG</span>   <span class="n">ID</span><span class="p">:</span><span class="mi">4</span>    <span class="n">PN</span><span class="p">:</span><span class="n">BLASR</span>        <span class="n">VN</span><span class="p">:</span><span class="mf">5.3.3</span>        <span class="n">CL</span><span class="p">:</span><span class="n">blasr</span> <span class="n">m54099_200714_225457</span><span class="o">.</span><span class="n">subreads</span><span class="o">.</span><span class="n">bam</span> <span class="n">eco000913_3</span><span class="o">.</span><span class="n">fasta</span> <span class="o">--</span><span class="n">bam</span> <span class="o">--</span><span class="n">out</span> <span class="n">blasr</span><span class="o">.</span><span class="n">m54099_200714_225457</span><span class="o">.</span><span class="n">subreads</span><span class="o">.</span><span class="n">bam</span>
+</pre></div>
+</div>
+<p>The meaning of the fields is described in <span class="xref std std-ref">samv1</span>.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">pysam</span></code> it seems that an easy way to do it would be:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">new_program</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ID&quot;</span><span class="p">:</span> <span class="s2">&quot;PacBioDataProcessing&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PN&quot;</span><span class="p">:</span> <span class="s2">&quot;sm-analysis&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;VN&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CL&quot;</span><span class="p">:</span> <span class="s2">&quot;sm-analysis my.bam my.fasta&quot;</span>
+<span class="p">}</span>
+<span class="n">f</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">,</span> <span class="n">check_sq</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">header</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span>
+<span class="n">programs</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_program</span><span class="p">]</span> <span class="o">+</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;PG&quot;</span><span class="p">]</span>
+<span class="n">header</span><span class="p">[</span><span class="s2">&quot;PG&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">programs</span>
+<span class="c1"># now we can write the header...</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="easy-installation">
+<h2>Easy installation<a class="headerlink" href="#easy-installation" title="Permalink to this headline">¶</a></h2>
+<p>In this section you can find some comments on different approaches to
+create standalone executables. The aim is to make the installation process
+easier for end users.</p>
+<p>I have explored two possibilities:</p>
+<ol class="arabic simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/zipapp.html">zipapp</a></p></li>
+<li><p><a class="reference external" href="https://www.pyinstaller.org/">PyInstaller</a></p></li>
+</ol>
+<p>None of them has convinced me at this point: either I do not have a clear
+understanding of the problem or of the solutions provided by them. Or maybe
+the answer is somewhere else. For example, as of today <strong>PacBio Data Processing</strong> depends
+<em>implicitly</em> on <a class="reference internal" href="../indepth/htslib.html#htslib"><span class="std std-ref">HTSlib</span></a> and that makes things complicated in this
+regard since we cannot force the user to have that library in his/her
+system. Despite the efforts in making easier the installation process
+of <strong>PacBio Data Processing</strong>, at the end everything depends on whether the user has
+<a class="reference internal" href="../indepth/htslib.html#htslib"><span class="std std-ref">HTSlib</span></a> installed or not.</p>
+<p>On the other hand, the two solutions listed above are <em>application centric</em>
+which means AFAIK that they allow us to be in a situation where we have
+a single huge file that provides only a fraction of <strong>PacBio Data Processing</strong>.</p>
+<p>Finally, <a href="#id3"><span class="problematic" id="id4">`wheels`_</span></a> provide an easy enough way of installing <strong>PacBio Data Processing</strong> that,
+it is true, it suffers from the same dependency problem mentioned above, but
+has a <em>zero-cost</em> to implement.</p>
+<section id="zipapp">
+<h3>zipapp<a class="headerlink" href="#zipapp" title="Permalink to this headline">¶</a></h3>
+<p>The procedure to create a self-contained app for <code class="docutils literal notranslate"><span class="pre">sm-analysis-gui</span></code> would be:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">pip install PacbioDataProcessing[gui] --target sm-gui-app/</span>
+<span class="go">python -m zipapp sm-gui-app -m &quot;pacbio_data_processing.sm_analysis_gui:main_gui&quot; -o sm-analysis-gui -p &quot;/usr/bin/env python3.9&quot;</span>
+</pre></div>
+</div>
+<p>The result would be a standalone executable for <code class="docutils literal notranslate"><span class="pre">sm-analysis-gui</span></code>.</p>
+</section>
+<section id="pyinstaller">
+<h3>PyInstaller<a class="headerlink" href="#pyinstaller" title="Permalink to this headline">¶</a></h3>
+<p>WIP</p>
+</section>
+<section id="conclusion">
+<h3>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this headline">¶</a></h3>
+<p>Before embarking in <em>easier methods</em> to install <strong>PacBio Data Processing</strong>, fix the hard dependency
+problem first and probably other issues too.</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/index.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../indepth/index.html">Guides</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Developer’s documentation</a><ul>
+      <li>Previous: <a href="development.html" title="previous chapter">Development notes</a></li>
+      <li>Next: <a href="release.html" title="next chapter">HOW to release a version</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/devel/notes.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,473 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>BAM format &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Phred transformed scores" href="phred_transformed_scores.html" />
+    <link rel="prev" title="Description of data in the Methylation Reports" href="methylation_reports.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="bam-format">
+<span id="bam-file-format"></span><h1>BAM format<a class="headerlink" href="#bam-format" title="Permalink to this headline">¶</a></h1>
+<p>The input/output sequencing files used by <strong>PacBio Data Processing</strong> are BAM
+files (see <a class="reference external" href="https://github.com/samtools/hts-specs">SAM/BAM format</a> for a description).</p>
+<section id="the-bam-file">
+<h2>The bam file<a class="headerlink" href="#the-bam-file" title="Permalink to this headline">¶</a></h2>
+<p>The bam file is is a binary file. It is a compressed version
+of a sam file —that is a human readable format— containing
+all the sequencing information. To manipulate the bam file
+format you can use packages like
+<a class="reference external" href="https://pysam.readthedocs.io/en/latest/installation.html">pysam</a>
+compatible only with python 2 or
+<a class="reference external" href="https://github.com/JohnLonginotto/pybam">pybam</a> for python2 and
+<a class="reference external" href="https://github.com/luidale/pybam">pybam</a> for python 3. However, for
+the PacBio bam file Pysam and Pybam are usefull to explore basic fiels
+in the aligned PacBio bam file.</p>
+</section>
+<section id="pacbio-bam-file">
+<h2>PacBio bam file<a class="headerlink" href="#pacbio-bam-file" title="Permalink to this headline">¶</a></h2>
+<p>Compared with the standard
+<a class="reference external" href="https://samtools.github.io/hts-specs/SAMv1.pdf">bam</a> format, the
+<a class="reference external" href="https://github.com/PacificBiosciences/PacBioFileFormats/blob/3.0/BAM.rst">PacBio.bam</a>
+have extra columns as those containing the Interpulse Duration (IPD)
+value and Pulse Width (PW) that are important for the kinetic analysis.</p>
+<p>The bam file of the main PacBio output (filename.subreads.bam) contains
+26 columns which can be inspected using <code class="docutils literal notranslate"><span class="pre">samtools</span></code>. For instance, the
+following <code class="docutils literal notranslate"><span class="pre">shell</span></code> command tells us the number of columns in a bam file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">samtools view filename.subreads.bam<span class="p">|</span>awk -F<span class="s1">&#39;\t&#39;</span> <span class="s1">&#39;{print NF; exit}&#39;</span></span>
+</pre></div></div><p>In the next table, the most important columns in a PacBio bam are
+described:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 38%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column number</p></th>
+<th class="head"><p>Tag or content</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Molecule identifier</p></td>
+<td><p>Molecule
+indentifier
+containing
+{movieName}/
+{holeNumber}/
+{qStart}_{qEnd}</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p>…AGTAC…</p></td>
+<td><p>Sequence</p></td>
+</tr>
+<tr class="row-even"><td><p>11</p></td>
+<td><p>…~~C!~…</p></td>
+<td><p>QUAL</p></td>
+</tr>
+<tr class="row-odd"><td><p>12</p></td>
+<td><p>RG</p></td>
+<td><p>ReadGroup</p></td>
+</tr>
+<tr class="row-even"><td><p>13</p></td>
+<td><p>dq</p></td>
+<td><p>DeletionQV</p></td>
+</tr>
+<tr class="row-odd"><td><p>14</p></td>
+<td><p>dt</p></td>
+<td><p>DeletionTag</p></td>
+</tr>
+<tr class="row-even"><td><p>15</p></td>
+<td><p>ip</p></td>
+<td><p>Ipd: B,C or B,S
+(raw frames or
+codec V1)</p></td>
+</tr>
+<tr class="row-odd"><td><p>16</p></td>
+<td><p>iq</p></td>
+<td><p>InsertionQv</p></td>
+</tr>
+<tr class="row-even"><td><p>17</p></td>
+<td><p>mq</p></td>
+<td><p>MergeQv</p></td>
+</tr>
+<tr class="row-odd"><td><p>18</p></td>
+<td><p>np</p></td>
+<td><p>NumPasses</p></td>
+</tr>
+<tr class="row-even"><td><p>19</p></td>
+<td><p>pw</p></td>
+<td><p>PulseWith: B,C
+or B,S (raw
+frames or codec
+V1)</p></td>
+</tr>
+<tr class="row-odd"><td><p>20</p></td>
+<td><p>qe</p></td>
+<td><p>0_based end</p></td>
+</tr>
+<tr class="row-even"><td><p>21</p></td>
+<td><p>qs</p></td>
+<td><p>0_based start</p></td>
+</tr>
+<tr class="row-odd"><td><p>22</p></td>
+<td><p>rq</p></td>
+<td><p>Float in [0,1]
+encoding
+expected
+accuracy</p></td>
+</tr>
+<tr class="row-even"><td><p>23</p></td>
+<td><p>sn</p></td>
+<td><p>4 floats for
+the average
+signal-to-noise
+ratio of A,C,G,
+and T (in that
+order) over the
+HQ region</p></td>
+</tr>
+<tr class="row-odd"><td><p>24</p></td>
+<td><p>sq</p></td>
+<td><p>SubstitutionQV</p></td>
+</tr>
+<tr class="row-even"><td><p>25</p></td>
+<td><p>zm</p></td>
+<td><p>ZNW hole number</p></td>
+</tr>
+<tr class="row-odd"><td><p>26</p></td>
+<td><p>cx</p></td>
+<td><p>Subread local
+context flags</p></td>
+</tr>
+</tbody>
+</table>
+<p>If you want to check the differents length of the subreads using command
+line, you can type:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">samtools view filename.subreads.bam<span class="p">|</span>awk <span class="s1">&#39;{print length ($10)}&#39;</span><span class="p">|</span>sort -nur</span>
+</pre></div></div><p>For more information see the following link: <a class="reference external" href="https://github.com/PacificBiosciences/PacBioFileFormats/blob/3.0/BAM.rst">BAM format specification
+for
+PacBio</a></p>
+</section>
+<section id="aligned-pacbio-bam-file">
+<span id="id1"></span><h2>Aligned PacBio bam file<a class="headerlink" href="#aligned-pacbio-bam-file" title="Permalink to this headline">¶</a></h2>
+<p>The aligned bam file of the main PacBio output (moviename.subreads.bam)
+contains 28 columns. Again, the next <code class="docutils literal notranslate"><span class="pre">shell</span></code> one-liner counts the
+columns in the bam:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">samtools view moviename.subreads.bam<span class="p">|</span>awk -F<span class="s1">&#39;\t&#39;&#39;{print NF; exit}&#39;</span></span>
+</pre></div></div><p>It follows a brief description of the most important columns:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 38%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column number</p></th>
+<th class="head"><p>Tag or content</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Molecule identifier</p></td>
+<td><p>Molecule
+indentifier
+containing
+{movieName}/
+{holeNumber}/
+{qStart}_{qEnd}</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>mapping flag</p></td>
+<td><p>Value related
+to the
+alignment type
+(forward strand
+(0) and reverse
+strand (16) are
+the most
+important. More
+details in the
+link ‘’Map
+Format
+Specification’’
+below)</p></td>
+</tr>
+<tr class="row-even"><td><p>4</p></td>
+<td><p>position</p></td>
+<td><p>Position where
+the sequence
+was mapped</p></td>
+</tr>
+<tr class="row-odd"><td><p>5</p></td>
+<td><p>mapping quality</p></td>
+<td><p>Quality of the
+mapping</p></td>
+</tr>
+<tr class="row-even"><td><p>10</p></td>
+<td><p>…AGTAC…</p></td>
+<td><p>Sequence</p></td>
+</tr>
+<tr class="row-odd"><td><p>11</p></td>
+<td><p>…~~C!~…</p></td>
+<td><p>QUAL</p></td>
+</tr>
+<tr class="row-even"><td><p>12</p></td>
+<td><p>RG</p></td>
+<td><p>ReadGroup</p></td>
+</tr>
+<tr class="row-odd"><td><p>13</p></td>
+<td><p>dq</p></td>
+<td><p>DeletionQV</p></td>
+</tr>
+<tr class="row-even"><td><p>14</p></td>
+<td><p>dt</p></td>
+<td><p>DeletionTag</p></td>
+</tr>
+<tr class="row-odd"><td><p>15</p></td>
+<td><p>ip</p></td>
+<td><p>Ipd: B,C or B,S
+(raw frames or
+codec V1)</p></td>
+</tr>
+<tr class="row-even"><td><p>16</p></td>
+<td><p>iq</p></td>
+<td><p>InsertionQv</p></td>
+</tr>
+<tr class="row-odd"><td><p>17</p></td>
+<td><p>mq</p></td>
+<td><p>MergeQv</p></td>
+</tr>
+<tr class="row-even"><td><p>18</p></td>
+<td><p>np</p></td>
+<td><p>NumPasses</p></td>
+</tr>
+<tr class="row-odd"><td><p>19</p></td>
+<td><p>pw</p></td>
+<td><p>PulseWith: B,C
+or B,S (raw
+frames or codec
+V1)</p></td>
+</tr>
+<tr class="row-even"><td><p>20</p></td>
+<td><p>qe</p></td>
+<td><p>0_based end</p></td>
+</tr>
+<tr class="row-odd"><td><p>21</p></td>
+<td><p>qs</p></td>
+<td><p>0_based start</p></td>
+</tr>
+<tr class="row-even"><td><p>22</p></td>
+<td><p>rq</p></td>
+<td><p>Float in [0,1]
+encoding
+expected
+accuracy</p></td>
+</tr>
+<tr class="row-odd"><td><p>23</p></td>
+<td><p>sn</p></td>
+<td><p>4 floats for
+the average
+signal-to-noise
+ratio of A,C,G,
+and T (in that
+order) over the
+HQ region</p></td>
+</tr>
+<tr class="row-even"><td><p>24</p></td>
+<td><p>sq</p></td>
+<td><p>SubstitutionQV</p></td>
+</tr>
+<tr class="row-odd"><td><p>25</p></td>
+<td><p>zm</p></td>
+<td><p>ZNW hole number</p></td>
+</tr>
+<tr class="row-even"><td><p>26</p></td>
+<td><p>cx</p></td>
+<td><p>Subread local
+context flags</p></td>
+</tr>
+<tr class="row-odd"><td><p>27</p></td>
+<td><p>AS</p></td>
+<td><p>Alignment score
+generated by
+aligner</p></td>
+</tr>
+<tr class="row-even"><td><p>28</p></td>
+<td><p>NM</p></td>
+<td><p>Number of
+differences
+(mismatches
+plus inserted
+and deleted
+bases) between
+the sequence
+and reference</p></td>
+</tr>
+</tbody>
+</table>
+<p>For more information:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://samtools.github.io/hts-specs/SAMv1.pdf">Sequence Alignment/Map Format Specification</a></p></li>
+<li><p><a class="reference external" href="https://samtools.github.io/hts-specs/SAMtags.pdf">Sequence Alignment/Map Optional Fields Specification</a></p></li>
+</ul>
+</section>
+<section id="fields">
+<h2>Fields<a class="headerlink" href="#fields" title="Permalink to this headline">¶</a></h2>
+<p>In this section we give details on some particular fields (columns)
+in a bam file.</p>
+<section id="quailty-of-sequencing">
+<h3>Quailty of sequencing<a class="headerlink" href="#quailty-of-sequencing" title="Permalink to this headline">¶</a></h3>
+<p>In the <a class="reference external" href="https://github.com/samtools/hts-specs">SAM/BAM format</a> specification it is declared that the 11-th
+column in the alignment section of BAM files is named <code class="docutils literal notranslate"><span class="pre">QUAL</span></code>, and
+it is described like follows:</p>
+<blockquote>
+<div><p>(brief description) ASCII of Phred-scaled base QUALity+33</p>
+<p>QUAL: ASCII of base QUALity plus 33 (same as the quality string in the
+Sanger FASTQ format). A base quality is the phred-scaled base error
+probability which equals -10 log10 Pr{base is wrong}. This field can
+be a ‘*’ when quality is not stored. If not a ‘*’, SEQ must not be a
+‘*’ and the length of the quality string ought to equal the length of SEQ.</p>
+</div></blockquote>
+<p>And the <a class="reference external" href="https://en.wikipedia.org/wiki/FASTQ_format">Wikipedia (FASTQ)</a> explains:</p>
+<blockquote>
+<div><p>The byte representing quality runs from <code class="docutils literal notranslate"><span class="pre">0x21</span></code> (lowest quality; <code class="docutils literal notranslate"><span class="pre">!</span></code> in
+ASCII) to <code class="docutils literal notranslate"><span class="pre">0x7e</span></code> (highest quality; <code class="docutils literal notranslate"><span class="pre">~</span></code> in ASCII). Here are the quality
+value characters in left-to-right increasing order of quality (ASCII):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>!&quot;#$%&amp;&#39;()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+</pre></div>
+</div>
+</div></blockquote>
+<p>For example, each base in a sequence like (in the 10-th column of a BAM
+file):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">AATGCTAGCTAGCTCCTTGGATCGATCCGAT</span>
+</pre></div>
+</div>
+<p>will have an ASCII symbol (between <code class="docutils literal notranslate"><span class="pre">!</span></code> and <code class="docutils literal notranslate"><span class="pre">~</span></code>) associated with it
+that will be the contents of the 11-th column in the BAM file. For
+instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">~~~~</span><span class="n">i</span><span class="o">~</span><span class="n">l</span><span class="o">~~~~</span><span class="n">_</span><span class="o">~~~~</span><span class="n">Z</span><span class="o">~~~~~~~~~~~~~~</span>
+</pre></div>
+</div>
+<p>Each symbol tells us the quality of sequencing <em>the corresponding base</em>.</p>
+<p>Since the ASCII symbols <code class="docutils literal notranslate"><span class="pre">!</span></code> and <code class="docutils literal notranslate"><span class="pre">~</span></code> correspond to <code class="docutils literal notranslate"><span class="pre">33</span></code> and
+<code class="docutils literal notranslate"><span class="pre">126</span></code> in decimal (or <code class="docutils literal notranslate"><span class="pre">0x21</span></code> and <code class="docutils literal notranslate"><span class="pre">0x7e</span></code> in hexadecimal), and since
+each quality value is shifted by <code class="docutils literal notranslate"><span class="pre">33</span></code> it means that the range
+of allowed qualities, <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">93]</span></code>, corresponds to a range of allowed
+probabilities for each base being wrong of, roughly <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">0.00005]</span></code>
+(beware the scale).</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/index.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../devel/index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Guides</a><ul>
+      <li>Previous: <a href="methylation_reports.html" title="previous chapter">Description of data in the Methylation Reports</a></li>
+      <li>Next: <a href="phred_transformed_scores.html" title="next chapter">Phred transformed scores</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/indepth/bam.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

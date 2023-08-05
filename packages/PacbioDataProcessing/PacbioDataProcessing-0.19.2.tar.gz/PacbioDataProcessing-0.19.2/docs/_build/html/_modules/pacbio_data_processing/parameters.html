@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pacbio_data_processing.parameters &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for pacbio_data_processing.parameters</h1><div class="highlight"><pre>
+<span></span><span class="c1">#######################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2021 David Palao</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of PacBio data processing.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBioDataProcessing is free software: you can redistribute it and/or modify</span>
+<span class="c1">#  it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#  the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#  (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBio data processing is distributed in the hope that it will be useful,</span>
+<span class="c1">#  but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#  GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#  You should have received a copy of the GNU General Public License</span>
+<span class="c1">#  along with PacBioDataProcessing. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">#######################################################################</span>
+
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">pkg_resources</span> <span class="kn">import</span> <span class="n">Requirement</span><span class="p">,</span> <span class="n">resource_filename</span>
+
+<span class="kn">from</span> <span class="nn">.filters</span> <span class="kn">import</span> <span class="n">filter_mappings_binary</span><span class="p">,</span> <span class="n">filter_mappings_ratio</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">VERSION</span>
+
+
+<div class="viewcode-block" id="ParametersBase"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.parameters.ParametersBase">[docs]</a><span class="k">class</span> <span class="nc">ParametersBase</span><span class="p">:</span>
+<div class="viewcode-block" id="ParametersBase.__init__"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.parameters.ParametersBase.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cl_input</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span> <span class="o">=</span> <span class="n">cl_input</span></div>
+
+    <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BamFilteringParameters"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.parameters.BamFilteringParameters">[docs]</a><span class="k">class</span> <span class="nc">BamFilteringParameters</span><span class="p">(</span><span class="n">ParametersBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Filtering &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">input_bam_file</span><span class="si">}</span><span class="s2">&#39; to produce &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">out_bam_file</span><span class="si">}</span><span class="s2">&#39; with:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  minimun DNA sequence length: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_dna_seq_length</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  minimun subreads per molecule: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_subreads_per_molecule</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  quality of sequencing: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">quality_threshold</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  mappings: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mappings</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  min mapping ratio: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">min_relative_mapping_ratio</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">out_bam_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_bam_file</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">new_base</span> <span class="o">=</span> <span class="s2">&quot;parsed.&quot;</span> <span class="o">+</span> <span class="n">base</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_bam_file</span><span class="o">.</span><span class="n">parent</span><span class="o">/</span><span class="n">new_base</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">limit_mappings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="o">.</span><span class="n">mappings</span> <span class="o">!=</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="o">.</span><span class="n">mappings</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">filter_mappings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_relative_mapping_ratio</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">filter_mappings_ratio</span>
+        <span class="k">return</span> <span class="n">filter_mappings_binary</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">min_relative_mapping_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="o">.</span><span class="n">min_relative_mapping_ratio</span>
+        <span class="k">if</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">ratio</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">elif</span> <span class="n">ratio</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">ratio</span></div>
+
+
+<div class="viewcode-block" id="SingleMoleculeAnalysisParameters"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.parameters.SingleMoleculeAnalysisParameters">[docs]</a><span class="k">class</span> <span class="nc">SingleMoleculeAnalysisParameters</span><span class="p">(</span><span class="n">ParametersBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_make_out_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">suff</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pref</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_bam_file</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">new_base</span> <span class="o">=</span> <span class="s2">&quot;sm-analysis.&quot;</span> <span class="o">+</span> <span class="n">base</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">:</span>
+            <span class="n">partition</span><span class="p">,</span> <span class="n">partitions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span>
+            <span class="n">new_base</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;partition_</span><span class="si">{</span><span class="n">partition</span><span class="si">}</span><span class="s2">of</span><span class="si">{</span><span class="n">partitions</span><span class="si">}</span><span class="s2">.&quot;</span><span class="o">+</span><span class="n">new_base</span>
+        <span class="n">new_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_bam_file</span><span class="o">.</span><span class="n">parent</span><span class="o">/</span><span class="p">(</span><span class="n">pref</span><span class="o">+</span><span class="n">new_base</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">new_name</span><span class="o">.</span><span class="n">suffix</span> <span class="o">!=</span> <span class="s2">&quot;.bam&quot;</span><span class="p">:</span>
+            <span class="n">suff</span> <span class="o">=</span> <span class="n">new_name</span><span class="o">.</span><span class="n">suffix</span><span class="o">+</span><span class="n">suff</span>
+        <span class="k">return</span> <span class="n">new_name</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">suff</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">joint_gff_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_out_filename</span><span class="p">(</span><span class="n">suff</span><span class="o">=</span><span class="s2">&quot;.gff&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">one_line_per_mod_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_out_filename</span><span class="p">(</span><span class="n">suff</span><span class="o">=</span><span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">summary_report_html_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_out_filename</span><span class="p">(</span><span class="n">suff</span><span class="o">=</span><span class="s2">&quot;.html&quot;</span><span class="p">,</span> <span class="n">pref</span><span class="o">=</span><span class="s2">&quot;summary.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_resolve_model_from_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_name</span><span class="p">):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">Requirement</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="s2">&quot;kineticsTools&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span>
+            <span class="n">resource_filename</span><span class="p">(</span>
+                <span class="n">r</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;kineticsTools/resources/</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">.npz.gz&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ipd_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">raw_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="o">.</span><span class="n">ipd_model</span>
+        <span class="k">if</span> <span class="n">raw_model</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">raw_model</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_model_from_resources</span><span class="p">(</span><span class="n">raw_model</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                    <span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="n">model</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">partition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">partition</span><span class="p">,</span> <span class="n">partitions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="o">.</span><span class="n">partition</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">partition</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">partition</span><span class="p">)</span>
+            <span class="n">partitions</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">partitions</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">partition</span> <span class="o">&lt;=</span> <span class="n">partitions</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">partition</span><span class="p">,</span> <span class="n">partitions</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Starting &#39;sm-analysis&#39; (version </span><span class="si">{</span><span class="n">VERSION</span><span class="si">}</span><span class="s2">) with:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  Input BAM file:  &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">input_bam_file</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  Reference file:  &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fasta</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  ipd program:  &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ipdsummary_path</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  # ipd program instances:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_simultaneous_ipdsummarys</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  # workers per ipd instance:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers_per_ipdsummary</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  modification types:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">modification_types</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  aligner:  &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">blasr_path</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  # workers blasr:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nprocs_blasr</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  indexer:  &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pbindex_path</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipd_model</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">s</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;  ipd model:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ipd_model</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="o">.</span><span class="n">ipd_model</span><span class="p">:</span>
+            <span class="c1"># In this case the user entered the model but it wasn&#39;t found:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Model &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_cl_input</span><span class="o">.</span><span class="n">ipd_model</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                <span class="s2">&quot;not found. Using default model&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;  partition:  </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">partition</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aligned_CCS_bam_file</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;  aligned CCS bam file:  &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">aligned_CCS_bam_file</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">CCS_bam_file</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;  CCS bam file:  &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">CCS_bam_file</span><span class="si">}</span><span class="s2">&#39;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_temp_dir</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;  keep temp dir:  yes</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">only_produce_methylation_report</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;  only produce methylation report:  yes</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">s</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/index.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indepth/index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../devel/index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

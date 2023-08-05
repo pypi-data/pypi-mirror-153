@@ -1,0 +1,260 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pacbio_data_processing.ipd &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for pacbio_data_processing.ipd</h1><div class="highlight"><pre>
+<span></span><span class="c1">#######################################################################</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2021, 2022 David Palao</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of PacBio data processing.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBioDataProcessing is free software: you can redistribute it and/or modify</span>
+<span class="c1">#  it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#  the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#  (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#  PacBio data processing is distributed in the hope that it will be useful,</span>
+<span class="c1">#  but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#  GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#  You should have received a copy of the GNU General Public License</span>
+<span class="c1">#  along with PacBioDataProcessing. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1">#######################################################################</span>
+
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">concurrent</span> <span class="kn">import</span> <span class="n">futures</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Generator</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span> <span class="nn">.bam_utils</span> <span class="kn">import</span> <span class="n">WorkUnitGenerator</span><span class="p">,</span> <span class="n">MoleculeWorkUnit</span>
+<span class="kn">from</span> <span class="nn">.constants</span> <span class="kn">import</span> <span class="n">GFF_SUF</span>
+
+
+<div class="viewcode-block" id="UnknownErrorIpdSummary"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.ipd.UnknownErrorIpdSummary">[docs]</a><span class="k">class</span> <span class="nc">UnknownErrorIpdSummary</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="ipd_summary"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.ipd.ipd_summary">[docs]</a><span class="k">def</span> <span class="nf">ipd_summary</span><span class="p">(</span>
+        <span class="n">molecule</span><span class="p">:</span> <span class="n">MoleculeWorkUnit</span><span class="p">,</span>
+        <span class="n">fasta</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">program</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">nprocs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">mod_types_comma_sep</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ipd_model</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">skip_if_present</span><span class="p">:</span> <span class="nb">bool</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MoleculeWorkUnit</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Lowest level interface to ``ipdSummary``: all calls to that</span>
+<span class="sd">    program are expected to be done through this function.</span>
+<span class="sd">    It runs ``ipdSummary`` with an input bam file like this::</span>
+
+<span class="sd">      ipdSummary  blasr.pMA683.subreads.bam --reference pMA683.fa\</span>
+<span class="sd">      --identify m6A --gff blasr.pMA683.subreads.476.bam.gff</span>
+
+<span class="sd">    As a result of this, a gff file is created. This function sets an</span>
+<span class="sd">    attribute in the target Molecule with the path to that file.</span>
+
+<span class="sd">    If the process went well (``ipdSummary`` returns ``0``), the input</span>
+<span class="sd">    ``MoleculeWorkUnit`` is returned, otherwise the molecule is tagged</span>
+<span class="sd">    as being problematic (``had_processing_problems`` is set to ``True``)</span>
+<span class="sd">    and ``None`` is returned.</span>
+
+<span class="sd">    TBD</span>
+<span class="sd">    ---</span>
+<span class="sd">    Missing features:</span>
+
+<span class="sd">    * skip_if_present</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">molecule_id</span><span class="p">,</span> <span class="n">molecule</span> <span class="o">=</span> <span class="n">molecule</span>
+    <span class="n">bam</span> <span class="o">=</span> <span class="n">molecule</span><span class="o">.</span><span class="n">src_bam_path</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">bam</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">GFF_SUF</span><span class="p">)</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">program</span><span class="p">),</span> <span class="n">bam</span><span class="p">,</span> <span class="s2">&quot;--reference&quot;</span><span class="p">,</span> <span class="n">fasta</span><span class="p">,</span> <span class="s2">&quot;--identify&quot;</span><span class="p">,</span>
+        <span class="n">mod_types_comma_sep</span><span class="p">,</span> <span class="s2">&quot;--numWorkers&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">nprocs</span><span class="p">),</span> <span class="s2">&quot;--gff&quot;</span><span class="p">,</span> <span class="n">output</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">ipd_model</span><span class="p">:</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span> <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;--ipdModel&quot;</span><span class="p">,</span> <span class="n">ipd_model</span><span class="p">)</span>
+
+    <span class="c1"># if skip_if_present and output.is_file():</span>
+    <span class="c1">#     logging.debug(f&quot;[{program.name}] Modification file &#39;{output}&#39; already present!&quot;)</span>
+
+    <span class="n">process_res</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">process_res</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">expected_call</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">cmd</span><span class="p">)</span>
+        <span class="n">molecule</span><span class="o">.</span><span class="n">gff_path</span> <span class="o">=</span> <span class="n">output</span>
+        <span class="n">out_msg</span> <span class="o">=</span> <span class="n">process_res</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] Called as follows:&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] &#39;</span><span class="si">{</span><span class="n">expected_call</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] Output:&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">out_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">molecule_id</span><span class="p">,</span> <span class="n">molecule</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">molecule</span><span class="o">.</span><span class="n">had_processing_problems</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] Molecule </span><span class="si">{</span><span class="n">molecule_id</span><span class="si">}</span><span class="s2"> could not be processed&quot;</span>
+        <span class="p">)</span>
+        <span class="n">err_msg</span> <span class="o">=</span> <span class="n">process_res</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] The reported error was:&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">program</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">]     &#39;</span><span class="si">{</span><span class="n">err_msg</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="multi_ipd_summary_direct"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.ipd.multi_ipd_summary_direct">[docs]</a><span class="k">def</span> <span class="nf">multi_ipd_summary_direct</span><span class="p">(</span>
+        <span class="n">molecules</span><span class="p">:</span> <span class="n">WorkUnitGenerator</span><span class="p">,</span>
+        <span class="n">fasta</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">program</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">num_ipds</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nprocs_per_ipd</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">modification_types</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ipd_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">skip_if_present</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">WorkUnitGenerator</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Generator that yields ``MoleculeWorkUnit`` resulting from</span>
+<span class="sd">    ``ipd_summary`` (``None`` results are skipped).</span>
+<span class="sd">    Serial implementation (one file produced after the other).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mod_types_comma_sep</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">modification_types</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="n">molecules</span><span class="p">:</span>
+        <span class="n">ipd_result</span> <span class="o">=</span> <span class="n">ipd_summary</span><span class="p">(</span>
+            <span class="n">molecule</span><span class="p">,</span> <span class="n">fasta</span><span class="o">=</span><span class="n">fasta</span><span class="p">,</span> <span class="n">program</span><span class="o">=</span><span class="n">program</span><span class="p">,</span> <span class="n">nprocs</span><span class="o">=</span><span class="n">nprocs_per_ipd</span><span class="p">,</span>
+            <span class="n">mod_types_comma_sep</span><span class="o">=</span><span class="n">mod_types_comma_sep</span><span class="p">,</span> <span class="n">ipd_model</span><span class="o">=</span><span class="n">ipd_model</span><span class="p">,</span>
+            <span class="n">skip_if_present</span><span class="o">=</span><span class="n">skip_if_present</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">ipd_result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">ipd_result</span></div>
+
+
+<div class="viewcode-block" id="multi_ipd_summary_threads"><a class="viewcode-back" href="../../pacbio_data_processing.html#pacbio_data_processing.ipd.multi_ipd_summary_threads">[docs]</a><span class="k">def</span> <span class="nf">multi_ipd_summary_threads</span><span class="p">(</span>
+        <span class="n">molecules</span><span class="p">:</span> <span class="n">WorkUnitGenerator</span><span class="p">,</span>
+        <span class="n">fasta</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">program</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">num_ipds</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nprocs_per_ipd</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">modification_types</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ipd_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">skip_if_present</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">WorkUnitGenerator</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Generator that yields ``MoleculeWorkUnit`` resulting from</span>
+<span class="sd">    ``ipd_summary`` (``None`` results are skipped).</span>
+<span class="sd">    Parallel implementation driven by a pool of threads.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mod_types_comma_sep</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">modification_types</span><span class="p">)</span>
+    <span class="n">partial_ipd_summary</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+        <span class="n">ipd_summary</span><span class="p">,</span> <span class="n">fasta</span><span class="o">=</span><span class="n">fasta</span><span class="p">,</span> <span class="n">program</span><span class="o">=</span><span class="n">program</span><span class="p">,</span> <span class="n">nprocs</span><span class="o">=</span><span class="n">nprocs_per_ipd</span><span class="p">,</span>
+        <span class="n">mod_types_comma_sep</span><span class="o">=</span><span class="n">mod_types_comma_sep</span><span class="p">,</span> <span class="n">ipd_model</span><span class="o">=</span><span class="n">ipd_model</span><span class="p">,</span>
+        <span class="n">skip_if_present</span><span class="o">=</span><span class="n">skip_if_present</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">exe</span> <span class="o">=</span> <span class="n">futures</span><span class="o">.</span><span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">num_ipds</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ipd_result</span> <span class="ow">in</span> <span class="n">exe</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">partial_ipd_summary</span><span class="p">,</span> <span class="n">molecules</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ipd_result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">ipd_result</span></div>
+
+
+<span class="n">multi_ipd_summary</span> <span class="o">=</span> <span class="n">multi_ipd_summary_threads</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage/index.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../indepth/index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../devel/index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

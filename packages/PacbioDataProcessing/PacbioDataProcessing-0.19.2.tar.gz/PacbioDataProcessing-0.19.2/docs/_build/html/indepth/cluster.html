@@ -1,0 +1,373 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Using PacBio Data Processing on a cluster &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="PacBio tools" href="pacbio_tools.html" />
+    <link rel="prev" title="Phred transformed scores" href="phred_transformed_scores.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="using-project-on-a-cluster">
+<span id="using-a-cluster"></span><h1>Using <strong>PacBio Data Processing</strong> on a cluster<a class="headerlink" href="#using-project-on-a-cluster" title="Permalink to this headline">¶</a></h1>
+<dl class="field-list simple">
+<dt class="field-odd">Author</dt>
+<dd class="field-odd"><p>David Palao</p>
+</dd>
+<dt class="field-even">Date</dt>
+<dd class="field-even"><p>22 September 2021</p>
+</dd>
+<dt class="field-odd">Last updated</dt>
+<dd class="field-odd"><p>23 September 2021</p>
+</dd>
+<dt class="field-even">Version</dt>
+<dd class="field-even"><p>—</p>
+</dd>
+<dt class="field-odd">Tags</dt>
+<dd class="field-odd"><p>sm-analysis bam-filter PacbioDataProcessing cluster goethe-HLR
+fuchs slurm</p>
+</dd>
+<dt class="field-even">abstract</dt>
+<dd class="field-even"><p>This document describes the process of installing and using
+<strong>PacBio Data Processing</strong> on a <em>cluster</em> with a queueing system. It will
+be illustrated with the <em>goethe-HLR</em> cluster (at the University of
+Frankfurt) that employs <em>slurm</em> as a queueing system.</p>
+</dd>
+</dl>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>A <em>computing cluster</em>, or <em>cluster</em>, is a system that provides
+access to high computing power by joining multiple <em>nodes</em> and
+coordinating their usage. A node is basically a single powerful
+computer.</p>
+<p>There are two obvious ways to give a <em>cluster</em> more
+computing power:</p>
+<ul class="simple">
+<li><p>by adding more nodes. This strategy is sometimes referred to as
+<em>horizontal scaling</em>.</p></li>
+<li><p>by using more powerful nodes (with faster CPU, more <em>cores</em> or
+RAM, etc). Increasing the power of each node is sometimes called
+<em>vertical scaling</em>.</p></li>
+</ul>
+<p>Processing large bam files with <strong>PacBio Data Processing</strong> can greatly benefit from
+the resources provided by a cluster: you typically get access to
+many powerful nodes, hence you can potentially increase the throughput
+of your application both <em>horizontally</em> and <em>vertically</em>. Needless to say,
+that comes with a price to pay in terms of complexity of usage.</p>
+<p>The goal of this document is to lower the complexity barrier to use
+a cluster to speed up the analysis of bam files with <strong>PacBio Data Processing</strong>. You will
+find some explanations on how this can be done in practice. We will use as
+example the <em>goethe-HLR</em> cluster managed by the <a class="reference external" href="https://csc.uni-frankfurt.de/">CSC</a> at the University
+of Frankfurt.</p>
+</section>
+<section id="preparation">
+<h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline">¶</a></h2>
+<p>Before anything you need a valid account on the cluster.</p>
+<div class="admonition-for-the-goethe-hlr-cluster admonition">
+<p class="admonition-title">For the goethe-HLR cluster</p>
+<p>To get an account on <em>goethe-HLR</em>, follow the instructions to submit
+a <a class="reference external" href="https://csc.uni-frankfurt.de/wiki/doku.php?id=public:access">CSC user application</a>. At the time of writing this document
+access to the <em>FUCHS</em> (sub-)cluster is granted to academic institutions
+in the state of Hesse (Germany).</p>
+</div>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Once you have an account on a cluster you need to install <strong>PacBio Data Processing</strong> on the
+system. Follow these instructions:</p>
+<ol class="arabic">
+<li><p>Login to the cluster. Typically after getting permission to use the
+cluster, you are provided by a user name and a password that will
+allow you to do login through <em>ssh</em>.</p>
+<div class="admonition-for-the-goethe-hlr-cluster admonition">
+<p class="admonition-title">For the goethe-HLR cluster</p>
+<p>You will receive a username (in my case it is <code class="docutils literal notranslate"><span class="pre">palao</span></code>, which I will use
+in the examples) and instructions to get the password.
+In order to access the cluster you need to <em>ssh</em> into the cluster.
+If you are using a terminal, type the following command (without the
+$, which is a symbol to indicate that you are expected to type what follows
+in a shell or terminal):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">ssh palao@goethe.hhlr-gu.de</span>
+</pre></div></div><p>and type the password in, when requested.
+On success (i.e. you enter the correct password), that command will start
+a remote shell on the cluster which will be our main interface to it.
+If the <em>ssh</em> command is not in your system, one <em>ssh client</em>
+must be installed to be able to access <em>goethe-HLR</em>.</p>
+</div>
+</li>
+<li><p>Install <strong>PacBio Data Processing</strong> on the cluster.  Follow the instructions found in
+the section about <a class="reference internal" href="../usage/installation.html#installation"><span class="std std-ref">Installation</span></a> to install <strong>PacBio Data Processing</strong>.</p>
+<div class="admonition-for-the-goethe-hlr-cluster admonition">
+<p class="admonition-title">For the goethe-HLR cluster</p>
+<p>In order to have the correct version of Python on the cluster
+you have several options:</p>
+<ol class="loweralpha simple">
+<li><p>Install Python directly from sources, or</p></li>
+<li><p>Follow the <a class="reference external" href="https://csc.uni-frankfurt.de/wiki/doku.php?id=public:usage:spack">instructions to use spack at Goethe-HLR</a> and install
+the needed version of Python with Spack.</p></li>
+</ol>
+<p>Installing Python from sources seems daunting but it ends up being
+easier than using Spack if you need a version that is not available
+in Spack. Of course it all depends on your experience.
+In case of doubts do not hesitate to contact the admins. They will
+hopefully give you a good advice in this regard.</p>
+</div>
+</li>
+<li><p><strong>PacBio Data Processing</strong> needs some external tools for the main pipeline <code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code>
+to work: <a class="reference internal" href="pbindex.html#pbindex"><span class="std std-ref">Pbindex</span></a>, <a class="reference internal" href="blasr.html#blasr"><span class="std std-ref">Blasr</span></a> and <a class="reference internal" href="ccs.html#ccs"><span class="std std-ref">CCS</span></a>. Follow the links to
+install them on the cluster.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since these are <em>external dependencies</em>, they can be installed anywhere
+as far as the tools are accesible to <strong>PacBio Data Processing</strong>. For instance, in my
+case I did the following:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">ccs</span></code>. This tool’s latest version is only provided as an executable
+(i.e., they closed the source). I downloaded it and stored it side by
+side with <code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code> in the same <code class="docutils literal notranslate"><span class="pre">venv</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">blasr</span></code>. I installed it with <code class="docutils literal notranslate"><span class="pre">bioconda</span></code> in a dedicated environment
+and passed the path to <code class="docutils literal notranslate"><span class="pre">blasr</span></code> directly to <code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sm-analysis ... -b ~/miniconda/bin/blasr ...</span>
+</pre></div></div><p>Notice that the <code class="docutils literal notranslate"><span class="pre">...</span></code> are symbolic.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pbindex</span></code>. I installed manually with <code class="docutils literal notranslate"><span class="pre">meson</span></code> the <code class="docutils literal notranslate"><span class="pre">pbbam</span></code> package
+and, again, pass the path to the executable in each call to
+<code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sm-analysis ... -p ~/src/pbbam/build/tools/pbindex ...</span>
+</pre></div></div></li>
+</ul>
+</div>
+</li>
+</ol>
+<p>Once <strong>PacBio Data Processing</strong> is installed, you are almost ready to use it. But on a cluster
+there is typically a queueing system that manages the resources. In the next
+section we describe the usage of <strong>PacBio Data Processing</strong> through <code class="docutils literal notranslate"><span class="pre">slurm</span></code>, a very common
+queueing system.</p>
+</section>
+<section id="running">
+<h2>Running<a class="headerlink" href="#running" title="Permalink to this headline">¶</a></h2>
+<p>A typical workflow to run software in a cluster managed by <code class="docutils literal notranslate"><span class="pre">slurm</span></code> (or any other
+queueing system) is:</p>
+<ol class="arabic simple">
+<li><p>prepare a <em>batch</em> script, and</p></li>
+<li><p><em>submit</em> it and wait for the results.</p></li>
+</ol>
+<p>The syntax and options of <em>batch</em> files are wide topics covered elsewhere. In
+this section we focus in preparing minimally functional batch scripts to use
+<strong>PacBio Data Processing</strong> with <code class="docutils literal notranslate"><span class="pre">slurm</span></code>.</p>
+<div class="admonition-for-the-goethe-hlr-cluster admonition">
+<p class="admonition-title">For the goethe-HLR cluster</p>
+<p>In the webpage of <a class="reference external" href="https://csc.uni-frankfurt.de/">CSC</a> you can find plenty of information about the
+<a class="reference external" href="https://csc.uni-frankfurt.de/wiki/doku.php?id=public:usage:goethe">Goethe-HLR Cluster Usage</a> and the <a class="reference external" href="https://csc.uni-frankfurt.de/wiki/doku.php?id=public:usage:fuchs">FUCHS Cluster Usage</a> including
+details about using <code class="docutils literal notranslate"><span class="pre">slurm</span></code>, recommended storage locations and much more.</p>
+</div>
+<p>In the rest of the section we will provide some examples of <em>batch</em> scripts
+and we will assume the following:</p>
+<ul>
+<li><p><strong>PacBio Data Processing</strong> has been installed in a <code class="docutils literal notranslate"><span class="pre">venv</span></code> such that the activation step is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> ~/.venvs/PacbioDataProcessing/bin/activate
+</pre></div>
+</div>
+</li>
+<li><p>The working directory will be:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/scratch/darmstadt/palao/projects/pacbio/m45
+</pre></div>
+</div>
+</li>
+<li><p>In that directory there is a bam file named <code class="docutils literal notranslate"><span class="pre">m45.bam</span></code> that we are interested
+in analyze on a per molecule basis with <code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code>. There is a reference
+too in the <code class="docutils literal notranslate"><span class="pre">fasta</span></code> format: <code class="docutils literal notranslate"><span class="pre">reference.fasta</span></code> and <code class="docutils literal notranslate"><span class="pre">reference.fasta.fai</span></code>.</p></li>
+</ul>
+<section id="a-simple-slurm-batch-script-for-sm-analysis">
+<h3>A simple <code class="docutils literal notranslate"><span class="pre">slurm</span></code> batch script for <code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code><a class="headerlink" href="#a-simple-slurm-batch-script-for-sm-analysis" title="Permalink to this headline">¶</a></h3>
+<p>The following listing contains a batch script that:</p>
+<ul class="simple">
+<li><p>reserves <code class="docutils literal notranslate"><span class="pre">1</span></code> compute node from the partition named <em>fuchs</em> for <code class="docutils literal notranslate"><span class="pre">2</span></code> days and
+<code class="docutils literal notranslate"><span class="pre">12</span></code> hours</p></li>
+<li><p>starts <code class="docutils literal notranslate"><span class="pre">10</span></code> simultaneous instances of <code class="docutils literal notranslate"><span class="pre">ipdSummary</span></code>, each spawning
+<code class="docutils literal notranslate"><span class="pre">4</span></code> worker processes</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1">#SBATCH --job-name=m45</span>
+<span class="c1">#SBATCH --partition=fuchs</span>
+<span class="c1">#SBATCH --nodes=1</span>
+<span class="c1">#SBATCH --time=2-12:00:00</span>
+<span class="c1">#SBATCH --mail-type=ALL</span>
+
+<span class="nb">source</span> ~/.venvs/PacbioDataProcessing/bin/activate
+<span class="nb">cd</span> /scratch/darmstadt/palao/projects/pacbio/m45
+
+sm-analysis m45.bam reference.fasta -n <span class="m">4</span> -N <span class="m">10</span>
+</pre></div>
+</div>
+</section>
+<section id="a-slurm-batch-script-to-run-sm-analysis-in-parallel">
+<h3>A <code class="docutils literal notranslate"><span class="pre">slurm</span></code> batch script to run <code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code> in parallel<a class="headerlink" href="#a-slurm-batch-script-to-run-sm-analysis-in-parallel" title="Permalink to this headline">¶</a></h3>
+<p>For large bam files it could be beneficial to employ more than a single node to
+speed up the analysis process.</p>
+<p>The following listing contains a batch script that:</p>
+<ul class="simple">
+<li><p>reserves <code class="docutils literal notranslate"><span class="pre">16</span></code> compute nodes from the partition named <em>fuchs</em> for <code class="docutils literal notranslate"><span class="pre">10</span></code> days</p></li>
+<li><p>starts, <em>in each node</em>, <code class="docutils literal notranslate"><span class="pre">10</span></code> simultaneous instances of <code class="docutils literal notranslate"><span class="pre">ipdSummary</span></code>, each
+in turn spawning <code class="docutils literal notranslate"><span class="pre">4</span></code> worker processes</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1">#SBATCH --job-name=m45</span>
+<span class="c1">#SBATCH --partition=fuchs</span>
+<span class="c1">#SBATCH --nodes=16</span>
+<span class="c1">#SBATCH --time=10-0:00:00</span>
+<span class="c1">#SBATCH --mail-type=ALL</span>
+
+<span class="nb">source</span> ~/.venvs/PacbioDataProcessing/bin/activate
+<span class="nb">cd</span> /scratch/darmstadt/palao/projects/pacbio/m45
+
+<span class="k">for</span> <span class="o">((</span> <span class="nv">t</span><span class="o">=</span><span class="m">1</span><span class="p">;</span>  t &lt;<span class="o">=</span> SLURM_NNODES<span class="p">;</span> t++<span class="o">))</span><span class="p">;</span> <span class="k">do</span>
+  srun --nodes<span class="o">=</span><span class="m">1</span> sm-analysis m45.bam reference.fasta -n <span class="m">4</span> -N <span class="m">10</span> -P <span class="si">${</span><span class="nv">t</span><span class="si">}</span>:<span class="si">${</span><span class="nv">SLURM_NNODES</span><span class="si">}</span> <span class="p">&amp;</span>
+  sleep <span class="m">5</span>
+<span class="k">done</span>
+<span class="nb">wait</span>
+</pre></div>
+</div>
+<p>Pay attention to the following points:</p>
+<ul class="simple">
+<li><p>we are splitting the processing in <code class="docutils literal notranslate"><span class="pre">16</span></code> <em>partitions</em>. Each node will produce the
+output corresponding to one 16-th of the original bam file in this example.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sm-analysis</span></code> is run with the help of <code class="docutils literal notranslate"><span class="pre">srun</span></code> to let <code class="docutils literal notranslate"><span class="pre">slurm</span></code> choose an empty
+node for each partition.</p></li>
+<li><p>at the end of the <code class="docutils literal notranslate"><span class="pre">srun</span></code> line there is a <code class="docutils literal notranslate"><span class="pre">&amp;</span></code> and at the end of the script there is
+a <code class="docutils literal notranslate"><span class="pre">wait</span></code> command. It is very important not to forget these two <em>details</em>.</p></li>
+</ul>
+</section>
+<section id="submitting-the-job">
+<h3>Submitting the job<a class="headerlink" href="#submitting-the-job" title="Permalink to this headline">¶</a></h3>
+<p>Finally, once the batch script is ready, it is time to <em>submit a job</em>. A
+job is what the queueing system creates when you tell it to run some program.
+In order to tell the cluster to execute the task described in the script, save it
+as, e.g. <code class="docutils literal notranslate"><span class="pre">sm-analysis.slurm</span></code> and run the following command in the cluster to
+submit the job:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">sbatch sm-analysis.slurm</span>
+</pre></div></div><p>Since the mail notifications are all active, you should receive an email when the job
+starts running and when it finishes.</p>
+<p>However the <code class="docutils literal notranslate"><span class="pre">squeue</span></code> command could be handy to have immediate feedback on the status
+of the job:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">squeue -u palao</span>
+</pre></div></div><p>the <code class="docutils literal notranslate"><span class="pre">-u</span> <span class="pre">palao</span></code> part means that we will get information only on jobs submitted
+by user <code class="docutils literal notranslate"><span class="pre">palao</span></code>. Other useful commands are available too. Please have a look
+at <a class="reference external" href="https://csc.uni-frankfurt.de/wiki/doku.php?id=public:usage:goethe">Goethe-HLR Cluster Usage</a> or at <a class="reference external" href="https://csc.uni-frankfurt.de/wiki/doku.php?id=public:usage:fuchs">FUCHS Cluster Usage</a> for more details.</p>
+<p>Once the job successfully completes, you will find the results in the working
+directory, <code class="docutils literal notranslate"><span class="pre">/scratch/darmstadt/palao/projects/pacbio/m45</span></code> in our case,
+and a <code class="docutils literal notranslate"><span class="pre">log</span></code> file created by slurm with all the outputs generated by
+the commands executed during the job. The name of the <code class="docutils literal notranslate"><span class="pre">log</span></code> file is, by
+default something like <code class="docutils literal notranslate"><span class="pre">slurm-??????.out</span></code>, where <code class="docutils literal notranslate"><span class="pre">??????</span></code> is the job number
+assigned by <code class="docutils literal notranslate"><span class="pre">slurm</span></code>.</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/index.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../devel/index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Guides</a><ul>
+      <li>Previous: <a href="phred_transformed_scores.html" title="previous chapter">Phred transformed scores</a></li>
+      <li>Next: <a href="pacbio_tools.html" title="next chapter">PacBio tools</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/indepth/cluster.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

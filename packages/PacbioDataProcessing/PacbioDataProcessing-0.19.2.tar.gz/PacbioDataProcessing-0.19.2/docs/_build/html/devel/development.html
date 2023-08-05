@@ -1,0 +1,261 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Development notes &#8212; PacBio Data Processing 0.19.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Miscellaneous notes" href="notes.html" />
+    <link rel="prev" title="Developer’s documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="development-notes">
+<h1>Development notes<a class="headerlink" href="#development-notes" title="Permalink to this headline">¶</a></h1>
+<section id="getting-ready">
+<h2>Getting ready<a class="headerlink" href="#getting-ready" title="Permalink to this headline">¶</a></h2>
+<p>This section will help you with the steps needed to start working on <strong>PacBio Data Processing</strong>.</p>
+<ol class="arabic">
+<li><p>Clone the repository:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt1:before {
+  content: "$ ";
+}
+</style><span class="prompt1">git clone https://gitlab.com/dvelazquez/pacbio-data-processing</span>
+</pre></div></div></li>
+<li><p>CD into in:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1"><span class="nb">cd</span> pacbio-data-processing</span>
+</pre></div></div></li>
+<li><p>(optional) Create a virtualenv/venv and activate it. See instructions in
+<a class="reference internal" href="../usage/installation.html#installation"><span class="std std-ref">Installation</span></a>.</p></li>
+<li><p>Install flit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">pip install flit</span>
+</pre></div></div></li>
+<li><p>Install <strong>PacBio Data Processing</strong> with all the optional dependencies:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">flit install --symlink --deps<span class="o">=</span>develop</span>
+</pre></div></div></li>
+</ol>
+<p>With this, you should be ready to start coding but… please, keep reading!</p>
+</section>
+<section id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h2>
+<p>The development of <strong>PacBio Data Processing</strong> follows the <strong>double loop TDD</strong> approach.
+See <a class="reference external" href="http://coding-is-like-cooking.info/2013/04/outside-in-development-with-double-loop-tdd/">double loop TDD</a>.</p>
+<section id="writing-code">
+<h3>Writing code<a class="headerlink" href="#writing-code" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="http://coding-is-like-cooking.info/2013/04/outside-in-development-with-double-loop-tdd/">double loop TDD</a> is a generalization of plain TDD.  A <em>second TDD loop</em> is added to
+the procedure. This sencond loop is <em>behaviour driven</em>, meaning that the functionality
+is guiding us in the development process.</p>
+<p>In brief, the procedure to develop code with this technique is as follows:</p>
+<ol class="arabic simple">
+<li><p>Write a functional test case (aka acceptance test) for the functionality you
+want to implement. You do this from the point of view of the <em>user</em>. After this
+step you will have a failing FT for that feature.</p></li>
+<li><p>Make your FT pass by implementing the needed features in your code following a
+normal TDD approach. Your point of view is now different from point 1: you
+look at the problem as a developer. Do not implement more features in your code
+than your FT requires to pass. In this phase we are just playing the usual TDD
+game with the goal of making the FT for the current feature pass.</p></li>
+</ol>
+</section>
+<section id="running-the-tests">
+<h3>Running the tests<a class="headerlink" href="#running-the-tests" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p>For the functional tests</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pytest tests/functional
+</pre></div>
+</div>
+</li>
+<li><p>Unit tests (with coverage)</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pytest --cov<span class="o">=</span>pacbio_data_processing tests/unit pacbio_data_processing
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="writing-tests">
+<h3>Writing tests<a class="headerlink" href="#writing-tests" title="Permalink to this headline">¶</a></h3>
+<p>The FTs rely on <code class="docutils literal notranslate"><span class="pre">pytest</span></code> (with fixtures; without stdlib’s unittest)</p>
+<p>The UTs use <code class="docutils literal notranslate"><span class="pre">unittest</span></code> from the standard library.</p>
+</section>
+<section id="gui">
+<h3>GUI<a class="headerlink" href="#gui" title="Permalink to this headline">¶</a></h3>
+<p>In a first approximation, the GUI tests were a bit smoky. The tests
+consisted in:</p>
+<ol class="arabic simple">
+<li><p>(FTs) Ensure that if <code class="docutils literal notranslate"><span class="pre">sm-analysis-gui</span></code> is launched, a process
+remains there for some time (as one would expect after launching
+a gui program).</p></li>
+<li><p>(UTs) Mocky tests to check that Gooey has been employed.</p></li>
+</ol>
+<p>One improvemnet would be using something like <code class="docutils literal notranslate"><span class="pre">PyAutoGUI</span></code>.</p>
+</section>
+</section>
+<section id="gitlab-pipelines">
+<h2>GitLab pipelines<a class="headerlink" href="#gitlab-pipelines" title="Permalink to this headline">¶</a></h2>
+<p>Pipelines are a helpful tool to ensure that the code is always working (CI/CD).
+One important task of our pipelines is to run all the tests. Since the tests
+<em>define</em> the behaviour of <strong>PacBio Data Processing</strong> and since particularly the functional tests
+take a while to complete, it is very convenient to trigger the execution of the
+tests whenever we push to the gitlab repository.</p>
+<p>Now, <strong>PacBio Data Processing</strong> depends on <a class="reference external" href="https://github.com/chriskiehl/Gooey">Gooey</a> that, in turn depends on <a class="reference external" href="https://wxpython.org/">wxPython</a>. Since
+there are no official wxPython <a class="reference external" href="https://peps.python.org/pep-0427/">Wheels</a> for Linux (see
+<a class="reference external" href="https://wxpython.org/pages/downloads/index.html">wxPython Downloads</a>), the installation of <strong>PacBio Data Processing</strong> implies, in general,
+the compilation of <a class="reference external" href="https://wxpython.org/">wxPython</a> which is too expensive for the resources
+provided by GitLab and leads to timeouts:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ERROR</span><span class="p">:</span> <span class="n">Job</span> <span class="n">failed</span><span class="p">:</span> <span class="n">execution</span> <span class="n">took</span> <span class="n">longer</span> <span class="n">than</span> <span class="mi">1</span><span class="n">h0m0s</span> <span class="n">seconds</span>
+</pre></div>
+</div>
+<p>The provisional solution to be able to run the tests within the
+GitLab pipelines is the following:</p>
+<ol class="arabic">
+<li><p>Create our own <a class="reference external" href="https://peps.python.org/pep-0427/">Wheels</a> using the same <em>docker image</em> that is
+used by the pipelines. In the case of the <code class="docutils literal notranslate"><span class="pre">python:3.9</span></code> image, it is
+<code class="docutils literal notranslate"><span class="pre">Debian</span> <span class="pre">11</span></code>. Run the container:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">docker run -ti --rm python:3.9 /bin/bash</span>
+</pre></div></div><p>And now, inside the container, run all the steps in the pipeline
+<em>before</em> the installation of <strong>PacBio Data Processing</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt2:before {
+  content: "root@2dbff77471c5:/# ";
+}
+</style><span class="prompt2">apt-get update -qq -y</span>
+<span class="prompt2">apt-get install -qq -y build-essential gcc make apt-utils</span>
+<span class="prompt2">apt-get install -y software-properties-common xvfb libgtk2.0-0 libnotify4 freeglut3 libsdl1.2debian pkg-config</span>
+<span class="prompt2">add-apt-repository -y -r ppa:deadsnakes/ppa</span>
+<span class="prompt2">apt-get update -qq -y</span>
+<span class="prompt2">apt-get install -qq -y libbz2-dev zlib1g-dev libncurses5-dev libncursesw5-dev liblzma-dev libgtk-3-dev dpkg-dev libjpeg-dev libtiff-dev libsdl1.2-dev libnotify-dev freeglut3 freeglut3-dev libghc-gtk3-dev libwxgtk3.0-gtk3-dev libgtk-3-0 libwebkit2gtk-4.0 libwebkit2gtk-4.0-dev</span>
+<span class="prompt2">pip install pip --upgrade</span>
+<span class="prompt2">pip install flit</span>
+</pre></div></div><p>Now, clone the repo:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">git clone https://gitlab.com/dvelazquez/pacbio-data-processing.git</span>
+</pre></div></div><p><code class="docutils literal notranslate"><span class="pre">cd</span></code> into the created directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2"><span class="nb">cd</span> pacbio-data-processing</span>
+</pre></div></div><p>And finally, install the project (it can take a while!):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
+span.prompt3:before {
+  content: "root@2dbff77471c5:/pacbio-data-processing# ";
+}
+</style><span class="prompt3"><span class="nv">FLIT_ROOT_INSTALL</span><span class="o">=</span><span class="m">1</span> flit install --deps<span class="o">=</span>all</span>
+</pre></div></div><p>This last step will trigger the creation of a Wheel file for wxPython.</p>
+</li>
+<li><p>Find the Wheel created in the last step:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt2">pip cache --format abspath wxPython</span>
+</pre></div></div><p>which will return something like:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">PATH</span><span class="o">/</span><span class="n">TO</span><span class="o">/</span><span class="n">WHEEL</span><span class="o">/</span><span class="n">wxPython</span><span class="o">-</span><span class="mf">4.1.1</span><span class="o">-</span><span class="n">cp39</span><span class="o">-</span><span class="n">cp39</span><span class="o">-</span><span class="n">linux_x86_64</span><span class="o">.</span><span class="n">whl</span>
+</pre></div>
+</div>
+</li>
+<li><p>Copy that file <em>from the host</em>. In another terminal run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">docker cp 2dbff77471c5:/PATH/TO/WHEEL/wxPython-4.1.1-cp39-cp39-linux_x86_64.whl .</span>
+</pre></div></div><p>where <code class="docutils literal notranslate"><span class="pre">2dbff77471c5</span></code> is the id of the <code class="docutils literal notranslate"><span class="pre">python:3.9</span></code> container used in step <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+</li>
+<li><p>Upload that file to a public URL, that can be passed to <code class="docutils literal notranslate"><span class="pre">pip</span></code> for the
+explicit installation of <code class="docutils literal notranslate"><span class="pre">wxPython</span></code>.</p></li>
+<li><p>Use that URL in the <code class="docutils literal notranslate"><span class="pre">.gitlab-ci.yml</span></code> file to install <code class="docutils literal notranslate"><span class="pre">wxPython</span></code> before
+installing <strong>PacBio Data Processing</strong>.</p></li>
+</ol>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PacBio Data Processing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../readme.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart for the impatient</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart_9steps.html">Quickstart on a cluster</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/index.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../indepth/index.html">Guides</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer’s documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">pacbio_data_processing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Developer’s documentation</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Developer’s documentation</a></li>
+      <li>Next: <a href="notes.html" title="next chapter">Miscellaneous notes</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, David Palao and David Velázquez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/devel/development.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
