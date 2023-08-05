@@ -1,0 +1,2 @@
+class CommandDuplicateError(Exception):
+    pass
