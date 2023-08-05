@@ -1,0 +1,141 @@
+stages:
+- test
+- build
+- test dev
+- test prod
+- build dev
+- build prod
+
+#############
+# Templates #
+#############
+.python:
+  image:
+    name: public.ecr.aws/lambda/python:3.9
+    entrypoint:
+    - "/usr/bin/env"
+    - "PATH=/var/lang/bin:/usr/local/bin:/usr/bin/:/bin:/opt/bin"
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  cache:
+    paths: [.cache/pip]
+  before_script:
+  - yum install --assumeyes make
+  - python3 -V
+  - python3 -m pip install --upgrade virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+
+.test:
+  extends: .python
+  script:
+  - python3 -m pip install --upgrade pytest requests
+  only:
+  - main
+
+.build:
+  extends: .python
+  script:
+  - yum install --assumeyes libyaml-devel
+
+########
+# Test #
+########
+black:
+  extends: .python
+  stage: test
+  script:
+  - python3 -m pip install --upgrade black
+  - make black
+
+pylint:
+  extends: .python
+  stage: test
+  script:
+  - python3 -m pip install --upgrade pylint==2.6.0
+  - make pylint
+
+pytest:
+  extends: .python
+  stage: test
+  coverage: '/^TOTAL.+ (\d+)%$/'
+  script:
+  - yum install --assumeyes libyaml-devel git curl
+  - export REPO=$(mktemp /tmp/repo.XXXXXXXXX)
+  - mkdir -p ~/bin/ && export PATH=$PATH:~/bin/
+  - curl -o ${REPO} https://storage.googleapis.com/git-repo-downloads/repo
+  - install -m 755 ${REPO} ~/bin/repo
+  - python3 -m pip install --upgrade pytest pytest-cov tuxmake
+  #- python3 -m pip install --upgrade -r requirements.txt
+  - python3 -m pip install --upgrade -r requirements-dev.txt
+  - make test
+  artifacts:
+    paths:
+    - htmlcov/
+    reports:
+      junit: report.xml
+  allow_failure: true
+
+include:
+- template: Security/SAST.gitlab-ci.yml
+
+#########
+# Build #
+#########
+build:
+  extends: .python
+  stage: build
+  script:
+  - echo "build running"
+
+############
+# test dev #
+############
+test_dev:
+  extends: .test
+  stage: test dev
+  variables:
+    TUXAPI_ENV: dev
+  environment:
+    name: dev
+    url:
+  resource_group: dev
+
+#############
+# test prod #
+#############
+test_prod:
+  extends: .test
+  stage: test prod
+  variables:
+    TUXAPI_ENV: prod
+  environment:
+    name: prod
+    url:
+  resource_group: prod
+
+#############
+# Build dev #
+#############
+build_dev:
+  extends: .build
+  stage: build dev
+  variables:
+    TUXAPI_ENV: dev
+  environment:
+    name: dev
+    url:
+  resource_group: dev
+
+#############
+# Build prod #
+#############
+build_prod:
+  extends: .build
+  stage: build prod
+  variables:
+    TUXAPI_ENV: prod
+  environment:
+    name: prod
+    url:
+  resource_group: prod
