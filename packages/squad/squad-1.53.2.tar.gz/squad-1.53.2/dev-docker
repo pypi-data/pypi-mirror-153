@@ -1,0 +1,60 @@
+#!/bin/sh
+
+set -eu
+
+
+basedir="$(readlink -f "$(dirname $0)")"
+tmpdir="$basedir"/tmp
+datadir="$tmpdir"/data
+mkdir -p "$datadir"
+
+dockerfile="$datadir"/../Dockerfile.dev
+(
+  sed -e '1,/# Prepare the environment/!d' "$basedir"/Dockerfile
+  echo 'RUN apt-get update -q2 && \
+            apt-get install -q2 \
+	        tmux \
+		flake8 \
+		python3-django-extensions \
+		python3-django-debug-toolbar \
+		python3-pytest \
+		python3-requests-mock \
+		ipython3 \
+		rabbitmq-server \
+		chromium \
+		nodejs \
+		ruby-foreman \
+		procps && \'
+  echo "    groupadd -g $(id -g) $(id -gn) && \\"
+  echo "    useradd -m -u $(id -u) -g $(id -g) -s /bin/bash ${USER}"
+  echo "RUN pip3 install --no-dependencies django-bootstrap3"
+  echo "WORKDIR /app"
+  echo "USER ${USER}"
+  echo 'CMD ["bash"]'
+) > "$dockerfile"
+
+docker build -t squad/dev -f "$dockerfile" .
+
+extra_volumes=''
+for v in $HOME/.gitconfig $HOME/.config/git; do
+  if [ -e "$v" ]; then
+    extra_volumes="$extra_volumes --volume=$v:$v"
+  fi
+done
+
+TTY="-i"
+if [ -t 1 ];
+then
+  TTY="-it"
+fi
+
+exec docker run \
+  --env=XDG_DATA_HOME=/app/tmp/data \
+  --env=SQUAD_EXCLUDE_TEST_TAGS=skip_sqlite \
+  --publish=8000:8000 \
+  --volume="$basedir":/app \
+  --name=squad-dev-docker \
+  --hostname=squad-dev-docker \
+  $extra_volumes \
+  --rm \
+  $TTY squad/dev "$@"

@@ -1,0 +1,181 @@
+{% extends "squad/base.jinja2" %}
+
+{% block content %}
+<div ng-app='Build'>
+    <div>
+    {% include "squad/build-nav.jinja2" %}
+    </div>
+    <h1>{{ _('Test Jobs') }}</h1>
+    <h4>
+    {% for field in filter.form %}
+        {% if field.value() is sameas true or field.value() is sameas false %}
+        <span class="label label-primary">{{ field.label }}:
+            {% if field.value() %}
+            <span class="badge alert-success"><i class="fa fa-check"></i></span>
+            {% else %}
+            <span class="badge alert-danger"><i class="fa fa-close"></i></span>
+            {% endif %}
+            </span>&nbsp;
+        {% else %}
+            {% if field.value() %}
+                <span class="label label-primary">{{ field.label }}:
+                {{ field.value() }}
+                </span>&nbsp;
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    </h4>
+    <div class="panel-group" id="testjob_filter_accordion">
+        <div class="panel panel-default" id="testjob_filter_panel">
+            <div class="panel-heading testjob-filter-panel">
+                 <h4 class="panel-title">
+            <a data-toggle="collapse" data-target="#collapseFilter"
+               href="#collapseOne">
+              {{ _('Edit filters') }}
+            </a>
+          </h4>
+
+            </div>
+            <div id="collapseFilter" class="panel-collapse collapse">
+                <div class="panel-body">
+                    <form action="" method="get">
+                        {% for field in filter.form %}
+                        {{ bootstrap_field(field) }}
+                        {% endfor %}
+                        <button type="submit" class="btn btn-default">{{ _('Filter test jobs') }}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+    {% if user_can_submit_jobs and testjobs|length %}
+    <div class='pull-right clearfix' ng-controller='CancelController' title="{{ _('Cancel all jobs') }}">
+        <a class="btn" ng-click="cancel_all({{ build.id }})" ng-class="{'btn-info': !done, 'btn-success': done, 'btn-danger': error}" ng-disabled="done" >
+	    <span ng-class="{'fa':true, 'fa-recycle':!done, 'fa-check': done && !error, 'fa-spin': loading, 'fa-close': error}" ng-disabled="done"></span>
+	    {{ _('Cancell all jobs') }}
+	</a>
+    </div>
+    <br />
+    <br />
+    {% endif %}
+
+    {% with items=testjobs %}
+      {% include "squad/_pagination.jinja2" %}
+    {% endwith %}
+    {% for testjob in testjobs %}
+    <div class="row row-bordered project">
+        <div class="col-md-12 col-sm-12 project-listing-info">
+            <div title='Test Job'>
+                {% if not testjob.failure %}
+                    <span class="badge alert-success"><i class='fa fa-check'></i></span>
+                {% else %}
+                    <span class="badge alert-danger"><i class="fa fa-close"></i></span>
+                {% endif %}
+                {% if testjob.url %}<a href="{{ testjob.url }}">{% endif %}{{ testjob.job_id }}, {{ testjob.environment }}, {{ testjob.name }} ({{testjob.job_status}}){% if testjob.url %}</a>{% endif %}
+                {% if testjob.submitted %}
+                    <span class="badge alert-success">{{ _('Submitted') }} <i class='fa fa-check'></i></span>
+                {% else %}
+                    <span class="badge alert-danger">{{ _('Not submitted') }} <i class="fa fa-close"></i></span>
+                {% endif %}
+                {% if testjob.fetched %}
+                    <span class="badge alert-success">{{ _('Fetched') }} <i class='fa fa-check'></i></span>
+                {% else %}
+                    <span class="badge alert-danger">{{ _('Not fetched') }} <i class="fa fa-close"></i></span>
+                    {{ _('Last fetch attempt: %s') % testjob.last_fetch_attempt|naturaltime }}
+                {% endif %}
+
+                {% if testjob.parent_job %}
+                    <a href="{{ testjob.parent_job.url }}">{{ _('Resubmitted from #%s') % testjob.parent_job.job_id }}</a>
+                {% endif %}
+                {% if testjob.failure %}
+                <button class="btn btn-default btn-sm" type="button" data-toggle="collapse" data-target="#collapse-failure-{{testjob.pk}}" aria-expanded="false" aria-controls="collapse-failure-{{testjob.pk}}" title="{{ _('Job failure message') }}"><span class="glyphicon glyphicon-alert" aria-hidden="true" title="{{ _('Job failure message') }}"></span></button>
+                {% endif %}
+                <button class="btn btn-default btn-sm" type="button" data-toggle="collapse" data-target="#collapse-definition-{{testjob.pk}}" aria-expanded="false" aria-controls="collapse-definition-{{testjob.pk}}" title="{{ _('Job definition') }}" onclick="$('#definition-{{ testjob.pk }}').load('/api/testjobs/{{ testjob.pk }}/definition/')"><span class="glyphicon glyphicon-list-alt" aria-hidden="true" title="{{ _('Job definition') }}"></span></button>
+                {% if user_can_submit_jobs %}
+                    {% if testjob.submitted %}
+                    <div class='pull-right' ng-controller='FetchController' title="{{ _('Manual-fetch job') }}">
+                        <a
+                            class="btn"
+                            ng-click="fetch({{testjob.id}})"
+                            ng-class="{'btn-info': !done, 'btn-success': done, 'btn-danger': error}"
+                            ng-disabled="done">
+                            <span
+                                ng-class="{'fa':true, 'fa-recycle':!done, 'fa-check': done && !error, 'fa-spin': loading, 'fa-close': error}"
+                                ng-disabled="done">
+                            </span>
+                            {{ _('%s - manual fetch')  % testjob.job_id }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% if not testjob.fetched %}
+                    <div class='pull-right' ng-controller='CancelController' title="{{ _('Cancel job') }}">
+                        <a
+                            class="btn"
+                            ng-click="cancel({{testjob.id}})"
+                            ng-class="{'btn-info': !done, 'btn-success': done, 'btn-danger': error}"
+                            ng-disabled="done">
+                            <span
+                                ng-class="{'fa':true, 'fa-recycle':!done, 'fa-check': done && !error, 'fa-spin': loading, 'fa-close': error}"
+                                ng-disabled="done">
+                            </span>
+                            {{ _('%s - cancel')  % testjob.job_id }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    <div class='pull-right' ng-controller='ResubmitController'>
+                        <a
+                            class="btn"
+                            ng-click="resubmit({{testjob.id}}, true)"
+                            ng-class="{'btn-info': !done, 'btn-success': done, 'btn-danger': error}"
+                            ng-disabled="{{ testjob.resubmitted_count }} > 0"
+                            title="{{ _('Resubmit job no matter the status') }}">
+                            <span
+                                ng-class="{'fa':true, 'fa-recycle':!done, 'fa-check': done && !error, 'fa-spin': loading, 'fa-close': error}"
+                                ng-disabled="done"
+                                title="{{ _('Resubmit job no matter the status') }}">
+                            </span>
+                            {{ _('%s - force resubmit') % testjob.job_id }}
+                        </a>
+                        {% if testjob.can_resubmit %}
+                        <a
+                            class="btn"
+                            ng-click="resubmit({{testjob.id}}, false)"
+                            ng-class="{'btn-info': !done, 'btn-success': done, 'btn-danger': error}"
+                            ng-disabled="{{ testjob.resubmitted_count }} > 0"
+                            title="{{ _('Resubmit job') }}">
+                            <span
+                                ng-class="{'fa':true, 'fa-recycle':!done, 'fa-check': done && !error, 'fa-spin': loading, 'fa-close': error}"
+                                ng-disabled="done"
+                                title="{{ _('Resubmit job') }}">
+                            </span>
+                            {{ _('%s - resubmit') % testjob.job_id }}
+                        </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            {% if testjob.failure %}
+            <div class="collapse" id="collapse-failure-{{testjob.pk}}">
+                <h4>{{ _('Error message') }}</h4>
+                <pre>{{ testjob.failure }}</pre>
+            </div>
+            {% endif %}
+            <div class="collapse" id="collapse-definition-{{testjob.pk}}">
+                <h4>{{ _('Definition') }}</h4>
+                <pre id="definition-{{ testjob.pk }}"></pre>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% with items=testjobs %}
+      {% include "squad/_pagination.jinja2" %}
+    {% endwith %}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script type="module" src='{{static("squad/build.js")}}'></script>
+{% endblock %}

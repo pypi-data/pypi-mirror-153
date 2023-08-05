@@ -1,0 +1,87 @@
+{% extends "squad/base.jinja2" %}
+{% set compare_build_action = request.path + strip_get_parameters(['project', 'comparison_type']) %}
+
+{% block content %}
+  <h1>{{ _('Compare builds') }}</h1>
+
+  {% if comparison %}
+    <div class="pull-right">
+      <a href="/api/projects/{{ project.id }}/compare_builds/?force=true&to_compare={{ comparison.builds[1].id }}&baseline={{ comparison.builds[0].id }}&by={{ comparison_type }}s">api view of this comparison</a>
+    </div>
+    {% with items=comparison.results %}
+      {% include "squad/_pagination.jinja2" %}
+    {% endwith %}
+
+    {% include "squad/_results_table.jinja2" %}
+
+    {% with items=comparison.results %}
+      {% include "squad/_pagination.jinja2" %}
+    {% endwith %}
+    <button onclick='window.location="{{ request.path }}"' class="btn btn-default" />{{ _('Start over') }}</button>
+  {% else %}
+    <h2>{{ _('Project') }}</h2>
+    <div class="row">
+      <div class="col-md-6 col-sm-6" ng-app="BuildCompare" ng-controller="BuildCompareController" ng-init="init({{ project.id if project else 0 }})">
+        <form>
+          <div class="form-group">
+            <select
+              name="project"
+              id="project-select"
+              placeholder="{{ _('Enter project name') }}"
+              onchange="window.location='{{ compare_build_action }}&' + $(this.form).serialize()"
+              class="form-control"
+              {%if project %}disabled{% endif %}
+            >
+            {% if project %}<option>{{ project.full_name }}</option>{% endif %}
+            </select>
+          </div>
+          {% if project %}
+          <div class="form-group">
+            <label for="baseline_build">{{ _('Compare build') }}</label>
+            <div class="input-group col-md-12">
+              <select id="baseline-select" name="baseline" placeholder="{{ _('Enter baseline version') }}" class="form-control"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="target_build">{{ _('against build') }} </label>
+            <div class="input-group col-md-12">
+              <select id="target-select" name="target" placeholder="{{ _('Enter target version') }}" class="form-control"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>{{ _('Comparison type') }}</label>
+            <div>
+              <input id="test-comparison" name="comparison_type" type="radio" value="test" checked="checked"/>
+              <label for="test-comparison">{{ _('compare by tests') }}</label>
+              <br />
+              <input id="metric-comparison" name="comparison_type" type="radio" value="metric" />
+              <label for="metric-comparison">{{ _('compare by metrics') }}</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <input type="hidden" name="project" value="{{ project.full_name }}" />
+            <input
+              onclick="window.location='{{ compare_build_action }}&' + $(this.form).serialize()"
+              value="{{ _('Compare') }}"
+              type="button"
+              class="btn btn-default"
+            />
+            <input onclick='window.location="{{ request.path }}"' value="{{ _('Start over') }}" type="button" class="btn btn-default" />
+          </div>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block javascript %}
+  <script type="text/javascript" src='{{static("squad/table.js")}}'></script>
+  <script type="text/javascript" src='{{static("select2.js/select2.min.js")}}'></script>
+  <script type="module" src='{{static("squad/build_compare.js")}}'></script>
+{% endblock %}
+
+{% block styles %}
+<link href='{{static("select2.js/select2.css")}}' rel="stylesheet" />
+<link href='{{static("compare.css")}}' rel="stylesheet" />
+{% endblock %}

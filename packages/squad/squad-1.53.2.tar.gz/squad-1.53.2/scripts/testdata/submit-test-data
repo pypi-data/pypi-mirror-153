@@ -1,0 +1,81 @@
+#!/bin/sh
+
+set -eu
+
+if [ $# -lt 2 ]; then
+  echo "usage: $0 TEAM PROJECT [BUILD] [ENVIRONMENT]"
+  exit 1
+fi
+
+TEAM="$1"
+PROJECT="$2"
+BUILD=${3:-}
+ENVIRONMENT="${4:-testenv}"
+
+checkdep() {
+  if ! which "$1" > /dev/null; then
+    echo "E: $1 not found; please install"
+    exit 1
+  fi
+}
+
+# dependencies
+checkdep curl
+checkdep jq
+checkdep openssl
+
+export AUTH_TOKEN=$(./manage.py get_token "$TEAM/$PROJECT")
+
+rand() {
+  local max="$1"
+  echo $((0x$(openssl rand -hex 1) % ${max} + 1))
+}
+
+hit_api() {
+  local endpoint="$1"
+  shift
+  curl --fail \
+    "http://localhost:8000${endpoint}" "$@"
+}
+
+
+if [ -z "$BUILD" ]; then
+  BUILD=$(date '+%Y.%m.%d')
+fi
+
+metrics=$(mktemp)
+"$(dirname $0)"/gen-metrics > "$metrics"
+
+tests=$(mktemp)
+"$(dirname $0)"/gen-tests > "$tests"
+
+job_id=${JOB_ID:-1.${ENVIRONMENT}}
+metadata=$(mktemp)
+cat > "${metadata}" <<METADATA
+{
+  "datetime": "$(date --iso-8601=seconds)",
+  "job_id": "${job_id}",
+  "job_url": "http://example.com/$BUILD/1",
+  "resubmit_url": "http://example.com/$BUILD/1/resubmit"
+}
+METADATA
+
+attachment="$metadata.txt"
+date > "$attachment"
+
+trap "rm -rf $metrics $tests $metadata $attachment" INT TERM EXIT
+
+if [ -n "${LOGS:-}" ]; then
+  log=$(printf "%s\n" $LOGS | shuf | head -1)
+fi
+
+hit_api "/api/submit/$TEAM/$PROJECT/$BUILD/$ENVIRONMENT" \
+  --fail \
+  --header "Auth-Token: $AUTH_TOKEN" \
+  --silent --output /dev/null \
+  --form metadata=@${metadata} \
+  --form metrics=@${metrics} \
+  --form tests=@${tests} \
+  ${log:+--form log=@$log} \
+  --form attachment=@${attachment} \
+  --form attachment=@test/core/test_import_data_input/2/default/2/screenshot.png \

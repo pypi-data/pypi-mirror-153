@@ -1,0 +1,151 @@
+{% extends "squad/base.jinja2" %}
+
+{% block content %}
+
+<div ng-app='Build'>
+{% include "squad/build-nav.jinja2" %}
+
+<h2>{{ _('Metadata') }}</h2>
+{% include "squad/_metadata.jinja2" %}
+
+{% if build.test_jobs.count() > 0 %}
+    {% include "squad/testjobs_progress.jinja2" %}
+{% endif %}
+
+<div class="form-group row">
+    <div class="col-md-12 col-sm-12" ng-controller='BuildCompareController' ng-init="init({{ build.project_id }})">
+        <h2>{{ _('Compare builds') }}</h2>
+        <form action="{{ url('compare_builds') }}" class="">
+            <input type="hidden" name="project" value="{{build.project.full_name}}" />
+            <input type="hidden" name="baseline" value="{{build.version}}" />
+            <div class="row">
+                <label for="target_version" class="col-md-3 col-sm-3">{{ _('Build version to compare: ') }}</label>
+                <div class="col-md-4" style="height: 120%;">
+                    <select id="target-select" onchange="this.form.submit()" name="target" placeholder="{{ _('Enter target version') }}" class="form-control"></select>
+                </div>
+            </div>
+            <div class="row">
+                <label class="col-md-3 col-sm-3">{{ _('Comparison type') }}</label>
+                <div class="col-md-4">
+                  <input id="test-comparison" name="comparison_type" type="radio" value="test" checked="checked"/>
+                  <label for="test-comparison">{{ _('compare by tests') }}</label>
+                  <input id="metric-comparison" name="comparison_type" type="radio" value="metric" />
+                  <label for="metric-comparison">{{ _('compare by metrics') }}</label>
+                </div>
+          </div>
+
+        </form>
+    </div>
+</div>
+
+<div ng-controller='FilterController' data-param="filter-tests">
+<h2 id="test-results">
+    <span class="pull-left">{{ _('Test results') }}</span>
+    <div class="dropdown pull-left" style="z-index: 1002;">
+        &nbsp;
+        <button class="btn btn-default dropdown-toggle" type="button" id="test_results_dropdown_menu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            {{ _('by environments') if results_layout == 'envbox' else _('by suites') if results_layout == 'suitebox' else _('suites x environments') }}
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="test_results_dropdown_menu">
+            <li{% if results_layout == 'envbox' %} class="disabled"{% endif %}>
+                <a class="dropdown-item" href="{{ update_get_parameters({'results_layout': 'envbox'}) }}#test-results">by environments</a>
+            </li>
+            <li{% if results_layout == 'suitebox' %} class="disabled"{% endif %}>
+                <a class="dropdown-item" href="{{ update_get_parameters({'results_layout': 'suitebox'}) }}#test-results">by suites</a>
+            </li>
+            <li{% if results_layout == 'table' %} class="disabled"{% endif %}>
+                <a class="dropdown-item" href="{{ update_get_parameters({'results_layout': 'table'}) }}#test-results">suites x environments</a>
+            </li>
+        </ul>
+    </div>
+    <div>
+        &nbsp;
+        <input
+            type="checkbox"
+            name="failures_only"
+            onclick="window.location = '{{ update_get_parameters({'failures_only': 'false' if failures_only == 'true' else 'true'}) }}#test-results'"
+            {% if failures_only == 'true' %}checked{% endif %}
+        />
+        <span style="font-size: 50%; font-weight: normal"> {{ _('failures only') }}</span>
+    </div>
+</h2>
+<div class='row row-bordered'>
+    <div class='col-md-12 col-sm-12'>
+        <form class='filter'>
+            <span class='fa fa-search'></span>
+            <input ng-model='filter' ng-change='update()' name='filter' type='text' placeholder='{{ _('Filter results ...') }}'/>
+        </form>
+    </div>
+</div>
+<div class="row" id="test-results">
+    <div class='col-md-12 col-sm-12'>
+        <br />
+        {% if results_layout == 'suitebox' %}
+            {% include "squad/_test_results_suitebox.jinja2" %}
+        {% elif results_layout == 'envbox' %}
+            {% include "squad/_test_results_envbox.jinja2" %}
+        {% else %}
+            {% include "squad/_test_results_table.jinja2" %}
+        {% endif %}
+    </div>
+</div>
+</div> <!-- ng-controller=FilterController -->
+
+<div ng-controller='FilterController' data-param="filter-metrics">
+    <h2>{{ _('Metrics') }}</h2>
+    <div class='row row-bordered'>
+	<div class='col-md-12 col-sm-12'>
+	    <form class='filter'>
+		<span class='fa fa-search'></span>
+		<input ng-model='filter' ng-change='update()' name='filter' type='text' placeholder='{{ _('Filter metrics ...') }}'/>
+	    </form>
+	</div>
+    </div>
+    <div class='metrics highlight-row'>
+	{% for suite, results in test_results.data.items() %}
+	{% for environment, entry in results.items() %}
+	{% for status in entry.statuses %}
+	{% if status.suite and status.has_metrics %}
+	<a href="{{testrun_suite_metrics_url(project.group, project, build, status)}}" id="metrics-{{status.id}}" ng-show="match('metrics-{{status.id}}')">
+	    <div class='row row-bordered'>
+		<div class='col-md-3 col-sm-3' title='Metrics suite'>
+		    <i class='fa fa-list'></i>
+		    <strong>{{status.suite}}</strong>
+		</div>
+
+		<div class='col-md-3 col-sm-3' title='Environment'>
+		    <i class='fa fa-microchip'></i>
+		    {{status.environment}}
+		</div>
+
+		<div class='col-md-4 col-sm-4' title='Metrics summary'>
+		    <i class='fa fa-line-chart'></i>
+		    {{status.metrics_summary|floatformat(3)}}
+		</div>
+
+		<div class='col-md-2 col-sm-2' title='Test runs'>
+		    <i class='fa fa-cog'></i>
+		    {{status.test_run.job_id}}
+		</div>
+	    </div>
+	</a>
+	{% endif %}
+	{% endfor %}
+	{% endfor %}
+	{% endfor %}
+    </div>
+</div> <!-- ng-content=FilterController -->
+
+</div> <!-- ng-app=Filter -->
+
+{% endblock %}
+
+{% block javascript %}
+<script type="text/javascript" src='{{static("select2.js/select2.min.js")}}'></script>
+<script type="module" src='{{static("squad/build.js")}}'></script>
+{% endblock %}
+
+{% block styles %}
+<link href='{{static("select2.js/select2.css")}}' rel="stylesheet" />
+{% endblock %}

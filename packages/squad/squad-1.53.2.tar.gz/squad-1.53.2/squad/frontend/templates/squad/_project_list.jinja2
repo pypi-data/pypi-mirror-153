@@ -1,0 +1,80 @@
+{% if has_archived_projects %}
+<div>
+    <span class="archived">
+    {{ _('Displaying only non-archived projects.') }}
+    <a href="#" onclick="$('.archived').toggle(); return false">{{ _('Display archived and non-archived projects') }}</a>.
+    </span>
+    <span class="archived" style='display: none'>
+    {{ _('Displaying archived and non-archived projects.') }}
+    <a href="#" onclick="$('.archived').toggle(); return false">{{ _('Display only non-archived projects') }}</a>.
+    </span>
+    <br/>
+    &nbsp;
+</div>
+{% endif %}
+
+<div class='highlight-row'>
+{% for project in projects %}
+<div class="row row-bordered project {% if project.is_archived %}archived{% endif %}">
+    {% with status=project_status(project) %}
+    <a href="{{project_url(project)}}">
+    <div class="col-md-4 col-sm-4">
+        <strong>
+            {% if not hide_group %}{{project.group.display_name}}/{% endif %}{{project.display_name}}
+        </strong>
+        {% if project.is_archived %}
+        <em>{{ _('(archived)') }}</em>
+        {% endif %}
+        {% if project.description%}
+        <div class='description-{{project.id}}'>
+            {{project.description|urlize|truncatechars_html(50)}}
+            {% if project.description|length > 50 %}
+            <a class='toggle-description' style='cursor: pointer' onclick='$(".description-{{project.id}}").toggle(); return false'>»</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-4 col-sm-4 project-listing-info">
+        {% if status.has_tests %}
+        <div title='{{ _('Test results') }}'>
+            <i class='fa fa-check-square-o'></i>
+            {% include "squad/_test_results_summary.jinja2" %}
+        </div>
+        {% endif %}
+
+        {% if status.has_metrics %}
+        <div title='{{ _('Metrics summary') }}'>
+            <i class='fa fa-line-chart'></i>
+            {{status.metrics_summary|floatformat(3)}}
+         </div>
+        {% endif %}
+    </div>
+    <div class="col-md-3 col-sm-3 project-listing-info">
+        {% if status.last_updated %}
+        <div>
+            <i class='fa fa-clock-o'>&nbsp;</i>
+            {{status.last_updated|naturaltime}}
+        </div>
+        <div>
+            <i class='fa fa-clock-o' style='color: transparent'>&nbsp;</i>
+            {{status.last_updated|date}},
+            {{status.last_updated|time}}
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-1 col-sm-1 project-listing-info">
+    {% include "squad/_subscribe.jinja2" %}
+    </div>
+    </a>
+
+    {% if project.description and project.description|length > 50 %}
+    <div class='description-{{project.id}} description col-md-12 col-sm-12' style='display: none'>
+        <span >{{project.description|urlize}}</span>
+        <a class='toggle-description' style='cursor: pointer' onclick='$(".description-{{project.id}}").toggle(); return false'>«</a>
+    </div>
+    {% endif %}
+
+    {% endwith %}
+</div>
+{% endfor %}
+</div>

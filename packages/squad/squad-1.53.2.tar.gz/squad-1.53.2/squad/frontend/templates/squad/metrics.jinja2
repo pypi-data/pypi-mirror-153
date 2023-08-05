@@ -1,0 +1,87 @@
+{% extends "squad/base.jinja2" %}
+
+{% block content %}
+{% with pagetitle=_('Metrics') %}
+{% include "squad/project-nav.jinja2" %}
+{% endwith %}
+<div style='margin-top: 20px'></div>
+<div class="row" ng-app='SquadCharts' ng-controller='ChartsController'>
+  <div class='col-md-3'>
+    <form><!-- TODO -->
+
+      <div class='panel panel-default'>
+        <div class='panel-heading'>
+          <span ng-show='getEnvironmentIds().length > 0'>
+            {{ _('Environment') }}
+          </span>
+          <span ng-show='getEnvironmentIds().length == 0'>
+            <strong>{{ _('Select environment(s)') }}</strong>
+          </span>
+          <span class='pull-right'>
+            <small><a style='cursor: pointer' ng-click='toggleEnvironments()'>{{ _('toggle all') }}</a></small>
+          </span>
+        </div>
+        <ul class='list-group'>
+          <li class='list-group-item' ng-repeat='environment in environments'>
+              <input type='checkbox' name='environment[]'
+                     id='environment-{% raw %}{{environment.name}}{% endraw %}'
+                     value='{% raw %}{{environment.name}}{% endraw %}'
+                     ng-model='environment.selected'
+                     ng-change='environmentsChanged()'
+              />
+              &nbsp;
+              <label for='environment-{% raw %}{{environment.name}}{% endraw %}'>
+                {% raw %}{{environment.name}}{% endraw %}
+              </label>
+          </li>
+        </ul>
+      </div>
+
+      <div class='panel panel-default' ng-show='getEnvironmentIds().length > 0'>
+        <div class='panel-heading'>
+          {{ _('Metrics') }}
+        </div>
+        <div class='panel-body'>
+          <div class='metric-selected' ng-repeat='metric in selectedMetrics'>
+            <small>{% raw %}{{metric.label}}{% endraw %}</small>
+            <a class='pull-right label label-default' ng-click='removeMetric(metric)'><strong>×</strong></a>
+          </div>
+
+          {{ _('Add metric:') }}
+          <select ng-disabled="disabled" ng-model="metric" class="form-control"
+                  ng-change="addMetric(metric)" ng-options="item.padding + item.label for item in metrics"></select>
+        </div>
+      </div>
+
+    </form>
+    <div id='sidebar'>
+    </div>
+  </div>
+  <div class='col-md-9'>
+    <div id='charts'>
+    </div>
+    <div id="point_menu" class="metrics-point-menu" onmouseleave="$(this).hide()">
+      <ul class="dropdown-menu">
+        <li><a target="_blank" href="#">{{ _('View result') }}</a></li>
+        <li><a href="#">{{ _('Toggle outlier') }}</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block javascript %}
+<script type="text/javascript">
+DATA = {
+  'project': '{{project.group.slug}}/{{project.slug}}',
+  'environments': {{environments|safe}},
+  'metrics': {{metrics|safe}},
+  'thresholds': {{thresholds|safe}},
+  'data': {{data|safe}}
+}
+</script>
+<script type="text/javascript" src="{{static("chartjs/Chart.bundle.js")}}"></script>
+<script type="module" src='{{static("squad/charts.js")}}'></script>
+<script type="text/javascript" src='{{static("chartjs/chartjs-plugin-annotation.min.js")}}'></script>
+{% endblock %}

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+set -eu
+
+if [ $# -lt 2 ]; then
+  echo "usage: [DAYS=n] $0 TEAM PROJECT [ENVIRONMENT]"
+  exit 1
+fi
+
+script=$(basename "$0")
+what=${script#gen-}
+
+TEAM="$1"
+PROJECT="$2"
+ENVIRONMENT="${3:-}"
+days=${DAYS:-10}
+
+if ! which faketime >/dev/null; then
+  echo "E: please install faketime first"
+  exit 1
+fi
+
+basedir="$(dirname "$0")"
+
+for i in $(seq ${days} -1 0); do
+  export BUILD=$((days - i))
+  faketime "$i days ago" $(dirname $0)/submit-$what "$TEAM" "$PROJECT" "$BUILD" "$ENVIRONMENT"
+  echo "submitted data for $i days ago"
+done
