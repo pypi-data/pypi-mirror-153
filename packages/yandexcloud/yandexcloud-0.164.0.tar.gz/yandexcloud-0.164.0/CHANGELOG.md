@@ -1,0 +1,185 @@
+# Changelog
+
+<!--next-version-placeholder-->
+
+## v0.164.0 (2022-05-31)
+### Feature
+* Regenerate proto
+ ([`5000073`](https://github.com/yandex-cloud/python-sdk/commit/50000736c80cf04929cb0027297bcc017afbfc8e))
+
+## v0.163.0 (2022-05-24)
+### Feature
+* Regenerate proto
+ ([`786e89b`](https://github.com/yandex-cloud/python-sdk/commit/786e89b3b08f453007ba490d659b814db6d419e9))
+
+## v0.162.0 (2022-05-19)
+### Feature
+* Regenerate proto
+ ([`5f36d70`](https://github.com/yandex-cloud/python-sdk/commit/5f36d70d1b451f6a0fa39fca7e87b310c6eb1531))
+
+## v0.161.0 (2022-05-12)
+### Feature
+* Regenerate proto
+ ([`53b1e8f`](https://github.com/yandex-cloud/python-sdk/commit/53b1e8f10ce7a1b6d5a2bfaa4b41435e1bfbfda5))
+
+## v0.160.0 (2022-05-05)
+### Feature
+* Regenerate proto
+ ([`3f325e2`](https://github.com/yandex-cloud/python-sdk/commit/3f325e2d44b589848615aed9d7fd74b67b381d34))
+
+## v0.159.0 (2022-04-28)
+### Feature
+* Regenerate proto
+ ([`283fe85`](https://github.com/yandex-cloud/python-sdk/commit/283fe8577de0b13b4b7df90f540bc942a6bcad76))
+
+## v0.158.0 (2022-04-26)
+### Feature
+* Regenerate proto
+ ([`356d7eb`](https://github.com/yandex-cloud/python-sdk/commit/356d7eb78a49a1c8a66e6b118f4b687a6c1f6961))
+
+## v0.157.0 (2022-04-25)
+### Feature
+* Support Serverless Containers in sdk
+ ([`cc976dd`](https://github.com/yandex-cloud/python-sdk/commit/cc976ddaf202443c224f3a3ef1c02ad427de7213))
+
+## v0.156.0 (2022-04-25)
+### Feature
+* Suppress some pylint confusion about dynamically generated code
+ ([`dd5dccd`](https://github.com/yandex-cloud/python-sdk/commit/dd5dccdf56be02562a521e9d2d6acfeebf90e55f))
+* Add test/lint in protogenerate workflow
+ ([`6f8c19d`](https://github.com/yandex-cloud/python-sdk/commit/6f8c19de937d6c59e194e3f8a4ab7e144f345e78))
+
+## v0.155.0 (2022-04-20)
+### Feature
+* Regenerate proto
+ ([`b887463`](https://github.com/yandex-cloud/python-sdk/commit/b8874637e396303e379698ae33ccbd77f6683fa4))
+
+## v0.154.0 (2022-04-14)
+### Feature
+* Regenerate proto
+ ([`4ff9c39`](https://github.com/yandex-cloud/python-sdk/commit/4ff9c39f4f7385d9d6f7cafa4b7f11d08a142544))
+
+## v0.153.0 (2022-04-12)
+### Feature
+* Regenerate proto
+ ([`b6e0f2f`](https://github.com/yandex-cloud/python-sdk/commit/b6e0f2fc0aeed1a51894d8c8ba6f4640c2ba5f41))
+
+## v0.152.0 (2022-03-29)
+### Feature
+* Regenerate proto
+ ([`ae23f49`](https://github.com/yandex-cloud/python-sdk/commit/ae23f4957a355e647e4e49577f9d735695c7944b))
+
+## v0.151.0 (2022-03-28)
+### Feature
+* Add datatransfer module
+ ([`eec7dc6`](https://github.com/yandex-cloud/python-sdk/commit/eec7dc65ef23789388fa46d13087d4a03cdc6e57))
+
+## v0.150.0 (2022-03-22)
+### Feature
+* Regenerate proto
+ ([`35f5031`](https://github.com/yandex-cloud/python-sdk/commit/35f503138cfdcac2972329d2fd2aece5b111daa1))
+
+## v0.149.0 (2022-03-16)
+### Feature
+* Fix markdown formatting in README ([`ab0167b`](https://github.com/yandex-cloud/python-sdk/commit/ab0167b1958bf2397c196ce442b8da5349661142))
+
+## v0.148.0 (2022-03-15)
+### Feature
+* Regenerate proto
+ ([`8715f40`](https://github.com/yandex-cloud/python-sdk/commit/8715f40f0e4777a9180a5cb8574ad8dbe52da05d))
+
+## v0.147.0 (2022-03-08)
+### Feature
+* Regenerate proto
+ ([`313bc79`](https://github.com/yandex-cloud/python-sdk/commit/313bc79d21999d2c7f5c79432bbea59840a0e66c))
+
+## v0.146.0 (2022-03-02)
+### Feature
+* Revert "Fix W1202: Use lazy % formatting in logging functions (logging-format-interpolation)"
+
+This reverts commit 57f6aca88c91c29fc43a24d8bb0f61dcae492ce3.
+ ([`6801d07`](https://github.com/yandex-cloud/python-sdk/commit/6801d073c5dd4a49408e5fd08a7b5cbc51ea4230))
+
+## v0.145.0 (2022-03-01)
+### Feature
+* Regenerate proto
+ ([`a46cc2f`](https://github.com/yandex-cloud/python-sdk/commit/a46cc2f1db71732eaf712be46c030aeb63e334fe))
+
+## v0.144.0 (2022-02-28)
+### Feature
+* Set actual python versions & update README.md
+ ([`a1a6cf5`](https://github.com/yandex-cloud/python-sdk/commit/a1a6cf561b7e715845ab3edd3467f40d85c2481a))
+
+## v0.143.0 (2022-02-28)
+### Feature
+* Add code formatter check and command (#33)
+
+* Add black to project
+
+* Add isort
+
+* make format
+
+* Add changelog to format targets ([`41d465e`](https://github.com/yandex-cloud/python-sdk/commit/41d465ef9c3badc54e8cd23b7a505ad68ea0baee))
+
+## v0.142.0 (2022-02-28)
+### Feature
+* Fix e.code() liniter warning
+ ([`ab96017`](https://github.com/yandex-cloud/python-sdk/commit/ab960177f6fdb4fa640f681bf2869057b986d149))
+* Fix ignore after merge
+ ([`d717d34`](https://github.com/yandex-cloud/python-sdk/commit/d717d347e532eb240704620f8c92b6eba5209879))
+* Ignore line length & fix trailing whitespaces
+ ([`4be4916`](https://github.com/yandex-cloud/python-sdk/commit/4be491662366fa23491107df1baa55ff9a37d5b0))
+* Fix W1202: Use lazy % formatting in logging functions (logging-format-interpolation)
+ ([`57f6aca`](https://github.com/yandex-cloud/python-sdk/commit/57f6aca88c91c29fc43a24d8bb0f61dcae492ce3))
+* Fix R1714: Consider merging these comparisons with "in" to "u.path in ('/yandex.cloud.iam.v1.IamTokenService', '/yandex.cloud.endpoint.ApiEndpointService')" (consider-using-in)
+ ([`7952ecf`](https://github.com/yandex-cloud/python-sdk/commit/7952ecfea80b03fa9793106e4b752a3fa674e732))
+* Fix R1711: Useless return at end of function or method (useless-return)
+ ([`aaa2ddd`](https://github.com/yandex-cloud/python-sdk/commit/aaa2ddd3ee6e42298c135fd7045e0a51f7f7a8b6))
+* Fix R1720: Unnecessary "else" after "raise" (no-else-raise)
+ ([`65bc6c6`](https://github.com/yandex-cloud/python-sdk/commit/65bc6c69df7e1099f7226b500bf2b477dd862e13))
+* Add pylint configurations
+ ([`bd10901`](https://github.com/yandex-cloud/python-sdk/commit/bd10901ede375a7259ac31538e7518e6dfd7b2a6))
+
+## v0.141.0 (2022-02-28)
+### Feature
+* Zero exit code when no proto code changes
+ ([`b87099d`](https://github.com/yandex-cloud/python-sdk/commit/b87099d87e15bd65cee2e361dcc5271e2e2e8456))
+
+## v0.140.0 (2022-02-25)
+### Feature
+* Use personal access token to trigger release workflow
+ ([`5f535c7`](https://github.com/yandex-cloud/python-sdk/commit/5f535c74d9d564e0d08f161ba7b51ef55adbb970))
+
+## v0.139.0 (2022-02-25)
+### Feature
+* Improve changelog generation
+ ([`5761abd`](https://github.com/yandex-cloud/python-sdk/commit/5761abd71a65abcc9b1383bfbb8a5021fdd0323c))
+* Regenerate proto
+ ([`bee7793`](https://github.com/yandex-cloud/python-sdk/commit/bee7793a76617a41ca8433e40422be69dba1247e))
+
+## v0.138.0 (2022-02-25)
+### Feature
+* Fix deps installation
+ ([`6fad07f`](https://github.com/yandex-cloud/python-sdk/commit/6fad07fd9025ce6731082b4ec3f53d3b3a313b07))
+
+## v0.137.0 (2022-02-25)
+### Feature
+* Add codestyle validating command + CI check ([`cd1afc5`](https://github.com/yandex-cloud/python-sdk/commit/cd1afc5edf358bf5ed8c7ade14d9789718b60b29))
+* Add mccabe (cyclomatic complexity) plugin for flake8
+ ([`84d6ec6`](https://github.com/yandex-cloud/python-sdk/commit/84d6ec6f2b07332e13b88e878975dcdaae9fe3df))
+* Add PEP-8 check + fix warnings
+ ([`1318ce4`](https://github.com/yandex-cloud/python-sdk/commit/1318ce47ba74f047a434f1cb66eb8a9d8ffe57df))
+
+## v0.136.0 (2022-02-25)
+### Feature
+* Configure code generation through github actions
+ ([`bb1509f`](https://github.com/yandex-cloud/python-sdk/commit/bb1509fad56551b0fca1a1afa68c91e4920c4515))
+
+## v0.135.0 (2022-02-24)
+### Feature
+* Cleanup changelog ([`c635255`](https://github.com/yandex-cloud/python-sdk/commit/c63525586e85a7e752b5792ce73b8d2bc3e5a450))
+
+## v0.134.0 (2022-02-24)
+### Feature
+* Release via github actions ([`9222567`](https://github.com/yandex-cloud/python-sdk/commit/92225671e201543711638cede06a818629cace85))

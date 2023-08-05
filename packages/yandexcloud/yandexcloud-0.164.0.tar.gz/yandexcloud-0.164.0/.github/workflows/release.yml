@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # disallows two or more release jobs to run in parallel
+    concurrency: release
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+          python-version: "3.10"
+
+    - name: Bump version and release to PyPi
+      run: |
+        make deps
+
+        git config --global user.name 'Yandex.Cloud Bot'
+        git config --global user.email 'ycloud-bot@yandex.ru'
+
+        make release
+      env:
+        REPOSITORY_USERNAME: __token__
+        REPOSITORY_PASSWORD: ${{ secrets.PYPI_TOKEN }}
