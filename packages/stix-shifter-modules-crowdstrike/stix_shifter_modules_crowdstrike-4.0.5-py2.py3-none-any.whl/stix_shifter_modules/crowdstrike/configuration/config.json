@@ -1,0 +1,851 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "Crowdstrike Falcon",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "default": 443,
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "default": "data-sources-crowdstrike-falcon.html",
+            "type": "link"
+        },
+        "options": {
+            "validate_pattern": {
+                "default": false,
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 500000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 60,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "from_stix_map": {
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "device.external_ip",
+                                    "device.local_ip"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "fields": {
+                                "value": [
+                                    "device.external_ip",
+                                    "device.local_ip"
+                                ]
+                            }
+                        },
+                        "mac-addr": {
+                            "fields": {
+                                "value": [
+                                    "device.mac_address"
+                                ]
+                            }
+                        },
+                        "file": {
+                            "fields": {
+                                "name": [
+                                    "behaviors.filename"
+                                ],
+                                "hashes.MD5": [
+                                    "behaviors.md5",
+                                    "behaviors.parent_details.parent_md5"
+                                ],
+                                "hashes.'SHA-256'": [
+                                    "behaviors.sha256",
+                                    "behaviors.parent_details.parent_sha256"
+                                ],
+                                "hashes.parent_MD5": [
+                                    "behaviors.parent_details.parent_md5"
+                                ],
+                                "hashes.parent_SHA-256": [
+                                    "behaviors.parent_details.parent_sha256"
+                                ],
+                                "hashes.child_MD5": [
+                                    "behaviors.md5"
+                                ],
+                                "hashes.child_SHA-256": [
+                                    "behaviors.sha256"
+                                ],
+                                "parent_directory_ref.path": [
+                                    "behaviors.filepath"
+                                ]
+                            }
+                        },
+                        "process": {
+                            "fields": {
+                                "command_line": [
+                                    "behaviors.cmdline"
+                                ],
+                                "created": [
+                                    "behaviors.timestamp"
+                                ],
+                                "name": [
+                                    "behaviors.filename"
+                                ],
+                                "creator_user_ref.user_id": [
+                                    "behaviors.user_id"
+                                ],
+                                "creator_user_ref.account_login": [
+                                    "behaviors.user_name"
+                                ],
+                                "binary_ref.hashes.MD5": [
+                                    "behaviors.md5"
+                                ],
+                                "binary_ref.hashes.'SHA-256'": [
+                                    "behaviors.sha256"
+                                ],
+                                "parent_ref.name": [
+                                    "behaviors.filename"
+                                ],
+                                "parent_ref.command_line": [
+                                    "behaviors.parent_cmdline"
+                                ],
+                                "parent_ref.binary_ref.hashes.MD5": [
+                                    "behaviors.parent_details.parent_md5"
+                                ],
+                                "parent_ref.binary_ref.hashes.'SHA-256'": [
+                                    "behaviors.parent_details.parent_sha256"
+                                ]
+                            }
+                        },
+                        "url": {
+                            "fields": {
+                                "value": [
+                                    "device.hostinfo.domain"
+                                ]
+                            }
+                        },
+                        "domain-name": {
+                            "fields": {
+                                "value": [
+                                    "ioc_type.domain"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "user_id": [
+                                    "behaviors.user_id"
+                                ],
+                                "account_login": [
+                                    "behaviors.user_name"
+                                ]
+                            }
+                        },
+                        "directory": {
+                            "fields": {
+                                "path": [
+                                    "behaviors.filepath"
+                                ]
+                            }
+                        },
+                        "x-oca-event": {
+                            "fields": {
+                                "process_ref.name": [
+                                    "behaviors.filename"
+                                ],
+                                "process_ref.command_line": [
+                                    "behaviors.cmdline"
+                                ],
+                                "process_ref.binary_ref.name": [
+                                    "behaviors.filename"
+                                ],
+                                "process_ref.creator_user_ref.user_id": [
+                                    "behaviors.user_id"
+                                ],
+                                "process_ref.creator_user_ref.account_login": [
+                                    "behaviors.user_name"
+                                ],
+                                "process_ref.parent_ref.name": [
+                                    "behaviors.filename"
+                                ],
+                                "process_ref.parent_ref.command_line": [
+                                    "behaviors.parent_details.parent_cmdline"
+                                ],
+                                "process_ref.parent_ref.binary_ref.hashes.MD5": [
+                                    "behaviors.parent_details.parent_md5"
+                                ],
+                                "process_ref.parent_ref.binary_ref.hashes.'SHA-256'": [
+                                    "behaviors.parent_details.parent_sha256"
+                                ],
+                                "parent_process_ref.name": [
+                                    "behaviors.filename"
+                                ],
+                                "parent_process_ref.command_line": [
+                                    "behaviors.parent_details.parent_cmdline"
+                                ],
+                                "parent_process_ref.binary_ref.hashes.MD5": [
+                                    "behaviors.parent_details.parent_md5"
+                                ],
+                                "parent_process_ref.binary_ref.hashes.'SHA-256'": [
+                                    "behaviors.parent_details.parent_sha256"
+                                ],
+                                "parent_process_ref.creator_user_ref.user_id": [
+                                    "behaviors.user_id"
+                                ],
+                                "parent_process_ref.creator_user_ref.account_login": [
+                                    "behaviors.user_name"
+                                ],
+                                "domain_ref.value": [
+                                    "device.hostname"
+                                ],
+                                "file_ref.name": [
+                                    "behaviors.filename"
+                                ],
+                                "host_ref.hostname": [
+                                    "device.hostname"
+                                ],
+                                "host_ref.name": [
+                                    "device.machine_domain"
+                                ]
+                            }
+                        },
+                        "x-oca-asset": {
+                            "fields": {
+                                "name": [
+                                    "device.machine_domain"
+                                ],
+                                "hostname": [
+                                    "device.hostname"
+                                ],
+                                "ip_refs": [
+                                    "device.external_ip",
+                                    "device.local_ip"
+                                ],
+                                "os_name": [
+                                    "device.platform_name"
+                                ],
+                                "os_platform": [
+                                    "device.platform_name"
+                                ]
+                            }
+                        },
+                        "x-crowdstrike": {
+                            "fields": {
+                                "device_id": [
+                                    "device.device_id"
+                                ],
+                                "detection_id": [
+                                    "device.detection_id"
+                                ],
+                                "scenario": [
+                                    "behaviors.scenario"
+                                ],
+                                "tactic_id": [
+                                    "device.tactic_id"
+                                ],
+                                "severity": [
+                                    "device.severity"
+                                ],
+                                "tactic": [
+                                    "behaviors.tactic"
+                                ],
+                                "technique": [
+                                    "behaviors.technique"
+                                ],
+                                "technique_id": [
+                                    "device.technique_id"
+                                ],
+                                "agent_local_time": [
+                                    "device.agent_local_time"
+                                ],
+                                "agent_version": [
+                                    "device.agent_version"
+                                ],
+                                "first_seen": [
+                                    "device.first_seen"
+                                ],
+                                "last_seen": [
+                                    "device.last_seen"
+                                ],
+                                "confidence": [
+                                    "device.confidence"
+                                ],
+                                "bios_manufacturer": [
+                                    "device.bios_manufacturer"
+                                ],
+                                "bios_version": [
+                                    "device.bios_version"
+                                ],
+                                "config_id_base": [
+                                    "device.config_id_base"
+                                ],
+                                "config_id_build": [
+                                    "device.config_id_build"
+                                ],
+                                "config_id_platform": [
+                                    "device.config_id_platform"
+                                ],
+                                "platform_id": [
+                                    "device.platform_id"
+                                ],
+                                "product_type": [
+                                    "device.product_type"
+                                ],
+                                "product_type_desc": [
+                                    "device.product_type_desc"
+                                ],
+                                "site_name": [
+                                    "device.site_name"
+                                ],
+                                "system_manufacturer": [
+                                    "device.system_manufacturer"
+                                ],
+                                "system_product_name": [
+                                    "device.system_product_name"
+                                ],
+                                "modified_timestamp": [
+                                    "device.modified_timestamp"
+                                ],
+                                "instance_id": [
+                                    "device.instance_id"
+                                ],
+                                "service_provider": [
+                                    "device.service_provider"
+                                ],
+                                "status": [
+                                    "device.status"
+                                ],
+                                "event_status": [
+                                    "behaviors.status"
+                                ],
+                                "max_severity_displayname": [
+                                    "behaviors.max_severity_displayname"
+                                ],
+                                "control_graph_id": [
+                                    "behaviors.control_graph_i"
+                                ],
+                                "display_name_1": [
+                                    "behaviors.display_name"
+                                ],
+                                "objective": [
+                                    "behaviors.objective"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "+",
+                        "ComparisonExpressionOperators.Or": ",",
+                        "ComparisonComparators.Equal": ":",
+                        "ComparisonComparators.NotEqual": ":!",
+                        "ComparisonComparators.GreaterThan": ":>",
+                        "ComparisonComparators.GreaterThanOrEqual": ":>=",
+                        "ComparisonComparators.LessThan": ":<",
+                        "ComparisonComparators.LessThanOrEqual": ":<=",
+                        "ComparisonComparators.In": ":"
+                    },
+                    "to_stix_map": {
+                        "timestamp": [
+                            {
+                                "key": "first_observed",
+                                "cybox": false
+                            },
+                            {
+                                "key": "last_observed",
+                                "cybox": false
+                            },
+                            {
+                                "key": "x-oca-event.created",
+                                "object": "event"
+                            }
+                        ],
+                        "filename": [
+                            {
+                                "key": "file.name",
+                                "object": "process_file"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "process",
+                                "references": "process_file"
+                            },
+                            {
+                                "key": "process.name",
+                                "object": "process"
+                            },
+                            {
+                                "key": "x-oca-event.process_ref",
+                                "object": "event",
+                                "references": "process"
+                            }
+                        ],
+                        "machine_domain": {
+                            "key": "x-crowdstrike.machine_domain",
+                            "object": "x-crowdstrike"
+                        },
+                        "filepath": [
+                            {
+                                "key": "directory.path",
+                                "object": "process_file_dir"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "process_file",
+                                "references": "process_file_dir"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "process",
+                                "references": "process_file"
+                            }
+                        ],
+                        "cmdline": {
+                            "key": "process.command_line",
+                            "object": "process"
+                        },
+                        "control_graph_id": {
+                            "key": "x-crowdstrike.control_graph_id",
+                            "object": "x-crowdstrike"
+                        },
+                        "display_name_1": {
+                            "key": "x-crowdstrike.display_name_1",
+                            "object": "x-crowdstrike"
+                        },
+                        "objective": {
+                            "key": "x-crowdstrike.objective",
+                            "object": "x-crowdstrike"
+                        },
+                        "display_name": {
+                            "key": "x-oca-event.action",
+                            "object": "event"
+                        },
+                        "description": {
+                            "key": "x-oca-event.outcome",
+                            "object": "event"
+                        },
+                        "user_name": [
+                            {
+                                "key": "user-account.account_login",
+                                "object": "process_creator"
+                            },
+                            {
+                                "key": "process.creator_user_ref",
+                                "object": "process",
+                                "references": "process_creator"
+                            }
+                        ],
+                        "user_id": [
+                            {
+                                "key": "user-account.user_id",
+                                "object": "process_creator"
+                            },
+                            {
+                                "key": "process.creator_user_ref",
+                                "object": "process",
+                                "references": "process_creator"
+                            }
+                        ],
+                        "sha256": {
+                            "key": "file.hashes.SHA-256",
+                            "object": "process_file"
+                        },
+                        "md5": {
+                            "key": "file.hashes.MD5",
+                            "object": "process_file"
+                        },
+                        "parent_sha256": [
+                            {
+                                "key": "file.hashes.SHA-256",
+                                "object": "parent_process_file"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "parent_process",
+                                "references": "parent_process_file"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent_process"
+                            }
+                        ],
+                        "parent_process_graph_id": [
+                            {
+                                "key": "process.pid",
+                                "object": "parent_process",
+                                "transformer": "GraphIDToPID"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent_process"
+                            }
+                        ],
+                        "triggering_process_graph_id": {
+                            "key": "process.pid",
+                            "object": "process",
+                            "transformer": "GraphIDToPID"
+                        },
+                        "registry_key": [
+                            {
+                                "key": "windows-registry-key.key",
+                                "object": "registry_key"
+                            },
+                            {
+                                "key": "x-oca-event.registry_ref",
+                                "object": "event",
+                                "references": "registry_key"
+                            }
+                        ],
+                        "domain_ioc": [
+                            {
+                                "key": "domain-name.value",
+                                "object": "domain-name"
+                            },
+                            {
+                                "key": "network-traffic.dst_ref",
+                                "object": "network-traffic",
+                                "references": "domain-name"
+                            },
+                            {
+                                "key": "x-oca-event.network_ref",
+                                "object": "event",
+                                "references": "network-traffic"
+                            }
+                        ],
+                        "sha256_ioc": [
+                            {
+                                "key": "file.hashes.SHA-256",
+                                "object": "ioc_file"
+                            },
+                            {
+                                "key": "x-oca-event.file_ref",
+                                "object": "event",
+                                "references": "ioc_file"
+                            }
+                        ],
+                        "quarantined_file_sha256": [
+                            {
+                                "key": "file.hashes.SHA-256",
+                                "object": "quarantined_file"
+                            },
+                            {
+                                "key": "x-oca-event.file_ref",
+                                "object": "event",
+                                "references": "quarantined_file"
+                            }
+                        ],
+                        "md5_ioc": [
+                            {
+                                "key": "file.hashes.MD5",
+                                "object": "ioc_file"
+                            },
+                            {
+                                "key": "x-oca-event.file_ref",
+                                "object": "event",
+                                "references": "ioc_file"
+                            }
+                        ],
+                        "parent_md5": [
+                            {
+                                "key": "file.hashes.MD5",
+                                "object": "parent_process_file"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "parent_process",
+                                "references": "parent_process_file"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent_process"
+                            },
+                            {
+                                "key": "x-oca-event.parent_process_ref",
+                                "object": "event",
+                                "references": "parent_process"
+                            }
+                        ],
+                        "parent_cmdline": [
+                            {
+                                "key": "process.command_line",
+                                "object": "parent_process"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent_process"
+                            }
+                        ],
+                        "external_ip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst-ipv4-addr"
+                            },
+                            {
+                                "key": "x-oca-asset.ip_refs",
+                                "object": "host",
+                                "references": [
+                                    "dst-ipv4-addr"
+                                ],
+                                "group": true
+                            }
+                        ],
+                        "hostname": [
+                            {
+                                "key": "x-oca-asset.hostname",
+                                "object": "host"
+                            },
+                            {
+                                "key": "x-oca-event.host_ref",
+                                "object": "event",
+                                "references": "host"
+                            }
+                        ],
+                        "local_ip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "local-ipv4-addr"
+                            },
+                            {
+                                "key": "x-oca-asset.ip_refs",
+                                "object": "host",
+                                "references": [
+                                    "local-ipv4-addr"
+                                ],
+                                "group": true
+                            }
+                        ],
+                        "mac_address": [
+                            {
+                                "key": "mac-addr.value",
+                                "object": "mac-addr",
+                                "transformer": "CrowdStrikeFormatMac"
+                            },
+                            {
+                                "key": "x-oca-asset.mac_refs",
+                                "object": "host",
+                                "references": [
+                                    "mac-addr"
+                                ],
+                                "group": true
+                            }
+                        ],
+                        "os_version": {
+                            "key": "x-oca-asset.os_version",
+                            "object": "host"
+                        },
+                        "platform_name": {
+                            "key": "x-oca-asset.os_platform",
+                            "object": "host"
+                        },
+                        "provider": {
+                            "key": "x-oca-event.provider",
+                            "object": "event"
+                        },
+                        "device_id": {
+                            "key": "x-crowdstrike.device_id",
+                            "object": "x-crowdstrike"
+                        },
+                        "detection_id": {
+                            "key": "x-crowdstrike.detection_id",
+                            "object": "x-crowdstrike"
+                        },
+                        "scenario": {
+                            "key": "x-crowdstrike.scenario",
+                            "object": "x-crowdstrike"
+                        },
+                        "technique": {
+                            "key": "x-crowdstrike.technique",
+                            "object": "x-crowdstrike"
+                        },
+                        "tactic": {
+                            "key": "x-crowdstrike.tactic",
+                            "object": "x-crowdstrike"
+                        },
+                        "tactic_id": {
+                            "key": "x-crowdstrike.tactic_id",
+                            "object": "x-crowdstrike"
+                        },
+                        "severity": {
+                            "key": "x-oca-event.severity",
+                            "object": "event"
+                        },
+                        "technique_id": {
+                            "key": "x-crowdstrike.technique_id",
+                            "object": "x-crowdstrike"
+                        },
+                        "agent_local_time": {
+                            "key": "x-crowdstrike.agent_local_time",
+                            "object": "x-crowdstrike"
+                        },
+                        "agent_version": {
+                            "key": "x-crowdstrike.agent_version",
+                            "object": "x-crowdstrike"
+                        },
+                        "first_seen": {
+                            "key": "x-crowdstrike.first_seen",
+                            "object": "x-crowdstrike"
+                        },
+                        "last_seen": {
+                            "key": "x-crowdstrike.last_seen",
+                            "object": "x-crowdstrike"
+                        },
+                        "platform_id": {
+                            "key": "x-crowdstrike.platform_id",
+                            "object": "x-crowdstrike"
+                        },
+                        "confidence": {
+                            "key": "x-crowdstrike.confidence",
+                            "object": "x-crowdstrike"
+                        },
+                        "ioc_type": {
+                            "key": "x-crowdstrike.ioc_type",
+                            "object": "x-crowdstrike"
+                        },
+                        "ioc_value": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "bios_manufacturer": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "bios_version": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "config_id_base": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "config_id_build": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "config_id_platform": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "product_type": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "product_type_desc": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "site_name": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "instance_id": {
+                            "key": "x-crowdstrike.instance_id",
+                            "object": "x-crowdstrike"
+                        },
+                        "service_provider": {
+                            "key": "x-crowdstrike.service_provider",
+                            "object": "x-crowdstrike"
+                        },
+                        "status": {
+                            "key": "x-crowdstrike.status",
+                            "object": "x-crowdstrike"
+                        },
+                        "event_status": {
+                            "key": "x-crowdstrike.event_status",
+                            "object": "x-crowdstrike"
+                        },
+                        "max_severity_displayname": {
+                            "key": "x-crowdstrike.max_severity_displayname",
+                            "object": "x-crowdstrike"
+                        },
+                        "system_product_name": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        },
+                        "modified_timestamp": {
+                            "key": "x-crowdstrike.ioc_value",
+                            "object": "x-crowdstrike"
+                        }
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "client_id": {
+                "type": "password"
+            },
+            "client_secret": {
+                "type": "password"
+            }
+        }
+    }
+}
