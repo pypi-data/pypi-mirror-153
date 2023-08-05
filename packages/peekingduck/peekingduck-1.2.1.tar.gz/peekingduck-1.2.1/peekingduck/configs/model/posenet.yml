@@ -1,0 +1,52 @@
+input: ["img"]
+output:
+  ["bboxes", "keypoints", "keypoint_scores", "keypoint_conns", "bbox_labels"]
+
+weights_parent_dir: null
+weights:
+  {
+    tensorflow:
+      {
+        model_subdir: posenet,
+        blob_file:
+          {
+            50: model-mobilenet_v1_050.zip,
+            75: model-mobilenet_v1_075.zip,
+            100: model-mobilenet_v1_100.zip,
+            resnet: model-resnet.zip,
+          },
+        model_file:
+          {
+            50: model-mobilenet_v1_050.pb,
+            75: model-mobilenet_v1_075.pb,
+            100: model-mobilenet_v1_100.pb,
+            resnet: model-resnet.pb,
+          },
+      },
+  }
+model_nodes:
+  {
+    mobilenet:
+      {
+        inputs: [image:0],
+        outputs:
+          [heatmap:0, offset_2:0, displacement_fwd_2:0, displacement_bwd_2:0],
+      },
+    resnet:
+      {
+        inputs: [sub_2:0],
+        outputs:
+          [
+            float_heatmaps:0,
+            float_short_offsets:0,
+            resnet_v1_50/displacement_fwd_2/BiasAdd:0,
+            resnet_v1_50/displacement_bwd_2/BiasAdd:0,
+          ],
+      },
+  }
+
+model_format: tensorflow
+model_type: resnet # 50, 75, 100 or resnet
+resolution: { height: 225, width: 225 }
+max_pose_detection: 10
+score_threshold: 0.4
