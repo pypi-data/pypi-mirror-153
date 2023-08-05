@@ -1,0 +1,106 @@
+Metadata-Version: 2.1
+Name: logging-k8s-metadata
+Version: 1.0.2
+Summary: logging-k8s-metadata
+Author: Niyaz Batyrshin
+Author-email: Niyaz.Batyrshin@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Description-Content-Type: text/markdown
+Provides-Extra: fluentd
+Requires-Dist: fluent-logger ; extra == 'fluentd'
+
+# logging-k8s-metadata
+
+Enriches log records with kubernetes metadata
+
+## Getting started
+
+### Installation
+
+Install library:
+
+```shell
+pip install logging-k8s-metadata
+```
+
+### Usage
+
+Call `setup_logging_k8s_pod_info()` method to set up logger factory.
+
+#### Expose k8s metadata
+
+Logger factory provided by this lib enriches log records with kubernetes
+metadata read from `/etc/podinfo` directory which should be exposed by pod. See
+[Expose Pod Information to Containers Through Files](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/)
+for details.
+
+Configure your deployment and add podinfo metadata volume.
+
+Example `deployment.yaml` with metadata volumes:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+        volumeMounts:
+          - name: podinfo
+            mountPath: /etc/podinfo
+      volumes:
+        - name: podinfo
+          downwardAPI:
+            items:
+              - path: "name"
+                fieldRef:
+                  fieldPath: metadata.name
+              - path: "namespace"
+                fieldRef:
+                  fieldPath: metadata.namespace
+              - path: "labels"
+                fieldRef:
+                  fieldPath: metadata.labels
+              - path: "annotations"
+                fieldRef:
+                  fieldPath: metadata.annotations
+```
+
+## Development
+
+For standalone library development install requirements:
+
+```shell
+pip install -r requirements/dev.txt
+```
+
+or install from local repo in developer mode in other project:
+
+```shell
+pip install -e ../logging-k8s-metadata
+```
+
+### Test
+
+```shell
+pytest
+```
+
+### Release
+
+Set version in git tags to release. Always include a patch version to work
+correctly (ex: 1.2.0, even if patch is 0). After git tag is set, CI will build
+and publish library on PYPI.
+
+
