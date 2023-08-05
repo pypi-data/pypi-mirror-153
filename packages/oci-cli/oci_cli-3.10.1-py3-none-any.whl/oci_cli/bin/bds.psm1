@@ -1,0 +1,106 @@
+function GetOciTopLevelCommand_bds() {
+    return 'bds'
+}
+
+function GetOciSubcommands_bds() {
+    $ociSubcommands = @{
+        'bds' = 'auto-scale-config bds-api-key bds-metastore-configuration block-storage cloudsql instance work-request work-request-error work-request-log-entry'
+        'bds auto-scale-config' = 'create delete edit get list'
+        'bds bds-api-key' = 'create delete get list test-bds-object-storage-connection'
+        'bds bds-metastore-configuration' = 'activate create delete get list test update'
+        'bds block-storage' = 'add'
+        'bds cloudsql' = 'add remove'
+        'bds instance' = 'change-compartment change-shape create delete get install-patch list list-patch-histories list-patches remove restart-node update worker-nodes'
+        'bds instance worker-nodes' = 'add'
+        'bds work-request' = 'get list'
+        'bds work-request-error' = 'list'
+        'bds work-request-log-entry' = 'list'
+    }
+    return $ociSubcommands
+}
+
+function GetOciCommandsToLongParams_bds() {
+    $ociCommandsToLongParams = @{
+        'bds auto-scale-config create' = 'bds-instance-id cluster-admin-password display-name from-json help if-match is-enabled max-wait-seconds node-type policy policy-details wait-for-state wait-interval-seconds'
+        'bds auto-scale-config delete' = 'auto-scaling-configuration-id bds-instance-id cluster-admin-password from-json help if-match max-wait-seconds wait-for-state wait-interval-seconds'
+        'bds auto-scale-config edit' = 'auto-scaling-configuration-id bds-instance-id cluster-admin-password display-name force from-json help if-match is-enabled max-wait-seconds policy policy-details wait-for-state wait-interval-seconds'
+        'bds auto-scale-config get' = 'auto-scaling-configuration-id bds-instance-id from-json help'
+        'bds auto-scale-config list' = 'all bds-instance-id compartment-id display-name from-json help lifecycle-state limit page page-size sort-by sort-order'
+        'bds bds-api-key create' = 'bds-instance-id default-region from-json help key-alias max-wait-seconds passphrase user-id wait-for-state wait-interval-seconds'
+        'bds bds-api-key delete' = 'api-key-id bds-instance-id force from-json help if-match max-wait-seconds wait-for-state wait-interval-seconds'
+        'bds bds-api-key get' = 'api-key-id bds-instance-id from-json help'
+        'bds bds-api-key list' = 'all bds-instance-id display-name from-json help lifecycle-state limit page page-size sort-by sort-order user-id'
+        'bds bds-api-key test-bds-object-storage-connection' = 'api-key-id bds-instance-id from-json help max-wait-seconds object-storage-region object-storage-uri passphrase wait-for-state wait-interval-seconds'
+        'bds bds-metastore-configuration activate' = 'bds-api-key-passphrase bds-instance-id cluster-admin-password from-json help if-match max-wait-seconds metastore-config-id wait-for-state wait-interval-seconds'
+        'bds bds-metastore-configuration create' = 'bds-api-key-id bds-api-key-passphrase bds-instance-id cluster-admin-password display-name from-json help max-wait-seconds metastore-id wait-for-state wait-interval-seconds'
+        'bds bds-metastore-configuration delete' = 'bds-instance-id force from-json help if-match max-wait-seconds metastore-config-id wait-for-state wait-interval-seconds'
+        'bds bds-metastore-configuration get' = 'bds-instance-id from-json help metastore-config-id'
+        'bds bds-metastore-configuration list' = 'all bds-api-key-id bds-instance-id display-name from-json help lifecycle-state limit metastore-id metastore-type page page-size sort-by sort-order'
+        'bds bds-metastore-configuration test' = 'bds-instance-id cluster-admin-password from-json help if-match max-wait-seconds metastore-config-id wait-for-state wait-interval-seconds'
+        'bds bds-metastore-configuration update' = 'bds-api-key-id bds-api-key-passphrase bds-instance-id cluster-admin-password display-name from-json help if-match max-wait-seconds metastore-config-id wait-for-state wait-interval-seconds'
+        'bds block-storage add' = 'bds-instance-id block-volume-size-in-gbs cluster-admin-password from-json help if-match max-wait-seconds node-type wait-for-state wait-interval-seconds'
+        'bds cloudsql add' = 'bds-instance-id block-volume-size-in-gbs cluster-admin-password from-json help if-match max-wait-seconds shape wait-for-state wait-interval-seconds'
+        'bds cloudsql remove' = 'bds-instance-id cluster-admin-password from-json help if-match max-wait-seconds wait-for-state wait-interval-seconds'
+        'bds instance change-compartment' = 'bds-instance-id compartment-id from-json help if-match max-wait-seconds wait-for-state wait-interval-seconds'
+        'bds instance change-shape' = 'bds-instance-id cluster-admin-password from-json help if-match max-wait-seconds nodes wait-for-state wait-interval-seconds'
+        'bds instance create' = 'bootstrap-script-url cluster-admin-password cluster-public-key cluster-version compartment-id defined-tags display-name freeform-tags from-json help is-high-availability is-secure kerberos-realm-name max-wait-seconds network-config nodes wait-for-state wait-interval-seconds'
+        'bds instance delete' = 'bds-instance-id force from-json help if-match max-wait-seconds wait-for-state wait-interval-seconds'
+        'bds instance get' = 'bds-instance-id from-json help'
+        'bds instance install-patch' = 'bds-instance-id cluster-admin-password from-json help if-match max-wait-seconds patch-version wait-for-state wait-interval-seconds'
+        'bds instance list' = 'all compartment-id display-name from-json help lifecycle-state limit page page-size sort-by sort-order'
+        'bds instance list-patch-histories' = 'all bds-instance-id from-json help lifecycle-state limit page page-size patch-version sort-by sort-order'
+        'bds instance list-patches' = 'all bds-instance-id from-json help limit page page-size'
+        'bds instance remove' = 'bds-instance-id cluster-admin-password from-json help if-match is-force-remove-enabled max-wait-seconds node-id wait-for-state wait-interval-seconds'
+        'bds instance restart-node' = 'bds-instance-id from-json help if-match max-wait-seconds node-id wait-for-state wait-interval-seconds'
+        'bds instance update' = 'bds-instance-id bootstrap-script-url defined-tags display-name force freeform-tags from-json help if-match max-wait-seconds wait-for-state wait-interval-seconds'
+        'bds instance worker-nodes add' = 'bds-instance-id block-volume-size-in-gbs cluster-admin-password from-json help if-match max-wait-seconds node-type number-of-worker-nodes shape shape-config wait-for-state wait-interval-seconds'
+        'bds work-request get' = 'from-json help work-request-id'
+        'bds work-request list' = 'all compartment-id from-json help limit page page-size resource-id sort-by sort-order'
+        'bds work-request-error list' = 'all from-json help limit page page-size sort-by sort-order work-request-id'
+        'bds work-request-log-entry list' = 'all from-json help limit page page-size sort-by sort-order work-request-id'
+    }
+    return $ociCommandsToLongParams
+}
+
+function GetOciCommandsToShortParams_bds() {
+    $ociCommandsToShortParams = @{
+        'bds auto-scale-config create' = '? h'
+        'bds auto-scale-config delete' = '? h'
+        'bds auto-scale-config edit' = '? h'
+        'bds auto-scale-config get' = '? h'
+        'bds auto-scale-config list' = '? c h'
+        'bds bds-api-key create' = '? h'
+        'bds bds-api-key delete' = '? h'
+        'bds bds-api-key get' = '? h'
+        'bds bds-api-key list' = '? h'
+        'bds bds-api-key test-bds-object-storage-connection' = '? h'
+        'bds bds-metastore-configuration activate' = '? h'
+        'bds bds-metastore-configuration create' = '? h'
+        'bds bds-metastore-configuration delete' = '? h'
+        'bds bds-metastore-configuration get' = '? h'
+        'bds bds-metastore-configuration list' = '? h'
+        'bds bds-metastore-configuration test' = '? h'
+        'bds bds-metastore-configuration update' = '? h'
+        'bds block-storage add' = '? h'
+        'bds cloudsql add' = '? h'
+        'bds cloudsql remove' = '? h'
+        'bds instance change-compartment' = '? c h'
+        'bds instance change-shape' = '? h'
+        'bds instance create' = '? c h'
+        'bds instance delete' = '? h'
+        'bds instance get' = '? h'
+        'bds instance install-patch' = '? h'
+        'bds instance list' = '? c h'
+        'bds instance list-patch-histories' = '? h'
+        'bds instance list-patches' = '? h'
+        'bds instance remove' = '? h'
+        'bds instance restart-node' = '? h'
+        'bds instance update' = '? h'
+        'bds instance worker-nodes add' = '? h'
+        'bds work-request get' = '? h'
+        'bds work-request list' = '? c h'
+        'bds work-request-error list' = '? h'
+        'bds work-request-log-entry list' = '? h'
+    }
+    return $ociCommandsToShortParams
+}
