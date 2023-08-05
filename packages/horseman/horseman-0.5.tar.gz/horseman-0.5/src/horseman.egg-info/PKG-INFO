@@ -1,0 +1,124 @@
+Metadata-Version: 2.1
+Name: horseman
+Version: 0.5
+Summary: Toolkit to build headless WSGI applications.
+Home-page: http://pypi.python.org/pypi/horseman
+Author: Souheil Chelfouh
+Author-email: trollfot@gmail.com
+Maintainer: Souheil Chelfouh
+Maintainer-email: trollfot@gmail.com
+License: BSD-3-Clause
+Project-URL: Source Code, https://github.com/HorsemanWSGI/horseman
+Description: horseman
+        ********
+        
+        Horseman is a toolkit to build WSGI applications.
+        It is heavily tested and uses Cython powered libraries.
+        
+        
+        The philosophy is : "you pay for what you eat".
+        
+        The code is very minimal and tries to provide key components to build
+        upon and create a vastly more complex application.
+        
+        It conforms to the WSGI standards and allows you to use WSGI middlewares.
+        
+        
+        Example
+        =======
+        
+        Below is an example of a barebone API, handling a GET request on '/'
+        and returning a JSON response.
+        
+        
+        .. code-block:: python
+        
+          import logging
+          from bjoern import run
+          from horseman.meta import SentryNode, Overhead, APIView
+          from horseman.response import Response
+        
+        
+          class Request(Overhead):
+        
+              data = None
+        
+              def __init__(self, environ):
+                  self.environ = environ
+        
+              def extract(self):
+                  self.data = 'somedata'
+        
+        
+          class View(APIView):
+        
+              def GET(self, overhead):
+                  return Response.to_json(200, {"Result": "OK"})
+        
+        
+          VIEWS = {
+              "/": View()
+          }
+        
+        
+          class RootNode(SentryNode):
+        
+              def resolve(self, path_info, environ):
+                  if view := VIEWS.get(path_info):
+                      request = Request(environ)
+                      return view(request)
+        
+              def handle_exception(self, exc_info, environ):
+                  logging.error(exc_info)
+        
+        
+          run(
+              host="0.0.0.0",
+              port=8080,
+              reuse_port=True,
+              wsgi_app=RootNode(),
+          )
+        
+        CHANGES
+        =======
+        
+        0.5 (2022-05-31)
+        ----------------
+        
+          * Multipart parser no longer adds empty values to the form multidict.
+        
+        0.4 (2022-04-06)
+        ----------------
+        
+          * Fixed `FormData.to_dict` to handle empty or false values.
+        
+        0.3 (2022-04-05)
+        ----------------
+        
+          * PATH_INFO is no longer expected to be there in the environ.
+            Some WSGI Servers do NOT provide it if empty.
+          * Added path normalization in the Node `__call__` to avoid malformed
+            path info.
+        
+        0.2 (2021-10-08)
+        ----------------
+        
+          * First upload on pypi. Stable 0.2.
+        
+        0.1 (2021-10-08)
+        ----------------
+        
+          * Initial release.
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Internet :: WWW/HTTP :: WSGI
+Requires-Python: >=3.8
+Description-Content-Type: text/x-rst
+Provides-Extra: test
