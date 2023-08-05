@@ -1,0 +1,66 @@
+{# Note: SR-MPLS only supported on 7250 IXR #}
+{% if clab.type not in ['ixr6','ixr10'] %}
+{{ type_ixr | mandatory('SR-MPLS only supported on 7250 IXR; use type "ixr6" instead of '+clab.type) }}
+{% else %}
+delete:
+- network-instance[name=default]/interface[name=lo0.0]
+
+updates:
+- path: system/mpls/label-ranges
+  val:
+   #
+   # EOS default ranges: https://www.arista.com/en/um-eos/eos-is-is
+   # Dynamic Global Range--(100000) (262144)
+   # IS-IS SR Global Range -- (900000) (65536)
+   # Static Global Range -- (16) (99984)
+   #
+   # IOS-XR: https://packetpushers.net/yet-another-blog-about-segment-routing-part-1/
+   # default SRGB range is from 16000-23999 and Dynamic label range is 24000-1048575
+   #
+   static:
+   - name: static-srgb
+     start-label: {{ sr.srgb_range_start }}
+     end-label: {{ sr.srgb_range_start + (sr.srgb_range_size/2)|int }}
+
+   dynamic:
+   - name: dynamic-srgb
+     start-label: {{ sr.srgb_range_start + (sr.srgb_range_size/2)|int + 1 }}
+     end-label: {{ sr.srgb_range_start + sr.srgb_range_size }}
+
+- path: network-instance[name=default]
+  val:
+   interface:
+   - name: system0.0
+   segment-routing:
+    mpls:
+     global-block:
+      label-range: static-srgb
+      _annotate_label-range: "static SRGB, required"
+   protocols:
+    isis:
+     dynamic-label-block: dynamic-srgb # Required but not currently used
+     _annotate_dynamic-label-block: "Required but not currently used"
+     instance:
+     - name: Gandalf
+       max-ecmp-paths: 1 # Currently (21.11.1) limited to 1
+       _annotate_max-ecmp-paths: "SR-ISIS does not support ECMP in a production environment. The ISIS
+configuration of max-ecmp-path must be 1. [398533]"
+       segment-routing:
+        mpls: {}
+       interface:
+       - interface-name: system0.0
+         passive: True
+         segment-routing:
+          mpls:
+{%         if 'ipv4' in loopback %}
+           ipv4-node-sid:
+            index: {{ id }}  # This uses a label in the global static range
+            _annotate_index: "References a label from the global static range"
+{%         endif %}
+{%         if 'ipv6' in loopback %}
+           ipv6-node-sid:
+            index: {{ id + sr.ipv6_sid_offset }}
+            _annotate_index: "ipv6 can be provisioned but not currently supported"
+{%         endif %}
+
+{% endif %}

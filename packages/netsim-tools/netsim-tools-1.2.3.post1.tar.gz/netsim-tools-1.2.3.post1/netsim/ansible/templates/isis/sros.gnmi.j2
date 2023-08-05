@@ -1,0 +1,41 @@
+updates:
+- path: configure/router[router-name=Base]
+  val:
+   isis:
+   - isis-instance: 0
+     admin-state: enable
+     area-address: ["{{ isis.net | default( "%s.0000.0000.%04d.00" % (isis.area,id) ) }}"]
+     level-capability: "{{ '2' if isis.type=='level-2' else ('1' if isis.type=='level-1' else '1/2') }}"
+{%   if isis.af.ipv6 is defined %}
+     multi-topology:
+      ipv6-unicast: True
+{%   endif %}
+     interface:
+     - interface-name: system
+       passive: True
+{%   for l in interfaces|default([]) if 'isis' in l %}
+     - interface-name: i{{ l.ifname }}
+       interface-type: {{ l.isis.network_type|default('broadcast') }}
+       passive: {{ l.isis.passive }}
+{%     if l.isis.bfd is defined %}
+       bfd-liveness:
+{%     if l.isis.bfd.ipv4|default(False) %}
+        ipv4:
+         include-bfd-tlv: True
+{%     endif %}
+{%     if l.isis.bfd.ipv6|default(False) %}
+        ipv6:
+         include-bfd-tlv: True
+{%     endif %}
+{%     endif %}
+{%     if (l.isis.metric is defined or l.isis.cost is defined) %}
+       level:
+{%     for level in ['1','2'] %}
+       - level-number: "{{ level }}"
+         metric: {{ l.isis.metric|default(l.isis.cost) }}
+{%       if 'ipv6' in isis.af and 'ipv6' in l %}
+         ipv6-unicast-metric: {{ l.isis.metric|default(l.isis.cost) }}
+{%       endif %}
+{%     endfor %}
+{%     endif %}
+{%   endfor %}
