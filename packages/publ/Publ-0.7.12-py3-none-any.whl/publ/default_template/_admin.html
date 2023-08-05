@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Publ admin dashboard</title>
+
+    <style>
+
+body {
+    background: #ccf;
+    font-family: 'Helvetica', sans-serif;
+}
+
+section {
+    background: white;
+    color: black;
+    margin: 1em;
+    padding: 1em;
+    border-radius: 1ex;
+}
+
+h1 {
+    margin: 0 0 1ex;
+    padding: 0;
+    border-bottom: dotted black 1px;
+}
+
+h1 span {
+    font-size: 80%;
+}
+
+table {
+    border-collapse: collapse;
+    border: solid black 3px;
+}
+
+th {
+    background: #ffc;
+    border: solid #333 2px;
+    padding: 1ex;
+}
+
+tr.group th {
+    background: #ddd;
+    border: solid #333 1px;
+    padding-top: .5ex;
+    padding-bottom: .5ex;
+}
+
+td {
+    border: solid #555 1px;
+    padding: 0 1ex;
+}
+
+td.admin {
+    background: #307;
+    color: white;
+}
+
+td.admin a {
+    color: white;
+    font-weight: bold;
+}
+
+tr.allowed {
+    background: #cfc;
+}
+
+tr.denied {
+    background: #fcc;
+}
+
+ul.groups {
+    display: inline;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+ul.groups li {
+    display: inline-block;
+    font-family: 'Lucida Console', 'Monaco', monospace;
+    background: #ff7;
+    color: black;
+    padding: 0.5ex;
+    margin: 0.5ex;
+    border: dotted #005 1px;
+    border-radius: 0.5ex;
+    font-size: x-small;
+}
+
+.pagination a {
+    text-decoration: none;
+    margin-right: 2em;
+    font-size: x-small;
+}
+
+th a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,127,0.1);
+    padding: 1ex;
+    margin: -1ex;
+}
+
+th a:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+td a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 1ex;
+    margin: -1ex;
+}
+
+a.avatar {
+    float: right;
+}
+a.avatar img {
+    max-height: 250px;
+    max-width: 250px;
+    height: auto;
+    width: auto;
+    margin: 0 0 1em 1em;
+    border-radius: 1em;
+}
+
+img.avatar {
+    height: 1em;
+    width: auto;
+}
+
+img.avatar:hover {
+    height: auto;
+    position: absolute;
+}
+
+td.user {
+    padding: .25ex 1ex;
+}
+
+.clear {
+    clear: right;
+}
+
+td.profile {
+    background: #fef;
+}
+td.profile a, td.profile a:visited {
+    color: black;
+    text-decoration: none;
+}
+
+td.profile:hover {
+    background: #fcf;
+}
+
+</style>
+</head>
+
+{%- macro list_groups(groups) -%}
+{%- if groups -%}
+<ul class="groups">
+    {%- for group in groups -%}
+    <li>{{group}}</li>
+    {%- endfor -%}
+</ul>
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro date(d) -%}
+{{d.format('YYYY-MM-DD hh:mm A')}} ({{d.humanize()}})
+{%- endmacro -%}
+
+<body>
+<section id="logins">
+    <h1>Recent users</h1>
+
+    <table>
+        <tr><th colspan=2>Username</th>
+            <th>Groups</th>
+            <th>Last seen</th>
+        </tr>
+        {%- for user,last_seen in users -%}
+        <tr>
+            <td class="profile">
+                <a href="{{url_for('admin',user=user.identity)}}#userinfo">ℹ︎</a>
+            </td><td class="user {{'admin' if user.is_admin else ''}}">
+                <a href="{{user.identity}}">{{user.humanize}}</a>
+            </td>
+            <td>{{list_groups(user.groups)}}</td>
+            <td>{{date(last_seen)}}</td>
+        </tr>
+        {%- endfor -%}
+    </table>
+    <nav class="pagination">
+        {% if 'days' not in request.args %}
+        <a href="{{url_for('admin',by=by,days=0)}}">Show all</a>
+        {% else %}
+        <a href="{{url_for('admin',by=by)}}">Show less</a>
+        {% endif %}
+    </nav>
+</section>
+
+{% if focus_user %}
+<section id="userinfo">
+    {% with user=focus_user, profile=focus_user.profile %}
+    <h1>
+        Profile for <a href="{{user.identity}}">{{user.humanize}}</a>
+        {% if user.name != user.humanize %}<span>({{user.name}})</span>{% endif %}
+        {{list_groups(user.groups)}}
+    </h1>
+
+    {% if profile.avatar %}
+    <a class="avatar" href="{{profile.avatar}}"><img src="{{profile.avatar}}"></a>
+    {% endif %}
+
+    {% if profile.bio %}<p>{{profile.bio}}</p>{% endif %}
+    <ul>
+        {% if user.last_login %}
+        <li>Logged in: {{date(user.last_login)}}</li>
+        {% endif %}
+        {% if user.last_seen %}
+        <li>Last seen: {{date(user.last_seen)}}</li>
+        {% endif %}
+        {% if user.last_token %}
+        <li>Last token grant: {{date(user.last_token)}}</li>
+        {% endif %}
+        {% if profile.email %}<li>Email: <a href="mailto:{{profile.email}}">{{profile.email}}</a></li>{% endif %}
+        {% if profile.homepage and profile.homepage != user.identity %}
+        <li>Homepage: <a href="{{profile.homepage}}">{{profile.homepage}}</a></li>
+        {% endif %}
+        {% if profile.pronouns %}
+        <li>Pronouns: {{profile.pronouns}}</li>
+        {% endif %}
+    </ul>
+    <div class="clear"></div>
+    {% endwith %}
+</section>
+{% endif %}
+
+<section id="access">
+    <h1>Access Log</h1>
+
+
+{%- set columns = [
+    ('authorized',True,1),
+    ('date',False,1),
+    ('user',True,2),
+    ('entry',True,1),
+    ('groups',False,1),
+] -%}
+
+{%- set headers = {
+    'authorized': 'Vis',
+} -%}
+
+{%- macro format(col, rec, grouper=False) -%}
+{%- if col == 'entry' -%}
+    <a href="{{url_for('entry',entry_id=rec.id,category=rec.category,slug_text=rec.slug_text)}}">{{rec.title}}</a>
+{%- elif col == 'date' -%}
+    {{rec.format('YYYY-MM-DD hh:mm A')}}
+{%- elif col == 'profile' -%}
+    <a class="profile" href="{{url_for('admin',user=rec.identity)}}#userinfo">ℹ︎</a>
+{%- elif col == 'user' -%}
+    <a href="{{rec.identity}}">{{rec.humanize}}</a>
+{%- elif col == 'groups' -%}{{list_groups(rec)}}
+{%- elif col == 'authorized' -%}
+    {%- if grouper -%}
+        {{'Authorized' if rec else 'Forbidden'}}
+    {%- else -%}
+        {{'✅' if rec else '❌'}}
+    {%- endif -%}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro column(col, rec, add_class='') -%}
+{%- if col != by -%}<td class="{{col}}{{add_class}}">{{format(col, rec)}}</td>{%- endif -%}
+{%- endmacro -%}
+
+{%- macro show_row(access) -%}
+<tr class="access {{'allowed' if access.authorized else 'denied'}}">
+    {{column('authorized', access.authorized)}}
+    {{column('date', access.date)}}
+    {%- if by != 'user' -%}
+        {{column('profile', access.user, ' admin' if access.user.is_admin else '')}}
+        {{column('user', access.user, ' admin' if access.user.is_admin else '')}}
+    {%- endif -%}
+    {{column('entry', access.entry)}}
+    {{column('groups', access.user_groups)}}
+</tr>
+{%- endmacro -%}
+
+{%- macro navlink(group,offset=request.args['offset'],count=request.args['count'],days=request.args['days']) -%}
+{{url_for('admin',by=group or None,offset=offset or None,count=count or None,days=days or None,_anchor='access')}}
+{%- endmacro -%}
+
+{%- set paging -%}
+    <nav class="pagination">
+        {% if offset %}
+        <a href="{{navlink(group=by,offset=0)}}" class="first">« start</a>
+        {%- endif -%}
+        {%- if offset > count -%}
+        <a href="{{navlink(group=by,offset=(0,offset-count)|max)}}" class="previous">« previous {{count}}</a>
+        {% endif %}
+
+        {% if remain > 0 %}
+        <a href="{{navlink(group=by,offset=offset+count)}}" class="next">next {{(count,remain)|min}}/{{remain}} »</a>
+        {% endif %}
+    </nav>
+{%- endset -%}
+
+    {{paging}}
+
+    <table>
+        <tr>
+        {%- for column, groupable, colspan in columns -%}
+            {%- if by != column -%}
+                <th colspan={{colspan}}>{%- if groupable -%}
+                    <a href="{{navlink(group=column)}}">{{headers.get(column,column.title())}}</a>
+                    {%- elif column == 'date' -%}
+                    <a href="{{navlink(group=None)}}">{{column.title()}}</a>
+                    {%- else -%}
+                    {{column.title()}}
+                    {%- endif -%}
+                </th>
+            {%- endif -%}
+        {%- endfor -%}
+        </tr>
+        {%- if by -%}
+            {%- for group in log|groupby(by)|sort -%}
+                <tr class="group {{by}}"><th colspan="5">{{format(by, group.grouper, True)}}</th></tr>
+                {%- for access in group.list|sort(True,'date') -%}
+                {{ show_row(access) }}
+                {%- endfor -%}
+            {%- endfor -%}
+        {%- else -%}
+            {%- for access in log|sort(True,'date') -%}
+            {{ show_row(access) }}
+            {%- endfor -%}
+        {%- endif -%}
+    </table>
+
+    {{paging}}
+</section>
+
+</body>
+</html>
