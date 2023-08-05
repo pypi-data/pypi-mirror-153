@@ -1,0 +1,36 @@
+import os
+import csv
+
+DIRECTORY = r'D:\DADOS_FINANCEIROS\Database_SEGUNDOS'
+TEST_DIRECTORY = r'D:\DADOS_FINANCEIROS\TESTES_SEG'
+
+for _, _, files in os.walk(TEST_DIRECTORY):
+    for row in files:
+        print(row)
+        os.chdir(TEST_DIRECTORY)
+        with open(row, 'r', newline='', encoding='utf-8') as csv_file:
+
+            file = csv.reader(csv_file, delimiter=',')
+
+            for line in file:
+
+                if line[0] == '<ticker>':
+
+                    os.chdir(DIRECTORY)
+                    with open(row, 'w', newline='') as csv_file:
+                        writer = csv.writer(csv_file, delimiter=',')
+                        writer.writerow(line)
+                        csv_file.close()
+
+                elif line[0] != '<ticker>':
+
+                    if int(line[1]) < 20220413:
+
+                        os.chdir(DIRECTORY)
+                        with open(row, 'a', newline='') as csv_file:
+                            writer = csv.writer(csv_file, delimiter=',')
+                            writer.writerow(line)
+                            csv_file.close()
+
+        os.chdir(TEST_DIRECTORY)
+        os.remove(row)
