@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!--
+    The page_title contains the title for a page as shown in the navigation.
+    Site name contains the name as defined in the mkdocs.yml
+  -->
+  <title>{% if page.title %}{{ page.title }} - {% endif %}{{ config.site_name }}</title>
+
+  <!-- Page description -->
+  {% if page and page.meta and page.meta.description %}
+    <meta name="description"
+        content="{{ page.meta.description }}" />
+  {% elif config.site_description %}
+    <meta name="description" content="{{ config.site_description }}" />
+  {% endif %}
+
+  <!-- Redirect -->
+  {% if page and page.meta and page.meta.redirect %}
+    <script>
+      let anchor = window.location.hash.substr(1)
+      location.href = '{{ page.meta.redirect }}' + (anchor ? '#' + anchor : '');
+    </script>
+
+    <!-- no-js fallback -->
+    <meta http-equiv="refresh" content="0; url={{ page.meta.redirect }}" />
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href="{{ page.meta.redirect }}" />
+
+  <!-- Canonical -->
+  {% elif page.canonical_url %}
+    <link rel="canonical" href="{{ page.canonical_url }}" />
+  {% endif %}
+
+  <!-- Page author -->
+  {% if page and page.meta and page.meta.author %}
+    <meta name="author" content="{{ page.meta.author }}" />
+  {% elif config.site_author %}
+    <meta name="author" content="{{ config.site_author }}" />
+  {% endif %}
+  <!--
+    Just add a favicon.ico image to the docs.
+  -->
+  <link rel="shortcut icon" href="{{ "img/favicon.ico"|url }}">
+
+  <link rel="stylesheet" href="{{ "css/colors.css"|url }}">
+  <link rel="stylesheet" href="{{ "css/bundle.css"|url }}">
+  <link rel="stylesheet" href="{{ "css/theme.css"|url }}">
+  <link media="print" onload="this.media='all'" rel="stylesheet" href="{{ "css/ir-black.min.css"|url }}">
+  <script async src="{{ "js/theme.js"|url }}"></script>
+  <!--
+    extra_ess contains paths to CSS files in the users
+    documentation directory or a list of CSS files defined in
+    their mkdocs.yml.
+
+    http://www.mkdocs.org/user-guide/configuration/#extra_css
+  -->
+  {% for path in config.extra_css %}
+    <link href="{{ path|url }}" rel="stylesheet">
+  {% endfor %}
+
+  {% block extrahead %}
+  {% endblock %}
+
+  <!--
+    Include Google Analytics tracking code.
+
+    http://www.mkdocs.org/user-guide/configuration/#google_analytics
+  -->
+  {% if config.google_analytics %}
+  <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+      ga('create', '{{ config.google_analytics[0] }}', '{{ config.google_analytics[1] }}');
+      ga('send', 'pageview');
+  </script>
+  {% endif %}
+
+</head>
+
+<body>
+<input id="dark-mode" type="checkbox" />
+<div class="app-body">
+  <!-- KPN STYLE Beginning -->
+  <div class="app-layout ">
+    <!-- Top Bar -->
+    <nav class="app-layout__top-bar top-bar">
+      <a class="top-bar__logo">
+        <img alt="KPN Logo" src="{{ "img/logo-kpn.svg"|url }}" />
+      </a>
+      <div class="top-bar__title">{{ config.site_name }}</div>
+      <ul class="top-bar__menu">
+        <!--
+          Create a search form that sends the user to the search.html file - this is
+          the other file in the template which adds search to the theme. The only
+          requirement here is that there is a text input with the name 'q' and the
+          action and methods match below.
+        -->
+        <!-- SEARCH IS DISABLED UNTIL WE HAVE AN IMPLEMENTATION -->
+
+        {%- if 'search' in config['plugins'] %}
+          <li class="top-bar__item">
+
+            <span role="search" id="search-input-wrapper">
+              <form action="{{ "search.html"|url }}" method="get">
+                <input type="text" class="input" id="search-input" name="q" placeholder="Search..." />
+              </form>
+            </span >
+          </li>
+        {%- endif %}
+        <!--
+          Support repo URL
+        -->
+
+        <li class="top-bar__item">
+          {% if config.repo_url and not config.extra.use_edit_url %}
+            <a class="top-bar__link repo-link" title="Repository"
+            href="{{ config.repo_url }}" target="_blank" rel="noopener noreferrer">
+              {% set repo_conf = namespace() %}
+              {% set repo_conf.img = 'img/git.svg' %}
+              {% if 'github' in config.repo_url %}
+                  {% set repo_conf.img = 'img/logo-github.svg' %}
+              {% elif 'gitlab' in config.repo_url %}
+                  {% set repo_conf.img = 'img/logo-gitlab.svg' %}
+              {% elif 'bitbucket' in config.repo_url %}
+                  {% set repo_conf.img = 'img/logo-bitbucket.svg' %}
+              {% elif 'gitea' in config.repo_url %}
+                {% set repo_conf.img = 'img/logo-gitea.svg' %}
+              {% endif %}
+              {% if config.extra.repo_icon %}
+                {% set repo_conf.img = 'img/logo-' + config.extra.repo_icon + '.svg' %}
+              {% endif %}
+              <svg alt="{{ config.repo_name }}" width="25" height="25">
+                <image xlink:href="{{ repo_conf.img|url }}" width="25" height="25"/>
+              </svg>
+            </a>
+          {% elif page and page.edit_url %}
+            <a class="top-bar__link repo-link" title="Edit URL"
+              href="{{ config.edit_url }}" target="_blank" rel="noopener noreferrer">
+              <img height="24" alt="{{ config.repo_name }}" src="{{ "img/git-icon-black.png"|url }}" />
+            </a>
+          {% endif %}
+        </li>
+        <li class="top-bar__item">
+            <label class="top-bar__link" id="label-dark-mode" for="dark-mode" title="Dark mode">
+              <svg alt="dark mode" width="24" height="24">
+                <image xlink:href="{{ "img/ui-bulb.svg"|url }}" width="24" height="24"/>
+            </svg>
+            </label>
+        </li>
+        <li class="top-bar__item top-bar__item--trigger"></li>
+        <!-- <li class="top-bar__item">
+
+          <a class="top-bar__link top-bar__link--active">Home</a>
+        </li>
+        <li class="top-bar__item"><a class="top-bar__link">Information</a></li>
+        <li class="top-bar__item">
+          <a class="top-bar__link top-bar__link--collapsed">Getting Started</a>
+
+        </li>
+        <li class="top-bar__item top-bar__item--trigger">Menu</li> -->
+      </ul>
+    </nav>
+
+    <!--
+      Create the navigation for the documentation.
+
+      Because we don't know how many levels deep the navigation is, it needs to
+      be included in it's own file so it can be recursive. Otherwise the theme
+      can also only support a specific number of levels.
+
+      See the nav.html file for more details about how this works.
+    -->
+    <nav class="app-layout__side-bar side-bar">
+      <div class="side-bar__action-bar">
+        <a class="side-bar__link" href="/">{{ config.site_name }}</a>
+        <button class="side-bar__close"></button>
+      </div>
+      <ul class="side-bar__menu">
+        {% for nav_item in nav %}
+          {% include "nav.html" %}
+        {% endfor %}
+      </ul>
+    </nav>
+
+    <!-- MAIN BLOCK -->
+    <main class="app-layout__main main">
+      <div class="app-layout__title-bar title-bar">
+        <div class="title-bar__title">{{ page.title }}</div>
+      </div>
+      {% if page.toc %}
+      <div class="sidebar--secondary hidden-s hidden-xs">
+        <h4>Table of contents</h4>
+        <ul>
+        {% for toc_item in page.toc %}
+            <li><a class="a" href="{{ toc_item.url }}">{{ toc_item.title }}</a></li>
+            {% for toc_item in toc_item.children %}
+                <li class="child-li"><a class="a child" href="{{ toc_item.url }}">{{ toc_item.title }}</a></li>
+            {% endfor %}
+        {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <div class="container content-block">
+        <div class="kpn-style">
+          <div class="card">
+            <div class="card__body">
+
+              {% block content %}
+              {{ page.content }}
+              {% endblock %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer__body">
+        {% if page.next_page or page.previous_page %}
+        <div class="row">
+          <div class="col col--s-4 col--m-3 col--l-2">
+          </div>
+          <div class="col col--s-4 col--m space-between">
+            {% if page.previous_page %}
+              <a class="footer__link padding-top-0 navigation-prev"
+                href="{{ page.previous_page.url|url }}"
+                title="{{ page.previous_page.title }}">
+                &#8592; Previous Page
+              </a>
+            {% else %}
+              &#8592; Previous Page
+            {% endif %}
+            {% if config.copyright %}
+              <div>
+                {{ config.copyright }}
+              </div>
+            {% endif %}
+            {% if page.next_page %}
+              <a class="footer__link padding-top-0 navigation-next"
+                href="{{ page.next_page.url|url }}"
+                title="{{ page.next_page.title }}"/>
+                Next Page &#8594;
+              </a>
+            {% else %}
+                Next Page &#8594;
+            {% endif %}
+          </div>
+          <div class="col col--s-4 col--m-3 ">
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </footer>
+  </div>
+
+
+  <!--
+  MkDocs version      : {{ mkdocs_version }}
+  Docs Build Date UTC : {{ build_date_utc }}
+  -->
+
+  <!--
+    To include static assets from our theme, just add
+    {{ base_url }} beforehand which will be the relative path to
+    the root of the documentation.
+  -->
+  <script src="{{ "js/highlight.min.js"|url }}"></script>
+  <script>
+    hljs.highlightAll();
+  </script>
+  <script async src="{{ "js/detail.js"|url }}"></script>
+  <!--
+    extra_javascript contains paths to JavaScript files in the
+    users documentation directory or a list of JavaScript files
+    defined in their mkdocs.yml.
+
+    http://www.mkdocs.org/user-guide/configuration/#extra_javascript
+  -->
+  {% for path in config.extra_javascript %}
+    <script src="{{ path|url }}"></script>
+  {% endfor %}
+
+
+  <script>
+  function getMermaidTheme() {
+    if (document.getElementById("dark-mode").checked) {
+      return 'dark'
+    }
+    return 'forest'
+  }
+
+  function initMermaid() {
+    mermaid.initialize({
+      theme: getMermaidTheme(),
+      logLevel: 1,
+    });
+  }
+  var mermaidClass = document.getElementsByClassName('mermaid');
+  if (mermaidClass.length > 0) {
+
+    var mermaidScript = document.createElement('script');
+    mermaidScript.setAttribute("src", "{{ "js/mermaid.min.js"|url }}");
+    mermaidScript.setAttribute("async", "false");
+    mermaidScript.setAttribute("type", "text/javascript");
+    mermaidScript.onload = initMermaid;
+    document.body.appendChild(mermaidScript)
+
+  }
+  </script>
+
+</div>
+</body>
+</html>
