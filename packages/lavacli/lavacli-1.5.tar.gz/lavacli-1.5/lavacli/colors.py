@@ -1,0 +1,6 @@
+cyan = "\033[36m"
+green = "\033[32m"
+red = "\033[91m"
+white = "\033[37m"
+yellow = "\033[33m"
+reset = "\033[0m"

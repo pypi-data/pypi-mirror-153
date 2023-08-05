@@ -1,0 +1,125 @@
+stages:
+- test
+- analyze
+- build
+- deploy
+
+########
+# Test #
+########
+.test: &test
+  stage: test
+  tags: [amd64]
+  before_script:
+  - apt-get update -qq
+  - apt-get install --no-install-recommends -y python3 python3-aiohttp python3-jinja2 python3-pytest python3-requests python3-ruamel.yaml python3-zmq
+  script:
+  - py.test-3 -v --junitxml=lavacli.xml tests
+  artifacts:
+    reports:
+      junit:
+      - lavacli.xml
+
+test-debian-10:
+  <<: *test
+  image: debian:10
+test-debian-11:
+  <<: *test
+  image: debian:bullseye
+test-debian-12:
+  <<: *test
+  image: debian:bookworm
+test-ubuntu-20.04:
+  <<: *test
+  image: ubuntu:20.04
+test-ubuntu-21.04:
+  <<: *test
+  image: ubuntu:21.04
+test-ubuntu-21.10:
+  <<: *test
+  image: ubuntu:21.10
+
+###########
+# Analyze #
+###########
+codestyle:
+  stage: analyze
+  image: hub.lavasoftware.org/lava/ci-images/amd64/analyze
+  tags: [amd64]
+  script:
+  - pycodestyle --ignore=E501,W503 .
+
+black:
+  stage: analyze
+  image: hub.lavasoftware.org/lava/ci-images/amd64/analyze
+  tags: [amd64]
+  script:
+  - LC_ALL=C.UTF-8 LANG=C.UTF-8 black --check .
+
+coverage:
+  stage: analyze
+  image: debian:buster
+  tags: [amd64]
+  before_script:
+  - apt-get update -qq
+  - apt-get install --no-install-recommends -y python3 python3-aiohttp python3-jinja2 python3-pytest python3-pytest-cov python3-requests python3-ruamel.yaml python3-zmq
+  coverage: '/^TOTAL.+ (\d+\.\d+)%$/'
+  script:
+  - py.test-3 -v --cov --cov-report=term --cov-report=html tests
+  artifacts:
+    paths:
+    - htmlcov/
+
+# static analysis with bandit
+include:
+  template: SAST.gitlab-ci.yml
+sast:
+  tags: [amd64-dind]
+  stage: analyze
+  variables:
+    DOCKER_DRIVER: overlay2
+    SAST_DEFAULT_ANALYZERS: "bandit"
+
+#########
+# Build #
+#########
+sdist:
+  stage: build
+  image: debian:9
+  tags: [amd64]
+  before_script:
+  - apt-get update -qq
+  - apt-get install --no-install-recommends -y python3 python3-pytest-runner python3-setuptools
+  script:
+  - python3 setup.py sdist
+
+doc:
+  stage: build
+  image: debian:9
+  tags: [amd64]
+  before_script:
+  - apt-get update -qq
+  - apt-get install --no-install-recommends -y make python3 python3-pytest-runner python3-setuptools python3-sphinx
+  script:
+  - make -C doc html
+  artifacts:
+    paths:
+    - doc/_build/html
+
+##########
+# Deploy #
+##########
+doc-deploy:
+  stage: deploy
+  tags: [deploy]
+  only:
+    refs:
+    - tags
+  dependencies:
+  - doc
+  script:
+  - mkdir -p ${HOME}/docs/lavacli
+  - rsync -av --delete doc/_build/html ${HOME}/docs/lavacli/
+  environment:
+    name: doc
+    url: https://docs.lavasoftware.org/lavacli
