@@ -1,0 +1,28 @@
+#!/bin/sh
+
+. ${0%/*}/test_helper.sh
+
+tuxsuite_build_set="tuxsuite build-set --git-repo https://github.com/torvalds/linux.git --git-ref master --set-name=basic"
+
+test_build_set_pass() {
+    api_v1 --build-failure-rate=0
+    run ${tuxsuite_build_set} --tux-config ${tmpdir}/builds.yaml
+    assertEquals 0 "$status"
+}
+
+test_build_set_fail() {
+    api_v1 --build-failure-rate=100
+    run ${tuxsuite_build_set} --tux-config ${tmpdir}/builds.yaml
+    assertEquals 1 "$status"
+    assertEquals 9 "$(echo "$output" | grep -c Fail)"
+}
+
+test_build_set_pass_download() {
+    api_v1 --build-failure-rate=0
+    run ${tuxsuite_build_set} --tux-config ${tmpdir}/builds.yaml --download
+    assertEquals 0 "$status"
+    assertEquals 9 "$(ls -1 */build.log | wc -l)"
+    assertEquals 9 "$(ls -1 */status.json | wc -l)"
+}
+
+. shunit2

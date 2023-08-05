@@ -1,0 +1,107 @@
+include:
+  - https://gitlab.com/Linaro/tuxpkg/-/raw/main/gitlab-ci-pipeline.yml
+
+variables:
+  TUXPKG_PROJECT: tuxsuite
+
+.job:
+  script:
+  - make $CI_JOB_NAME
+
+stylecheck:
+  stage: test
+  script:
+    - pip3 install -r requirements-dev.txt
+    - flake8 .
+    - black --check --diff .
+
+test-markdown:
+  stage: test
+  image: docker.io/pipelinecomponents/markdownlint
+  script:
+    - scripts/markdownlint
+
+wheel:
+  stage: build
+  script:
+    - flit build
+  artifacts:
+    paths:
+      - dist/*.whl
+
+.docker:
+  services:
+    - docker:dind
+  image: docker
+  only:
+    - tags
+  before_script:
+    - docker info
+    - docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+    - export tag="tuxsuite/tuxsuite:${CI_COMMIT_TAG##v}${TAG_APPEND}"
+    - export latest="tuxsuite/tuxsuite:latest${TAG_APPEND}"
+  script:
+    - docker build --pull --tag "${tag}" --tag "${latest}" .
+    - docker run "${tag}" tuxsuite --version
+    - docker run "${latest}" tuxsuite --version
+    - docker push "${tag}"
+    - docker push "${latest}"
+  variables:
+    DOCKER_DRIVER: overlay2
+  needs:
+    - wheel
+
+docker-amd64:
+  extends: .docker
+  stage: deploy
+  variables:
+    TAG_APPEND: -amd64
+
+docker-arm64:
+  extends: .docker
+  stage: deploy
+  tags:
+     - arm64-dind
+  variables:
+    TAG_APPEND: -arm64
+
+publish-dockerhub:
+  extends: .docker
+  stage: .post
+  variables:
+    DOCKER_CLI_EXPERIMENTAL: "enabled"
+  script:
+    - docker manifest create "${tag}" "${tag}-amd64" "${tag}-arm64"
+    - docker manifest create "${latest}" "${latest}-amd64" "${latest}-arm64"
+    - docker manifest push "${tag}"
+    - docker manifest push "${latest}"
+  needs:
+    - docker-amd64
+    - docker-arm64
+
+doc:
+  extends: .job
+  stage: build
+  artifacts:
+    paths:
+      - public
+  before_script:
+    - python3 -m pip install mkdocs-material mkdocs-mermaid2-plugin
+
+pages:
+  extends: .job
+  stage: deploy
+  needs:
+    - doc
+    - repository
+  artifacts:
+    paths:
+      - public
+  only:
+    - tags
+  script:
+    - cp -r dist/repo public/packages/
+
+.tuxsuite:
+  except:
+    - schedules
