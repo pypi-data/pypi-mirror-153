@@ -1,0 +1,7 @@
+import rsplitter
+import timeit
+
+def f():
+    rsplitter.split("wethepeopleoftheunitedstatesinordertoformamoreperfectunionestablishjusticeinsuredomestictranquilityprovideforthecommondefencepromotethegeneralwelfareandsecuretheblessingsoflibertytoourselvesandourposteritydoordainandestablishthisconstitutionfortheunitedstatesofamerica")
+
+print(timeit.timeit(f, number=10000))
