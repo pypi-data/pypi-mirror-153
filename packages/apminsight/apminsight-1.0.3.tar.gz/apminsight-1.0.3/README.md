@@ -1,0 +1,64 @@
+Python Application Performance Monitoring
+=========================================
+
+Monitor and optimize the performance of your Python application with the Site24x7 APM Insight Python agent. The agent provides you with information on the response time, throughput, database operations, and errors of your application. Keep track of these metrics over time to identify where to optimize them for enhanced performance.
+
+Make sure you have a Site24x7 account before you use an APM Insight agent to monitor metrics.
+
+Requirements: Python version 3.5.0 and above
+
+Supported frameworks: Django and Flask
+
+Supposed databases and components: PyMySQL, Psycopg2, Pymemcache, Redis, SQLite, Jinja2, and Cassandra
+
+**Installation instructions:**
+
+* Install the agent in your application directory using the pip command.
+
+        pip install apminsight
+
+> *Note : The agent provides support for the applications that use the Web Server Gateway Interface in their services.*
+
+* For Django applications, add **apminsight.contrib.django** as the first of **INSTALLED_APPS** in the Django settings.py file
+
+* For Flask applications, add **import apminsight** in the first line of the main file
+* You can configure the agent details using either environment variables or a configuration file.
+* If you configure the agent details using environment variables,
+
+  Add the license key as **S247_LICENSE_KEY** to the environment using the following command
+  
+        export S247_LICENSE_KEY=<license-key>
+
+> *Note: You can obtain your license key by logging in to your Site24x7 account and navigating to **Admin> Developer > Device Key**. The device key is your license key.*
+
+* Apart from the license key, you can also add other environment variables like your application name and port number.
+
+        export APM_APP_NAME = <Your application name> 
+        export APM_APP_PORT = <Your application port number>
+
+  *If you are using proxy:*
+
+        export PROXY_SERVER_HOST=<Proxy Server host number>
+        export PROXY_SERVER_PORT=<Proxy Server port number>
+        export PROXY_AUTH_USERNAME=<Username for proxy authentication>
+        export PROXY_AUTH_PASSWORD=<Password for proxy authentication>
+* If you configure the agent details using a configuration file:
+* Create a file named *apminsight_info.json* in the root folder where the application is running.
+* Insert the following code snippet into the file, making the necessary changes:
+
+        {
+        "license_key" : "<Your Device Key>",
+        "app_port" : "<Your application port number>",
+        "appname" : "<Your application name>",
+
+  *If you are using proxy:*
+
+        "proxy_server_host" : "<Proxy host number>",
+        "proxy_server_port" : "<Proxy port number>",
+        "proxy_auth_username" : "<Username for proxy authentication>",
+        "proxy_auth_password" :"<Password for proxy authentication>",
+        }
+* Restart your Django or Flask application
+
+* Perform some transactions in your application for the agent to collect data. Log into your Site24x7 account and navigate to APM Insight and click on your application to see application metrics. 
+* You can view agent log files in the apminsightdata directory, which will be present under the process created location.
