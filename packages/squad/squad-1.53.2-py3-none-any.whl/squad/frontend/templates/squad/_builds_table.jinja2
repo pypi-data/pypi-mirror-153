@@ -1,0 +1,77 @@
+<div class='highlight-row' ng-app='BuildList' ng-controller='BuildListCompareController'>
+<form>
+<div class="form-group">
+  <input type="hidden" ng-init="compare_button_label='{{_('Compare builds')}}'" />
+  <input type="hidden" ng-init="invalid_number_of_builds_msg='{{_('Two builds need to be selected!')}}'" />
+  <input type="hidden" ng-init="invalid_selected_builds_msg='{{_('Selected builds must be different!')}}'" />
+  <input type="button" ng-value="compare_button_label" class="btn btn-default" ng-click="compareBuilds('{{project.full_name}}')" /> &nbsp;
+  <input class="form-check-input" id="metric-comparison" name="comparison_type" type="radio" value="metric" ng-model="comparison_type" ng-init="comparison_type='test'" />
+  <label class="form-check-label" for="metric-comparison">{{ _('compare by metrics') }}</label>&nbsp;
+  <input class="form-check-input" id="test-comparison" name="comparison_type" type="radio" value="test" checked ng-model="comparison_type" />
+  <label class="form-check-label" for="test-comparison">{{ _('compare by tests') }}</label>
+</div>
+{% for build in builds %}
+{% with status=build.status %}
+<div class="row row-bordered build">
+    <div class="col-md-1 col-sm-1">
+        <input type="radio" name="baseline_build" ng-value="'{{build.version}}'" ng-model="baseline_build" />&nbsp;
+        <input type="radio" name="target_build" ng-value="'{{build.version}}'" ng-model="target_build" ng-show="show_target_radio('{{build.version}}')" />
+    </div>
+    <a href="{{build_url(build)}}">
+    <div class="col-md-2 col-sm-2">
+        {% include "squad/_unfinished_build.jinja2" %}
+        {% include "squad/_regressions_and_fixes.jinja2" %}
+        <strong>
+            {{build.version}}
+        </strong>
+    </div>
+    <div class='col-md-3 col-sm-3'>
+        <div title='Test run status'>
+            <i class='fa fa-cog'></i>
+            <span class="badge" data-toggle="tooltip" data-placement="top" title="Total">{{ _('%d test runs') % status.test_runs_total }}</span>
+            {% if status.test_runs_completed > 0 %}
+            <span class="badge alert-success" data-toggle="tooltip" data-placement="top" title="{{ _('Completed') }}">{{ _('%d completed') % status.test_runs_completed }}</span>
+            {% endif %}
+            {% if status.test_runs_incomplete > 0 %}
+            <span class="badge alert-danger" data-toggle="tooltip" data-placement="top" title="{{ _('Incomplete') }}">{{ _('%d incomplete') % status.test_runs_incomplete }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-3">
+        {% if status.has_tests %}
+        <div title='{{ _('Test results') }}'>
+            <i class='fa fa-check-square-o'></i>
+            {% include "squad/_test_results_summary.jinja2" %}
+        </div>
+        {% endif %}
+
+        {% if status.has_metrics %}
+        <div title='{{ _('Metrics summary') }}'>
+            <i class='fa fa-line-chart'></i>
+            {{status.metrics_summary|floatformat(3)}}
+         </div>
+        {% endif %}
+    </div>
+    <div class="col-md-3 col-sm-3">
+        {% if status.last_updated %}
+        <div>
+            <i class='fa fa-clock-o'>&nbsp;</i>
+            {{status.last_updated|naturaltime}}
+        </div>
+        <div>
+            <i class='fa fa-clock-o' style='color: transparent'>&nbsp;</i>
+            {{status.last_updated|date}}
+        </div>
+        {% endif %}
+    </div>
+    </a>
+</div>
+{% endwith %}
+{% endfor %}
+<input type="button" ng-value="compare_button_label" class="btn btn-default" ng-click="compareBuilds('{{project.full_name}}')" />
+</form>
+</div>
+
+{% block javascript %}
+<script type="module" src='{{static("squad/build_list.js")}}'></script>
+{% endblock %}
