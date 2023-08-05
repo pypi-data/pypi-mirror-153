@@ -1,0 +1,103 @@
+kubernetes:
+  name: "dask-{user}-{uuid}"
+  namespace: null
+  count:
+    start: 0
+    max: null
+  host: "0.0.0.0"
+  port: 0
+  env: {}
+  idle-timeout: null
+  deploy-mode: "remote"
+  interface: null
+  protocol: "tcp://"
+  dashboard_address: ":8787"
+
+  scheduler-service-type: "ClusterIP"
+  # Timeout to wait for the scheduler service to be up (in seconds)
+  # Set it to 0 to wait indefinitely (not recommended)
+  scheduler-service-wait-timeout: 30
+  # Number of retries to resolve scheduler service name when running
+  # from within the Kubernetes cluster.
+  # Must be set to 1 or greater.
+  scheduler-service-name-resolution-retries: 20
+
+  scheduler-service-template:
+    apiVersion: v1
+    kind: Service
+    spec:
+      selector:
+        dask.org/cluster-name: "" # Cluster name will be added automatically
+        dask.org/component: scheduler
+      ports:
+        - name: tcp-comm
+          protocol: TCP
+          port: 8786
+          targetPort: 8786
+        - name: http-dashboard
+          protocol: TCP
+          port: 8787
+          targetPort: 8787
+
+  scheduler-pdb-template:
+    apiVersion: policy/v1beta1
+    kind: PodDisruptionBudget
+    spec:
+      minAvailable: 1
+      selector:
+        matchLabels:
+          dask.org/cluster-name: "" # Cluster name will be added automatically
+          dask.org/component: scheduler
+
+  worker-template-path: null
+
+  scheduler-template:
+    {}
+    # kind: Pod
+    # metadata:
+    #   labels:
+    #     foo: bar
+    #     baz: quux
+    # spec:
+    #   restartPolicy: Never
+    #   containers:
+    #   - -scheduler
+    #     image: ghcr.io/dask/dask:latest
+    #     args:
+    #       - dask-scheduler
+    #     resources:
+    #       limits:
+    #         cpu: "1.75"
+    #         memory: 6G
+    #       requests:
+  #         cpu: "1.75"
+  #         memory: 6G
+
+  worker-template:
+    {}
+    # kind: Pod
+    # metadata:
+    #   labels:
+    #     foo: bar
+    #     baz: quux
+    # spec:
+    #   restartPolicy: Never
+    #   containers:
+    #   - name: dask-worker
+    #     image: ghcr.io/dask/dask:latest
+    #     args:
+    #       - dask-worker
+    #       - --nthreads
+    #       - '2'
+    #       - --no-bokeh
+    #       - --memory-limit
+    #       - 6GB
+    #       - --death-timeout
+    #       - '60'
+    #     resources:
+    #       limits:
+    #         cpu: "1.75"
+    #         memory: 6G
+    #       requests:
+    #         cpu: "1.75"
+    #         memory: 6G
