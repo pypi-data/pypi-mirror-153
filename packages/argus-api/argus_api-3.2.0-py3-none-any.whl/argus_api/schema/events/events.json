@@ -1,0 +1,4176 @@
+{
+  "swagger": "2.0",
+  "info": {},
+  "basePath": "/",
+  "tags": [
+    {
+      "name": "events/v1"
+    },
+    {
+      "name": "events/v2"
+    }
+  ],
+  "paths": {
+    "/events/v1/case/{caseID}": {
+      "get": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Fetch events associated with specified case (PUBLIC)",
+        "description": "Fetch events associated with case that has ID specified in the url, it will also figure out which cases have been merged into the specified case,and fetch events for those merged cases as well.\nResult of events will be sorted by event start timestamp in descending order.",
+        "operationId": "getEventsForCase",
+        "produces": [
+          "application/json",
+          "text/csv"
+        ],
+        "parameters": [
+          {
+            "name": "caseID",
+            "in": "path",
+            "description": "Case ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results, 0 is everything and will give an error if the result is more than allowed.",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "maximum": 10000,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "List of properties to sort by (prefix with \"-\" to sort descending).Only accepts timestamp and -timestamp.If no value is given, it defaults to sorting by descending timestamp.",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-AggregatedIPAttackEvent-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/aggregated/stats": {
+      "post": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Fetch aggregated event stats (PUBLIC)",
+        "description": "Returns a StatsContainer JSON format.",
+        "operationId": "findAggregatedEventStats",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/AggregatedEventStatsSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/{type}/{timestamp}/{customerID}/{eventID}/pcap": {
+      "get": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Fetch specified event payload as PCAP (PUBLIC)",
+        "description": "",
+        "operationId": "getPcap",
+        "produces": [
+          "application/x-pcap"
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "enum": [
+              "NIDS",
+              "AGGR",
+              "AGGRATTACK"
+            ]
+          },
+          {
+            "name": "timestamp",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "customerID",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "eventID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/aggregated/search": {
+      "post": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Search for aggregated events (PUBLIC)",
+        "description": "",
+        "operationId": "findAggregatedEvents",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/csv"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Search criteria",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/AggregatedEventSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-AggregatedIPAttackEvent-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/aggregated": {
+      "get": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Simple search for aggregated events (PUBLIC)",
+        "description": "",
+        "operationId": "listAggregatedEvents",
+        "produces": [
+          "application/json",
+          "text/csv"
+        ],
+        "parameters": [
+          {
+            "name": "customerID",
+            "in": "query",
+            "description": "Limit to customerID",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "signature",
+            "in": "query",
+            "description": "Limit to signature",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "ip",
+            "in": "query",
+            "description": "Limit to ip/network",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "startTimestamp",
+            "in": "query",
+            "description": "Limit to events after this timestamp (default is last 24 hours).",
+            "required": false,
+            "type": "string",
+            "default": "-24hours"
+          },
+          {
+            "name": "endTimestamp",
+            "in": "query",
+            "description": "Limit to events before this timestamp. Defaults to now.",
+            "required": false,
+            "type": "string",
+            "default": "now"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-AggregatedIPAttackEvent-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Add event assessments (INTERNAL)",
+        "description": "",
+        "operationId": "updateEvents",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/AggregatedEventsUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-AggregatedIPAttackEvent-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Events not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/nids/search": {
+      "post": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Search for NIDS events (PUBLIC)",
+        "description": "",
+        "operationId": "findNIDSEvents",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/csv"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Search criteria",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/NIDSEventSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-NIDSEvent-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/nids": {
+      "get": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Simple search for NIDS events (PUBLIC)",
+        "description": "",
+        "operationId": "listNIDSEvents",
+        "produces": [
+          "application/json",
+          "text/csv"
+        ],
+        "parameters": [
+          {
+            "name": "customerID",
+            "in": "query",
+            "description": "Limit to customerID",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "signature",
+            "in": "query",
+            "description": "Limit to signature",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "ip",
+            "in": "query",
+            "description": "Limit to ip/network",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "startTimestamp",
+            "in": "query",
+            "description": "Limit to events after this timestamp (default is last 24 hours).",
+            "required": false,
+            "type": "string",
+            "default": "-24hours"
+          },
+          {
+            "name": "endTimestamp",
+            "in": "query",
+            "description": "Limit to events before this timestamp.",
+            "required": false,
+            "type": "string",
+            "default": "now"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-NIDSEvent-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/{type}/{timestamp}/{customerID}/{eventID}": {
+      "get": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Fetch specified event (PUBLIC)",
+        "description": "",
+        "operationId": "getEventByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "customerID",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "eventID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-ArgusEvent-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/{type}/{timestamp}/{customerID}/{eventID}/payload": {
+      "get": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Fetch specified event payload (PUBLIC)",
+        "description": "",
+        "operationId": "getPayload",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "enum": [
+              "NIDS",
+              "AGGR",
+              "AGGRATTACK"
+            ]
+          },
+          {
+            "name": "timestamp",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "customerID",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "eventID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-EventPayload-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v1/aggregated/bulk": {
+      "put": {
+        "tags": [
+          "events/v1"
+        ],
+        "summary": "Assess events in bulk mode (INTERNAL)",
+        "description": "To be used for bulk assessment of very large amount of events. Returns the number of assessed events.",
+        "operationId": "updateEventsBulk",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/AggregatedEventsBulkUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Events not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v2/event": {
+      "post": {
+        "tags": [
+          "events/v2"
+        ],
+        "summary": "Submit event to central storage. (INTERNAL)",
+        "description": "This is a collector API, which will collect and enqueue the events for central storage.When this endpoint returns, the service guarantees that the events are validated and safely received for transport and storage. However, the services makes no guarantees for when the events will be searchable from the search endpoints.\n\nValidated events are enqueued for storage; the response will not indicate whether the event has been inserted or updated. Writing to an event ID (type/timestamp/customerID/UUID) of an existing event, will update/append the existing event with changed fields, and add flags/properties.\n\n If an event attempts to update an existing event which is marked as FINALIZED, the update will be ignored, even if this endpoint accepts the event.",
+        "operationId": "submitEvents",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Event create request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/EventSubmitRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-EventSubmitResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/events/v2/event/bulk": {
+      "post": {
+        "tags": [
+          "events/v2"
+        ],
+        "summary": "Submit a bulk of events to central storage. (INTERNAL)",
+        "description": "This is a collector API, which will collect and enqueue the events for central storage.When this endpoint returns, the service guarantees that the events are validated and safely received for transport and storage. However, the services makes no guarantees for when the events will be searchable from the search endpoints.\n\nValidated events are enqueued for storage; the response will not indicate whether the event has been inserted or updated. Writing to an event ID (type/timestamp/customerID/UUID) of an existing event, will update/append the existing event with changed fields, and add flags/properties.\n\n If an event attempts to update an existing event which is marked as FINALIZED, the update will be ignored, even if this endpoint accepts the event.",
+        "operationId": "submitEventsBulk",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Bulk request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/EventBulkSubmitRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-EventBulkSubmitResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "AggregatedIPAttackEvent": {
+      "type": "object",
+      "properties": {
+        "customerInfo": {
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Comment"
+          }
+        },
+        "associatedCase": {
+          "$ref": "#/definitions/AssociatedCaseInfo"
+        },
+        "associatedCases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/AssociatedCaseInfo"
+          }
+        },
+        "location": {
+          "$ref": "#/definitions/LocationInfo"
+        },
+        "attackInfo": {
+          "$ref": "#/definitions/AttackInfo"
+        },
+        "domain": {
+          "$ref": "#/definitions/DomainName"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "source": {
+          "$ref": "#/definitions/IPEndPoint"
+        },
+        "destination": {
+          "$ref": "#/definitions/IPEndPoint"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "startTimestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "endTimestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "lastUpdatedTimestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "flags": {
+          "type": "array",
+          "readOnly": true,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "severity": {
+          "type": "string",
+          "readOnly": true,
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "detailedEventIDS": {
+          "type": "array",
+          "readOnly": true,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "AssociatedCaseInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "categoryID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "categoryName": {
+          "type": "string"
+        },
+        "service": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ATTACHMENT_ADDED",
+            "PENDING_CUSTOMER",
+            "PENDING_SOC",
+            "PENDING_VENDOR",
+            "WORKING_SOC",
+            "WORKING_CUSTOMER",
+            "PENDING_CLOSE",
+            "CLOSED"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        }
+      }
+    },
+    "AggregatedEventsBulkUpdateRequest": {
+      "type": "object",
+      "required": [
+        "criteria",
+        "update"
+      ],
+      "properties": {
+        "criteria": {
+          "$ref": "#/definitions/AggregatedEventSearchCriteria"
+        },
+        "update": {
+          "$ref": "#/definitions/EventUpdateRequest"
+        }
+      }
+    },
+    "EventBulkSubmitRequest": {
+      "type": "object",
+      "required": [
+        "events"
+      ],
+      "properties": {
+        "events": {
+          "type": "array",
+          "position": 0,
+          "description": "Events to submit in this bulk.",
+          "items": {
+            "$ref": "#/definitions/EventSubmitRequest"
+          },
+          "maxItems": 2147483647,
+          "minItems": 1
+        },
+        "onError": {
+          "type": "string",
+          "position": 0,
+          "description": "Define how validation errors on single events should be handled. Using mode dropInvalid, invalid events will be ignored and reported in the response. The default mode is rejectAll, which will cause a 412 error on the entire request on a valiation failure for any event.",
+          "enum": [
+            "rejectAll",
+            "dropInvalid"
+          ]
+        }
+      }
+    },
+    "ResultStash": {
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Returned results (might be an array or a single object)"
+        }
+      }
+    },
+    "ResultStash-NIDSEvent-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/NIDSEvent"
+          }
+        }
+      }
+    },
+    "UserInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "customer": {
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "domain": {
+          "$ref": "#/definitions/DomainInfo"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "customerID": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "GeoInfo": {
+      "type": "object",
+      "properties": {
+        "countryCode": {
+          "type": "string"
+        },
+        "countryName": {
+          "type": "string"
+        },
+        "locationName": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number",
+          "format": "double"
+        },
+        "longitude": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "IPEndPoint": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "geoLocation": {
+          "$ref": "#/definitions/GeoInfo"
+        },
+        "networkAddress": {
+          "$ref": "#/definitions/IPNetworkAddress"
+        }
+      }
+    },
+    "AggregatedEventStatsSearchCriteria": {
+      "type": "object",
+      "properties": {
+        "signature": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "destinationIP": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceIP": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "ip": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "destinationPort": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourcePort": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "port": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "minSeverity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "maxSeverity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "includeDeleted": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Also include deleted objects (where implemented)"
+        },
+        "customerID": {
+          "type": "array",
+          "xml": {
+            "name": "Customers",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "DEPRECATED! Use customer instead",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "CustomerID"
+            }
+          }
+        },
+        "skipFutureEvents": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Whether service should generate endTimestamp by current timestamp. (default false)",
+          "default": false
+        },
+        "exclude": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Exclude these criteria from the parent criteria."
+        },
+        "required": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Only relevant for subcriteria. If set to true, objects matching this subcriteria are required (AND-ed together with parent criteria)."
+        },
+        "eventIdentifier": {
+          "type": "array",
+          "xml": {
+            "name": "EventIdentifiers",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events specified by full ID (type/timestamp/customerid/eventid).",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/EventIdentifier"
+          }
+        },
+        "locationID": {
+          "type": "array",
+          "xml": {
+            "name": "Locations",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having these locations.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "LocationID"
+            }
+          }
+        },
+        "severity": {
+          "type": "array",
+          "position": 0,
+          "description": "Search events with specified severity. Can't be used together with minSeverity/maxSeverity.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          }
+        },
+        "customer": {
+          "type": "array",
+          "position": 0,
+          "description": "Search for events by customer (id or shortname).",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "alarmID": {
+          "type": "array",
+          "xml": {
+            "name": "Alarms",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having an attack identifier (signature) mapped to any of these alarms.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AlarmID"
+            }
+          }
+        },
+        "attackCategoryID": {
+          "type": "array",
+          "xml": {
+            "name": "AttackCategories",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having an attack identifier (signature) mapped to any of these categories.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AttackCategoryID"
+            }
+          }
+        },
+        "sourceGeoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "SourceGeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where source IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "SourceGeoCountry"
+            }
+          }
+        },
+        "destinationGeoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "DestinationGeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where destination IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "DestinationGeoCountry"
+            }
+          }
+        },
+        "geoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "GeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where source or destination IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "GeoCountry"
+            }
+          }
+        },
+        "properties": {
+          "type": "object",
+          "xml": {
+            "name": "Properties"
+          },
+          "position": 0,
+          "description": "Search for events having these properties (logical AND).",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "productionCustomers": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If set, apply a customer filter for customers marked as 'not in production'. If true, EXCLUDE customers 'not in production'. If false, REQUIRE customers 'not in production'. Default is unset (no filter on production customers)."
+        },
+        "exactMatchProperties": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If set to true, will execute in-memory filtering to only match events that have exact match of properties specified at top level \"properties\" field of search request. WARN: The count of response would not be reliable, as the filtering is applied in-memory of application server, but the count was done by search engine. (default true)",
+          "default": true
+        },
+        "minCount": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search for events with aggregated count at least this high"
+        },
+        "associatedCaseID": {
+          "type": "array",
+          "xml": {
+            "name": "AssociatedCases",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events associated to one of these cases, 0 will match events NOT associated with any case",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AssociatedCaseID"
+            }
+          }
+        },
+        "sourceIPMinBits": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Do not include source CIDR-networks with wider mask than this"
+        },
+        "destinationIPMinBits": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Do not include destination CIDR-networks with wider mask than this"
+        },
+        "subCriteria": {
+          "type": "array",
+          "xml": {
+            "name": "SubCriteria",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Allow subcriteria (include or exclude), to refine search arbitrarily",
+          "uniqueItems": true,
+          "items": {
+            "xml": {
+              "name": "AggregatedEventSearchCriteria"
+            },
+            "$ref": "#/definitions/AggregatedEventSearchCriteria"
+          }
+        },
+        "timeFieldStrategy": {
+          "type": "array",
+          "xml": {
+            "name": "TimeFieldStrategy",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Defines which timestamps will be included in the search, will default to startTimestamp/endTimestamp.This field cannot be used alongside the lastUpdateTime field due to backwards compatibility.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "TimeFieldStrategy"
+            },
+            "enum": [
+              "timestamp",
+              "startTimestamp",
+              "endTimestamp",
+              "all"
+            ]
+          }
+        },
+        "resolution": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Divide results into timeframes with this size (in milliseconds)",
+          "minimum": 0
+        },
+        "groupBy": {
+          "type": "array",
+          "xml": {
+            "name": "GroupBy",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Group results by these fields",
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "Field"
+            },
+            "enum": [
+              "ATTACK_IDENTIFIER",
+              "ATTACK_CATEGORY",
+              "ALARM",
+              "LOCATION",
+              "EVENT_SEVERITY",
+              "SOURCEIP",
+              "DESTINATIONIP",
+              "PROTOCOL",
+              "CUSTOMER",
+              "SOURCE_GEOIP_LOCATION",
+              "SOURCE_GEOIP_COUNTRY",
+              "DESTINATION_GEOIP_LOCATION",
+              "DESTINATION_GEOIP_COUNTRY"
+            ]
+          }
+        },
+        "countRawEvents": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Return the number of raw events (not the number of aggregated events)"
+        },
+        "cutoff": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "If set, keep the <cutoff> biggest records, and cut off the rest.",
+          "minimum": 0
+        },
+        "includeOthers": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true (default), records which are cut off are collected into a common \"other\" record"
+        },
+        "timeFrameStrategy": {
+          "type": "string",
+          "position": 0,
+          "description": "Configures the aggregation search to use start/end timestamp or just event timestamp for the timeframe of the search. (default startEndTimestamp)",
+          "enum": [
+            "timestamp",
+            "startEndTimestamp"
+          ]
+        },
+        "startTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search objects from this timestamp"
+        },
+        "endTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search objects until this timestamp"
+        },
+        "includeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Search objects with these flags set",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "excludeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Exclude objects with these flags set",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "lastUpdatedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Match only with events marked with a last updated time greater or equal to this."
+        },
+        "indexStartTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Earliest created time of the indices searched.",
+          "minimum": 0
+        },
+        "indexEndTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Last created time of the indices searched.",
+          "minimum": 0
+        }
+      },
+      "xml": {
+        "name": "AggregatedEventStatsSearchCriteria"
+      }
+    },
+    "AggregatedEventsUpdateRequest": {
+      "type": "object",
+      "required": [
+        "update"
+      ],
+      "properties": {
+        "update": {
+          "position": 0,
+          "description": "Event update request",
+          "$ref": "#/definitions/EventUpdateRequest"
+        },
+        "eventIdentifiers": {
+          "type": "array",
+          "position": 0,
+          "description": "Update events specified by full ID (type/timestamp/customerID/eventID)",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ResultStash-AggregatedIPAttackEvent-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/AggregatedIPAttackEvent"
+          }
+        }
+      }
+    },
+    "EventEndPoint": {
+      "type": "object",
+      "properties": {
+        "ip": {
+          "type": "string",
+          "position": 0,
+          "description": "IPv4 or IPv6 address (host or CIDR notation)."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "UDP or TCP port (0 - 65535)."
+        },
+        "user": {
+          "type": "string",
+          "position": 0,
+          "description": "Username or identifier."
+        },
+        "host": {
+          "type": "string",
+          "position": 0,
+          "description": "Hostname or identifier."
+        },
+        "geoLocation": {
+          "position": 0,
+          "description": "GeoLocation of this endpoint.",
+          "$ref": "#/definitions/EventGeoLocation"
+        }
+      }
+    },
+    "ArgusEvent": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "update": {
+          "type": "boolean"
+        },
+        "aggregationKey": {
+          "type": "string"
+        },
+        "customerInfo": {
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "flags": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "customerID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sourceType": {
+          "type": "string"
+        },
+        "aggregated": {
+          "type": "boolean"
+        },
+        "encodedFlags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        }
+      }
+    },
+    "AttackInfo": {
+      "type": "object",
+      "properties": {
+        "alarmID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "alarmDescription": {
+          "type": "string"
+        },
+        "attackCategoryID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "attackCategoryName": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    },
+    "IPNetworkAddress": {
+      "type": "object",
+      "properties": {
+        "ipv6": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        },
+        "maskBits": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "host": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        },
+        "multicast": {
+          "type": "boolean"
+        },
+        "public": {
+          "type": "boolean"
+        },
+        "address": {
+          "type": "string",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "EventUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "comment": {
+          "type": "string",
+          "position": 0,
+          "description": "Add comment for the event => [\\s\\w\\{\\}\\$\\-\\(\\)\\.\\[\\]\"\\'_/\\\\,\\*\\+\\#:@!?;=]*"
+        },
+        "associateToCase": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Specify the case to associate the event to, if 0 is provided means dissociate event from the specified case",
+          "minimum": 0
+        },
+        "associateCases": {
+          "type": "array",
+          "position": 0,
+          "description": "Add one or more case associations to an event, not required.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "unassociateCases": {
+          "type": "array",
+          "position": 0,
+          "description": "Remove an event's case association for one or multiple cases, not required",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "recursiveAnnotation": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, apply this event annotation on all subevents of the target events. (default false)",
+          "default": false
+        },
+        "recursiveResult": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, also return subevents of the target events in the result. (default false)",
+          "default": false
+        },
+        "triggers": {
+          "position": 0,
+          "description": "Enable assessment triggers",
+          "$ref": "#/definitions/AssessmentTriggers"
+        },
+        "newSeverity": {
+          "type": "string",
+          "position": 0,
+          "description": "Change severity of the event",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "flagsToDisable": {
+          "type": "array",
+          "position": 0,
+          "description": "Define flags to be disabled",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "flagsToEnable": {
+          "type": "array",
+          "position": 0,
+          "description": "Define flags to be enabled",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        }
+      }
+    },
+    "DomainInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "ResultStash-EventPayload-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/EventPayload"
+        }
+      }
+    },
+    "AggregatedEventSearchCriteria": {
+      "type": "object",
+      "properties": {
+        "signature": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "destinationIP": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceIP": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "ip": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "destinationPort": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourcePort": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "port": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "minSeverity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "maxSeverity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Limit results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Offset results"
+        },
+        "includeDeleted": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Also include deleted objects (where implemented)"
+        },
+        "customerID": {
+          "type": "array",
+          "xml": {
+            "name": "Customers",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "DEPRECATED! Use customer instead",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "CustomerID"
+            }
+          }
+        },
+        "skipFutureEvents": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Whether service should generate endTimestamp by current timestamp. (default false)",
+          "default": false
+        },
+        "exclude": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Exclude these criteria from the parent criteria."
+        },
+        "required": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Only relevant for subcriteria. If set to true, objects matching this subcriteria are required (AND-ed together with parent criteria)."
+        },
+        "eventIdentifier": {
+          "type": "array",
+          "xml": {
+            "name": "EventIdentifiers",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events specified by full ID (type/timestamp/customerid/eventid).",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/EventIdentifier"
+          }
+        },
+        "locationID": {
+          "type": "array",
+          "xml": {
+            "name": "Locations",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having these locations.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "LocationID"
+            }
+          }
+        },
+        "severity": {
+          "type": "array",
+          "position": 0,
+          "description": "Search events with specified severity. Can't be used together with minSeverity/maxSeverity.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          }
+        },
+        "customer": {
+          "type": "array",
+          "position": 0,
+          "description": "Search for events by customer (id or shortname).",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "alarmID": {
+          "type": "array",
+          "xml": {
+            "name": "Alarms",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having an attack identifier (signature) mapped to any of these alarms.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AlarmID"
+            }
+          }
+        },
+        "attackCategoryID": {
+          "type": "array",
+          "xml": {
+            "name": "AttackCategories",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having an attack identifier (signature) mapped to any of these categories.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AttackCategoryID"
+            }
+          }
+        },
+        "sourceGeoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "SourceGeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where source IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "SourceGeoCountry"
+            }
+          }
+        },
+        "destinationGeoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "DestinationGeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where destination IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "DestinationGeoCountry"
+            }
+          }
+        },
+        "geoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "GeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where source or destination IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "GeoCountry"
+            }
+          }
+        },
+        "properties": {
+          "type": "object",
+          "xml": {
+            "name": "Properties"
+          },
+          "position": 0,
+          "description": "Search for events having these properties (logical AND).",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "productionCustomers": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If set, apply a customer filter for customers marked as 'not in production'. If true, EXCLUDE customers 'not in production'. If false, REQUIRE customers 'not in production'. Default is unset (no filter on production customers)."
+        },
+        "exactMatchProperties": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If set to true, will execute in-memory filtering to only match events that have exact match of properties specified at top level \"properties\" field of search request. WARN: The count of response would not be reliable, as the filtering is applied in-memory of application server, but the count was done by search engine. (default true)",
+          "default": true
+        },
+        "minCount": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search for events with aggregated count at least this high"
+        },
+        "associatedCaseID": {
+          "type": "array",
+          "xml": {
+            "name": "AssociatedCases",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events associated to one of these cases, 0 will match events NOT associated with any case",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AssociatedCaseID"
+            }
+          }
+        },
+        "sourceIPMinBits": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Do not include source CIDR-networks with wider mask than this"
+        },
+        "destinationIPMinBits": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Do not include destination CIDR-networks with wider mask than this"
+        },
+        "subCriteria": {
+          "type": "array",
+          "xml": {
+            "name": "SubCriteria",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Allow subcriteria (include or exclude), to refine search arbitrarily",
+          "uniqueItems": true,
+          "items": {
+            "xml": {
+              "name": "AggregatedEventSearchCriteria"
+            },
+            "$ref": "#/definitions/AggregatedEventSearchCriteria"
+          }
+        },
+        "timeFieldStrategy": {
+          "type": "array",
+          "xml": {
+            "name": "TimeFieldStrategy",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Defines which timestamps will be included in the search, will default to startTimestamp/endTimestamp.This field cannot be used alongside the lastUpdateTime field due to backwards compatibility.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "TimeFieldStrategy"
+            },
+            "enum": [
+              "timestamp",
+              "startTimestamp",
+              "endTimestamp",
+              "all"
+            ]
+          }
+        },
+        "startTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search objects from this timestamp"
+        },
+        "endTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search objects until this timestamp"
+        },
+        "sortBy": {
+          "type": "array",
+          "position": 0,
+          "description": "Order results by these properties (prefix with - to sort descending)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "includeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Search objects with these flags set",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "excludeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Exclude objects with these flags set",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "lastUpdatedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Match only with events marked with a last updated time greater or equal to this."
+        },
+        "indexStartTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Earliest created time of the indices searched.",
+          "minimum": 0
+        },
+        "indexEndTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Last created time of the indices searched.",
+          "minimum": 0
+        }
+      },
+      "xml": {
+        "name": "AggregatedEventSearchCriteria"
+      }
+    },
+    "Comment": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the comment was added."
+        },
+        "user": {
+          "position": 0,
+          "description": "Who added the comment.",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "comment": {
+          "type": "string",
+          "position": 0,
+          "description": "The comment's text."
+        }
+      }
+    },
+    "EventIdentifier": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "xml": {
+            "attribute": true
+          }
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          }
+        },
+        "customerID": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          }
+        },
+        "eventID": {
+          "type": "string",
+          "xml": {
+            "attribute": true
+          }
+        }
+      }
+    },
+    "EventSubmitRequestID": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "customerDomain": {
+          "type": "string"
+        },
+        "customer": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "raw",
+            "aggregated"
+          ]
+        }
+      }
+    },
+    "DomainName": {
+      "type": "object",
+      "properties": {
+        "fqdn": {
+          "type": "string"
+        }
+      }
+    },
+    "ResultStash-ArgusEvent-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/ArgusEvent"
+        }
+      }
+    },
+    "ResultMessage": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "messageTemplate": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "FIELD_ERROR",
+            "ACTION_ERROR",
+            "WARNING",
+            "NOTIFICATION",
+            "INFO"
+          ]
+        },
+        "field": {
+          "type": "string"
+        },
+        "parameter": {
+          "type": "object"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "NIDSEvent": {
+      "type": "object",
+      "properties": {
+        "customerInfo": {
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Comment"
+          }
+        },
+        "sensor": {
+          "$ref": "#/definitions/SensorInfo"
+        },
+        "location": {
+          "$ref": "#/definitions/LocationInfo"
+        },
+        "attackInfo": {
+          "$ref": "#/definitions/AttackInfo"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "engineTimestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "protocolID": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "domain": {
+          "$ref": "#/definitions/DomainName"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/definitions/IPEndPoint"
+        },
+        "destination": {
+          "$ref": "#/definitions/IPEndPoint"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "severity": {
+          "type": "string",
+          "readOnly": true,
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "readOnly": true,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "id": {
+          "type": "string",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "EventSubmitRequest": {
+      "type": "object",
+      "properties": {
+        "startTimestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "endTimestamp": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "id": {
+          "position": 0,
+          "description": "Event identifier, containing timestamp, customer, type and UUID. This field can also be submitted as a String on the Argus EventID format, e.g. AGGR/10000/1/8bf1732c-f845-409a-8425-8fad3b5007ab.If not set, the endpoint will generate an ID.",
+          "$ref": "#/definitions/EventSubmitRequestID"
+        },
+        "signature": {
+          "type": "string",
+          "position": 0,
+          "description": "Event signature. If set, the system will automatically assign alarm and attack category based on this value."
+        },
+        "severity": {
+          "type": "string",
+          "position": 0,
+          "description": "Event severity. When creating a new event, the default severity is low.",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Number of occurrences this event represents. The value must be at least 1, which is the default."
+        },
+        "location": {
+          "type": "string",
+          "position": 0,
+          "description": "The sensor location (id or shortname) where this event was observed. If set, this location must be resolvable for the current user, and must either belong to the same customer as this event, or be a global location."
+        },
+        "protocol": {
+          "type": "string",
+          "position": 0,
+          "description": "The protocol id or well-known name. Numeric protocol ID must be between 0 and 255. Protocol name must be well known (icmp, tcp, udp, esp, ah)"
+        },
+        "source": {
+          "position": 0,
+          "description": "Observed communication source in this event.",
+          "$ref": "#/definitions/EventEndPoint"
+        },
+        "destination": {
+          "position": 0,
+          "description": "Observed communication destination in this event.",
+          "$ref": "#/definitions/EventEndPoint"
+        },
+        "flags": {
+          "type": "array",
+          "position": 0,
+          "description": "Event flags requested by the client for this event. On updating an existing event, existing flags will be retained, and flags in the update will be added. Flags that have a PARTIAL flag have custom handling. If FINALIZED flag is set, additional updates to this event will be ignored.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "SSL_TERMINATED",
+              "PARTIAL_SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "properties": {
+          "type": "object",
+          "position": 0,
+          "description": "Custom properties for this event. Each property key may have multiple values. On updating an existing event, setting an existing property will overwrite existing value.",
+          "additionalProperties": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "subEvents": {
+          "type": "array",
+          "position": 0,
+          "description": "IDs (on form TYPE/timestamp/customer/UUID) for subevents to this event. Subevents may not be stored yet. System will validate that all subevents have the same customer as this event.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "uri": {
+          "type": "string",
+          "position": 0,
+          "description": "URI observed in this event."
+        },
+        "fqdn": {
+          "type": "string",
+          "position": 0,
+          "description": "FQDN (fqdn) observed in this event."
+        },
+        "aggregationKey": {
+          "type": "string",
+          "position": 0,
+          "description": "Client specified aggregation key for this event."
+        },
+        "associatedCaseID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Associated case ID. If set, the associated case must be readable for the current user, and must belong to the same customer as this event."
+        },
+        "associatedCaseIDs": {
+          "type": "array",
+          "position": 0,
+          "description": "Add one or more case associations to an event, not required. If set, the associated case must be readable for the current user, and must belong to the same customer as this event.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "payload": {
+          "position": 0,
+          "description": "Payload associated with the event.",
+          "$ref": "#/definitions/EventPayload"
+        }
+      }
+    },
+    "LocationInfo": {
+      "type": "object",
+      "properties": {
+        "shortName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "timeZone": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "EventGeoLocation": {
+      "type": "object",
+      "properties": {
+        "countryCode": {
+          "type": "string",
+          "position": 0,
+          "description": "2-letter country code."
+        },
+        "geoLocationID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "MaxMind geolocation ID."
+        },
+        "latitude": {
+          "type": "number",
+          "format": "double",
+          "position": 0,
+          "description": "Latitude for location coordinates",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "format": "double",
+          "position": 0,
+          "description": "Longitude for location coordinates",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "ResultStash-EventSubmitResponse-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/EventSubmitResponse"
+        }
+      }
+    },
+    "AssessmentTriggers": {
+      "type": "object",
+      "properties": {
+        "slaViolation": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, enable trigger to check for customer sla violation. (default false)",
+          "default": false
+        },
+        "internalSlaViolation": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, enable trigger to check for internal sla violation (default false)",
+          "default": false
+        }
+      }
+    },
+    "EventBulkSubmitResponse": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Number of accepted events"
+        },
+        "rejected": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Number of rejected events"
+        },
+        "events": {
+          "type": "array",
+          "position": 0,
+          "description": "List of event submission results for each submitted event. This field will have the same number and order of events as the bulk submission request.",
+          "items": {
+            "$ref": "#/definitions/EventSubmitResponse"
+          }
+        }
+      }
+    },
+    "EventSubmitResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "position": 0,
+          "description": "The ID of the submitted event. This will reflect the provided type, customerID, timestamp and UUID, or the generated values if these were not specified."
+        },
+        "status": {
+          "type": "string",
+          "position": 0,
+          "description": "The submission status of this event. This will state 'rejected' if the event could not be validated, or 'accepted' if the event was accepted and has been enqueued for storage.",
+          "enum": [
+            "accepted",
+            "rejected"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "position": 0,
+          "description": "If the event was rejected with a validation error, this field will state the reason for the rejection."
+        }
+      }
+    },
+    "SensorInfo": {
+      "type": "object",
+      "properties": {
+        "sensorID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "hostName": {
+          "type": "string"
+        },
+        "hostIpAddress": {
+          "$ref": "#/definitions/IPAddress"
+        },
+        "hostIpString": {
+          "type": "string"
+        }
+      }
+    },
+    "CustomerInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "shortName": {
+          "type": "string"
+        },
+        "domain": {
+          "$ref": "#/definitions/DomainInfo"
+        }
+      }
+    },
+    "IPAddress": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        },
+        "ipv6": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        },
+        "maskBits": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "multicast": {
+          "type": "boolean"
+        },
+        "public": {
+          "type": "boolean"
+        },
+        "address": {
+          "type": "string",
+          "xml": {
+            "attribute": true
+          },
+          "readOnly": true
+        }
+      }
+    },
+    "NIDSEventSearchCriteria": {
+      "type": "object",
+      "properties": {
+        "signature": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "destinationIP": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceIP": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "ip": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "destinationPort": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourcePort": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "port": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "minSeverity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "maxSeverity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Limit results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Offset results"
+        },
+        "includeDeleted": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Also include deleted objects (where implemented)"
+        },
+        "customerID": {
+          "type": "array",
+          "xml": {
+            "name": "Customers",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "DEPRECATED! Use customer instead",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "CustomerID"
+            }
+          }
+        },
+        "skipFutureEvents": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Whether service should generate endTimestamp by current timestamp. (default false)",
+          "default": false
+        },
+        "exclude": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Exclude these criteria from the parent criteria."
+        },
+        "required": {
+          "type": "boolean",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Only relevant for subcriteria. If set to true, objects matching this subcriteria are required (AND-ed together with parent criteria)."
+        },
+        "eventIdentifier": {
+          "type": "array",
+          "xml": {
+            "name": "EventIdentifiers",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events specified by full ID (type/timestamp/customerid/eventid).",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/EventIdentifier"
+          }
+        },
+        "locationID": {
+          "type": "array",
+          "xml": {
+            "name": "Locations",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having these locations.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "LocationID"
+            }
+          }
+        },
+        "severity": {
+          "type": "array",
+          "position": 0,
+          "description": "Search events with specified severity. Can't be used together with minSeverity/maxSeverity.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          }
+        },
+        "customer": {
+          "type": "array",
+          "position": 0,
+          "description": "Search for events by customer (id or shortname).",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "alarmID": {
+          "type": "array",
+          "xml": {
+            "name": "Alarms",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having an attack identifier (signature) mapped to any of these alarms.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AlarmID"
+            }
+          }
+        },
+        "attackCategoryID": {
+          "type": "array",
+          "xml": {
+            "name": "AttackCategories",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Search for events having an attack identifier (signature) mapped to any of these categories.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "AttackCategoryID"
+            }
+          }
+        },
+        "sourceGeoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "SourceGeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where source IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "SourceGeoCountry"
+            }
+          }
+        },
+        "destinationGeoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "DestinationGeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where destination IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "DestinationGeoCountry"
+            }
+          }
+        },
+        "geoCountry": {
+          "type": "array",
+          "xml": {
+            "name": "GeoCountry"
+          },
+          "position": 0,
+          "description": "Search for events where source or destination IP is registered in any of these countries.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "xml": {
+              "name": "GeoCountry"
+            }
+          }
+        },
+        "properties": {
+          "type": "object",
+          "xml": {
+            "name": "Properties"
+          },
+          "position": 0,
+          "description": "Search for events having these properties (logical AND).",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "productionCustomers": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If set, apply a customer filter for customers marked as 'not in production'. If true, EXCLUDE customers 'not in production'. If false, REQUIRE customers 'not in production'. Default is unset (no filter on production customers)."
+        },
+        "exactMatchProperties": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If set to true, will execute in-memory filtering to only match events that have exact match of properties specified at top level \"properties\" field of search request. WARN: The count of response would not be reliable, as the filtering is applied in-memory of application server, but the count was done by search engine. (default true)",
+          "default": true
+        },
+        "sensorID": {
+          "type": "array",
+          "xml": {
+            "name": "Sensors",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "List of sensor IDs that must have a match in the retrieved event.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "SensorID"
+            }
+          }
+        },
+        "subCriteria": {
+          "type": "array",
+          "xml": {
+            "name": "SubCriteria",
+            "wrapped": true
+          },
+          "position": 0,
+          "description": "Subcriterias used to refine the search by including or excluding events.",
+          "uniqueItems": true,
+          "items": {
+            "xml": {
+              "name": "NIDSEventSearchCriteria"
+            },
+            "$ref": "#/definitions/NIDSEventSearchCriteria"
+          }
+        },
+        "timeFieldStrategy": {
+          "type": "array",
+          "position": 0,
+          "description": "Defines which timestamps will be included in the search, will default to timestamp.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "timestamp",
+              "startTimestamp",
+              "endTimestamp",
+              "all"
+            ]
+          }
+        },
+        "startTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search objects from this timestamp"
+        },
+        "endTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Search objects until this timestamp"
+        },
+        "sortBy": {
+          "type": "array",
+          "position": 0,
+          "description": "Order results by these properties (prefix with - to sort descending)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "includeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Search objects with these flags set",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "excludeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Exclude objects with these flags set",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ESTABLISHED",
+              "BLOCKED",
+              "SNAPSHOT",
+              "FINALIZED",
+              "SOURCE_IS_CUSTOMERNET",
+              "DESTINATION_IS_CUSTOMERNET",
+              "SOURCE_IS_PARTIAL_CUSTOMERNET",
+              "DESTINATION_IS_PARTIAL_CUSTOMERNET",
+              "INTRUDER_IS_CUSTOMERNET",
+              "VICTIM_IS_CUSTOMERNET",
+              "INTRUDER_IS_PARTIAL_CUSTOMERNET",
+              "VICTIM_IS_PARTIAL_CUSTOMERNET",
+              "PARTIALLY_BLOCKED",
+              "FALSE_POSITIVE",
+              "NOT_A_THREAT",
+              "TUNING_CANDIDATE",
+              "NOTIFIED",
+              "PARTIALLY_NOTIFIED",
+              "FOLLOWUP",
+              "IDENTIFIED_THREAT",
+              "THREAT_CANDIDATE",
+              "ACKNOWLEDGED",
+              "PARTIALLY_ACKNOWLEDGED",
+              "SEVERITY_ADJUSTED",
+              "COMMENTED",
+              "FILTERED",
+              "CHECKED",
+              "INCOMPLETE_DETAILS",
+              "AGGREGATED_BASE_EVENT",
+              "REMOTE_STORAGE",
+              "CUSTOM_SOURCE_AGGREGATION",
+              "CUSTOM_DESTINATION_AGGREGATION",
+              "CUSTOM_INTRUDER_AGGREGATION",
+              "CUSTOM_VICTIM_AGGREGATION",
+              "HAS_PAYLOAD",
+              "HAS_PCAP",
+              "ASSOCIATED_TO_CASE_BY_FILTER",
+              "SEVERITY_INCREASED_BY_FILTER",
+              "SEVERITY_REDUCED_BY_FILTER",
+              "CREATED_BY_ANALYSIS_FILTER",
+              "EXTEND_EVENT_TTL",
+              "INITIAL_TUNING",
+              "POST_ANALYSIS",
+              "PARTIAL_SSL_TERMINATED",
+              "SSL_TERMINATED",
+              "AUTO_REPORT",
+              "MISSING_TIMESTAMP",
+              "CLOCK_OUT_OF_SYNC",
+              "DROP_ANALYSIS",
+              "ESCALATED_BY_REPUTATION",
+              "HAS_SAMPLE",
+              "STORE_EVENT",
+              "STORE_AGGREGATED",
+              "SOURCE_IS_MANAGED_BY_SOC",
+              "DESTINATION_IS_MANAGED_BY_SOC"
+            ]
+          }
+        },
+        "lastUpdatedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "xml": {
+            "attribute": true
+          },
+          "position": 0,
+          "description": "Match only with events marked with a last updated time greater or equal to this."
+        },
+        "indexStartTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Earliest created time of the indices searched.",
+          "minimum": 0
+        },
+        "indexEndTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Last created time of the indices searched.",
+          "minimum": 0
+        }
+      },
+      "xml": {
+        "name": "NIDSEventSearchCriteria"
+      }
+    },
+    "ResultStash-EventBulkSubmitResponse-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/EventBulkSubmitResponse"
+        }
+      }
+    },
+    "EventPayload": {
+      "type": "object",
+      "required": [
+        "payload",
+        "payloadType"
+      ],
+      "properties": {
+        "payload": {
+          "type": "string",
+          "position": 0,
+          "description": "Payload associated to event"
+        },
+        "payloadType": {
+          "type": "string",
+          "position": 0,
+          "description": "Type for payload associated to event",
+          "enum": [
+            "ethernet",
+            "pcap",
+            "binary",
+            "string"
+          ]
+        }
+      }
+    }
+  }
+}

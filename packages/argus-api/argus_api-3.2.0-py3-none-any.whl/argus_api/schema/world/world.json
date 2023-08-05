@@ -1,0 +1,1212 @@
+{
+  "swagger": "2.0",
+  "info": {},
+  "basePath": "/",
+  "tags": [
+    {
+      "name": "datacollector/v1"
+    },
+    {
+      "name": "world/v1"
+    },
+    {
+      "name": "logging/v1"
+    }
+  ],
+  "paths": {
+    "/datacollector/v1/category": {
+      "get": {
+        "tags": [
+          "datacollector/v1"
+        ],
+        "summary": "Retrieve a list of valid categories (DEV)",
+        "description": "",
+        "operationId": "listCategories",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of categories",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned categories",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DataCollectorCategory-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "412": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/datacollector/v1/ingest/{category}/bulk": {
+      "post": {
+        "tags": [
+          "datacollector/v1"
+        ],
+        "summary": "Submit JSON data in bulk that will be forwarded to a Kafka topic based on its category (DEV)",
+        "description": "",
+        "operationId": "ingestBulkData",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "description": "What category the records belong to",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "The request containing the category and data to forward to Kafka",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DataCollectorIngestRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DataCollectorIngestResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "412": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/datacollector/v1/ingest/{category}": {
+      "post": {
+        "tags": [
+          "datacollector/v1"
+        ],
+        "summary": "Submit JSON data that will be forwarded to a Kafka topic based on its category (DEV)",
+        "description": "",
+        "operationId": "ingestData",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "description": "What category the records belong to",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "The customer ID or shortname that this data belongs to. Defaults to the current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "ignoreOnFailed",
+            "in": "query",
+            "description": "Whether or not to ignore any errors in the record",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "The JSON data to forward to kafka",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DataCollectorIngestResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "412": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/world/v1/timezone": {
+      "get": {
+        "tags": [
+          "world/v1"
+        ],
+        "summary": "Get all time zones (PUBLIC)",
+        "description": "",
+        "operationId": "getTimeZones",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of time zones",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned time zones",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "keywords",
+            "in": "query",
+            "description": "Filter time zones by keywords",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-TimeZone-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/logging/v1/csp-report-uri": {
+      "post": {
+        "tags": [
+          "logging/v1"
+        ],
+        "summary": "Submit CSP log event (INTERNAL)",
+        "description": "",
+        "operationId": "submitCSPLogEvent",
+        "consumes": [
+          "application/json",
+          "application/csp-report"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "CSP log event submission request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/CSPLogEntry"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-CSPResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/logging/v1/client": {
+      "post": {
+        "tags": [
+          "logging/v1"
+        ],
+        "summary": "Submit client log events in a bulk operation (INTERNAL)",
+        "description": "",
+        "operationId": "submitClientLogEventsBulk",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Client log event bulk submission request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/ClientLoggingBulkRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-LoggingBulkResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/logging/v1/tool": {
+      "post": {
+        "tags": [
+          "logging/v1"
+        ],
+        "summary": "Submit tool log events in a bulk operation (INTERNAL)",
+        "description": "",
+        "operationId": "submitToolingLogEventsBulk",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "tool log event bulk submission request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/ToolLoggingBulkRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-LoggingBulkResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/world/v1/whois": {
+      "get": {
+        "tags": [
+          "world/v1"
+        ],
+        "summary": "Get WHOIS information by IP or host name (PUBLIC)",
+        "description": "",
+        "operationId": "lookupWhoIs",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "lookup",
+            "in": "query",
+            "description": "Lookup WhoIs information for specified value",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-WhoIsResponse-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "412": {
+            "description": "Validation error"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ResultStash-DataCollectorIngestResponse-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/DataCollectorIngestResponse"
+        }
+      }
+    },
+    "ResultStash-WhoIsResponse-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/WhoIsResponse"
+        }
+      }
+    },
+    "ResultStash": {
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Returned results (might be an array or a single object)"
+        }
+      }
+    },
+    "FailedDataRecord": {
+      "type": "object",
+      "properties": {
+        "submissionIndex": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "The index into the data submission list this error is about"
+        },
+        "errorMessages": {
+          "type": "array",
+          "position": 0,
+          "description": "The list of errors detected about the data",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "DataCollectorIngestResponse": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "The number of accepted data submissions"
+        },
+        "rejected": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "The number of rejected data submissions"
+        },
+        "errorInformationList": {
+          "type": "array",
+          "position": 0,
+          "description": "A list of information on errors in the data submissions",
+          "items": {
+            "$ref": "#/definitions/FailedDataRecord"
+          }
+        }
+      }
+    },
+    "LoggingBulkResponse": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Number of successfully submitted logs."
+        },
+        "rejected": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Number of logs that failed validation."
+        },
+        "errorInformationList": {
+          "type": "array",
+          "position": 0,
+          "description": "Information regarding any logs that are rejected during validation.",
+          "items": {
+            "$ref": "#/definitions/LogErrorInformation"
+          }
+        }
+      }
+    },
+    "LogErrorInformation": {
+      "type": "object",
+      "properties": {
+        "logIndex": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Index of the log as it appears in the submission request."
+        },
+        "errorMessages": {
+          "type": "array",
+          "position": 0,
+          "description": "String message of error cause.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ResultMessage": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "messageTemplate": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "FIELD_ERROR",
+            "ACTION_ERROR",
+            "WARNING",
+            "NOTIFICATION",
+            "INFO"
+          ]
+        },
+        "field": {
+          "type": "string"
+        },
+        "parameter": {
+          "type": "object"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "ResultStash-DataCollectorCategory-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/DataCollectorCategory"
+          }
+        }
+      }
+    },
+    "ToolLoggingBulkRequest": {
+      "type": "object",
+      "required": [
+        "logEntries"
+      ],
+      "properties": {
+        "logEntries": {
+          "type": "array",
+          "position": 0,
+          "description": "Log entries for submission.",
+          "items": {
+            "$ref": "#/definitions/ToolLogEntry"
+          },
+          "maxItems": 2147483647,
+          "minItems": 1
+        },
+        "ignoreOnFailed": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Set this value for successful response even with failures occur while submitting. (default false)",
+          "default": false
+        }
+      }
+    },
+    "ResultStash-LoggingBulkResponse-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/LoggingBulkResponse"
+        }
+      }
+    },
+    "ResultStash-CSPResponse-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/CSPResponse"
+        }
+      }
+    },
+    "TimeZone": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "ClientLogEntry": {
+      "type": "object",
+      "required": [
+        "clientBrowser",
+        "level",
+        "message",
+        "originatingPage",
+        "timestamp"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Timestamp for event. Accepts ISO-8601 timestamp string.",
+          "minimum": 1
+        },
+        "level": {
+          "type": "string",
+          "position": 0,
+          "description": "Event level: debug, info, warning or error.",
+          "enum": [
+            "none",
+            "error",
+            "warning",
+            "info",
+            "debug"
+          ]
+        },
+        "stacktrace": {
+          "type": "string",
+          "position": 0,
+          "description": "Complete stacktrace for event., Max string length is 4096 characters."
+        },
+        "context": {
+          "type": "object",
+          "position": 0,
+          "description": "Additional information that could be relevant in the context.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string",
+          "position": 0,
+          "description": "Event message"
+        },
+        "clientBrowser": {
+          "type": "string",
+          "position": 0,
+          "description": "Browser running client."
+        },
+        "originatingPage": {
+          "type": "string",
+          "position": 0,
+          "description": "Client page on which the event occurred."
+        },
+        "requestID": {
+          "type": "string",
+          "position": 0,
+          "description": "RequestID used during event."
+        }
+      }
+    },
+    "CSPLogEntry": {
+      "type": "object",
+      "required": [
+        "blockedUri",
+        "disposition",
+        "documentUri",
+        "originalPolicy",
+        "violatedDirective"
+      ],
+      "properties": {
+        "blockedUri": {
+          "type": "string",
+          "position": 0,
+          "description": "The URI of the resource that was blocked from loading by the Content Security Policy."
+        },
+        "disposition": {
+          "type": "string",
+          "position": 0,
+          "description": "Either 'enforce' or 'report'."
+        },
+        "documentUri": {
+          "type": "string",
+          "position": 0,
+          "description": "The URI of the document in which the violation occurred."
+        },
+        "effectiveDirective": {
+          "type": "string",
+          "position": 0,
+          "description": "The directive whose enforcement caused the violation."
+        },
+        "originalPolicy": {
+          "type": "string",
+          "position": 0,
+          "description": "The original policy as specified by the Content-Security-Policy-Report-Only HTTP header."
+        },
+        "referrer": {
+          "type": "string",
+          "position": 0,
+          "description": "The referrer of the document in which the violation occurred."
+        },
+        "scriptSample": {
+          "type": "string",
+          "position": 0,
+          "description": "The first 40 characters of the inline script, event handler, or style that caused the violation."
+        },
+        "statusCode": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "The HTTP status code of the resource on which the global object was instantiated."
+        },
+        "violatedDirective": {
+          "type": "string",
+          "position": 0,
+          "description": "The name of the policy section that was violated."
+        }
+      }
+    },
+    "ResultStash-TimeZone-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/TimeZone"
+          }
+        }
+      }
+    },
+    "DataCollectorIngestRequest": {
+      "type": "object",
+      "required": [
+        "records"
+      ],
+      "properties": {
+        "ignoreOnFailed": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Whether or not to ignore any errors in the records (default false)",
+          "default": false
+        },
+        "records": {
+          "type": "array",
+          "position": 0,
+          "description": "The records containing the JSON data",
+          "items": {
+            "$ref": "#/definitions/DataCollectorIngestRecord"
+          },
+          "maxItems": 1000,
+          "minItems": 1
+        }
+      }
+    },
+    "ClientLoggingBulkRequest": {
+      "type": "object",
+      "required": [
+        "logEntries"
+      ],
+      "properties": {
+        "logEntries": {
+          "type": "array",
+          "position": 0,
+          "description": "Log entries for submission.",
+          "items": {
+            "$ref": "#/definitions/ClientLogEntry"
+          },
+          "maxItems": 2147483647,
+          "minItems": 1
+        },
+        "ignoreOnFailed": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Set this value for successful response even with failures occur while submitting. (default false)",
+          "default": false
+        }
+      }
+    },
+    "DataCollectorIngestRecord": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "customer": {
+          "type": "string",
+          "position": 0,
+          "description": "The customer ID or shortname that this data belongs to. Defaults to the current users customer"
+        }
+      }
+    },
+    "WhoIsResponse": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "type": "string",
+          "position": 0,
+          "description": "Resolved WHOIS information"
+        }
+      }
+    },
+    "DataCollectorCategory": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "The name of the category"
+        }
+      }
+    },
+    "ToolLogEntry": {
+      "type": "object",
+      "required": [
+        "arguments",
+        "currentUser",
+        "executableName",
+        "hostname",
+        "operatingSystem",
+        "platformVersion",
+        "reference",
+        "timestamp"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Timestamp for event. Accepts ISO-8601 timestamp string.",
+          "minimum": 1
+        },
+        "level": {
+          "type": "string",
+          "position": 0,
+          "description": "Event level: debug, info, warning or error.",
+          "enum": [
+            "none",
+            "error",
+            "warning",
+            "info",
+            "debug"
+          ]
+        },
+        "stacktrace": {
+          "type": "string",
+          "position": 0,
+          "description": "Complete stacktrace for event., Max string length is 4096 characters."
+        },
+        "context": {
+          "type": "object",
+          "position": 0,
+          "description": "Additional information that could be relevant in the context.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string",
+          "position": 0,
+          "description": "Event message"
+        },
+        "hostname": {
+          "type": "string",
+          "position": 0,
+          "description": "Host running script."
+        },
+        "operatingSystem": {
+          "type": "string",
+          "position": 0,
+          "description": "Operating system running the script."
+        },
+        "platformVersion": {
+          "type": "string",
+          "position": 0,
+          "description": "Platform/Python version."
+        },
+        "executableName": {
+          "type": "string",
+          "position": 0,
+          "description": "Executable that initiated the script."
+        },
+        "arguments": {
+          "type": "string",
+          "position": 0,
+          "description": "Arguments used, do not include API keys."
+        },
+        "currentUser": {
+          "type": "string",
+          "position": 0,
+          "description": "User ID or shortname, used by the script."
+        },
+        "reference": {
+          "type": "string",
+          "position": 0,
+          "description": "Reference, such as cronmeta-tag."
+        }
+      }
+    },
+    "CSPResponse": {
+      "type": "object"
+    }
+  }
+}

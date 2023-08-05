@@ -1,0 +1,6603 @@
+{
+  "swagger": "2.0",
+  "info": {},
+  "basePath": "/",
+  "tags": [
+    {
+      "name": "documents/v1"
+    }
+  ],
+  "paths": {
+    "/documents/v1/folder/{folderID}/documents": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Create a new document (PUBLIC)",
+        "description": "In order to create plain text document, use 'text' property and send text. Otherwise use 'data' property populated with base64 encoded representation of the document. Sending the both parameters will result in error.",
+        "operationId": "addDocument",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "Parent folder ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document add request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentAddRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Parent folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/documents/{documentName}": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Create a new document with the specified name into the parent folder (PUBLIC)",
+        "description": "Submit document data as raw data to this request. The content type specified in the request will be used.",
+        "operationId": "addDocumentRaw",
+        "consumes": [
+          "*"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "Parent folder ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "accessMode",
+            "in": "query",
+            "description": "Access mode to set on new document",
+            "required": false,
+            "type": "string",
+            "default": "roleBased",
+            "enum": [
+              "roleBased",
+              "writeRestricted",
+              "readRestricted",
+              "explicit"
+            ]
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "description": "Document MIME-type",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "overwriteExisting",
+            "in": "query",
+            "description": "If true, overwrite existing document with the same name",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          },
+          {
+            "name": "skipNotification",
+            "in": "query",
+            "description": "If true, skip notification to folder watchers",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/InputStream"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Parent folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path{parentFolderPath}/{documentName}": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Create a new document with the specified name into the parent folder (PUBLIC)",
+        "description": "Submit document data as raw data to this request. The content type specified in the request will be used.",
+        "operationId": "addDocumentByPathRaw",
+        "consumes": [
+          "*"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root to the parent folder (if not specified, add the folder in the root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "accessMode",
+            "in": "query",
+            "description": "Access mode to set on new document",
+            "required": false,
+            "type": "string",
+            "default": "roleBased",
+            "enum": [
+              "roleBased",
+              "writeRestricted",
+              "readRestricted",
+              "explicit"
+            ]
+          },
+          {
+            "name": "createMissing",
+            "in": "query",
+            "description": "If true, create any missing folders before adding document",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          },
+          {
+            "name": "overwriteExisting",
+            "in": "query",
+            "description": "If true, overwrite existing document with the same name",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          },
+          {
+            "name": "skipNotification",
+            "in": "query",
+            "description": "If true, skip notification to folder watchers",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          },
+          {
+            "name": "Content-Type",
+            "in": "header",
+            "description": "Document MIME-type",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/InputStream"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Parent folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Discard specified document (PUBLIC)",
+        "description": "",
+        "operationId": "deleteDocumentByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root to the parent folder (if not specified, fetch document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-single"
+            }
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{parentID}": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Create a new subfolder (PUBLIC)",
+        "description": "",
+        "operationId": "addFolder",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentID",
+            "in": "path",
+            "description": "ID of parent folder",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Folder add request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderAddSubFolderRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Parent folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path{parentFolderPath}": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Create a new subfolder in specified parent folder. (PUBLIC)",
+        "description": "If createMissingFolders is set, any missing parts of the path will be attempted created. If the target folder to create already exists, the endpont will return 200. If a folder was actually created, the endpoint will return 201.",
+        "operationId": "addFolderByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root to the parent folder (if not specified, add the folder in the root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Folder add request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderAddByPathRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "If folder already existed and createMissingFolders is false"
+          },
+          "201": {
+            "description": "If folder was created"
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Parent folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch specified document excluding content (PUBLIC)",
+        "description": "",
+        "operationId": "getMetaInfoById",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to fetch",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Update specified document (PUBLIC)",
+        "description": "",
+        "operationId": "updateDocument",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to update",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document update request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-single"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Discard specified document (PUBLIC)",
+        "description": "",
+        "operationId": "deleteDocument",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to discard",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-single"
+            }
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path{parentFolderPath}/{folderName}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Delete specified folder, possibly recursively discarding contained documents (PUBLIC)",
+        "description": "If folder contains undeleted documents, the mode must be DELETE_CASCADE_ALL or DELETE_CASCADE_LISTED_DOCUMENTS with a list of documents to delete. If mode is DELETE_IF_EMPTY (default) and folder contains undeleted documents, the request will fail with a 409 CONFLICT and a metadata key 'documentID' listing documents which are not deleted.",
+        "operationId": "deleteFolderByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root to the parent folder (if not specified, fetch target folder from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "folderName",
+            "in": "path",
+            "description": "Folder name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "description": "Recursive folder delete strategy, default is DELETE_IF_EMPTY",
+            "required": false,
+            "type": "string",
+            "default": "DELETE_IF_EMPTY",
+            "enum": [
+              "DELETE_IF_EMPTY",
+              "DELETE_CASCADE_LISTED_DOCUMENTS",
+              "DELETE_CASCADE_ALL"
+            ]
+          },
+          {
+            "name": "cascadeDocumentID",
+            "in": "query",
+            "description": "List with IDs of documents which can be discarded (with mode DELETE_CASCADE_LISTED_DOCUMENTS)",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "409": {
+            "description": "Conflict on delete (folder contains undeleted document(s))",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-UndeletedDocumentErrorInfo-list"
+            }
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document(s) locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-list"
+            }
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch specified folder metadata (PUBLIC)",
+        "description": "",
+        "operationId": "getFolderMetaInfoById",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder to fetch",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Update specified folder (PUBLIC)",
+        "description": "",
+        "operationId": "updateFolder",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder to update",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Folder update request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Delete specified folder, possibly recursively discarding contained documents (PUBLIC)",
+        "description": "If folder contains undeleted documents, the mode must be DELETE_CASCADE_ALL or DELETE_CASCADE_LISTED_DOCUMENTS with a list of documents to delete. If mode is DELETE_IF_EMPTY (default) and folder contains undeleted documents, the request will fail with a 409 CONFLICT and a metadata key 'documentID' listing documents which are not deleted.",
+        "operationId": "deleteFolder",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder to delete",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "description": "Recursive folder delete strategy, default is DELETE_IF_EMPTY",
+            "required": false,
+            "type": "string",
+            "default": "DELETE_IF_EMPTY",
+            "enum": [
+              "DELETE_IF_EMPTY",
+              "DELETE_CASCADE_LISTED_DOCUMENTS",
+              "DELETE_CASCADE_ALL"
+            ]
+          },
+          {
+            "name": "cascadeDocumentID",
+            "in": "query",
+            "description": "List with IDs of documents which can be discarded (with mode DELETE_CASCADE_LISTED_DOCUMENTS)",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "409": {
+            "description": "Conflict on delete (folder contains undeleted document(s))",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-UndeletedDocumentErrorInfo-list"
+            }
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document(s) locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-list"
+            }
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/access": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch ACL for specified document (PUBLIC)",
+        "description": "",
+        "operationId": "listDocumentAccess",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Grant access to specified document (PUBLIC)",
+        "description": "If the access level is folder, the user is allowed to obtain the information about the document (without content). If the access level is read, the user is allowed to obtain the content of the document. If the access level is write, the user is allowed to update the document.",
+        "operationId": "grantDocumentAccess",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementGrantAccessRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Change access settings on specified document (PUBLIC)",
+        "description": "If the access mode is roleBased, user accessing the document must have appropriate role, set by administrator. If the access mode is writeRestricted, user accessing the document can read, but must have appropriate role for write, set by administrator. If the access mode is readRestricted, user accessing the document must have appropriate roles for both read and write, set by administrator. If the access mode is explicit, user accessing the document must have explicit grant by document's owner.",
+        "operationId": "updateDocumentAccessSettings",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementSetAccessModeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/access/{accessID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Revoke specified explicit access from document (PUBLIC)",
+        "description": "",
+        "operationId": "revokeDocumentAccess",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "Document ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "accessID",
+            "in": "path",
+            "description": "Access ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path/access{parentFolderPath}/{documentName}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch ACL for specified document (PUBLIC)",
+        "description": "",
+        "operationId": "listDocumentAccessByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Grant access to specified document (PUBLIC)",
+        "description": "If the access level is folder, the user is allowed to obtain the information about the document (without content). If the access level is read, the user is allowed to obtain the content of the document. If the access level is write, the user is allowed to update the document.",
+        "operationId": "grantDocumentAccessByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementGrantAccessRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Change access settings on specified document (PUBLIC)",
+        "description": "If the access mode is roleBased, user accessing the document must have appropriate role, set by administrator. If the access mode is writeRestricted, user accessing the document can read, but must have appropriate role for write, set by administrator. If the access mode is readRestricted, user accessing the document must have appropriate roles for both read and write, set by administrator. If the access mode is explicit, user accessing the document must have explicit grant by document's owner.",
+        "operationId": "updateDocumentAccessSettingsByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementSetAccessModeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path/access{parentFolderPath}/{documentName}/{accessID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Revoke specified explicit access from document (PUBLIC)",
+        "description": "",
+        "operationId": "revokeDocumentAccessByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "accessID",
+            "in": "path",
+            "description": "Access ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer)",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/watchers": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get all watchers for document (PUBLIC)",
+        "description": "",
+        "operationId": "listDocumentWatchersByID",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit the result",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip this number of results",
+            "required": false,
+            "type": "integer",
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "includeInherited",
+            "in": "query",
+            "description": "If true, also fetch watchers defined on parent folders",
+            "required": false,
+            "type": "boolean",
+            "default": true
+          },
+          {
+            "name": "includeNegated",
+            "in": "query",
+            "description": "If true, also fetch explicit unwatch records",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "description": "If true, also fetch deleted watcher records",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Add watcher to specified document. Requires write access to the document. (PUBLIC)",
+        "description": "",
+        "operationId": "addDocumentWatcher",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document watcher add request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentWatcherAddRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/watchers/{entryID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Delete watcher entry on document. Requires write access to document. (PUBLIC)",
+        "description": "",
+        "operationId": "deleteDocumentWatcher",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "name": "entryID",
+            "in": "path",
+            "description": "ID of watcher entry",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/watch": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get current user watcher status for document (PUBLIC)",
+        "description": "",
+        "operationId": "getCurrentUserDocumentWatchStatus",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Change current user watcher status for document. Requires read access to the document. (PUBLIC)",
+        "description": "",
+        "operationId": "setCurrentUserDocumentWatchStatus",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Request specifying status change",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentSetCurrentUserWatchStatusRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path/watchers{parentFolderPath}/{documentName}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get all watchers for document (PUBLIC)",
+        "description": "",
+        "operationId": "listDocumentWatchersByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path to parent folder (if not specified, select document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit the result",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip this number of results",
+            "required": false,
+            "type": "integer",
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "includeInherited",
+            "in": "query",
+            "description": "If true, also fetch watchers defined on parent folders",
+            "required": false,
+            "type": "boolean",
+            "default": true
+          },
+          {
+            "name": "includeNegated",
+            "in": "query",
+            "description": "If true, also fetch explicit unwatch records",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "description": "If true, also fetch deleted watcher records",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Add watcher to specified document. Requires write access to the document. (PUBLIC)",
+        "description": "",
+        "operationId": "addDocumentWatcherByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path to parent folder (if not specified, select document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document watcher add request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentWatcherAddRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path/watch{parentFolderPath}/{documentName}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get current user watcher status for document (PUBLIC)",
+        "description": "",
+        "operationId": "getCurrentUserDocumentWatchStatusByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path to parent folder (if not specified, select document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Change current user watcher status for document. Requires read access to the document. (PUBLIC)",
+        "description": "",
+        "operationId": "setCurrentUserDocumentWatchStatusByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path to parent folder (if not specified, select document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Request specifying status change",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentSetCurrentUserWatchStatusRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path/watchers{parentFolderPath}/{documentName}/{entryID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Delete watcher entry on document. Requires write access to document. (PUBLIC)",
+        "description": "",
+        "operationId": "deleteDocumentWatcherByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path to parent folder (if not specified, select document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "entryID",
+            "in": "path",
+            "description": "ID of watcher entry",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/access": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch ACL for specified folder (PUBLIC)",
+        "description": "",
+        "operationId": "listFolderAccess",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "Folder ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Grant access to specified folder (PUBLIC)",
+        "description": "If the access level is folder, the user is allowed to obtain the information about the folder (without folder content). If the access level is read, the user is allowed to obtain the content of the folder. If the access level is write, the user is allowed to update the folder.",
+        "operationId": "grantFolderAccess",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "Folder ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementGrantAccessRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Change access settings on specified folder (PUBLIC)",
+        "description": "If the access mode is roleBased, user accessing the folder must have appropriate role, set by administrator. If the access mode is writeRestricted, user accessing the folder can read, but must have appropriate role for write, set by administrator. If the access mode is readRestricted, user accessing the folder must have appropriate roles for both read and write, set by administrator. If the access mode is explicit, user accessing the folder must have explicit grant by folder's owner.",
+        "operationId": "updateFolderAccessSettings",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "Folder ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementSetAccessModeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/access/{accessID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Revoke specified explicit access from folder (PUBLIC)",
+        "description": "",
+        "operationId": "revokeFolderAccess",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "Folder ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "name": "accessID",
+            "in": "path",
+            "description": "Access ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path/access{path}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch ACL for specified folder (PUBLIC)",
+        "description": "",
+        "operationId": "listFolderAccessByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Grant access to specified folder (PUBLIC)",
+        "description": "If the access level is folder, the user is allowed to obtain the information about the folder (without folder content). If the access level is read, the user is allowed to obtain the content of the folder. If the access level is write, the user is allowed to update the folder.",
+        "operationId": "grantFolderAccessByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Request specifying access to grant",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementGrantAccessRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Change access settings on specified folder (PUBLIC)",
+        "description": "If the access mode is roleBased, user accessing the folder must have appropriate role, set by administrator. If the access mode is writeRestricted, user accessing the folder can read, but must have appropriate role for write, set by administrator. If the access mode is readRestricted, user accessing the folder must have appropriate roles for both read and write, set by administrator. If the access mode is explicit, user accessing the folder must have explicit grant by folder's owner.",
+        "operationId": "updateFolderAccessSettingsByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Request specifying access mode change",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderElementSetAccessModeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path/access{path}/{accessID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Revoke specified explicit access from folder (PUBLIC)",
+        "description": "",
+        "operationId": "revokeFolderAccessByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "accessID",
+            "in": "path",
+            "description": "Access ID",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentAccess-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/watchers": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get all watchers for folder (PUBLIC)",
+        "description": "",
+        "operationId": "listFolderWatchers",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit the result",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip this number of results",
+            "required": false,
+            "type": "integer",
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "includeInherited",
+            "in": "query",
+            "description": "If true, also fetch watchers defined on parent folders",
+            "required": false,
+            "type": "boolean",
+            "default": true
+          },
+          {
+            "name": "includeNegated",
+            "in": "query",
+            "description": "If true, also fetch explicit unwatch records",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "description": "If true, also fetch deleted watcher records",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Add watcher to specified folder. Requires write access to specified folder. (PUBLIC)",
+        "description": "",
+        "operationId": "addFolderWatcher",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Folder watcher add request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/FolderWatcherAddRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/watchers/{entryID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Delete watcher entry from folder. Requires write access to specified folder. (PUBLIC)",
+        "description": "",
+        "operationId": "deleteFolderWatcher",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "entryID",
+            "in": "path",
+            "description": "ID of watcher entry",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/watch": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get current user watcher status for folder (PUBLIC)",
+        "description": "",
+        "operationId": "getCurrentUserFolderWatchStatus",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Change current user watcher status for folder. Requires read access to folder. (PUBLIC)",
+        "description": "",
+        "operationId": "setCurrentUserFolderWatchStatusByID",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Request specifying status change",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/FolderSetCurrentUserWatchStatusRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path/watchers{path}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get all watchers for folder (PUBLIC)",
+        "description": "",
+        "operationId": "listFolderWatchersByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path to folder",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit the result",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip this number of results",
+            "required": false,
+            "type": "integer",
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "includeInherited",
+            "in": "query",
+            "description": "If true, also fetch watchers defined on parent folders",
+            "required": false,
+            "type": "boolean",
+            "default": true
+          },
+          {
+            "name": "includeNegated",
+            "in": "query",
+            "description": "If true, also fetch explicit unwatch records",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "description": "If true, also fetch deleted watcher records",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Add watcher to specified folder (PUBLIC)",
+        "description": "",
+        "operationId": "addFolderWatcherByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path to folder",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Folder watcher add request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/FolderWatcherAddRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path/watchers{path}/{entryID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Delete watcher entry from folder (PUBLIC)",
+        "description": "",
+        "operationId": "deleteFolderWatcherByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path to folder",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "entryID",
+            "in": "path",
+            "description": "ID of watcher entry",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentWatcher-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path/watch{path}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Get current user watcher status for folder (PUBLIC)",
+        "description": "",
+        "operationId": "getCurrentUserFolderWatchStatusByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path to folder",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer)",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Set current user watcher status for folder (PUBLIC)",
+        "description": "",
+        "operationId": "setCurrentUserFolderWatchStatusByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path to folder",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to lookup folder in (default is current users customer)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Request specifying status change",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/FolderSetCurrentUserWatchStatusRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentCurrentUserWatchStatus-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/upload/prepare": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Prepare upload of a new document (PUBLIC)",
+        "description": "Invoke this endpoint to prepare for fragmented document upload.Use the returned document ID to upload and complete fragments.",
+        "operationId": "prepareUpload",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document prepare upload request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentPrepareUploadRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Parent folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/upload/{documentID}/fragment/{idx}": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Upload next fragment of data to a prepared document.Fragments MUST be uploaded in order, first fragment with index 0. (PUBLIC)",
+        "description": "Submit document fragment as raw data to this request.",
+        "operationId": "addDocumentFragment",
+        "consumes": [
+          "*"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "Document ID (as returned from the prepare endpoint)",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "name": "idx",
+            "in": "path",
+            "description": "Fragment index",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/InputStream"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Specified document ID does not exist"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/upload/{documentID}/complete": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Finalize upload of document.Completion request must specify correct checksum and document size. (PUBLIC)",
+        "description": "Finalize upload of document",
+        "operationId": "completeDocumentUpload",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "Document ID (as returned from the prepare endpoint)",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Completion request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentUploadCompleteRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Specified document ID does not exist"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/upload/{documentID}": {
+      "delete": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Abort and discard fragmented upload. (PUBLIC)",
+        "description": "",
+        "operationId": "disardDocumentUpload",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "Document ID (as returned from the prepare endpoint)",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Specified document ID does not exist"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/content": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Download content as a file for specified document (PUBLIC)",
+        "description": "",
+        "operationId": "getDocumentContentById",
+        "produces": [
+          "application/octet-stream"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to fetch",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "List documents (PUBLIC)",
+        "description": "",
+        "operationId": "listDocuments",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "customerID",
+            "in": "query",
+            "description": "Filter documents by customerID",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "keywords",
+            "in": "query",
+            "description": "Filter documents by keywords",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/search": {
+      "post": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Search for specific documents (PUBLIC)",
+        "description": "",
+        "operationId": "searchDocuments",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document search criteria",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentSearchCriteria"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/versions": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch specified document revisions (PUBLIC)",
+        "description": "",
+        "operationId": "getDocumentRevisions",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to fetch revisions",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path/meta{parentFolderPath}/{documentName}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch specified document meta data (PUBLIC)",
+        "description": "",
+        "operationId": "getMetaInfoByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root to the parent folder (if not specified, fetch document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/path/content{parentFolderPath}/{documentName}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Download content as a file for specified document (PUBLIC)",
+        "description": "",
+        "operationId": "getDocumentContentByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "parentFolderPath",
+            "in": "path",
+            "description": "Path from customer root to the parent folder (if not specified, fetch document from root folder)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "documentName",
+            "in": "path",
+            "description": "Document name",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/content": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch specified folder entries (PUBLIC)",
+        "description": "",
+        "operationId": "browseFolder",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder to browse",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolderElement-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path/meta{path}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch specified folder metadata (PUBLIC)",
+        "description": "",
+        "operationId": "getFolderMetaInfoByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Update specified folder (PUBLIC)",
+        "description": "",
+        "operationId": "updateFolderByPath",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root)",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Folder update request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentFolderUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/path/content{path}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch specified folder entries (PUBLIC)",
+        "description": "",
+        "operationId": "browseFolderByPath",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "description": "Path from customer root (if not specified, this returns the root",
+            "required": true,
+            "type": "string",
+            "pattern": "(/.+)?",
+            "allowEmptyValue": true
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "Customer space to fetch from (default is current users customer",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Folder not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/root": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch root folder for the customers that current user has access to (PUBLIC)",
+        "description": "If the current user has access to a single customer it returns the content of that customer's root folder, otherwise it returns the list of root folders for each customer, without a content.",
+        "operationId": "getCurrentUserRootFolder",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolderElement-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/customer/{customer}": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Fetch customer root folder. This endpoint is deprecated, suggest to use /folder/path/meta/?customer=<customer> instead. (PUBLIC)",
+        "description": "",
+        "operationId": "getCustomerRootFolder",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "customer",
+            "in": "path",
+            "description": "ID of customer to fetch root folder for",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "deprecated": true,
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/space": {
+      "get": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "List available document spaces (PUBLIC)",
+        "description": "This endpoint lists available document spaces.",
+        "operationId": "getAvailableSpaces",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "keywords",
+            "in": "query",
+            "description": "Limit results to spaces where the name (currently: customer name) matches given keywords",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of returned results",
+            "required": false,
+            "type": "integer",
+            "default": 25,
+            "minimum": 0,
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Skip a number of results",
+            "required": false,
+            "type": "integer",
+            "default": 0,
+            "minimum": 0,
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentSpace-list"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/commit": {
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Commit specified document (PUBLIC)",
+        "description": "",
+        "operationId": "commitDocument",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to commit",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document commit request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentCommitRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-single"
+            }
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/lock": {
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Lock/Unlock specified document (PUBLIC)",
+        "description": "",
+        "operationId": "lockDocument",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to lock/unlock",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document lock request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentLockRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-single"
+            }
+          }
+        }
+      }
+    },
+    "/documents/v1/document/{documentID}/move": {
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Move document to a different folder (PUBLIC)",
+        "description": "",
+        "operationId": "moveDocument",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "documentID",
+            "in": "path",
+            "description": "ID of document to move",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Document move request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentMoveRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-Document-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          },
+          "423": {
+            "description": "Document locked",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentLockErrorInfo-single"
+            }
+          }
+        }
+      }
+    },
+    "/documents/v1/folder/{folderID}/move": {
+      "put": {
+        "tags": [
+          "documents/v1"
+        ],
+        "summary": "Move specified folder (PUBLIC)",
+        "description": "",
+        "operationId": "moveFolder",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "folderID",
+            "in": "path",
+            "description": "ID of folder to update",
+            "required": true,
+            "type": "integer",
+            "minimum": 1,
+            "pattern": "[0-9]+",
+            "format": "int64"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Folder update request",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/DocumentMoveRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/ResultStash-DocumentFolder-single"
+            }
+          },
+          "401": {
+            "description": "Authentication failed"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Object not found"
+          },
+          "412": {
+            "description": "Validation failed"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "DocumentFolder": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Unique identifier of the folder/document"
+        },
+        "parentElements": {
+          "type": "array",
+          "position": 0,
+          "description": "Full path of the folder's/document's parent folders (ordered from root to parent folder; empty if root folder)",
+          "items": {
+            "$ref": "#/definitions/FolderInfo"
+          }
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of the folder/document"
+        },
+        "customer": {
+          "position": 0,
+          "description": "Customer owning the folder/document",
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "ownedByUser": {
+          "position": 0,
+          "description": "User owning the folder/document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "createdByUser": {
+          "position": 0,
+          "description": "Who created the folder/document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "createdTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the folder/document was created"
+        },
+        "lastUpdatedByUser": {
+          "position": 0,
+          "description": "Who updated the folder/document last",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "lastUpdatedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the folder/document was last updated"
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "General access mode of the folder/document",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "effectiveAccessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "Effective access mode of the folder/document",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "currentUserAccessLevel": {
+          "type": "string",
+          "position": 0,
+          "description": "Access level granted to the user viewing the folder/document",
+          "enum": [
+            "none",
+            "folder",
+            "read",
+            "write"
+          ]
+        },
+        "elementType": {
+          "type": "string",
+          "position": 0,
+          "description": "Will be 'folder'",
+          "enum": [
+            "document",
+            "folder"
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "position": 0,
+          "description": "Flags assigned to the object.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "DELETED",
+              "ROOT_FOLDER"
+            ]
+          }
+        }
+      }
+    },
+    "ResultStash": {
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Returned results (might be an array or a single object)"
+        }
+      }
+    },
+    "DocumentSetCurrentUserWatchStatusRequest": {
+      "type": "object",
+      "properties": {
+        "watch": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, enable an explicit watcher for the current user for the target document. If false, add an explicit negation for the current user."
+        }
+      }
+    },
+    "DocumentFolderAddSubFolderRequest": {
+      "type": "object",
+      "required": [
+        "accessMode",
+        "inheritExplicitPermissions",
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of new folder => Sanitize by regex \\A[^\\\\\\/:*\"?<>|]{1,254}\\z"
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "General access mode of new folder (default roleBased)",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "inheritExplicitPermissions": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Inherit explicit permissions from parent folder (default false)",
+          "default": false
+        }
+      }
+    },
+    "ResultStash-Document-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/Document"
+          }
+        }
+      }
+    },
+    "Document": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Unique identifier of the folder/document"
+        },
+        "state": {
+          "type": "string",
+          "position": 0,
+          "description": "Current state of the document",
+          "enum": [
+            "draft",
+            "published",
+            "discarded",
+            "incomplete"
+          ]
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "General access mode of the folder/document",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "effectiveAccessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "Effective access mode of the folder/document",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "currentUserAccessLevel": {
+          "type": "string",
+          "position": 0,
+          "description": "Access level granted to the user viewing the folder/document",
+          "enum": [
+            "none",
+            "folder",
+            "read",
+            "write"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of the folder/document"
+        },
+        "masterID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Points to the master document of this revision"
+        },
+        "revision": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Revision count"
+        },
+        "customer": {
+          "position": 0,
+          "description": "Customer owning the folder/document",
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "createdTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the folder/document was created"
+        },
+        "createdByUser": {
+          "position": 0,
+          "description": "Who created the folder/document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "lastUpdatedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the folder/document was last updated"
+        },
+        "lastUpdatedByUser": {
+          "position": 0,
+          "description": "Who updated the folder/document last",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "publishedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the document was published"
+        },
+        "publishDueTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the document must be published (due date)"
+        },
+        "lockedUntilTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Until when the document is locked"
+        },
+        "ownedByUser": {
+          "position": 0,
+          "description": "User owning the folder/document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "lockedByUser": {
+          "position": 0,
+          "description": "Who locked the document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "publishedByUser": {
+          "position": 0,
+          "description": "Who published the document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "mimeType": {
+          "type": "string",
+          "position": 0,
+          "description": "MIME type of the document content"
+        },
+        "dataSize": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Size of the document content in bytes"
+        },
+        "sha256": {
+          "type": "string",
+          "position": 0,
+          "description": "SHA256 digest of this document"
+        },
+        "labels": {
+          "type": "array",
+          "position": 0,
+          "description": "Free-text labels assigned to the document",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "parentElements": {
+          "type": "array",
+          "position": 0,
+          "description": "Full path of the folder's/document's parent folders (ordered from root to parent folder; empty if root folder)",
+          "items": {
+            "$ref": "#/definitions/FolderInfo"
+          }
+        },
+        "currentUserLockStatus": {
+          "type": "string",
+          "position": 0,
+          "description": "The lock status of this document, for the current user.",
+          "enum": [
+            "unlocked",
+            "lockedOtherUser",
+            "lockedCurrentUser",
+            "lockedOtherUserCanOverride"
+          ]
+        },
+        "elementType": {
+          "type": "string",
+          "position": 0,
+          "description": "Will be 'document'",
+          "enum": [
+            "document",
+            "folder"
+          ]
+        },
+        "documentType": {
+          "type": "string",
+          "position": 0,
+          "description": "Will be 'document'",
+          "enum": [
+            "document"
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "position": 0,
+          "description": "Flags assigned to the object.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ATTACHMENT",
+              "CONTROLLED_VERSION",
+              "UNCOMMITTED",
+              "LOCKED_BY_CURRENTUSER"
+            ]
+          }
+        }
+      }
+    },
+    "ResultStash-Document-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/Document"
+        }
+      }
+    },
+    "DocumentFolderElementSetAccessModeRequest": {
+      "type": "object",
+      "required": [
+        "accessMode"
+      ],
+      "properties": {
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "Specify general access mode for document/folder",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        }
+      }
+    },
+    "DomainInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "ResultStash-DocumentWatcher-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/DocumentWatcher"
+          }
+        }
+      }
+    },
+    "DocumentFolderAddByPathRequest": {
+      "type": "object",
+      "required": [
+        "accessMode",
+        "name"
+      ],
+      "properties": {
+        "createMissingFolders": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, create any missing parent folder elements (default false)",
+          "default": false
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of new folder => Sanitize by regex \\A[^\\\\\\/:*\"?<>|]{1,254}\\z"
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "General access mode of new folder (default roleBased)",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        }
+      }
+    },
+    "FolderSetCurrentUserWatchStatusRequest": {
+      "type": "object",
+      "properties": {
+        "watch": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, enable an explicit watcher for the current user for the target folder. If false, add an explicit negation for the current user."
+        }
+      }
+    },
+    "GroupInfo": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/SubjectInfo"
+        },
+        {
+          "type": "object",
+          "properties": {},
+          "description": "SPI GroupInfo"
+        }
+      ]
+    },
+    "DocumentAccess": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "subject": {
+          "position": 0,
+          "description": "Who has access (group/user)",
+          "$ref": "#/definitions/SubjectInfo"
+        },
+        "level": {
+          "type": "string",
+          "position": 0,
+          "description": "What access level was granted",
+          "enum": [
+            "none",
+            "folder",
+            "read",
+            "write"
+          ]
+        }
+      }
+    },
+    "SubjectInfo": {
+      "type": "object",
+      "discriminator": "type",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "ID of the response object."
+        },
+        "shortName": {
+          "type": "string",
+          "position": 0,
+          "description": "The subject's short name"
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "The subject's name"
+        },
+        "domain": {
+          "position": 0,
+          "description": "The subject's domain",
+          "$ref": "#/definitions/DomainInfo"
+        },
+        "customer": {
+          "position": 0,
+          "description": "The customer the subject belongs to",
+          "$ref": "#/definitions/CustomerInfo"
+        }
+      },
+      "description": "SPI SubjectInfo"
+    },
+    "FolderInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Unique identifier of the folder"
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of the folder"
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "The configured access mode set on this folder",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        }
+      }
+    },
+    "FolderWatcherAddRequest": {
+      "type": "object",
+      "required": [
+        "subject"
+      ],
+      "properties": {
+        "subjectDomain": {
+          "type": "string",
+          "position": 0,
+          "description": "Domain to resolve subject shortname in. Defaults to current users domain."
+        },
+        "subject": {
+          "type": "string",
+          "position": 0,
+          "description": "ID or shortname of subject to add as watcher."
+        },
+        "negated": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, register an explicitly negated watcher entry. Default is to add a new active watcher. (default false)",
+          "default": false
+        }
+      }
+    },
+    "ResultStash-DocumentLockErrorInfo-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/DocumentLockErrorInfo"
+          }
+        }
+      }
+    },
+    "CustomerInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "shortName": {
+          "type": "string"
+        },
+        "domain": {
+          "$ref": "#/definitions/DomainInfo"
+        }
+      }
+    },
+    "ResultStash-DocumentFolder-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/DocumentFolder"
+          }
+        }
+      }
+    },
+    "DocumentWatcherAddRequest": {
+      "type": "object",
+      "required": [
+        "subject"
+      ],
+      "properties": {
+        "subjectDomain": {
+          "type": "string",
+          "position": 0,
+          "description": "Domain to resolve subject shortname in. Defaults to current users domain."
+        },
+        "subject": {
+          "type": "string",
+          "position": 0,
+          "description": "ID or shortname of subject to add as watcher."
+        },
+        "negated": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, register an explicitly negated watcher entry. Default is to add a new active watcher. (default false)",
+          "default": false
+        }
+      }
+    },
+    "ResultStash-DocumentFolder-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/DocumentFolder"
+        }
+      }
+    },
+    "DocumentCommitRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "If set change document name => Sanitize by regex \\A[^\\\\\\/:*\"?<>|]{1,254}\\z"
+        },
+        "mimeType": {
+          "type": "string",
+          "position": 0,
+          "description": "If set change document MIME type"
+        },
+        "data": {
+          "type": "string",
+          "position": 0,
+          "description": "Base64 encoded document content formatted according to the given MIME type. If set change document content",
+          "minLength": 1,
+          "maxLength": 2147483647
+        },
+        "lockRequestTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Specify how long the document should be locked (default 0)",
+          "default": 0
+        },
+        "notificationOptions": {
+          "position": 0,
+          "description": "Notification options",
+          "$ref": "#/definitions/NotificationOptions"
+        },
+        "text": {
+          "type": "string",
+          "position": 0,
+          "description": "Plain text document content. If set change document content"
+        }
+      }
+    },
+    "ResultStash-DocumentLockErrorInfo-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/DocumentLockErrorInfo"
+        }
+      }
+    },
+    "DocumentUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "If set change document name => Sanitize by regex \\A[^\\\\\\/:*\"?<>|]{1,254}\\z"
+        },
+        "mimeType": {
+          "type": "string",
+          "position": 0,
+          "description": "If set change document MIME type"
+        },
+        "data": {
+          "type": "string",
+          "position": 0,
+          "description": "Base64 encoded document content formatted according to the given MIME type. If set change document content",
+          "minLength": 1,
+          "maxLength": 2147483647
+        },
+        "lockRequestTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Specify how long the document should be locked (default 0)",
+          "default": 0
+        },
+        "notificationOptions": {
+          "position": 0,
+          "description": "Notification options",
+          "$ref": "#/definitions/NotificationOptions"
+        },
+        "text": {
+          "type": "string",
+          "position": 0,
+          "description": "Plain text document content. If set change document content"
+        }
+      }
+    },
+    "DocumentUploadCompleteRequest": {
+      "type": "object",
+      "required": [
+        "sha256"
+      ],
+      "properties": {
+        "documentID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "ID of the document to complete."
+        },
+        "sha256": {
+          "type": "string",
+          "position": 0,
+          "description": "The sha256 of the entire document."
+        },
+        "notificationOptions": {
+          "position": 0,
+          "description": "Notification options",
+          "$ref": "#/definitions/NotificationOptions"
+        }
+      }
+    },
+    "DocumentAddRequest": {
+      "type": "object",
+      "required": [
+        "accessMode",
+        "data",
+        "inheritExplicitPermissions",
+        "mimeType",
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of new document => Sanitize by regex \\A[^\\\\\\/:*\"'?<>|]{1,254}\\z"
+        },
+        "mimeType": {
+          "type": "string",
+          "position": 0,
+          "description": "MIME type of document content"
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "General access mode of new document (default roleBased)",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "lockRequestTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Specify how long the document should be locked (default 0)",
+          "default": 0
+        },
+        "overwriteExisting": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, overwrite existing document with same name in parent folder, as a new revision."
+        },
+        "data": {
+          "type": "string",
+          "position": 0,
+          "description": "Base64 encoded document content formatted according to the given MIME type. It is required if 'text' parameter is not defined",
+          "minLength": 1,
+          "maxLength": 2147483647
+        },
+        "inheritExplicitPermissions": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Inherit explicit permissions from parent folder (default false)",
+          "default": false
+        },
+        "notificationOptions": {
+          "position": 0,
+          "description": "Notification options",
+          "$ref": "#/definitions/NotificationOptions"
+        },
+        "text": {
+          "type": "string",
+          "position": 0,
+          "description": "Plain text document content. If set change document content"
+        }
+      }
+    },
+    "UserInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "customer": {
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "domain": {
+          "$ref": "#/definitions/DomainInfo"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "customerID": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "NotificationOptions": {
+      "type": "object",
+      "properties": {
+        "skip": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, skip notification for current operation."
+        }
+      }
+    },
+    "DocumentLockErrorInfo": {
+      "type": "object",
+      "properties": {
+        "userID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "ID of the user who locked the element."
+        },
+        "userName": {
+          "type": "string",
+          "position": 0,
+          "description": "Username of the user who locked the element."
+        },
+        "lockedUntil": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Until when the element is locked"
+        },
+        "elementType": {
+          "type": "string",
+          "position": 0,
+          "description": "Type of the element",
+          "enum": [
+            "document",
+            "folder"
+          ]
+        },
+        "elementID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Unique identifier of the element"
+        },
+        "elementName": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of the element"
+        }
+      }
+    },
+    "DocumentFolderUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "If set change folder name => Sanitize by regex \\A[^\\\\\\/:*\"?<>|]{1,254}\\z"
+        }
+      }
+    },
+    "DocumentFolderElement": {
+      "type": "object",
+      "properties": {
+        "customer": {
+          "position": 0,
+          "description": "Customer owning the folder/document",
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "elementType": {
+          "type": "string",
+          "position": 0,
+          "description": "Type of the folder/document",
+          "enum": [
+            "document",
+            "folder"
+          ]
+        },
+        "createdTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the folder/document was created"
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "General access mode of the folder/document",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "currentUserAccessLevel": {
+          "type": "string",
+          "position": 0,
+          "description": "Access level granted to the user viewing the folder/document",
+          "enum": [
+            "none",
+            "folder",
+            "read",
+            "write"
+          ]
+        },
+        "createdByUser": {
+          "position": 0,
+          "description": "Who created the folder/document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "lastUpdatedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "When the folder/document was last updated"
+        },
+        "lastUpdatedByUser": {
+          "position": 0,
+          "description": "Who updated the folder/document last",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "ownedByUser": {
+          "position": 0,
+          "description": "User owning the folder/document",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "parentElements": {
+          "type": "array",
+          "position": 0,
+          "description": "Full path of the folder's/document's parent folders (ordered from root to parent folder; empty if root folder)",
+          "items": {
+            "$ref": "#/definitions/FolderInfo"
+          }
+        },
+        "effectiveAccessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "Effective access mode of the folder/document",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of the folder/document"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Unique identifier of the folder/document"
+        }
+      }
+    },
+    "DocumentLockRequest": {
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "lockRequestTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "If 'mode' is set to LOCK, specify how long the document should be locked",
+          "minimum": 0
+        },
+        "mode": {
+          "type": "string",
+          "position": 0,
+          "description": "Specify whether to lock or unlock the document, or to override an existing lock (default LOCK)",
+          "enum": [
+            "UNLOCK",
+            "OVERRIDE",
+            "LOCK"
+          ]
+        }
+      }
+    },
+    "ResultStash-DocumentAccess-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/DocumentAccess"
+          }
+        }
+      }
+    },
+    "DocumentFolderElementInfo": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "type": {
+          "type": "string",
+          "position": 0,
+          "description": "The type of this element, document or folder",
+          "enum": [
+            "folder",
+            "document"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "The foldername or filename of this element"
+        },
+        "parentElements": {
+          "type": "array",
+          "position": 0,
+          "description": "The list of ancestor elements from this element to the document root",
+          "items": {
+            "$ref": "#/definitions/FolderInfo"
+          }
+        }
+      }
+    },
+    "ResultStash-DocumentWatcher-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/DocumentWatcher"
+        }
+      }
+    },
+    "ResultStash-DocumentCurrentUserWatchStatus-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/DocumentCurrentUserWatchStatus"
+        }
+      }
+    },
+    "ResultStash-UndeletedDocumentErrorInfo-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/UndeletedDocumentErrorInfo"
+          }
+        }
+      }
+    },
+    "DocumentMoveRequest": {
+      "type": "object",
+      "properties": {
+        "newFolderID": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        }
+      }
+    },
+    "ResultStash-DocumentSpace-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/DocumentSpace"
+          }
+        }
+      }
+    },
+    "InputStream": {
+      "type": "object"
+    },
+    "UndeletedDocumentErrorInfo": {
+      "type": "object",
+      "properties": {
+        "elementType": {
+          "type": "string",
+          "position": 0,
+          "description": "Type of the element",
+          "enum": [
+            "document",
+            "folder"
+          ]
+        },
+        "elementID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Unique identifier of the element"
+        },
+        "elementName": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of the element"
+        }
+      }
+    },
+    "DocumentWatcher": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "subject": {
+          "position": 0,
+          "description": "The user/group which is watching",
+          "$ref": "#/definitions/SubjectInfo"
+        },
+        "elementInfo": {
+          "position": 0,
+          "description": "The document or folder to which this watcher is bound",
+          "$ref": "#/definitions/DocumentFolderElementInfo"
+        },
+        "createdTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Timestamp when this watcher was created"
+        },
+        "deletedTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Timestamp when this watcher was deleted, or 0 (if not deleted)"
+        },
+        "createdByUser": {
+          "position": 0,
+          "description": "The user which created this watcher",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "deletedByUser": {
+          "position": 0,
+          "description": "The user which deleted this watcher, or null (if not deleted)",
+          "$ref": "#/definitions/UserInfo"
+        },
+        "flags": {
+          "type": "array",
+          "position": 0,
+          "description": "Active flags for this watcher",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "deleted",
+              "negated",
+              "inherited",
+              "memberNegated",
+              "disabledAccess"
+            ]
+          }
+        }
+      }
+    },
+    "ResultMessage": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "messageTemplate": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "FIELD_ERROR",
+            "ACTION_ERROR",
+            "WARNING",
+            "NOTIFICATION",
+            "INFO"
+          ]
+        },
+        "field": {
+          "type": "string"
+        },
+        "parameter": {
+          "type": "object"
+        },
+        "timestamp": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "DocumentPrepareUploadRequest": {
+      "type": "object",
+      "required": [
+        "accessMode",
+        "inheritExplicitPermissions",
+        "mimeType",
+        "name"
+      ],
+      "properties": {
+        "parentFolderID": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "Name of new document => Sanitize by regex \\A[^\\\\\\/:*\"'?<>|]{1,254}\\z"
+        },
+        "mimeType": {
+          "type": "string",
+          "position": 0,
+          "description": "MIME type of document content"
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "General access mode of new document (default roleBased)",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        },
+        "lockRequestTime": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Specify how long the document should be locked (default 0)",
+          "default": 0
+        },
+        "inheritExplicitPermissions": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Inherit explicit permissions from parent folder (default false)",
+          "default": false
+        },
+        "overwriteExisting": {
+          "type": "boolean",
+          "position": 0,
+          "description": "If true, overwrite existing document with same name in parent folder, as a new revision."
+        }
+      }
+    },
+    "DocumentSearchCriteria": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Max number of results."
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "position": 0,
+          "description": "Skip the first (offset) objects. By default, return result from first object."
+        },
+        "includeDeleted": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Set to true to include deleted objects. By default, exclude deleted objects."
+        },
+        "subCriteria": {
+          "type": "array",
+          "position": 0,
+          "description": "Set additional criterias which are applied using a logical OR.",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/DocumentSearchCriteria"
+          }
+        },
+        "exclude": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Only relevant for subcriteria. If set to true, objects matching this subcriteria object will be excluded."
+        },
+        "required": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Only relevant for subcriteria. If set to true, objects matching this subcriteria are required (AND-ed together with parent criteria)."
+        },
+        "customerID": {
+          "type": "array",
+          "position": 0,
+          "description": "Restrict search to data belonging to specified customers.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "id": {
+          "type": "array",
+          "position": 0,
+          "description": "ID of documents to match",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "userID": {
+          "type": "array",
+          "position": 0,
+          "description": "Restrict search to documents associated with any of these users.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "userFieldStrategy": {
+          "type": "array",
+          "position": 0,
+          "description": "Defines which user fields will be used for searching for documents associated to userID field. (default all)",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ownedByUser",
+              "lastUpdatedByUser",
+              "lockedByUser",
+              "all"
+            ]
+          }
+        },
+        "accessMode": {
+          "type": "array",
+          "position": 0,
+          "description": "Match these access modes",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "roleBased",
+              "writeRestricted",
+              "readRestricted",
+              "explicit"
+            ]
+          }
+        },
+        "state": {
+          "type": "array",
+          "position": 0,
+          "description": "The status of the documents to match",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "discarded"
+            ]
+          }
+        },
+        "startTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "Start of time search period"
+        },
+        "endTimestamp": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "End of time search period"
+        },
+        "timeMatchStrategy": {
+          "type": "string",
+          "position": 0,
+          "description": "TimeMatchStrategy to define how to match startTimestamp and endTimestamp with fields. (default any)",
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "timeFieldStrategy": {
+          "type": "array",
+          "position": 0,
+          "description": "TimeFieldStrategy to define which timestamp field(s) to match. (default createdTimestamp)",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "createdTimestamp",
+              "lastUpdatedTimestamp",
+              "all"
+            ]
+          }
+        },
+        "keywords": {
+          "type": "array",
+          "position": 0,
+          "description": "A set of keywords matched against documents based on the set KeywordFieldStrategy and KeywordMatchStrategy.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "keywordMatchStrategy": {
+          "type": "string",
+          "position": 0,
+          "description": "KeywordMatchStrategy to define how to match keywords with fields. (default any)",
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "keywordFieldStrategy": {
+          "type": "array",
+          "position": 0,
+          "description": "KeywordFieldStrategy to define which document field(s) to match. (default all)",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "name",
+              "labels",
+              "all"
+            ]
+          }
+        },
+        "labels": {
+          "type": "array",
+          "position": 0,
+          "description": "Match documents with any of these labels",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "folderID": {
+          "type": "array",
+          "position": 0,
+          "description": "Search for documents within any of these folders. Use folderID=0 to search root folders.",
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "recursive": {
+          "type": "boolean",
+          "position": 0,
+          "description": "Search all subfolders below selected folders (default true)",
+          "default": true
+        },
+        "sortBy": {
+          "type": "array",
+          "position": 0,
+          "description": "List of properties to sort by (prefix with \"-\" to sort descending).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "type",
+              "state",
+              "parentFolder",
+              "customer",
+              "name",
+              "created",
+              "lastUpdated",
+              "published",
+              "publishDue",
+              "owner",
+              "lastUpdatedByUser",
+              "approved",
+              "period",
+              "periodFrom",
+              "approvedByUser",
+              "assignedToUser",
+              "-type",
+              "-state",
+              "-parentFolder",
+              "-customer",
+              "-name",
+              "-created",
+              "-lastUpdated",
+              "-published",
+              "-publishDue",
+              "-owner",
+              "-lastUpdatedByUser",
+              "-approved",
+              "-period",
+              "-periodFrom",
+              "-approvedByUser",
+              "-assignedToUser"
+            ]
+          }
+        },
+        "includeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Only include objects which have includeFlags set.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ATTACHMENT",
+              "CONTROLLED_VERSION",
+              "UNCOMMITTED"
+            ]
+          }
+        },
+        "excludeFlags": {
+          "type": "array",
+          "position": 0,
+          "description": "Exclude objects which have excludeFlags set.",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ATTACHMENT",
+              "CONTROLLED_VERSION",
+              "UNCOMMITTED"
+            ]
+          }
+        }
+      }
+    },
+    "ResultStash-DocumentAccess-single": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "description": "Contains a single result",
+          "$ref": "#/definitions/DocumentAccess"
+        }
+      }
+    },
+    "ResultStash-DocumentFolderElement-list": {
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "responseCode": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Status code returned from API"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum number of returned results"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of skipped results"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of available results on server"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Actual number of returned results"
+        },
+        "metaData": {
+          "type": "object",
+          "description": "Additional unstructured meta data associated with response"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Contains messages returned from the API, usually error messages",
+          "items": {
+            "$ref": "#/definitions/ResultMessage"
+          }
+        },
+        "data": {
+          "type": "array",
+          "description": "Contains an array of results",
+          "items": {
+            "$ref": "#/definitions/DocumentFolderElement"
+          }
+        }
+      }
+    },
+    "DocumentCurrentUserWatchStatus": {
+      "type": "object",
+      "properties": {
+        "watcherID": {
+          "type": "string",
+          "format": "uuid",
+          "position": 0,
+          "description": "If currentuser is a watcher, this points to the ID of the closed watcher entry. Returns null if currentuser is not a watcher."
+        },
+        "element": {
+          "position": 0,
+          "description": "If currentuser is a watcher, this points to the element at which the closest watcher is defined. Returns null if currentuser is not a watcher.",
+          "$ref": "#/definitions/DocumentFolderElementInfo"
+        },
+        "subject": {
+          "position": 0,
+          "description": "If currentuser is a watcher, this returns information about the user or group, which is specified in the closed watcher record.",
+          "$ref": "#/definitions/SubjectInfo"
+        },
+        "status": {
+          "type": "string",
+          "position": 0,
+          "description": "This status reflects the current state of the currentuser for the current document or folder. If the currentuser is not a watcher for this document, this will return 'none'.",
+          "enum": [
+            "user",
+            "group",
+            "inherited",
+            "negated",
+            "none"
+          ]
+        }
+      }
+    },
+    "DocumentFolderElementGrantAccessRequest": {
+      "type": "object",
+      "required": [
+        "level",
+        "subject"
+      ],
+      "properties": {
+        "subject": {
+          "type": "string",
+          "position": 0,
+          "description": "Specify user/group to grant access to"
+        },
+        "level": {
+          "type": "string",
+          "position": 0,
+          "description": "Specify access level to grant to user/group",
+          "enum": [
+            "folder",
+            "read",
+            "write"
+          ]
+        }
+      }
+    },
+    "DocumentSpace": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "ID of this space. Currently this is the same as the customerID of the owning customer."
+        },
+        "customer": {
+          "position": 0,
+          "description": "Customer owning this space. For spaces not bound to a customer, this may be null. (Currently non-customer spaces are not implemented)",
+          "$ref": "#/definitions/CustomerInfo"
+        },
+        "name": {
+          "type": "string",
+          "position": 0,
+          "description": "The name of this space. Currently this will be derived from the customer name."
+        },
+        "rootFolderID": {
+          "type": "integer",
+          "format": "int64",
+          "position": 0,
+          "description": "The ID of the root folder for this space. Clients should use this ID to fetch the root folder."
+        },
+        "accessMode": {
+          "type": "string",
+          "position": 0,
+          "description": "The access mode configured for this space.",
+          "enum": [
+            "roleBased",
+            "writeRestricted",
+            "readRestricted",
+            "explicit"
+          ]
+        }
+      }
+    }
+  }
+}
