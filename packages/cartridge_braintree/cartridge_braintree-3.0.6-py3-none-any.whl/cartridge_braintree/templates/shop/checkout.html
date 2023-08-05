@@ -1,0 +1,70 @@
+{% extends "shop/checkout.html" %}
+{% load shop_tags mezzanine_tags i18n %}
+
+{% block main %}
+
+{% block before-form %}{% endblock %}
+<div class="row">
+<form method="post" class="col-md-8 checkout-form" id="checkout-form" novalidate>
+    {% csrf_token %}
+
+    {% block fields %}{% endblock %}
+
+    {% block nav-buttons %}
+        {% if request.cart.has_items %}
+            <div class="form-actions">
+                <input type="submit"
+                    class="btn btn-lg btn-primary pull-right"
+                    name="next"
+                    value="{% trans "Next" %}"
+                >
+                {% if not CHECKOUT_STEP_FIRST %}
+                <input type="submit"
+                    class="btn btn-lg btn-default pull-left"
+                    name="back"
+                    value="{% trans "Back" %}"
+                >
+                {% endif %}
+            </div>
+        {% else %}
+            <p>{% trans "Your cart is empty." %}</p>
+            <p>{% trans "This may be due to your session timing out after a period of inactivity." %}</p>
+            <p>{% trans "We apologize for the inconvenience." %}</p>
+            <br>
+            <p><a class="btn btn-lg btn-primary" href="{% url "page" "shop" %}">{% trans "Continue Shopping" %}</a></p>
+        {% endif %}
+    {% endblock %}
+
+</form>
+
+{% if request.cart.has_items %}
+<div class="col-md-4">
+    <div class="panel panel-default checkout-panel">
+    <div class="panel-body">
+    <ul class="media-list">
+    {% for item in request.cart %}
+    <li class="media">
+        {% if item.image %}
+        <img class="pull-left"
+            alt="{{ item.description }}"
+            src="{{ MEDIA_URL }}{% thumbnail item.image 30 30 %}"
+        >
+        {% endif %}
+        <div class="media-body">
+            {{ item.quantity }} x {{ item.description }}
+            <span class="price">{{ item.total_price|currency }}</span>
+        </div>
+    </li>
+    {% endfor %}
+    </ul>
+    {% order_totals %}
+    <br style="clear:both;">
+    <a class="btn btn-default" href="{% url "shop_cart" %}">{% trans "Edit Cart" %}</a>
+    </div>
+    </div>
+</div>
+{% endif %}
+
+{% block after-form %}{% endblock %}
+</div>
+{% endblock %}

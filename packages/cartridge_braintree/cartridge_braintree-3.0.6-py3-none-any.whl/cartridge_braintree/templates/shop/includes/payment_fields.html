@@ -1,0 +1,51 @@
+{% load i18n mezzanine_tags static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static "cartridge_braintree/css/checkout.css" %}">
+{% endblock %}
+
+{% if settings.BRAINTREE_PAYPAL_ACTIVATE %}
+<fieldset id="payment-method">
+    <legend>{% trans "Payment Method" %}</legend>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-3 col-sm-offset-2 text-center">
+                <span id="paypal">
+                    <button type="button" class="btn btn-lg btn-primary">
+                        {% trans "Pay with PayPal" %}
+                    </button>
+                </span>
+            </div>
+            <div class="col-sm-2"><br></div>
+            <div class="col-sm-3 text-center">
+                <span id="card">
+                    <button type="button" class="btn btn-lg btn-primary">
+                        {% trans "Pay with Card" %}
+                    </button>
+                </span>
+            </div>
+        </div>
+    </div>
+    <br>
+</fieldset>
+{% endif %}
+
+<fieldset id="card-details">
+    <legend>{% trans "Payment Details" %}</legend>
+    {% with form.card_expiry_fields as card_expiry_fields %}
+    <div class="form-group card-expiry-fields {% if card_expiry_fields.errors.card_expiry_year %}error{% endif %}">
+        <label class="control-label">{% trans "Card Expiry" %}</label>
+        <div class="form-group input_id_card_expiry">
+            {{ form.card_expiry_month }}
+            {{ form.card_expiry_year }}
+        </div>
+        {% if form.card_expiry_year.errors %}
+        {% for error in form.card_expiry_year.errors %}
+            <p class="help-block">{{ error|escape }}</p>
+        {% endfor %}
+        {% endif %}
+    </div>
+    <div class="clearfix"></div>
+    {% endwith %}
+    {% fields_for form.card_fields %}
+</fieldset>
