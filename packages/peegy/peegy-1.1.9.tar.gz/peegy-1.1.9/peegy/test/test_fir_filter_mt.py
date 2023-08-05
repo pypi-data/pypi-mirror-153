@@ -1,0 +1,47 @@
+import numpy as np
+from peegy.processing.tools.filters import eegFiltering as eegf
+import scipy.signal as signal
+import time
+import matplotlib.pyplot as plt
+import peegy.processing.tools.multiprocessing.multiprocessesing_filter as mp
+
+fs = 1000.0
+f1 = 10.0
+f2 = 43.0
+low_pass = 50.0
+high_pass = 40.0
+low = 2 * low_pass / fs
+high = 2 * high_pass / fs
+t = np.arange(0, 7000000) / fs
+s = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
+data = np.tile(s, [10, 1]).T
+
+# _b_l = eegf.bandpass_fir_win(fs=fs, low_pass=low_pass)
+# w, h = signal.freqz(_b_l, worN=8000)
+# plt.plot((w/np.pi)*fs*0.5, np.abs(h), linewidth=2)
+# plt.xlabel('Frequency (Hz)')
+
+# _b_l = eegf.bandpass_fir_win(fs=fs, high_pass=high_pass)
+# w, h = signal.freqz(_b_l, worN=8000)
+# plt.plot((w/np.pi)*fs*0.5, np.abs(h), linewidth=2)
+# plt.xlabel('Frequency (Hz)')
+
+_b_l = eegf.bandpass_fir_win(fs=fs, high_pass=high_pass, low_pass=low_pass)
+w, h = signal.freqz(_b_l, worN=8000)
+plt.plot((w/np.pi)*fs*0.5, np.abs(h), linewidth=2)
+plt.xlabel('Frequency (Hz)')
+
+time1 = time.time()
+filtered_data_1 = mp.filter_data(data, _b_l)
+print(('multiprocessing filter took %f [ms]' % ((time.time()-time1) * 1000.0)))
+
+_ori_data = data.copy()
+
+time1 = time.time()
+filtered_data_2 = eegf.filter_worker_ovs(filtered_data=data, pos_ini=0, pos_end=-1, b=_b_l)
+print(('standard filter took %f [ms]' % ((time.time()-time1) * 1000.0)))
+
+plt.plot(t, _ori_data[:, 0])
+plt.plot(t, filtered_data_1[:, 0])
+plt.plot(t, filtered_data_2[:, 0])
+plt.show()
