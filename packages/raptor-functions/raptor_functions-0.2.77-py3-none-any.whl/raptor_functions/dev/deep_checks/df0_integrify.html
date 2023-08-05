@@ -1,0 +1,1046 @@
+<!--
+    ~ ----------------------------------------------------------------------------
+    ~ Copyright (C) 2021-2022 Deepchecks (https://www.deepchecks.com)
+    ~
+    ~ This file is part of Deepchecks.
+    ~ Deepchecks is distributed under the terms of the GNU Affero General
+    ~ Public License (version 3 or later).
+    ~ You should have received a copy of the GNU Affero General Public License
+    ~ along with Deepchecks.  If not, see <http://www.gnu.org/licenses/>.
+    ~ ----------------------------------------------------------------------------
+    ~
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Suite Output</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #212529;
+            text-align: left;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        div.nbinput.container div.prompt *,
+        div.nboutput.container div.prompt *,
+        div.nbinput.container div.input_area pre,
+        div.nboutput.container div.output_area pre,
+        div.nbinput.container div.input_area .highlight,
+        div.nboutput.container div.output_area .highlight {
+            border: none;
+            padding: 0;
+            margin: 0;
+            box-shadow: none;
+        }
+
+        div.nbinput.container > div[class*=highlight],
+        div.nboutput.container > div[class*=highlight] {
+            margin: 0;
+        }
+
+        div.nbinput.container div.prompt *,
+        div.nboutput.container div.prompt * {
+            background: none;
+        }
+
+        div.nboutput.container div.output_area .highlight,
+        div.nboutput.container div.output_area pre {
+            background: unset;
+        }
+
+        div.nboutput.container div.output_area div.highlight {
+            color: unset;  /* override Pygments text color */
+        }
+
+        /* avoid gaps between output lines */
+        div.nboutput.container div[class*=highlight] pre {
+            line-height: normal;
+        }
+
+        /* input/output containers */
+        div.nbinput.container,
+        div.nboutput.container {
+            display: -webkit-flex;
+            display: flex;
+            align-items: flex-start;
+            margin: 0;
+            width: 100%;
+        }
+        @media (max-width: 540px) {
+            div.nbinput.container,
+            div.nboutput.container {
+                flex-direction: column;
+            }
+        }
+
+        /* input container */
+        div.nbinput.container {
+            padding-top: 5px;
+        }
+
+        /* last container */
+        div.nblast.container {
+            padding-bottom: 5px;
+        }
+
+        /* input prompt */
+        div.nbinput.container div.prompt pre {
+            color: #307FC1;
+        }
+
+        /* output prompt */
+        div.nboutput.container div.prompt pre {
+            color: #BF5B3D;
+        }
+
+        /* all prompts */
+        div.nbinput.container div.prompt,
+        div.nboutput.container div.prompt {
+            width: 4.5ex;
+            padding-top: 5px;
+            position: relative;
+            user-select: none;
+        }
+
+        div.nbinput.container div.prompt > div,
+        div.nboutput.container div.prompt > div {
+            position: absolute;
+            right: 0;
+            margin-right: 0.3ex;
+        }
+
+        @media (max-width: 540px) {
+            div.nbinput.container div.prompt,
+            div.nboutput.container div.prompt {
+                width: unset;
+                text-align: left;
+                padding: 0.4em;
+            }
+            div.nboutput.container div.prompt.empty {
+                padding: 0;
+            }
+
+            div.nbinput.container div.prompt > div,
+            div.nboutput.container div.prompt > div {
+                position: unset;
+            }
+        }
+
+        /* disable scrollbars on prompts */
+        div.nbinput.container div.prompt pre,
+        div.nboutput.container div.prompt pre {
+            overflow: hidden;
+        }
+
+        /* input/output area */
+        div.nbinput.container div.input_area,
+        div.nboutput.container div.output_area {
+            -webkit-flex: 1;
+            flex: 1;
+            overflow: auto;
+        }
+        @media (max-width: 540px) {
+            div.nbinput.container div.input_area,
+            div.nboutput.container div.output_area {
+                width: 100%;
+            }
+        }
+
+        /* input area */
+        div.nbinput.container div.input_area {
+            border: 1px solid #e0e0e0;
+            border-radius: 2px;
+            /*background: #f5f5f5;*/
+        }
+
+        /* override MathJax center alignment in output cells */
+        div.nboutput.container div[class*=MathJax] {
+            text-align: left !important;
+        }
+
+        /* override sphinx.ext.imgmath center alignment in output cells */
+        div.nboutput.container div.math p {
+            text-align: left;
+        }
+
+        /* standard error */
+        div.nboutput.container div.output_area.stderr {
+            background: #fdd;
+        }
+
+        /* ANSI colors */
+        .ansi-black-fg { color: #3E424D; }
+        .ansi-black-bg { background-color: #3E424D; }
+        .ansi-black-intense-fg { color: #282C36; }
+        .ansi-black-intense-bg { background-color: #282C36; }
+        .ansi-red-fg { color: #E75C58; }
+        .ansi-red-bg { background-color: #E75C58; }
+        .ansi-red-intense-fg { color: #B22B31; }
+        .ansi-red-intense-bg { background-color: #B22B31; }
+        .ansi-green-fg { color: #00A250; }
+        .ansi-green-bg { background-color: #00A250; }
+        .ansi-green-intense-fg { color: #007427; }
+        .ansi-green-intense-bg { background-color: #007427; }
+        .ansi-yellow-fg { color: #DDB62B; }
+        .ansi-yellow-bg { background-color: #DDB62B; }
+        .ansi-yellow-intense-fg { color: #B27D12; }
+        .ansi-yellow-intense-bg { background-color: #B27D12; }
+        .ansi-blue-fg { color: #208FFB; }
+        .ansi-blue-bg { background-color: #208FFB; }
+        .ansi-blue-intense-fg { color: #0065CA; }
+        .ansi-blue-intense-bg { background-color: #0065CA; }
+        .ansi-magenta-fg { color: #D160C4; }
+        .ansi-magenta-bg { background-color: #D160C4; }
+        .ansi-magenta-intense-fg { color: #A03196; }
+        .ansi-magenta-intense-bg { background-color: #A03196; }
+        .ansi-cyan-fg { color: #60C6C8; }
+        .ansi-cyan-bg { background-color: #60C6C8; }
+        .ansi-cyan-intense-fg { color: #258F8F; }
+        .ansi-cyan-intense-bg { background-color: #258F8F; }
+        .ansi-white-fg { color: #C5C1B4; }
+        .ansi-white-bg { background-color: #C5C1B4; }
+        .ansi-white-intense-fg { color: #A1A6B2; }
+        .ansi-white-intense-bg { background-color: #A1A6B2; }
+
+        .ansi-default-inverse-fg { color: #FFFFFF; }
+        .ansi-default-inverse-bg { background-color: #000000; }
+
+        .ansi-bold { font-weight: bold; }
+        .ansi-underline { text-decoration: underline; }
+
+
+        div.nbinput.container div.input_area div[class*=highlight] > pre,
+        div.nboutput.container div.output_area div[class*=highlight] > pre,
+        div.nboutput.container div.output_area div[class*=highlight].math,
+        div.nboutput.container div.output_area.rendered_html,
+        div.nboutput.container div.output_area > div.output_javascript,
+        div.nboutput.container div.output_area:not(.rendered_html) > img{
+            padding: 5px;
+            margin: 0;
+        }
+
+        /* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+        div.nbinput.container div.input_area > div[class^='highlight'],
+        div.nboutput.container div.output_area > div[class^='highlight']{
+            overflow-y: hidden;
+        }
+
+        /* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+        .prompt .copybtn {
+            display: none;
+        }
+
+        /* Some additional styling taken form the Jupyter notebook CSS */
+        div.rendered_html table {
+        border: none;
+        border-collapse: collapse;
+        border-spacing: 0;
+        color: black;
+        font-size: 12px;
+        table-layout: fixed;
+        }
+        div.rendered_html thead {
+        border-bottom: 1px solid black;
+        vertical-align: bottom;
+        }
+        div.rendered_html tr,
+        div.rendered_html th,
+        div.rendered_html td {
+        text-align: right;
+        vertical-align: middle;
+        padding: 0.5em 0.5em;
+        line-height: normal;
+        white-space: normal;
+        max-width: none;
+        border: none;
+        }
+        div.rendered_html th {
+        font-weight: bold;
+        }
+        div.rendered_html tbody tr:nth-child(odd) {
+        background: #f5f5f5;
+        }
+        div.rendered_html tbody tr:hover {
+        background: rgba(66, 165, 245, 0.2);
+        }
+    </style>
+    <script>
+        (!window.navigator.onLine ? alert('needs internet connection') : '');
+    </script>
+</head>
+<body>
+    
+
+<!-- Load require.js. Delete this if your page already loads require.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@jupyter-widgets/html-manager@^0.20.1/dist/embed-amd.js" crossorigin="anonymous"></script>
+
+<script type="application/vnd.jupyter.widget-state+json">
+{
+  "version_major": 2,
+  "version_minor": 0,
+  "state": {
+    "7fbf64db70d2493d98c39fdd4e2d583b": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "children": [
+          "IPY_MODEL_003ce153f7e54c66a2e065bf1510e774",
+          "IPY_MODEL_0ff058dac3314cf2ab8314fec98f2cac",
+          "IPY_MODEL_a94e013c508041fe826745ab9e6eda72"
+        ],
+        "layout": "IPY_MODEL_5558724e5ea14269969ffa5619290d69"
+      }
+    },
+    "003ce153f7e54c66a2e065bf1510e774": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_bebf11fcb8d545d8bbef00c2bd46b8b2",
+        "style": "IPY_MODEL_f71cb6b81a0040579ff144e2059cdc97",
+        "value": "\n        <h1 id=\"summary_E0ITP\">Single Dataset Integrity Suite</h1>\n        <p>\n            The suite is composed of various checks such as: Special Characters, String Length Out Of Bounds, Label Ambiguity, etc...<br>\n            Each check may contain conditions (which will result in pass / fail / warning / error\n            , represented by \n    <span style=\"color: green;display:inline-block\">\u2713</span> /\n    <span style=\"color: red;display:inline-block\">\u2716</span> /\n    <span style=\"color: orange;font-weight:bold;display:inline-block\">!</span> /\n    <span style=\"color: firebrick;font-weight:bold;display:inline-block\">\u2048</span>\n    ) as well as other outputs such as plots or tables.<br>\n            Suites, checks and conditions can all be modified. Read more about\n            <a href=https://docs.deepchecks.com/en/stable/examples/guides/create_a_custom_suite.html?utm_source=display_output&utm_medium=referral&utm_campaign=suite_link target=\"_blank\">custom suites</a>.\n        </p>\n        "
+      }
+    },
+    "bebf11fcb8d545d8bbef00c2bd46b8b2": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "f71cb6b81a0040579ff144e2059cdc97": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "0ff058dac3314cf2ab8314fec98f2cac": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_e5320b4deb0347e5b78481a8b2595d63",
+        "style": "IPY_MODEL_ad1d0593107b4161af1b0dd79b2d7969",
+        "value": "<style>.jupyter-widgets.widget-tab > .p-TabBar .p-TabBar-tab {flex: 0 1 auto}</style>"
+      }
+    },
+    "e5320b4deb0347e5b78481a8b2595d63": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "ad1d0593107b4161af1b0dd79b2d7969": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "a94e013c508041fe826745ab9e6eda72": {
+      "model_name": "TabModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "_titles": {
+          "0": "Checks With Conditions",
+          "1": "Checks Without Conditions",
+          "2": "Checks Without Output"
+        },
+        "children": [
+          "IPY_MODEL_3f6e7910bcf84df3a366cb28c3f32fe2",
+          "IPY_MODEL_bee57cd3f87e4aaeb39428284cd4c566",
+          "IPY_MODEL_4e5bdfac4866425297a23a4683c22681"
+        ],
+        "layout": "IPY_MODEL_999ba9ead18043d29fc2efc7da80792d"
+      }
+    },
+    "3f6e7910bcf84df3a366cb28c3f32fe2": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html",
+          "jp-RenderedHTMLCommon",
+          "jp-RenderedHTML",
+          "jp-OutputArea-output"
+        ],
+        "children": [
+          "IPY_MODEL_a91d5b44276c4ff08ecfb9014aadf00c",
+          "IPY_MODEL_fc951424f2254f928939fbb71b1e83a7",
+          "IPY_MODEL_930e1b02ea72463bae3c1271cdb58637",
+          "IPY_MODEL_1018d8f6a8a348ed9b5a501a5fc1a106",
+          "IPY_MODEL_1807d36ea23e4a09a29aea0edc4bbe96",
+          "IPY_MODEL_4d564ac2c8ba47268ecd2b64bdeeb98e",
+          "IPY_MODEL_b1c1af1666ae4c18aef2f273a11f9857",
+          "IPY_MODEL_62d1c3b155704ab5b9b29ff9a48fb3d5",
+          "IPY_MODEL_207114ce399d464b97e18ddc6a44b103",
+          "IPY_MODEL_75791ae36c024bfca4db73925a71734f",
+          "IPY_MODEL_4fde170de7254a1680e77cb3bfe51576",
+          "IPY_MODEL_b36970b57d384ef9aaa68eee94ac670c",
+          "IPY_MODEL_e063c22cce994caf83490bbee323f8da",
+          "IPY_MODEL_e52670b564b44e0c811ae245a5aa4306"
+        ],
+        "layout": "IPY_MODEL_d6f582f0ad6f49d1a52c8ceb4b773df2"
+      }
+    },
+    "a91d5b44276c4ff08ecfb9014aadf00c": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_8b1f9b330847484b83bc2f0ab364ed86",
+        "style": "IPY_MODEL_8d172aed0bbf47cbb3540cc4da312e84",
+        "value": "<h2>Conditions Summary</h2>"
+      }
+    },
+    "8b1f9b330847484b83bc2f0ab364ed86": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "8d172aed0bbf47cbb3540cc4da312e84": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "fc951424f2254f928939fbb71b1e83a7": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html",
+          "jp-RenderedHTMLCommon",
+          "jp-RenderedHTML",
+          "jp-OutputArea-output"
+        ],
+        "children": [
+          "IPY_MODEL_8411d754c4374e7cbd2634893784c538"
+        ],
+        "layout": "IPY_MODEL_7b8cf861cd8f43e0bd2bf1679a23795d"
+      }
+    },
+    "8411d754c4374e7cbd2634893784c538": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_0eb5f15c6c664d50b6cf2b34b6201876",
+        "style": "IPY_MODEL_4ac5256b84ce42eea12c90e99d1fc5bc",
+        "value": "<style type=\"text/css\">\n#T_7c318_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_7c318_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_7c318_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_7c318_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_7c318_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_7c318_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Status</th>\n      <th class=\"col_heading level0 col1\" >Check</th>\n      <th class=\"col_heading level0 col2\" >Condition</th>\n      <th class=\"col_heading level0 col3\" >More Info</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_7c318_row0_col0\" class=\"data row0 col0\" ><div style=\"color: red;text-align: center\">\u2716</div></td>\n      <td id=\"T_7c318_row0_col1\" class=\"data row0 col1\" ><a href=#SingleValueinColumn_E0ITP>Single Value in Column</a></td>\n      <td id=\"T_7c318_row0_col2\" class=\"data row0 col2\" >Does not contain only a single value</td>\n      <td id=\"T_7c318_row0_col3\" class=\"data row0 col3\" >Found columns with a single value: ['exp_name', 'date_exp']</td>\n    </tr>\n    <tr>\n      <td id=\"T_7c318_row1_col0\" class=\"data row1 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_7c318_row1_col1\" class=\"data row1 col1\" ><a href=#MixedNulls_E0ITP>Mixed Nulls</a></td>\n      <td id=\"T_7c318_row1_col2\" class=\"data row1 col2\" >Not more than 1 different null types</td>\n      <td id=\"T_7c318_row1_col3\" class=\"data row1 col3\" ></td>\n    </tr>\n    <tr>\n      <td id=\"T_7c318_row2_col0\" class=\"data row2 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_7c318_row2_col1\" class=\"data row2 col1\" ><a href=#MixedDataTypes_E0ITP>Mixed Data Types</a></td>\n      <td id=\"T_7c318_row2_col2\" class=\"data row2 col2\" >Rare data types in column are either more than 10% or less than 1% of the data</td>\n      <td id=\"T_7c318_row2_col3\" class=\"data row2 col3\" ></td>\n    </tr>\n    <tr>\n      <td id=\"T_7c318_row3_col0\" class=\"data row3 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_7c318_row3_col1\" class=\"data row3 col1\" ><a href=#DataDuplicates_E0ITP>Data Duplicates</a></td>\n      <td id=\"T_7c318_row3_col2\" class=\"data row3 col2\" >Duplicate data ratio is not greater than 0%</td>\n      <td id=\"T_7c318_row3_col3\" class=\"data row3 col3\" ></td>\n    </tr>\n    <tr>\n      <td id=\"T_7c318_row4_col0\" class=\"data row4 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_7c318_row4_col1\" class=\"data row4 col1\" ><a href=#StringLengthOutOfBounds_E0ITP>String Length Out Of Bounds</a></td>\n      <td id=\"T_7c318_row4_col2\" class=\"data row4 col2\" >Ratio of outliers not greater than 0% string length outliers</td>\n      <td id=\"T_7c318_row4_col3\" class=\"data row4 col3\" ></td>\n    </tr>\n    <tr>\n      <td id=\"T_7c318_row5_col0\" class=\"data row5 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_7c318_row5_col1\" class=\"data row5 col1\" ><a href=#SpecialCharacters_E0ITP>Special Characters</a></td>\n      <td id=\"T_7c318_row5_col2\" class=\"data row5 col2\" >Ratio of entirely special character samples not greater than 0.1%</td>\n      <td id=\"T_7c318_row5_col3\" class=\"data row5 col3\" ></td>\n    </tr>\n    <tr>\n      <td id=\"T_7c318_row6_col0\" class=\"data row6 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_7c318_row6_col1\" class=\"data row6 col1\" >String Mismatch</td>\n      <td id=\"T_7c318_row6_col2\" class=\"data row6 col2\" >No string variants</td>\n      <td id=\"T_7c318_row6_col3\" class=\"data row6 col3\" ></td>\n    </tr>\n  </tbody>\n</table>\n"
+      }
+    },
+    "0eb5f15c6c664d50b6cf2b34b6201876": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "4ac5256b84ce42eea12c90e99d1fc5bc": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "7b8cf861cd8f43e0bd2bf1679a23795d": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "930e1b02ea72463bae3c1271cdb58637": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_e5d772a4b8ff493cb2363629411685c3",
+        "style": "IPY_MODEL_bb8538fcba3f448ea43eea1e28592d02",
+        "value": "<h2>Check With Conditions Output</h2>"
+      }
+    },
+    "e5d772a4b8ff493cb2363629411685c3": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "bb8538fcba3f448ea43eea1e28592d02": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "1018d8f6a8a348ed9b5a501a5fc1a106": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html"
+        ],
+        "children": [
+          "IPY_MODEL_f51f2cd68804427ba45a393a13bb3153"
+        ],
+        "layout": "IPY_MODEL_0cef360778db4b7f95fd26575eadc0b6"
+      }
+    },
+    "f51f2cd68804427ba45a393a13bb3153": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_d3eb714812e54f078a323a3b326cc509",
+        "style": "IPY_MODEL_fe22fdb0164c4d1cb00ce34659b1b780",
+        "value": "<h4 id=\"SingleValueinColumn_E0ITP\">Single Value in Column</h4><p>Check if there are columns which have only a single unique value in all rows. <a href=\"https://docs.deepchecks.com/0.6/checks_gallery/tabular/integrity/plot_is_single_value.html?utm_source=display_output&utm_medium=referral&utm_campaign=check_link\" target=\"_blank\">Read More...</a></p><h5>Conditions Summary</h5><style type=\"text/css\">\n#T_6030b_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_6030b_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_6030b_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_6030b_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_6030b_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_6030b_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Status</th>\n      <th class=\"col_heading level0 col1\" >Condition</th>\n      <th class=\"col_heading level0 col2\" >More Info</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_6030b_row0_col0\" class=\"data row0 col0\" ><div style=\"color: red;text-align: center\">\u2716</div></td>\n      <td id=\"T_6030b_row0_col1\" class=\"data row0 col1\" >Does not contain only a single value</td>\n      <td id=\"T_6030b_row0_col2\" class=\"data row0 col2\" >Found columns with a single value: ['exp_name', 'date_exp']</td>\n    </tr>\n  </tbody>\n</table>\n<h5>Additional Outputs</h5><div>The following columns have only one unique value</div><style type=\"text/css\">\n#T_9f901_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_9f901_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_9f901_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_9f901_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_9f901_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_9f901_\">\n  <thead>\n    <tr>\n      <th class=\"blank level0\" >&nbsp;</th>\n      <th class=\"col_heading level0 col0\" >exp_name</th>\n      <th class=\"col_heading level0 col1\" >date_exp</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th id=\"T_9f901_level0_row0\" class=\"row_heading level0 row0\" >Single unique value</th>\n      <td id=\"T_9f901_row0_col0\" class=\"data row0 col0\" >Test 24 </td>\n      <td id=\"T_9f901_row0_col1\" class=\"data row0 col1\" >21/3/2022</td>\n    </tr>\n  </tbody>\n</table>\n<br><a href=\"#summary_E0ITP\" style=\"font-size: 14px\">Go to top</a>"
+      }
+    },
+    "d3eb714812e54f078a323a3b326cc509": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "fe22fdb0164c4d1cb00ce34659b1b780": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "0cef360778db4b7f95fd26575eadc0b6": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "1807d36ea23e4a09a29aea0edc4bbe96": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_5c4ad947ab05467384666fd3c159662e",
+        "style": "IPY_MODEL_e533b4649dba4a0aba45ee92859d788e",
+        "value": "<hr style=\"background-color: #eee;border: 0 none;color: #eee;height: 4px;\">"
+      }
+    },
+    "5c4ad947ab05467384666fd3c159662e": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "e533b4649dba4a0aba45ee92859d788e": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "4d564ac2c8ba47268ecd2b64bdeeb98e": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html"
+        ],
+        "children": [
+          "IPY_MODEL_cf48bae1b736403b87fd03a032f4c422"
+        ],
+        "layout": "IPY_MODEL_c9db5ebcf91a4e84bc7d0cd3995ec71d"
+      }
+    },
+    "cf48bae1b736403b87fd03a032f4c422": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_65ab68cb3c924864bd1400268e1496df",
+        "style": "IPY_MODEL_f39dd446d9724865acebfa0d8ab644f4",
+        "value": "<h4 id=\"MixedNulls_E0ITP\">Mixed Nulls</h4><p>Search for various types of null values, including string representations of null. <a href=\"https://docs.deepchecks.com/0.6/checks_gallery/tabular/integrity/plot_mixed_nulls.html?utm_source=display_output&utm_medium=referral&utm_campaign=check_link\" target=\"_blank\">Read More...</a></p><h5>Conditions Summary</h5><style type=\"text/css\">\n#T_0fac4_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0fac4_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0fac4_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0fac4_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0fac4_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_0fac4_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Status</th>\n      <th class=\"col_heading level0 col1\" >Condition</th>\n      <th class=\"col_heading level0 col2\" >More Info</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_0fac4_row0_col0\" class=\"data row0 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_0fac4_row0_col1\" class=\"data row0 col1\" >Not more than 1 different null types</td>\n      <td id=\"T_0fac4_row0_col2\" class=\"data row0 col2\" ></td>\n    </tr>\n  </tbody>\n</table>\n<h5>Additional Outputs</h5><div>Nothing found on columns: exp_unique_id, exp_name, timesteps, sensor_1, sensor_2, ...</div><br><a href=\"#summary_E0ITP\" style=\"font-size: 14px\">Go to top</a>"
+      }
+    },
+    "65ab68cb3c924864bd1400268e1496df": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "f39dd446d9724865acebfa0d8ab644f4": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "c9db5ebcf91a4e84bc7d0cd3995ec71d": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "b1c1af1666ae4c18aef2f273a11f9857": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_f1595c7a6616497d9238dad4db58500a",
+        "style": "IPY_MODEL_8359c6677f37476baaf73e1e8e47f34b",
+        "value": "<hr style=\"background-color: #eee;border: 0 none;color: #eee;height: 4px;\">"
+      }
+    },
+    "f1595c7a6616497d9238dad4db58500a": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "8359c6677f37476baaf73e1e8e47f34b": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "62d1c3b155704ab5b9b29ff9a48fb3d5": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html"
+        ],
+        "children": [
+          "IPY_MODEL_7a13b86d3ea749e99ed44e97746c83bc"
+        ],
+        "layout": "IPY_MODEL_05c305d40f604d4d9727dcf543a08787"
+      }
+    },
+    "7a13b86d3ea749e99ed44e97746c83bc": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_bcbdbea407f645d2a5a5682aae19334a",
+        "style": "IPY_MODEL_4566eded622647e18b97d2cdbf173ef0",
+        "value": "<h4 id=\"MixedDataTypes_E0ITP\">Mixed Data Types</h4><p>Detect a small amount of a rare data type within a column, such as few string samples in a mostly numeric column. <a href=\"https://docs.deepchecks.com/0.6/checks_gallery/tabular/integrity/plot_mixed_data_types.html?utm_source=display_output&utm_medium=referral&utm_campaign=check_link\" target=\"_blank\">Read More...</a></p><h5>Conditions Summary</h5><style type=\"text/css\">\n#T_e8f65_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_e8f65_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_e8f65_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_e8f65_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_e8f65_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_e8f65_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Status</th>\n      <th class=\"col_heading level0 col1\" >Condition</th>\n      <th class=\"col_heading level0 col2\" >More Info</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_e8f65_row0_col0\" class=\"data row0 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_e8f65_row0_col1\" class=\"data row0 col1\" >Rare data types in column are either more than 10% or less than 1% of the data</td>\n      <td id=\"T_e8f65_row0_col2\" class=\"data row0 col2\" ></td>\n    </tr>\n  </tbody>\n</table>\n<h5>Additional Outputs</h5><div>Nothing found on columns: exp_unique_id, exp_name, timesteps, sensor_1, sensor_2, ...</div><br><a href=\"#summary_E0ITP\" style=\"font-size: 14px\">Go to top</a>"
+      }
+    },
+    "bcbdbea407f645d2a5a5682aae19334a": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "4566eded622647e18b97d2cdbf173ef0": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "05c305d40f604d4d9727dcf543a08787": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "207114ce399d464b97e18ddc6a44b103": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_a691fcd81ffd4465997f210ca2fde599",
+        "style": "IPY_MODEL_bab3018baf7c4f42b17bbd282e06513b",
+        "value": "<hr style=\"background-color: #eee;border: 0 none;color: #eee;height: 4px;\">"
+      }
+    },
+    "a691fcd81ffd4465997f210ca2fde599": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "bab3018baf7c4f42b17bbd282e06513b": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "75791ae36c024bfca4db73925a71734f": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html"
+        ],
+        "children": [
+          "IPY_MODEL_fb673f1025984d3ca16bafebc75a49dd"
+        ],
+        "layout": "IPY_MODEL_59358f7911ef44e1b8872969ecc5cf23"
+      }
+    },
+    "fb673f1025984d3ca16bafebc75a49dd": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_c09c1ef6409f4aa88346679bae980781",
+        "style": "IPY_MODEL_182a055eb48c4b639258dda836b43ec9",
+        "value": "<h4 id=\"DataDuplicates_E0ITP\">Data Duplicates</h4><p>Checks for duplicate samples in the dataset. <a href=\"https://docs.deepchecks.com/0.6/checks_gallery/tabular/integrity/plot_data_duplicates.html?utm_source=display_output&utm_medium=referral&utm_campaign=check_link\" target=\"_blank\">Read More...</a></p><h5>Conditions Summary</h5><style type=\"text/css\">\n#T_df5ff_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_df5ff_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_df5ff_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_df5ff_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_df5ff_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_df5ff_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Status</th>\n      <th class=\"col_heading level0 col1\" >Condition</th>\n      <th class=\"col_heading level0 col2\" >More Info</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_df5ff_row0_col0\" class=\"data row0 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_df5ff_row0_col1\" class=\"data row0 col1\" >Duplicate data ratio is not greater than 0%</td>\n      <td id=\"T_df5ff_row0_col2\" class=\"data row0 col2\" ></td>\n    </tr>\n  </tbody>\n</table>\n<h5>Additional Outputs</h5><div>Nothing found on columns: exp_unique_id, exp_name, timesteps, sensor_1, sensor_2, ...</div><br><a href=\"#summary_E0ITP\" style=\"font-size: 14px\">Go to top</a>"
+      }
+    },
+    "c09c1ef6409f4aa88346679bae980781": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "182a055eb48c4b639258dda836b43ec9": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "59358f7911ef44e1b8872969ecc5cf23": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "4fde170de7254a1680e77cb3bfe51576": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_8149ff6d6084425d935046122b67a61b",
+        "style": "IPY_MODEL_2fd52bc3cd204cb6b5d4292ef638a37f",
+        "value": "<hr style=\"background-color: #eee;border: 0 none;color: #eee;height: 4px;\">"
+      }
+    },
+    "8149ff6d6084425d935046122b67a61b": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "2fd52bc3cd204cb6b5d4292ef638a37f": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "b36970b57d384ef9aaa68eee94ac670c": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html"
+        ],
+        "children": [
+          "IPY_MODEL_7a4d32ba04b04c50b192b17ccbc841b8"
+        ],
+        "layout": "IPY_MODEL_ea4e1ee1e9a04e9fa0a6704ca1262a33"
+      }
+    },
+    "7a4d32ba04b04c50b192b17ccbc841b8": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_675b077cc1f2413cbf0683ff1aeed465",
+        "style": "IPY_MODEL_84d12906b8614de1b94b0441d484e266",
+        "value": "<h4 id=\"StringLengthOutOfBounds_E0ITP\">String Length Out Of Bounds</h4><p>Detect strings with length that is much longer/shorter than the identified \"normal\" string lengths. <a href=\"https://docs.deepchecks.com/0.6/checks_gallery/tabular/integrity/plot_string_length_out_of_bounds.html?utm_source=display_output&utm_medium=referral&utm_campaign=check_link\" target=\"_blank\">Read More...</a></p><h5>Conditions Summary</h5><style type=\"text/css\">\n#T_51686_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_51686_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_51686_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_51686_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_51686_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_51686_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Status</th>\n      <th class=\"col_heading level0 col1\" >Condition</th>\n      <th class=\"col_heading level0 col2\" >More Info</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_51686_row0_col0\" class=\"data row0 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_51686_row0_col1\" class=\"data row0 col1\" >Ratio of outliers not greater than 0% string length outliers</td>\n      <td id=\"T_51686_row0_col2\" class=\"data row0 col2\" ></td>\n    </tr>\n  </tbody>\n</table>\n<h5>Additional Outputs</h5><div>Nothing found on columns: exp_unique_id, exp_name, timesteps, sensor_1, sensor_2, ...</div><br><a href=\"#summary_E0ITP\" style=\"font-size: 14px\">Go to top</a>"
+      }
+    },
+    "675b077cc1f2413cbf0683ff1aeed465": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "84d12906b8614de1b94b0441d484e266": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "ea4e1ee1e9a04e9fa0a6704ca1262a33": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "e063c22cce994caf83490bbee323f8da": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_bde8e2c06ca143f78b942264dc3f3a3d",
+        "style": "IPY_MODEL_b58f19e2d7b44fc1b2a3ad01810d1864",
+        "value": "<hr style=\"background-color: #eee;border: 0 none;color: #eee;height: 4px;\">"
+      }
+    },
+    "bde8e2c06ca143f78b942264dc3f3a3d": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "b58f19e2d7b44fc1b2a3ad01810d1864": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "e52670b564b44e0c811ae245a5aa4306": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html"
+        ],
+        "children": [
+          "IPY_MODEL_8b8864d7d03c46d19f414ba832297ea3"
+        ],
+        "layout": "IPY_MODEL_6a4565ef23f14d0f9be4a3a17ebc043b"
+      }
+    },
+    "8b8864d7d03c46d19f414ba832297ea3": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_75c234ca24f54a1b8eb5c0227da943e1",
+        "style": "IPY_MODEL_2ee735bf48db498fa3f47efb6225b25c",
+        "value": "<h4 id=\"SpecialCharacters_E0ITP\">Special Characters</h4><p>Search in column[s] for values that contains only special characters. <a href=\"https://docs.deepchecks.com/0.6/checks_gallery/tabular/integrity/plot_special_chars.html?utm_source=display_output&utm_medium=referral&utm_campaign=check_link\" target=\"_blank\">Read More...</a></p><h5>Conditions Summary</h5><style type=\"text/css\">\n#T_f99d9_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_f99d9_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_f99d9_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_f99d9_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_f99d9_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_f99d9_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Status</th>\n      <th class=\"col_heading level0 col1\" >Condition</th>\n      <th class=\"col_heading level0 col2\" >More Info</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_f99d9_row0_col0\" class=\"data row0 col0\" ><div style=\"color: green;text-align: center\">\u2713</div></td>\n      <td id=\"T_f99d9_row0_col1\" class=\"data row0 col1\" >Ratio of entirely special character samples not greater than 0.1%</td>\n      <td id=\"T_f99d9_row0_col2\" class=\"data row0 col2\" ></td>\n    </tr>\n  </tbody>\n</table>\n<h5>Additional Outputs</h5><div>Nothing found on columns: exp_unique_id, exp_name, timesteps, sensor_1, sensor_2, ...</div><br><a href=\"#summary_E0ITP\" style=\"font-size: 14px\">Go to top</a>"
+      }
+    },
+    "75c234ca24f54a1b8eb5c0227da943e1": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "2ee735bf48db498fa3f47efb6225b25c": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "6a4565ef23f14d0f9be4a3a17ebc043b": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "d6f582f0ad6f49d1a52c8ceb4b773df2": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "bee57cd3f87e4aaeb39428284cd4c566": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html",
+          "jp-RenderedHTMLCommon",
+          "jp-RenderedHTML",
+          "jp-OutputArea-output"
+        ],
+        "children": [
+          "IPY_MODEL_cd4b7940af7744ff9312ab2ac1b9c2ce",
+          "IPY_MODEL_5edaf37e6f7e41f5a2735f17a01c32c1"
+        ],
+        "layout": "IPY_MODEL_3e805a39a0754bb68eaf370abe8e6392"
+      }
+    },
+    "cd4b7940af7744ff9312ab2ac1b9c2ce": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_b10638ffb510463bb8bb47ca0ca2ea10",
+        "style": "IPY_MODEL_8ceb03c152594ba8bd8516d247395191",
+        "value": "<h2>Check Without Conditions Output</h2>"
+      }
+    },
+    "b10638ffb510463bb8bb47ca0ca2ea10": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "8ceb03c152594ba8bd8516d247395191": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "5edaf37e6f7e41f5a2735f17a01c32c1": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_dcaee7d20c5a44feae7e384356e864d1",
+        "style": "IPY_MODEL_d8f72e42e324473eb6dd1aacab699a59",
+        "value": "<p>No outputs to show.</p>"
+      }
+    },
+    "dcaee7d20c5a44feae7e384356e864d1": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "d8f72e42e324473eb6dd1aacab699a59": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "3e805a39a0754bb68eaf370abe8e6392": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "4e5bdfac4866425297a23a4683c22681": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "children": [
+          "IPY_MODEL_10e9b8f8374a4808b9cf7e1134594f97",
+          "IPY_MODEL_32427a49a61a4484bfa3a1ff4fc918fe"
+        ],
+        "layout": "IPY_MODEL_865b730b5f8944cab9932afad00b2678"
+      }
+    },
+    "10e9b8f8374a4808b9cf7e1134594f97": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_4f446b6adfbd4d2a83e0c446304b1306",
+        "style": "IPY_MODEL_66640213c3fa4722bf148aeff55ff1fd",
+        "value": "<h2>Other Checks That Weren't Displayed</h2></br>To debug failed checks use get_failures() to get a list of CheckFailures</br>"
+      }
+    },
+    "4f446b6adfbd4d2a83e0c446304b1306": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "66640213c3fa4722bf148aeff55ff1fd": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "32427a49a61a4484bfa3a1ff4fc918fe": {
+      "model_name": "VBoxModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [
+          "rendered_html",
+          "jp-RenderedHTMLCommon",
+          "jp-RenderedHTML",
+          "jp-OutputArea-output"
+        ],
+        "children": [
+          "IPY_MODEL_2b55c02b410e4581a87654aba5e02ba8"
+        ],
+        "layout": "IPY_MODEL_cd83080f6f474e5389b271b8f4361964"
+      }
+    },
+    "2b55c02b410e4581a87654aba5e02ba8": {
+      "model_name": "HTMLModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {
+        "_dom_classes": [],
+        "layout": "IPY_MODEL_86f8f823a4b246e48fe6b3404f46d043",
+        "style": "IPY_MODEL_45e8b08312a54df8a07ad25d0ff38276",
+        "value": "<style type=\"text/css\">\n#T_0c2d1_ table {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0c2d1_ thead {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0c2d1_ tbody {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0c2d1_ th {\n  text-align: left;\n  white-space: pre-wrap;\n}\n#T_0c2d1_ td {\n  text-align: left;\n  white-space: pre-wrap;\n}\n</style>\n<table id=\"T_0c2d1_\">\n  <thead>\n    <tr>\n      <th class=\"col_heading level0 col0\" >Check</th>\n      <th class=\"col_heading level0 col1\" >Reason</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td id=\"T_0c2d1_row0_col0\" class=\"data row0 col0\" >Label Ambiguity - Train Dataset</td>\n      <td id=\"T_0c2d1_row0_col1\" class=\"data row0 col1\" >DeepchecksNotSupportedError: There is no label defined to use. Did you pass a DataFrame instead of a Dataset?</td>\n    </tr>\n    <tr>\n      <td id=\"T_0c2d1_row1_col0\" class=\"data row1 col0\" >String Mismatch</td>\n      <td id=\"T_0c2d1_row1_col1\" class=\"data row1 col1\" >Nothing found</td>\n    </tr>\n  </tbody>\n</table>\n"
+      }
+    },
+    "86f8f823a4b246e48fe6b3404f46d043": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "45e8b08312a54df8a07ad25d0ff38276": {
+      "model_name": "DescriptionStyleModel",
+      "model_module": "@jupyter-widgets/controls",
+      "model_module_version": "1.5.0",
+      "state": {}
+    },
+    "cd83080f6f474e5389b271b8f4361964": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "865b730b5f8944cab9932afad00b2678": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "999ba9ead18043d29fc2efc7da80792d": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    },
+    "5558724e5ea14269969ffa5619290d69": {
+      "model_name": "LayoutModel",
+      "model_module": "@jupyter-widgets/base",
+      "model_module_version": "1.2.0",
+      "state": {}
+    }
+  }
+}
+</script>
+<script type="application/vnd.jupyter.widget-view+json">
+{"version_major": 2, "version_minor": 0, "model_id": "7fbf64db70d2493d98c39fdd4e2d583b"}
+</script>
+
+</body>
+</html>
