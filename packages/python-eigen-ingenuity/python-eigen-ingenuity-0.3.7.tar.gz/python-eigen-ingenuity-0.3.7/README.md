@@ -1,0 +1,284 @@
+ABOUT
+============
+The python-eigen-ingenuity library is used to query data from the Eigen Ingenuity system for use in the python environment, and to upload data to the 
+
+REQUIREMENTS
+============
+
+Installing python-eigen-ingenuity requires python 3
+
+INSTALL
+=======
+
+Install python 3, then in the terminal run:
+
+```
+pip install python-eigen-ingenuity
+```
+No third party libraries are required
+
+GETTING STARTED
+====
+Begin by importing the module with
+
+```
+import eigeningenuity as eigen
+```
+
+To use this module, you must first set an Ingenuity instance to query, and a datasource within the instance.
+
+For example, with Ingenuity instance "https://demo.eigen.co/" and datasource "Demo-influxdb".
+
+
+```
+from eigeningenuity import EigenServer, get_historian
+
+server = eigen.EigenServer("https://demo.eigen.co/")
+demo = get_historian("Demo-influxdb",server)
+```
+
+Alternatively, it is possible to set the Ingenuity instance as the environmental variable "EIGENSERVER",
+```
+os.environ["EIGENSERVER"] = "https://demo.eigen.co/"
+demo = get_historian("Demo-influxdb")
+```
+
+If the datasource of interest is the default datasource for the ingenuity instance, it can be omitted:
+
+```
+os.environ["EIGENSERVER"] = "https://demo.eigen.co/"
+demo = get_historian()
+```
+
+DATA FORMAT
+===
+
+Once the server and datasource have been configured, the historian data can be queried through functions we define in
+the EXAMPLE FUNCTIONS section.
+These functions can be used to query a single tag, or multiple tags at once. A tag in ingenuity with the form "datasource/tagname", 
+we query with.
+
+```
+datasource = eigen.get_historian("datasource")
+tagdata = datasource.getCurrentDataPoints("tagname")
+```
+
+Most functions return one or more datapoint objects, each of which contains a Value, Timestamp, and status as below
+
+``````
+<class 'eigeningenuity.historian.DataPoint'>
+35 @ 2022-05-30 11:02:13 UTC - OK
+``````
+
+This can be parsed with the following:
+
+``````
+value = datapoint.value (35)
+timestamp = datapoint.timestamp (1653904933.0)
+utcTime = datapoint.datetime (2022-05-30 11:02:13)
+status = datapoint.status (OK)
+``````
+Here the timestamp field is the timestamp in epoch seconds (seconds since January 1st 1970), and the utcTime field is a
+python datetime object
+
+if multiple tags are queried, the datapoints will be returned in a python dictionary with the tag names as keys.
+____
+
+FUNCTIONS
+==
+Data Queries
+===
+
+#### The following functions are designed to help the user pull and process data from historians into a python environment
+
+list_historians
+----
+
+Returns a list of all historians on the instance
+```
+from eigeningenuity import list_historians
+list_historians(eigenserver)
+```
+Where:
+- (Optional) eigenserver is the ingenuity instance of interest (If omitted will look for environmental variable EIGENSERVER)
+
+get_default_historian_name
+---
+Returns the name of the default historian of the instance, if one exists
+```
+from eigeningenuity import get_default_historian_name
+get_default_historian_name(eigenserver)
+```
+Where:
+- (Optional) eigenserver is the ingenuity instance of interest (If omitted will look for environmental variable EIGENSERVER)
+
+
+getCurrentDataPoints
+----
+Returns the most recent raw datapoint for each tag
+```
+demo.getCurrentDataPoints(tags)
+```
+Where:
+- tags is a list of IDs of tags to query
+
+countPoints
+----
+
+Returns the number of datapoints in the given time frame as an integer
+```
+demo.countPoints(tag, start, end)
+```
+Where:
+- tags is a list of IDs of tags to query
+- start is the datetime object (or epoch timestamp in ms) of the beginning of the query window
+- end is the datetime object (or epoch timestamp in ms) of the end of the query window
+
+getInterpolatedRange
+----
+
+Returns a given number of interpolated points of a tag over a given timeframe
+```
+demo.getInterpolatedRange(tag, start, end, points)
+```
+Where:
+- tags is a list of IDs of the tags to query
+- start is the datetime object (or epoch timestamp in ms) of the beginning of the query window
+- end is the datetime object (or epoch timestamp in ms) of the end of the query window
+- points is the total number of points to be returned
+
+getInterpolatedpoints
+----
+
+Returns a datapoint of each given tag at each given timestamp
+```
+demo.getInterpolatedPoints(tags, timestamps)
+```
+Where:
+- tags is a list of IDs of the tags to query
+- timestamps is a list of timestamps at which to query data
+
+getRawDataPoints
+----
+
+Returns the first n Raw datapoints from a time window
+```
+demo.getRawDataPoints(tags, start, end, count)
+```
+Where:
+- tags is a list of IDs of the tags to query
+- start is the datetime object (or epoch timestamp in ms) of the beginning of the query window
+- end is the datetime object (or epoch timestamp in ms) of the end of the query window
+- (Optional) count is the maximum number of raw datapoints to return. (default is 1000)
+
+
+getAggregates
+----
+
+Returns a specified set of aggregate values for tags over given period of time
+```
+demo.getAggregates(tags, start, end, count, aggfields)
+```
+Where:
+- tags is a list of IDs of the tags to query
+- start is the datetime object (or epoch timestamp in ms) of the beginning of the query window
+- end is the datetime object (or epoch timestamp in ms) of the end of the query window
+- (Optional) count is the number of divisions to split the time window into (i.e. if time window is one day, and count is 2,
+we return separate sets of aggregate data for first and second half of day). omit for count=1
+- (Optional) aggfields is a list of aggregate functions to calculate, a subset of 
+["min","max","avg","var","stddev","numgood","numbad"].  Leave blank to return all aggregates.
+
+getAggregateIntervals
+----
+
+A variation of getAggregates which supports splitting the time window into fixed length intervals
+```
+demo.getAggregateInterval(tags, start, end, interval, aggfields)
+```
+Where:
+- tags is a list of IDs of the tags to query
+- start is the datetime object (or epoch timestamp in ms) of the beginning of the query window
+- end is the datetime object (or epoch timestamp in ms) of the end of the query window
+- (Optional) interval is the length of the sub-intervals over which aggregates are calculated, it accepts values such as ["1s","1m","1h","1d","1M","1y"]
+being 1 second, 1 minute, 1 hour etc. Omit value for whole window.
+- (Optional) aggfields is a list of aggregate functions to calculate, a subset of 
+["min","max","avg","var","stddev","numgood","numbad"]. Leave blank to return all aggregates.
+
+listDataTags
+----
+
+Returns all tags in datasource, or all tags in datasource that match search query
+```
+demo.listDataTags(match)
+```
+Where:
+- (optional) match is the regex wildcard to match tags to (i.e. DEMO* will match all tags beginning with DEMO, \*DEMO* will match
+all tags containing DEMO, and *DEMO will match all tags ending with DEMO) (Leave blank to return all tags in historian)
+
+getMetaData
+----
+
+Returns name, units and description of each tag
+```
+demo.getMetaData(tags)
+```
+Where:
+- tags is a list of IDs of tags to query
+
+Data Upload
+===
+
+#### The following functions are intended for users to update/create historian tags using data processed/loaded in python.
+
+
+createDataTag
+----
+
+Creates a datatag with a specified ID, Unit type/label, and Description
+```
+demo.createDataTag(Name, Units, Description)
+```
+Where:
+- Name is the unique ID/Identifier of the tag
+- Units is the unit specifier of the data in the tag e.g. "m/s","Days" etc. (This will be shown on axis in ingenuity trends)
+- Description is text/metadata describing the content/purpose of the tag (This will show up in search bar for ingenuity trends)
+
+writeDataPoints
+----
+
+Writes sets of datapoints to the historian
+```
+from eigeningenuity.historian import DataPoint
+
+dataPoints = []
+point = DataPoint(value, timestamp, "OK")
+dataPoint = {tagName: point}
+
+dataPointList.append(dataPoint)
+
+demo.writeDataPoints(dataPointList)
+```
+Where:
+- value if the value of the datapoint at the timestamp
+- timestamp is the datetime object (or epoch timestamp in ms) of the point
+- "OK" is the status we give to a point that contains non-null data
+____
+
+
+LICENSE
+-------
+Apache License 2.0
+
+ Copyright 2022 Eigen Ltd.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
