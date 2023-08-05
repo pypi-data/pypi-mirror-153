@@ -1,0 +1,47 @@
+import sys
+import os
+import pandas as pd
+import platform
+import shutil
+import subprocess as sp
+from typing import List
+try:
+    import dsutil
+    from dsutil.const import *
+except:
+    pass
+$PROMPT = '{env_name}{BOLD_GREEN}{user}@{hostname}{BOLD_BLUE} {cwd}{branch_color}{curr_branch: {}}\n{NO_COLOR}    {BOLD_BLUE}{prompt_end}{NO_COLOR} '
+$PATH.insert(0, '$HOME/.local/bin')
+path = '/apache/hadoop/bin'
+if os.path.isdir(path):
+    $PATH.insert(0, path)
+
+
+def _cs(args): 
+     cd @(args) 
+     ls 
+
+
+def _trash(paths: List[str]):
+    home = os.path.expanduser('~')
+    trash_dir = os.path.join(home, '.Trash')
+    platform_ = platform.platform().lower()
+    if any(dist in platform_ for dist in ('ubuntu', 'debian')):
+        trash_dir = os.path.join(home, '.local/share/Trash/files')
+    if not os.path.isdir(trash_dir):
+        os.makedirs(trash_dir, mode=0o770, exist_ok=True)
+    for path in paths:
+        backup = os.path.join(trash_dir, os.path.basename(path))
+        if os.path.exists(backup):
+            backup = backup + '_' + datetime.datetime.now(
+            ).strftime('%Y%m%d%H%M%S%f')
+        shutil.move(path, backup)
+
+
+aliases['cs'] = _cs
+aliases['trash'] = _trash
+aliases['mvi'] = ['mv', '-i']
+aliases['cpi'] = ['cp', '-ir']
+aliases['rsync.progress'] = ['rsync', '-avh', '--progress']
+aliases['hdfs.count'] = ['hdfs', 'dfs', '-count', '-q', '-v']
+aliases['hdfs.count'] = ['hdfs', 'dfs', '-ls']
