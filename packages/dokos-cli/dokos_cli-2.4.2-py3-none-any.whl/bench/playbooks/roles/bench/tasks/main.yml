@@ -1,0 +1,87 @@
+---
+  - name: Check if /tmp/.bench exists
+    stat:
+      path: /tmp/.bench
+    register: tmp_bench
+
+  - name: Check if bench_repo_path exists
+    stat:
+      path: '{{ bench_repo_path }}'
+    register: bench_repo_register
+
+  - name: move /tmp/.bench if it exists
+    command: 'cp -R /tmp/.bench {{ bench_repo_path }}'
+    when: tmp_bench.stat.exists and not bench_repo_register.stat.exists
+
+  - name: install bench
+    pip:
+      name: '{{ bench_repo_path }}'
+      extra_args: '-e'
+    become: yes
+    become_user: root
+    when: not production
+
+  - name: install bench
+    pip:
+      name: 'dokos-cli'
+    become: yes
+    become_user: root
+    when: production
+
+  - name: Overwrite bench if required
+    file:
+      state: absent
+      path: "{{ bench_path }}"
+    when: overwrite and not production
+
+  - name: Check whether bench exists
+    stat:
+      path: "{{ bench_path }}"
+    register: bench_stat
+
+  - name: Fix permissions
+    become_user: root
+    command: chown {{ frappe_user }} -R {{ user_directory }}
+
+  - name:  python3 bench init
+    command: bench init {{ bench_path }} --frappe-path {{ frappe_repo_url }} --frappe-branch {{ frappe_branch }} --python {{ python }}
+    args:
+      creates: "{{ bench_path }}"
+    when: (not bench_stat.stat.exists or production) and not without_bench_folder
+
+  # setup common_site_config
+  - name: setup config
+    command: bench setup config
+    args:
+      creates: "{{ bench_path }}/sites/common_site_config.json"
+      chdir: "{{ bench_path }}"
+    when: not without_bench_folder
+
+  - include_tasks: setup_inputrc.yml
+
+  # Setup Procfile
+  - name: Setup Procfile
+    command: bench setup procfile
+    args:
+      creates: "{{ bench_path }}/Procfile"
+      chdir: "{{ bench_path }}"
+    when: not without_bench_folder
+
+  # Setup Redis env for RQ
+  - name: Setup Redis
+    command: bench setup redis
+    args:
+      creates: "{{ bench_path }}/config/redis_socketio.conf"
+      chdir: "{{ bench_path }}"
+    when: not without_bench_folder
+
+  # Setup a Dokos site
+  - include_tasks: setup_dokos.yml
+    when: not run_gitlab_ci and not without_bench_folder
+
+  # Setup Bench for production environment
+  - include_tasks: setup_bench_production.yml
+    vars:
+      bench_path: "{{ user_directory }}/{{ bench_name }}"
+    when: not run_gitlab_ci and production and not without_bench_folder
+...
