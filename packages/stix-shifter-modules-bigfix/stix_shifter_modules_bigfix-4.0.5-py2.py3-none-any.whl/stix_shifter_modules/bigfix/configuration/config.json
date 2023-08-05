@@ -1,0 +1,396 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "BigFix",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "default": 443,
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "type": "link",
+            "default": "data-sources-bigfix.html"
+        },
+        "sni": {
+            "type": "text",
+            "optional": true
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "unmapped_fallback": {
+                "default": false,
+                "type": "boolean",
+                "optional": true,
+                "hidden": true
+            },
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 500000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 60,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "from_stix_map": {
+                        "file": {
+                            "fields": {
+                                "name": [
+                                    "file.name"
+                                ],
+                                "hashes.'SHA-256'": [
+                                    "file.sha256"
+                                ],
+                                "hashes.'SHA-1'": [
+                                    "file.sha1"
+                                ],
+                                "hashes.MD5": [
+                                    "file.md5"
+                                ],
+                                "parent_directory_ref.path": [
+                                    "file.folder"
+                                ],
+                                "size": [
+                                    "file.size"
+                                ]
+                            }
+                        },
+                        "process": {
+                            "fields": {
+                                "name": [
+                                    "process.name"
+                                ],
+                                "pid": [
+                                    "process.pid",
+                                    "process.process id"
+                                ],
+                                "parent_ref.pid": [
+                                    "process.ppid"
+                                ],
+                                "binary_ref.name": [
+                                    "file.name"
+                                ],
+                                "binary_ref.hashes.'SHA-256'": [
+                                    "file.sha256"
+                                ],
+                                "binary_ref.hashes.'SHA-1'": [
+                                    "file.sha1"
+                                ],
+                                "binary_ref.hashes.MD5": [
+                                    "file.md5"
+                                ],
+                                "binary_ref.parent_directory_ref.path": [
+                                    "file.pathname"
+                                ],
+                                "binary_ref.size": [
+                                    "file.size"
+                                ],
+                                "creator_user_ref.user_id": [
+                                    "process.user",
+                                    "process.name of user"
+                                ]
+                            }
+                        },
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "socket.local address",
+                                    "socket.remote address"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "fields": {
+                                "value": [
+                                    "socket.local address",
+                                    "socket.remote address"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "fields": {
+                                "src_port": [
+                                    "socket.local port"
+                                ],
+                                "dst_port": [
+                                    "socket.remote port"
+                                ],
+                                "src_ref.value": [
+                                    "socket.local address"
+                                ],
+                                "dst_ref.value": [
+                                    "socket.remote address"
+                                ]
+                            }
+                        },
+                        "mac-addr": {
+                            "fields": {
+                                "value": [
+                                    "adapter.mac address"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "AND",
+                        "ComparisonExpressionOperators.Or": "OR",
+                        "ComparisonComparators.Equal": "=",
+                        "ComparisonComparators.NotEqual": "!=",
+                        "ComparisonComparators.Like": "contains",
+                        "ComparisonComparators.Matches": "matches",
+                        "ComparisonComparators.GreaterThan": "is greater than",
+                        "ComparisonComparators.GreaterThanOrEqual": "is greater than or equal to",
+                        "ComparisonComparators.LessThan": "is less than",
+                        "ComparisonComparators.LessThanOrEqual": "is less than or equal to",
+                        "ComparisonComparators.In": "=",
+                        "ObservationOperators.Or": "OR",
+                        "ObservationOperators.And": "OR"
+                    },
+                    "relevance_property_format_string_map": {
+                        "format_string": {
+                            "format_string_generic": "{mapped_field} {transformer_field} {comparator} {value} {transformer_value}",
+                            "format_string_range": "{mapped_field} {extra_mapped_string} of it {default_if_attr_undefined} {default_value_transformer} {comparator} {start_value} {transformer}",
+                            "format_string_match": "exist {comparator}({value}) of ({mapped_field} {transformer_value})"
+                        },
+                        "object_hierarchy": {
+                            "file": {
+                                "text": "files"
+                            },
+                            "process": {
+                                "text": "processes",
+                                "reference": {
+                                    "file": "image file"
+                                }
+                            },
+                            "socket": {
+                                "text": "sockets",
+                                "reference": {
+                                    "process": "processes"
+                                }
+                            }
+                        }
+                    },
+                    "to_stix_map": {
+                        "file_name": {
+                            "key": "file.name",
+                            "object": "file"
+                        },
+                        "file_path": [
+                            {
+                                "key": "directory.path",
+                                "object": "directory",
+                                "transformer": "ToDirectoryPath"
+                            },
+                            {
+                                "key": "file.parent_directory_ref",
+                                "object": "file",
+                                "references": "directory"
+                            },
+                            {
+                                "key": "process.binary_ref",
+                                "object": "process",
+                                "references": "file"
+                            }
+                        ],
+                        "sha256hash": {
+                            "key": "file.hashes.SHA-256",
+                            "object": "file"
+                        },
+                        "sha1hash": {
+                            "key": "file.hashes.SHA-1",
+                            "object": "file"
+                        },
+                        "md5hash": {
+                            "key": "file.hashes.MD5",
+                            "object": "file"
+                        },
+                        "file_size": {
+                            "key": "file.size",
+                            "object": "file",
+                            "transformer": "ToInteger"
+                        },
+                        "process_name": {
+                            "key": "process.name",
+                            "object": "process"
+                        },
+                        "process_id": {
+                            "key": "process.pid",
+                            "object": "process",
+                            "transformer": "ToInteger"
+                        },
+                        "process_ppid": [
+                            {
+                                "key": "process.pid",
+                                "object": "parent_process",
+                                "transformer": "ToInteger"
+                            },
+                            {
+                                "key": "process.parent_ref",
+                                "object": "process",
+                                "references": "parent_process"
+                            }
+                        ],
+                        "process_user": [
+                            {
+                                "key": "user-account.user_id",
+                                "object": "user"
+                            },
+                            {
+                                "key": "process.creator_user_ref",
+                                "object": "process",
+                                "references": "user"
+                            }
+                        ],
+                        "timestamp": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "EpochSecondsToTimestamp",
+                                "cybox": false
+                            },
+                            {
+                                "key": "last_observed",
+                                "transformer": "EpochSecondsToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "computer_identity": {
+                            "key": "x-bigfix-relevance.computer_identity"
+                        },
+                        "event_count": {
+                            "key": "number_observed",
+                            "cybox": false,
+                            "transformer": "ToInteger"
+                        },
+                        "local_address": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "network-traffic.src_ref",
+                                "object": "nt",
+                                "references": "src_ip"
+                            }
+                        ],
+                        "remote_address": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "network-traffic.dst_ref",
+                                "object": "nt",
+                                "references": "dst_ip"
+                            }
+                        ],
+                        "local_port": {
+                            "key": "network-traffic.src_port",
+                            "object": "nt",
+                            "transformer": "ToInteger"
+                        },
+                        "remote_port": {
+                            "key": "network-traffic.dst_port",
+                            "object": "nt",
+                            "transformer": "ToInteger"
+                        },
+                        "protocol": {
+                            "key": "network-traffic.protocols",
+                            "object": "nt",
+                            "transformer": "ToLowercaseArray"
+                        },
+                        "mac": [
+                            {
+                                "key": "mac-addr.value",
+                                "object": "src_mac"
+                            }
+                        ]
+                    }
+                }
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "password"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
