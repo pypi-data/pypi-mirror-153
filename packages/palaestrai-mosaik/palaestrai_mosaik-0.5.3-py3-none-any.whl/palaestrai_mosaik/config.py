@@ -1,0 +1,3 @@
+AGENT_SID = "palaestrAI"
+AGENT_EID = "ARLAgent"
+AGENT_FULL_ID = f"{AGENT_SID}-0.{AGENT_EID}-0"
