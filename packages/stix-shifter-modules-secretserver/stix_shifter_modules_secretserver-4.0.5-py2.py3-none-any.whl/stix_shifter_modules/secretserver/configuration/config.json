@@ -1,0 +1,264 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "IBM Security Verify Privilege Vault",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "type": "number",
+            "default": 443,
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "default": "https://www.ibm.com/docs/en/svp/10.5?topic=overview-secret-server",
+            "type": "link"
+        },
+        "sni": {
+            "type": "text",
+            "optional": true
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "options": {
+            "unmapped_fallback": {
+                "default": false,
+                "type": "boolean",
+                "optional": true,
+                "hidden": true
+            },
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 500000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 60,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "event_from_stix_map": {
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "IpAddress",
+                                    "Server"
+                                ],
+                                "src_ip": [
+                                    "IpAddress"
+                                ],
+                                "dst_ip": [
+                                    "Server"
+                                ]
+                            }
+                        },
+                        "url": {
+                            "fields": {
+                                "value": [
+                                    "url"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "user_id": [
+                                    "UserId"
+                                ]
+                            }
+                        },
+                        "x-secret": {
+                            "fields": {
+                                "secret_name": [
+                                    "SecretName"
+                                ],
+                                "user_name": [
+                                    "username"
+                                ],
+                                "secret_id": [
+                                    "ItemId"
+                                ],
+                                "user_id": [
+                                    "UserId"
+                                ]
+                            }
+                        },
+                        "x-ibm-finding": {
+                            "fields": {
+                                "name": [
+                                    "EventSubject"
+                                ],
+                                "description": [
+                                    "EventNote"
+                                ],
+                                "finding_type": [
+                                    "EventDetails"
+                                ],
+                                "time_observed": [
+                                    "EventTime"
+                                ]
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "AND",
+                        "ComparisonExpressionOperators.Or": "OR",
+                        "ComparisonComparators.GreaterThan": ">",
+                        "ComparisonComparators.GreaterThanOrEqual": ">=",
+                        "ComparisonComparators.LessThan": "<",
+                        "ComparisonComparators.LessThanOrEqual": "<=",
+                        "ComparisonComparators.Equal": "=",
+                        "ComparisonComparators.NotEqual": "!=",
+                        "ComparisonComparators.Like": "LIKE",
+                        "ComparisonComparators.In": "IN",
+                        "ComparisonComparators.Matches": "LIKE",
+                        "ObservationOperators.Or": "OR",
+                        "ObservationOperators.And": "OR"
+                    },
+                    "to_stix_map": {
+                        "username": [
+                            {
+                                "key": "user-account.user_name"
+                            }
+                        ],
+                        "IpAddress": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "x-ibm-finding.src_ip_ref",
+                                "object": "finding",
+                                "references": "src_ip"
+                            }
+                        ],
+                        "Server": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "x-ibm-finding.dst_ip_ref",
+                                "object": "finding",
+                                "references": "dst_ip"
+                            }
+                        ],
+                        "StartTime": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "EpochToTimestamp",
+                                "cybox": false
+                            },
+                            {
+                                "key": "last_observed",
+                                "transformer": "EpochToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "Url": {
+                            "key": "url.value"
+                        },
+                        "EventSubject": {
+                            "key": "x-ibm-finding.name",
+                            "object": "finding"
+                        },
+                        "EventNote": {
+                            "key": "x-ibm-finding.description",
+                            "object": "finding"
+                        },
+                        "EventDetails": {
+                            "key": "x-ibm-finding.finding_type",
+                            "object": "finding"
+                        },
+                        "EventTime": {
+                            "key": "x-ibm-finding.time_observed",
+                            "object": "finding"
+                        },
+                        "SecretName": {
+                            "key": "x-secret.secret_name",
+                            "object": "secret"
+                        },
+                        "ItemId": {
+                            "key": "x-secret.secret_id",
+                            "object": "secret"
+                        },
+                        "UserId": {
+                            "key": "x-secret.user_id",
+                            "object": "secret"
+                        }
+                    }
+                }
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "password"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
