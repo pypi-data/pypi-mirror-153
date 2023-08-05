@@ -1,0 +1,85 @@
+{{ image }}:
+  type: image
+{% if kubevirt_disk_size != None and config_type == 'kubevirt' %}
+  size: {{ kubevirt_disk_size }}
+{% endif %}
+
+{% if masters|int > 1 and config_type in ['aws', 'gcp'] %}
+{{ cluster }}-master:
+ type: loadbalancer
+ nets:
+ - name: {{ network }}
+   alias:
+   - {{ cluster }}-master.{{ domain }}
+   - {{ cluster }}-master.{{ network }}
+   reservedns: true
+ ports:
+ - 6443
+ vms:
+{% for number in range(0, masters|int) %}
+  - {{cluster}}-master-{{ number }}
+{% endfor %}
+{% endif %}
+
+{% for number in range(0, masters|int) %}
+{% if extra_master_networks %}
+ {% set extra_networks = extra_master_networks %}
+{% endif %}
+{% if extra_master_disks %}
+ {% set extra_disks = extra_master_disks %}
+{% endif %}
+
+{{cluster}}-master-{{ number }}:
+ image: {{ image }}
+ pool: {{ pool or config_pool }}
+ keys: {{ keys }}
+ numcpus: {{ master_numcpus | default(numcpus, numcpus) }}
+ memory: {{ master_memory | default(memory, memory) }}
+{% if number == 0 %}
+ enableroot: true
+{% endif %}
+ domain: {{ domain }}
+{% if number == 0 %}
+ wait: true
+ notify: {{ notify }}
+ notifycmd: {{ notifycmd }}
+ finishfiles:
+ - origin: /root/join.sh
+   path: ~/.kcli/clusters/{{ cluster }}/join.sh
+ - origin: /etc/kubernetes/admin.conf
+   path: ~/.kcli/clusters/{{ cluster }}/auth/kubeconfig
+{% endif %}
+ nets: {{ [network] + extra_networks }}
+ disks: {{ [disk_size] + extra_disks }}
+ files:
+  - keepalived.conf
+  - keepalived.sh
+  - registry.yml
+{% if number == 0 %}
+{% if multus %}
+  - multus.sh
+{% endif %}
+{% if metallb %}
+  - metal_lb.sh
+  - metal_lb_cm.yml
+{% endif %}
+{% if nfs %}
+  - nfs.yml
+  - nfs.sh
+{% endif %}
+{% endif %}
+{% if config_type not in ['aws', 'gcp'] %}
+  - apache.sh
+{% endif %}
+{% if eksd %}
+  - eksd.sh
+{% endif %}
+  - path: /root/pre.sh
+    origin: pre_{{ 'ubuntu' if ubuntu|default(False) else 'el' }}.sh
+  - path: /root/masters.sh
+    origin: {{ 'bootstrap.sh' if number == 0 else 'masters_extra.sh' }}
+  - path: /root/deploy.sh
+    origin: deploy.sh_masters
+ cmds:
+  - bash /root/deploy.sh
+{% endfor %}
