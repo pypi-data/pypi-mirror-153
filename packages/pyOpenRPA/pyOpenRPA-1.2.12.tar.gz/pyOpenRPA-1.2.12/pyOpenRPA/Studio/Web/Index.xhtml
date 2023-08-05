@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en" >
+	<head>
+		<meta charset="utf-8">
+		<title>pyOpenRPA</title>
+		<link rel="stylesheet" type="text/css" href="3rdParty/Semantic-UI-CSS-master/semantic.min.css">
+		<script
+		  src="3rdParty/jQuery/jquery-3.1.1.min.js"
+		  crossorigin="anonymous"></script>
+		<script src="3rdParty/Semantic-UI-CSS-master/semantic.min.js"></script>
+		  <script>
+		  // Production steps of ECMA-262, Edition 6, 22.1.2.1
+			if (!Array.from) {
+			  Array.from = (function () {
+				var toStr = Object.prototype.toString;
+				var isCallable = function (fn) {
+				  return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
+				};
+				var toInteger = function (value) {
+				  var number = Number(value);
+				  if (isNaN(number)) { return 0; }
+				  if (number === 0 || !isFinite(number)) { return number; }
+				  return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+				};
+				var maxSafeInteger = Math.pow(2, 53) - 1;
+				var toLength = function (value) {
+				  var len = toInteger(value);
+				  return Math.min(Math.max(len, 0), maxSafeInteger);
+				};
+
+				// The length property of the from method is 1.
+				return function from(arrayLike/*, mapFn, thisArg */) {
+				  // 1. Let C be the this value.
+				  var C = this;
+
+				  // 2. Let items be ToObject(arrayLike).
+				  var items = Object(arrayLike);
+
+				  // 3. ReturnIfAbrupt(items).
+				  if (arrayLike == null) {
+					throw new TypeError('Array.from requires an array-like object - not null or undefined');
+				  }
+
+				  // 4. If mapfn is undefined, then let mapping be false.
+				  var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
+				  var T;
+				  if (typeof mapFn !== 'undefined') {
+					// 5. else
+					// 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+					if (!isCallable(mapFn)) {
+					  throw new TypeError('Array.from: when provided, the second argument must be a function');
+					}
+
+					// 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+					if (arguments.length > 2) {
+					  T = arguments[2];
+					}
+				  }
+
+				  // 10. Let lenValue be Get(items, "length").
+				  // 11. Let len be ToLength(lenValue).
+				  var len = toLength(items.length);
+
+				  // 13. If IsConstructor(C) is true, then
+				  // 13. a. Let A be the result of calling the [[Construct]] internal method 
+				  // of C with an argument list containing the single item len.
+				  // 14. a. Else, Let A be ArrayCreate(len).
+				  var A = isCallable(C) ? Object(new C(len)) : new Array(len);
+
+				  // 16. Let k be 0.
+				  var k = 0;
+				  // 17. Repeat, while k < len… (also steps a - h)
+				  var kValue;
+				  while (k < len) {
+					kValue = items[k];
+					if (mapFn) {
+					  A[k] = typeof T === 'undefined' ? mapFn(kValue, k) : mapFn.call(T, kValue, k);
+					} else {
+					  A[k] = kValue;
+					}
+					k += 1;
+				  }
+				  // 18. Let putStatus be Put(A, "length", len, true).
+				  A.length = len;
+				  // 20. Return A.
+				  return A;
+				};
+			  }());
+			}
+		  if (!Object.assign) {
+			  Object.defineProperty(Object, 'assign', {
+				enumerable: false,
+				configurable: true,
+				writable: true,
+				value: function(target, firstSource) {
+				  'use strict';
+				  if (target === undefined || target === null) {
+					throw new TypeError('Cannot convert first argument to object');
+				  }
+
+				  var to = Object(target);
+				  for (var i = 1; i < arguments.length; i++) {
+					var nextSource = arguments[i];
+					if (nextSource === undefined || nextSource === null) {
+					  continue;
+					}
+
+					var keysArray = Object.keys(Object(nextSource));
+					for (var nextIndex = 0, len = keysArray.length; nextIndex < len; nextIndex++) {
+					  var nextKey = keysArray[nextIndex];
+					  var desc = Object.getOwnPropertyDescriptor(nextSource, nextKey);
+					  if (desc !== undefined && desc.enumerable) {
+						to[nextKey] = nextSource[nextKey];
+					  }
+					}
+				  }
+				  return to;
+				}
+			  });
+			}
+		  var mGlobal={}
+		  $(document)
+			.ready(function() {
+				/////////////////////////////////////////////////////////////////
+				///ПАРАМЕТРЫ
+				/////////////////////////////////////////////////////////////////
+				mGlobal.Settings={}
+				mGlobal.Settings.mUIOTreeHeight=450
+				mGlobal.GUIElement={}
+				mGlobal.GenerateUniqueID=function(inPrefix) {
+					return inPrefix+Math.round(Math.random()*1000)+"-"+Math.round(Math.random()*10000)+"-"+Math.round(Math.random()*1000)
+				}
+				///Инициализация
+				mGlobal.ElementTree={}
+				mGlobal.Actions={}
+				mGlobal.ActionSpecificationList = []
+				
+				mGlobal.CodeList={}
+				
+				mGlobal.ClipboardSet=function(lText) {
+					const el = document.createElement('textarea');
+					el.value = lText;
+					document.body.appendChild(el);
+					el.select();
+					document.execCommand('copy');
+					document.body.removeChild(el);
+				};
+				///////////////////////////
+				///Функция нормализации текстовой строки для HTML
+				///////////////////////////
+				mGlobal.Tools={}
+				mGlobal.Tools.HTMLNormalizeStr=function(inString)
+				{
+					lResult=inString;
+					lResult=lResult.replace(/&/g,"&amp;");
+					lResult=lResult.replace(/</g,"&lt;");
+					lResult=lResult.replace(/>/g,"&gt;");
+					lResult=lResult.replace(/"/g,"&quot;");
+					lResult=lResult.replace(/'/g,"&#39;");
+					return lResult;
+				}
+				///Функция перезапуска студии
+				mGlobal.Actions.fRestartStudioServer= function()
+				{
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'RestartStudio',
+					  data: '',
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lResponseJSON=JSON.parse(lData);
+						},
+					  dataType: "text"
+					});
+				}
+				///Функция клонирования объекта
+				mGlobal.iSysClone=function(obj,lIsCloneSubProperty,lSubItemCallback) {
+					///Выполнить инициализацию переменной, если она не была передана
+					if (typeof(lIsCloneSubProperty)=="undefined") {
+						lIsCloneSubProperty=true;
+					}
+					///Вернуть значение, если передан простой тип данных
+					if (null == obj || "object" != typeof obj) return obj;
+					///Выполнить инициализацию новой переменной
+					var copy = obj.constructor();
+					///Циклический обход по всем свойствам объекта
+					for (var attr in obj) {
+						///Исключить присваивание тех свойств, которые унаследованы от прототипа
+						if (obj.hasOwnProperty(attr)) {
+							///Проверить, является ли вложенное свойство объектом
+							if (typeof(obj[attr])=="object" && lIsCloneSubProperty) {
+								///Рекурсивный вызов клонирования дочернего элемента
+								copy[attr] = mGlobal.iSysClone(obj[attr],lIsCloneSubProperty);
+							} else {
+								///Клонируемое свойство не является объектом - выполнить копирование
+								copy[attr] = obj[attr];
+							}
+							///Вызов callback функции в которую передается текущий атрибут
+							if (typeof(lSubItemCallback)!="undefined") {
+								lSubItemCallback(copy[attr]);
+							}
+						}
+					}
+					///Вернуть результат функции клонирования
+					return copy;
+				}
+				
+				///Функция запуска поиска по окну
+				mGlobal.Actions.fAutomationSearchMouseElementHierarchyRun= function(inElementId)
+				{
+					//Подгрузка массива спецификаций
+					lSpecificationArray = mGlobal.GUIElement[inElementId].GUISelectorFull;
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop", "ActivityName":"UIOSelector_SearchChildByMouse_UIOTree","ArgumentList":['+JSON.stringify(lSpecificationArray)+']}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lResponseJSON=JSON.parse(lData);
+							///Подготовить структуру рендеринга, если у текущего объекта имееется родитель
+							var lStructureToRender=lResponseJSON.Result;
+							if (lSpecificationArray.length>1) {
+								var lStructureToRenderParent=[]
+								var lStructureToRenderLocal=lStructureToRenderParent;
+								for (var i=0;i<lSpecificationArray.length-1;i++) {
+									lStructureToRenderLocal.push(lSpecificationArray[i]);
+									///Добавить SpecificationChild, если итератор не заканчивается
+									if (i<lSpecificationArray.length-2) {
+										lStructureToRenderLocal[0]["SpecificationChild"]=[]
+										lStructureToRenderLocal=lStructureToRenderLocal[0]["SpecificationChild"]
+									}
+									///Если последнее звено - добавить структуру, которая поступила с сервера
+									if (i==lSpecificationArray.length-2) {
+										lStructureToRenderLocal[0]["SpecificationChild"]=lStructureToRender
+										lStructureToRender=lStructureToRenderParent
+										
+									}
+								}
+							}
+							
+							///Отображение ошибки
+							if (lResponseJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lResponseJSON.ErrorMessage+" \nTraceback: "+lResponseJSON.ErrorTraceback);
+							} else {
+								///Очистить дерево
+								mGlobal.ElementTree.fClear();
+								///Прогрузить новое дерево
+								mGlobal.ElementTree.fRender(lStructureToRender,$(".openrpa-value-backend")[0].value);
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				
+				//Функция очистки объектов интерфейса
+				mGlobal.ElementTree.fClear=function()
+				{
+					///Очистить HTML код
+					$(".rpa-object-tree").html("");
+				}
+				
+				///Функция визуализации дерева
+				mGlobal.ElementTree.fRender = function(inElementsTreeDataArray,inBackendString)
+				{
+					var lHTMLList=
+						'<b style="font-size:10px;" >Backend: '+inBackendString+'</b>\
+						<div class="ui list" style="height:'+mGlobal.Settings.mUIOTreeHeight+'px;overflow:scroll; margin-top:0px;">';
+					///Циклический обход списка
+					for (var i = 0; i< inElementsTreeDataArray.length;i++) {
+						///Добавить HTML код позиции
+						lHTMLList+=mGlobal.ElementTree.fItemGenerateHTML_JS(inElementsTreeDataArray[i],[])
+					}
+					///Закрывающая список HTML
+					lHTMLList+="</div>"
+					///Установить HTML код в родителя
+					$(".rpa-object-tree").html(lHTMLList);
+					
+				}
+				///Функция визуализации дерева
+				///Вызов создания вложенного листа, если имеется атрибут SpecificationChild
+				mGlobal.ElementTree.fItemGenerateHTML_JS = function(inItem,inParentSpecification){
+					///Генерация уникального кода для элемента
+					var lElementId = mGlobal.GenerateUniqueID("ID")
+					//Добавить информацию об элементе в словарь JS
+					///Урезанная часть селектора (сделать, чтобы была без SpecificationChild)
+					var lSelectorLocal={};
+					Object.assign(lSelectorLocal,inItem);
+					delete lSelectorLocal.SpecificationChild;
+					
+					
+					///Установка данных JS
+					mGlobal.GUIElement[lElementId]={};
+					mGlobal.GUIElement[lElementId]['GUISelectorLocal']=lSelectorLocal
+					mGlobal.GUIElement[lElementId]['GUISelectorFull']=Array.from(inParentSpecification);
+					mGlobal.GUIElement[lElementId]['GUISelectorFull'].push(lSelectorLocal)	
+					
+					///Генерация кода HTML
+					var lResultString="";
+					var lSubItemActionOnClick=' onclick="mGlobal.TreeLoadSubTree(\''+lElementId+'\');" '
+					var lSubItemActionOnRightClick=' onclick="mGlobal.ElementHighlightNew(\''+lElementId+'\');" '
+					var lIconSelectOnClick=' onclick="mGlobal.TreeObjectInfoLoad(\''+lElementId+'\');" '
+					var lIconTestOnClick=' onclick="mGlobal.Test(\''+lElementId+'\');" '
+					var lIconUpOnClick=' onclick="mGlobal.Actions.fAutomationSearchMouseElementHierarchyRun(\''+lElementId+'\');" '
+							
+					var lSubListHTML="";
+					///Проверка вложенных объектов SpecificationChild
+					if (Array.isArray(inItem.SpecificationChild)) {
+						if (inItem.SpecificationChild.length>0) {
+							var lSubListHTML='<div class="ui list">';
+							for (var i=0;i<inItem.SpecificationChild.length;i++) {
+								if (inItem.SpecificationChild[i] != null) {
+									///Генерация кода 
+									lSubListHTML+=mGlobal.ElementTree.fItemGenerateHTML_JS(inItem.SpecificationChild[i],mGlobal.GUIElement[lElementId]['GUISelectorFull'])
+								}
+							}
+							lSubListHTML+="</div>"
+						}
+					}
+					///Генерация кода текущего элемента
+					lResultString+='\
+						<div class="item" id="'+lElementId+'" style="padding:5px;">\
+							<i class="angle double right icon"></i>\
+							<div class="content">\
+								<div class="header" '+lIconSelectOnClick+'>'+inItem.title+'</div>\
+								<div class="description" '+lIconSelectOnClick+'>process_id:'+inItem.process_id+'; handle:'+inItem.handle+'; class_name: '+inItem.class_name+'; RECT:L'+inItem.rectangle.left+' T'+inItem.rectangle.top+' R'+inItem.rectangle.right+' B'+inItem.rectangle.bottom+'</div>\
+							<a class="ui tag label teal mini" '+lSubItemActionOnRightClick+'>Highlight</a>\
+							<a class="ui tag label teal mini" '+lSubItemActionOnClick+'>Expand</a>\
+							<a class="ui tag label teal mini" '+lIconUpOnClick+'>Mouse search</a>\
+							'+lSubListHTML+'\
+							</div>\
+						</div>'
+					return lResultString;					
+				}
+				
+				mGlobal.TreeLoadSubTree =function (inElementId) {
+					//Подгрузка массива спецификаций
+					lSpecificationArray = mGlobal.GUIElement[inElementId].GUISelectorFull
+					//lSpecificationArray[0]["backend"] = $(".openrpa-value-backend")[0].value
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop", "ActivityName":"UIOSelector_GetChildList_UIOList","ArgumentList":['+JSON.stringify(lSpecificationArray)+'], "ArgumentDict":{"inBackend": "'+$(".openrpa-value-backend")[0].value+'"}}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lHTMLTree='<div class="ui list">'
+							var lResponseJSON=JSON.parse(lData)
+							for (i=0;i<lResponseJSON.Result.length;i++) {
+								var lElementId = mGlobal.GenerateUniqueID("ID")
+								var lSubItemHandleId=lResponseJSON.Result[i].handle;
+								var lSubItemActionOnClick=' onclick="mGlobal.TreeLoadSubTree(\''+lElementId+'\');" '
+								var lSubItemActionOnRightClick=' onclick="mGlobal.ElementHighlightNew(\''+lElementId+'\');" '
+								var lIconSelectOnClick=' onclick="mGlobal.TreeObjectInfoLoad(\''+lElementId+'\');" '
+								var lIconTestOnClick=' onclick="mGlobal.Test(\''+lElementId+'\');" '
+								var lIconUpOnClick=' onclick="mGlobal.Actions.fAutomationSearchMouseElementHierarchyRun(\''+lElementId+'\');" '
+								var lTitle=mGlobal.Tools.HTMLNormalizeStr(lResponseJSON.Result[i].title);
+								var lSettingBigTitleLength=300;
+								if (lTitle.length>lSettingBigTitleLength)
+								{
+									lTitle=lTitle.slice(0,lSettingBigTitleLength)+"..."
+								}
+								lHTMLTree+='\
+									<div class="item handle_'+lSubItemHandleId+'" handle_id="'+lSubItemHandleId+'" id="'+lElementId+'">\
+										<i class="angle double right icon"></i>\
+										<div class="content">\
+											<div class="header" '+lIconSelectOnClick+'>'+lTitle+'</div>\
+											<div class="description" '+lIconSelectOnClick+'>process_id:'+lResponseJSON.Result[i].process_id+'; handle:'+lSubItemHandleId+'; class_name: '+lResponseJSON.Result[i].class_name+'; RECT:L'+lResponseJSON.Result[i].rectangle.left+' T'+lResponseJSON.Result[i].rectangle.top+' R'+lResponseJSON.Result[i].rectangle.right+' B'+lResponseJSON.Result[i].rectangle.bottom+'</div>\
+											<a class="ui tag label teal mini" '+lSubItemActionOnRightClick+'>Highlight</a>\
+											<a class="ui tag label teal mini" '+lSubItemActionOnClick+'>Expand</a>\
+											<a class="ui tag label teal mini" '+lIconUpOnClick+'>Mouse search</a>\
+										</div>\
+									</div>'
+								//Добавить информацию об элементе в словарь JS
+								mGlobal.GUIElement[lElementId]={};
+								mGlobal.GUIElement[lElementId]['GUISelectorLocal']=lResponseJSON.Result[i]
+								mGlobal.GUIElement[lElementId]['GUISelectorFull']=Array.from(lSpecificationArray);
+								mGlobal.GUIElement[lElementId]['GUISelectorFull'].push(lResponseJSON.Result[i])
+							}
+							lHTMLTree+='</div>'
+							$("#"+inElementId+" .content").append(lHTMLTree)
+							///Отображение ошибки
+							if (lResponseJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lResponseJSON.ErrorMessage+" \nTraceback: "+lResponseJSON.ErrorTraceback);
+
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				mGlobal.TreeObjectInfoLoad =function (inElementId) {
+					//Подгрузка массива спецификаций
+					lSpecificationArray = mGlobal.GUIElement[inElementId].GUISelectorFull
+					var lHTMLList='<div class="ui relaxed divided list" style="height:'+mGlobal.Settings.mUIOTreeHeight+'px;overflow:scroll;">'
+					var lSpecificationArrayNew=[]
+					for (i=0;i<lSpecificationArray.length;i++) {
+						lSpecificationArrayNew.push(lSpecificationArray[i])
+						var lElementId = mGlobal.GenerateUniqueID("ID")
+						var lOnClickSelect= ' onclick="mGlobal.ElementPropertyListLoad(\''+lElementId+'\');" '
+						lHTMLList+='\
+							<div class="item" id="'+lElementId+'" '+lOnClickSelect+'>\
+								<div class="content">\
+									<div class="description"><p style="word-wrap: break-word;"><b>Level  '+i+': </b> '+JSON.stringify(lSpecificationArray[i])+'</p></div>\
+								</div>\
+							</div>'
+						mGlobal.GUIElement[lElementId]={};
+						mGlobal.GUIElement[lElementId]['GUISelectorLocal']=lSpecificationArray[i]
+						mGlobal.GUIElement[lElementId]['GUISelectorFull']=Array.from(lSpecificationArrayNew);
+					}
+					lHTMLList+='</div>'
+					$(".rpa-hierarchy").html(lHTMLList)
+					$(".rpa-object-tree .item").css("background-color","");
+					$("#"+inElementId).css("background-color","RGB(210,210,210)");
+					///Создать урезанную версию селектора
+					lTextAreaSpecificationArray=mGlobal.iSysClone(lSpecificationArray,true);
+					for (var i = 0; i< lTextAreaSpecificationArray.length; i++) {
+						//lTextAreaSpecificationArray[i]=mGlobal.iSysClone(lTextAreaSpecificationArray[i],true)
+						//Object.assign(lTextAreaSpecificationArray[i],lTextAreaSpecificationArray[i]);
+						///Очистить ненужные ключи для выборки
+						delete lTextAreaSpecificationArray[i]['rich_text']
+						delete lTextAreaSpecificationArray[i]['process_id']
+						delete lTextAreaSpecificationArray[i]['rectangle']
+						delete lTextAreaSpecificationArray[i]['control_id']
+						delete lTextAreaSpecificationArray[i]['process']
+						delete lTextAreaSpecificationArray[i]['name']
+						delete lTextAreaSpecificationArray[i]['handle']
+						delete lTextAreaSpecificationArray[i]['control_type']
+						delete lTextAreaSpecificationArray[i]['runtime_id']
+						if (i!=0) {
+							delete lTextAreaSpecificationArray[i]['title']
+							delete lTextAreaSpecificationArray[i]['class_name']
+						}
+					}
+					$(".rpa-gui-selector")[0].value=(JSON.stringify(lTextAreaSpecificationArray))
+				}
+				mGlobal.ElementPropertyListLoad=function(inElementId) {
+					//Подгрузка массива спецификаций
+					lSpecificationArray = mGlobal.GUIElement[inElementId].GUISelectorFull
+					
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop", "ActivityName":"UIOSelectorUIOActivity_Run_Dict","ArgumentList":['+JSON.stringify(lSpecificationArray)+',"get_properties"]}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lHTMLList='<div class="ui relaxed divided list" style="height:'+mGlobal.Settings.mUIOTreeHeight+'px;overflow:scroll;">'
+							var lResponseJSON = JSON.parse(lData)
+							///Ошибка
+							if (lResponseJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lResponseJSON.ErrorMessage+" \nTraceback: "+lResponseJSON.ErrorTraceback);
+
+							} else {
+								var lJSONData = JSON.parse(lData).Result
+								var lSpecificationArray=Object.keys(lJSONData)
+								for (i=0;i<lSpecificationArray.length;i++) {
+									var lItemKey = lSpecificationArray[i]
+									var lItemValue = lJSONData[lItemKey]
+									lHTMLList+='\
+										<div class="item">\
+											<div class="content">\
+												<div class="description"><p style="word-wrap: break-word;"><b> '+lItemKey+':</b> '+JSON.stringify(lItemValue)+'</p></div>\
+											</div>\
+										</div>'
+								}
+								lHTMLList+='</div>'
+								$(".rpa-property-list").html(lHTMLList)
+							}	
+						},
+					  dataType: "text"
+					});
+				}
+				mGlobal.ElementHighlight =function (inHandleId) {
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop","ActivityName":"UIOSelectorUIOActivity_Run_Dict","ArgumentList":[[{"handle":'+inHandleId+'}],"draw_outline"]}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							console.log('Success handle:'+inHandleId)
+							var lResponseJSON = JSON.parse(lData)
+							///Ошибка
+							if (lResponseJSON["ErrorFlag"]==true) {
+								mGlobal.ShowModal("GUI Error",lResponseJSON.ErrorMessage+" \nTraceback: "+lDataJSON.ErrorTraceback);
+
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				mGlobal.ElementHighlightNew =function (inElementId) {
+					//Подгрузка массива спецификаций
+					lSpecificationArray = mGlobal.GUIElement[inElementId].GUISelectorFull
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop","ActivityName":"UIOSelector_FocusHighlight","ArgumentList":['+JSON.stringify(lSpecificationArray)+']}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							lDataJSON=JSON.parse(lData);
+							///Показать ошибку, если таковая возникла
+							if (lDataJSON["ErrorFlag"]==true) {
+								mGlobal.ShowModal("GUI Error",lDataJSON.ErrorMessage+" \nTraceback: "+lDataJSON.ErrorTraceback);
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				mGlobal.ElementHighlightNewGUISelectorString =function (inGUISelector) {
+					//Подгрузка массива спецификаций
+					lSpecificationArray = inGUISelector
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop","ActivityName":"UIOSelector_FocusHighlight","ArgumentList":['+lSpecificationArray+']}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							lDataJSON=JSON.parse(lData);
+							if (lDataJSON["ErrorFlag"]==true) {
+								mGlobal.ShowModal("GUI Error",lDataJSON.ErrorMessage+" \nTraceback: "+lDataJSON.ErrorTraceback);
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				mGlobal.ElementValidateGUISelectorString =function (inGUISelector) {
+					//Подгрузка массива спецификаций
+					lSpecificationArray = inGUISelector
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop","ActivityName":"UIOSelector_Get_UIOInfoList","ArgumentList":['+lSpecificationArray+']}',
+					  success: 
+						function(lData,l2,l3)
+						{	
+							lDataJSON=JSON.parse(lData);
+							if (Array.isArray(lDataJSON.Result)) {
+								lHTMLData=""
+								for (i=0;i<lDataJSON.Result.length;i++) {
+									lHTMLData+='<p>'+
+										JSON.stringify(lDataJSON.Result[i])+
+										'</p>'
+								}
+								$(".openrpa-validate-result").html(lHTMLData)
+							}
+							if (lDataJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lDataJSON.ErrorMessage+" \nTraceback: "+lDataJSON.ErrorTraceback);
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				///Выполнить действие
+				mGlobal.GUIActionLoadList = function () {
+					var lActionElementSpecification = $('.rpa-gui-selector')[0].value
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop","ActivityName":"UIOSelector_Get_UIOActivityList","ArgumentList":['+lActionElementSpecification+']}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							//lDataJSON=JSON.parse(lData.outputObject);
+							lDataJSON=JSON.parse(lData)
+							var lDataKeyList=lDataJSON.Result
+							var lValueList=[]
+							for (var i = 0; i< lDataKeyList.length;i++) {
+								if (lDataKeyList[i].length>0)
+									if (lDataKeyList[i][0]!="_")
+										lValueList.push({'name':lDataKeyList[i],'value':lDataKeyList[i]})
+							}
+							///Установка значений в dropdown
+							$('.ui.dropdown.gui-action')
+							  .dropdown({
+								values: lValueList
+							  })
+							;
+							///Показать ошибку, если таковая возникла
+							if (lDataJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lDataJSON.ErrorMessage+" \nTraceback: "+lDataJSON.ErrorTraceback);
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				///Добавить действие в список на исполнение
+				mGlobal.GUIActionAddToList= function() {
+					var lActionName =$('.dropdown.gui-action .selected')[0].attributes['data-value'].value
+					var lActionElementSpecification = $('.rpa-gui-selector')[0].value
+					var lActionArgumentList = $('.rpa-argument-list')[0].value
+					if (lActionArgumentList=="") lActionArgumentList="[]"
+					///Сформировать строку спецификации действия
+					lActionSpecificationObject = {"ModuleName":"UIDesktop","ActivityName":"UIOSelectorUIOActivity_Run_Dict","ArgumentList":[JSON.parse(lActionElementSpecification),lActionName,JSON.parse(lActionArgumentList)]}
+					lActionSpecificationString = '{"ModuleName":"UIDesktop","ActivityName":"UIOSelectorUIOActivity_Run_Dict","ArgumentList":['+lActionElementSpecification+',"'+lActionName+'",'+lActionArgumentList+']}'
+					///Добавить в массив действий
+					mGlobal.ActionSpecificationList.push(lActionSpecificationObject)
+					///Обновить визуализацию
+					mGlobal.CodeList.fRender()
+				
+				}
+				///Добавить действие ожидания в список на исполнение
+				mGlobal.GUIActionWaitAddToList = function() {
+					var lActionElementSpecification = $('.rpa-gui-selector')[0].value
+					var lActionArgumentList = $('.rpa-argument-list')[0].value
+					if (lActionArgumentList=="") lActionArgumentList="[]"
+					///Сформировать строку спецификации действия
+					lActionSpecificationObject = {"ModuleName":"UIDesktop","ActivityName":"PywinautoExtElementWaitAppear","ArgumentList":[JSON.parse(lActionElementSpecification)]}
+					lActionSpecificationString = '{"ModuleName":"UIDesktop","ActivityName":"PywinautoExtElementWaitAppear","ArgumentList":['+lActionElementSpecification+']}'
+					///Добавить в массив действий
+					mGlobal.ActionSpecificationList.push(lActionSpecificationObject)
+					///Обновить визуализацию
+					mGlobal.CodeList.fRender()
+				}
+				///Добавить действие сон 2 секунды в список на исполнение
+				mGlobal.GUIActionSleep2sAddToList = function() {
+					///Сформировать строку спецификации действия
+					alert("No function GeneralSleep2s in robot")
+					lActionSpecificationObject = {"functionName":"GeneralSleep2s","argsArray":[]}
+					lActionSpecificationString = '{"functionName":"GeneralSleep2s","argsArray":[]}'
+					///Добавить в массив действий
+					mGlobal.ActionSpecificationList.push(lActionSpecificationObject)
+					///Обновить визуализацию
+					mGlobal.CodeList.fRender()
+				
+				}
+				///Выполнить список действий
+				mGlobal.GUICodeListRun = function () {
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIActionList',
+					  data: JSON.stringify(mGlobal.ActionSpecificationList),
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lDataJSON=JSON.parse(lData)
+							$(".gui-code-list-run-result").html(lDataJSON.outputObject)
+							///Показать ошибку, если таковая возникла
+							if (lDataJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lDataJSON.ErrorMessage+" \nTraceback: "+lDataJSON.ErrorTraceback);
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				///////////////////
+				///CodeList
+				///////////////////
+				///Визуализация текущего списка
+				mGlobal.CodeList.fRender=function() {
+					///Сформировать текстовые данные для вывода
+					var lHTMLData = ""
+					for (var i = 0; i< mGlobal.ActionSpecificationList.length;i++) {
+						lHTMLData+='<p>'+
+							JSON.stringify(mGlobal.ActionSpecificationList[i])+
+							'</p>'
+					}
+					$(".gui-code-result").html(lHTMLData)
+				}		
+				///Выполнить импорт спецификации из JSON
+				mGlobal.CodeList.fActionSpecificationImportFromJSON=function() {
+					mGlobal.ActionSpecificationList=JSON.parse($(".ui.modal.openrpa-code-list-gui-import-modal textarea")[0].value)
+					///Обновить список на странице
+					mGlobal.CodeList.fRender()
+				}
+				///Выполнить действие
+				mGlobal.GUIActionRun = function () {
+					var lActionName =$('.dropdown.gui-action .selected')[0].attributes['data-value'].value
+					var lActionElementSpecification = $('.rpa-gui-selector')[0].value
+					var lActionArgumentList = $('.rpa-argument-list')[0].value
+					if (lActionArgumentList=="") lActionArgumentList="[]"
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIActionList',
+					  data: '[{"ModuleName":"UIDesktop","ActivityName":"UIOSelector_FocusHighlight","ArgumentList":['+lActionElementSpecification+']},{"ModuleName":"UIDesktop","ActivityName":"UIOSelectorUIOActivity_Run_Dict","ArgumentList":['+lActionElementSpecification+',"'+lActionName+'",'+lActionArgumentList+']}]',
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lDataJSON=JSON.parse(lData)
+							$(".gui-result").html(JSON.stringify(lDataJSON.Result))
+							///Показать ошибку, если таковая возникла
+							for (i = 0; i< lDataJSON.length; i++) {
+								if (lDataJSON[i]["ErrorFlag"]) {
+									mGlobal.ShowModal("GUI Error",lDataJSON[i].ErrorMessage+" \nTraceback: "+lDataJSON[i].ErrorTraceback);
+								}
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				///////////////////////////////////////////////
+				////OtherActivity
+				///////////////////////////////////////////////
+				///Выполнить действие
+				mGlobal.OtherActivityRun = function () {
+					var lModuleName=$('.openrpa-other-activity-module-name-input')[0].value
+					var lActivityName=$('.openrpa-other-activity-activity-name-input')[0].value
+					var lArgumentList=$('.openrpa-other-activity-argument-list-input')[0].value
+					var lArgumentDict=$('.openrpa-other-activity-argument-dict-input')[0].value
+					///Доп. обработка
+					if (lArgumentList=="") lArgumentList="[]"
+					if (lArgumentDict=="") lArgumentDict="{}"
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"'+lModuleName+'","ActivityName":"'+lActivityName+'","ArgumentList":'+lArgumentList+',"ArgumentDict":'+lArgumentDict+'}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lDataJSON=JSON.parse(lData)
+							$(".gui-code-list-run-result").html(lData)
+							///Показать ошибку, если таковая возникл а
+							if (lDataJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lDataJSON.ErrorMessage+" \nTraceback: "+lDataJSON.ErrorTraceback);
+							}
+						},
+					  dataType: "text"
+					});
+				}
+				///Добавить действие в список на исполнение
+				mGlobal.OtherActivityCodeListAppend = function() {
+					var lModuleName=$('.openrpa-other-activity-module-name-input')[0].value
+					var lActivityName=$('.openrpa-other-activity-activity-name-input')[0].value
+					var lArgumentList=$('.openrpa-other-activity-argument-list-input')[0].value
+					var lArgumentDict=$('.openrpa-other-activity-argument-dict-input')[0].value
+					///Доп. обработка
+					if (lArgumentList=="") lArgumentList="[]"
+					if (lArgumentDict=="") lArgumentDict="{}"
+					///Сформировать строку спецификации действия
+					lActionSpecificationObject = {"ModuleName":lModuleName,"ActivityName":lActivityName,"ArgumentList":JSON.parse(lArgumentList),"ArgumentDict":JSON.parse(lArgumentDict)}
+					lActionSpecificationString = '{"ModuleName":"'+lModuleName+'","ActivityName":"'+lActivityName+'","ArgumentList":'+lArgumentList+',"ArgumentDict":'+lArgumentDict+'}'
+					///Добавить в массив действий
+					mGlobal.ActionSpecificationList.push(lActionSpecificationObject)
+					///Обновить визуализацию
+					mGlobal.CodeList.fRender()
+
+				}
+
+			  // fix main menu to page on passing
+			  $('.main.menu').visibility({
+				type: 'fixed'
+			  });
+			  $('.overlay').visibility({
+				type: 'fixed',
+				offset: 80
+			  });
+
+			  // lazy load images
+			  $('.image').visibility({
+				type: 'image',
+				transition: 'vertical flip in',
+				duration: 500
+			  });
+
+			  // show dropdown on hover
+			  $('.main.menu  .ui.dropdown').dropdown({
+				on: 'hover'
+			  });
+
+				mGlobal.GUIRefreshTree=function()
+				{
+					///Загрузка данных
+					$.ajax({
+					  type: "POST",
+					  url: 'GUIAction',
+					  data: '{"ModuleName":"UIDesktop","ActivityName":"UIOSelector_GetChildList_UIOList","ArgumentList":[[]],"ArgumentDict":{"inBackend":"'+$(".openrpa-value-backend")[0].value+'"}}',
+					  success: 
+						function(lData,l2,l3)
+						{
+							var lResponseJSON=JSON.parse(lData)
+							///Очистить дерево
+							mGlobal.ElementTree.fClear();
+							///Прогрузить новое дерево
+							mGlobal.ElementTree.fRender(lResponseJSON.Result,$(".openrpa-value-backend")[0].value,"-");
+							///Показать ошибку, если таковая возникла
+							if (lResponseJSON["ErrorFlag"]) {
+								mGlobal.ShowModal("GUI Error",lResponseJSON.ErrorMessage+" \nTraceback: "+lResponseJSON.ErrorTraceback);
+							}
+						},
+					  dataType: "text"
+					});
+				
+				}
+				mGlobal.GUIRefreshTree();
+				mGlobal.ShowModal=function(inHeaderText,inMessageText)
+				{
+					//Установка заголовка
+					$('.ui.basic.modal div.header').html(inHeaderText);
+					//Установка текста
+					$('.ui.basic.modal div.content p').html(inMessageText);
+					//Активация модального окна
+					$('.ui.basic.modal').modal('show');
+				}
+			
+			})
+		  ;
+		  </script>
+
+		  <style type="text/css">
+
+		  body {
+			background-color: #FFFFFF;
+		  }
+		  .main.container {
+			margin-top: 2em;
+		  }
+
+		  
+
+		  .overlay {
+			float: left;
+			margin: 0em 3em 1em 0em;
+		  }
+		  .overlay .menu {
+			position: relative;
+			left: 0;
+			transition: left 0.5s ease;
+		  }
+
+		  .main.menu.fixed {
+			background-color: #FFFFFF;
+			border: 1px solid #DDD;
+			box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+		  }
+		  .overlay.fixed .menu {
+			left: 800px;
+		  }
+
+		  .text.container .left.floated.image {
+			margin: 2em 2em 2em -4em;
+		  }
+		  .text.container .right.floated.image {
+			margin: 2em -4em 2em 2em;
+		  }
+
+		  .ui.footer.segment {
+			margin: 5em 0em 0em;
+			padding: 5em 0em;
+		  }
+		  </style>
+	</head>
+	<body>
+		<div class="ui internally celled grid">
+			<div class="row black">
+				<div class="sixteen wide column" style="display: flex;">
+					<img src="pyOpenRPA_logo.png" width="70px;" height="70px"></img>
+					&nbsp;&nbsp;&nbsp;
+					<h1 class="ui header inverted" style="cursor: pointer" onclick="window.open('https://gitlab.com/UnicodeLabs/OpenRPA','_blank');">pyOpenRPA</h1>
+					<h5 style="cursor: pointer" onclick="window.open('https://www.facebook.com/RU.IT4Business','_blank');">by Ivan Maslov</h5>
+					&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;
+					&nbsp;&nbsp;&nbsp;
+					<h1 class="ui header inverted">Studio Web GUI</h1>
+
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="six wide column" >
+										<div class="ui input">
+						<input class="openrpa-value-backend" type="text" placeholder="Backend win32 | uia" value="win32">
+					</div>
+					<button class="ui labeled icon button red" onclick="mGlobal.Actions.fRestartStudioServer();">
+						<i class="icon redo alternate"></i>
+						Restart Studio
+					</button>
+					<b style="font-size:10px;color: #b1b1b1;" >Backend: win32 or uia</b>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="six wide column rpa-object-tree" >
+					
+				</div>
+				<div class="six wide column rpa-hierarchy" >
+					<p>Select element in the tree to see hierarchy list</p>
+				</div>
+				<div class="four wide column rpa-property-list" >
+
+				</div>
+			</div>
+			<div class="row black">
+				<div class="three wide column">
+					<button class="ui button grey labeled icon mini" onclick="mGlobal.GUIRefreshTree()">
+						<i class="up refresh icon"></i>
+						Refresh tree
+					</button>
+				</div>
+				<div class="three wide column">
+				</div>
+				<div class="ten wide column">
+				</div>
+				
+			</div>
+			<div class="row">
+				<div class="eight wide column">
+					<div class="ui tiny header" style="margin-bottom:0px;">Edit GUI selector</div>
+					<b style="font-size:10px;color: #797979;" >[{depth_start: &lt1+&gt, depth_end: &lt1+&gt, index|ctrl_index: &lt0+&gt, title: &ltstr&gt, title_re: &ltstr re pattern&gt, rich_text: &ltstr&gt, rich_text_re: &ltstr re pattern&gt, class_name: &ltstr&gt, class_name_re: &ltstr re pattern&gt, friendly_class_name: &ltstr&gt, friendly_class_name_re: &ltstr re pattern&gt, control_type: &ltstr&gt, control_type_re: &ltstr re pattern&gt, is_enabled: &ltbool&gt, is_visible: &ltbool&gt}]</b>
+					<textarea style="width:100%; font-size:12pt" class="rpa-gui-selector" rows="6" cols="60"></textarea>
+					<button class="large ui blue button rpa-action-highlight" onclick="mGlobal.ElementHighlightNewGUISelectorString($('.rpa-gui-selector')[0].value);">Highlight element</button>
+					<button class="large ui grey button rpa-action-validate" onclick="mGlobal.ElementValidateGUISelectorString($('.rpa-gui-selector')[0].value);">Validate element</button>
+					<div class="ui tiny header">Validate Result</div>
+					<div class="content openrpa-validate-result divided list" style="overflow:scroll; height: 100px;"></div>
+				</div>
+				<div class="eight wide column">
+					<div class="ui tiny header">Select action</div>
+					<button class="ui button blue labeled icon" onclick="mGlobal.GUIActionLoadList();">
+						<i class="right arrow icon"></i>
+						Load actions
+					</button>
+					<div class="ui search selection dropdown gui-action" style="width:410px;">
+						<input type="hidden" name="country">
+						<i class="dropdown icon"></i>
+						<div class="default text">Select action</div>
+						<div class="menu">
+						</div>
+					</div>
+					<div class="ui tiny header">Set arguments</div>
+					<div class="ui input" style="width:500px;">
+						<input type="text" placeholder="[GUAActionArg1, GUAActionArg2...]" class="rpa-argument-list">
+					</div>
+					<p></p>
+					<button class="large ui green button" onclick="mGlobal.GUIActionRun();">Set focus + Run action</button>
+					<button class="large ui grey button" onclick="mGlobal.GUIActionAddToList();">+ Code list</button>
+					<div class="ui tiny header">Result</div>
+					<div class="content gui-result"></div>
+				</div>
+			</div>
+			<div class="row black">
+				<div class="sixteen wide column">
+				</div>
+			</div>
+			<div class="row">
+				<div class="eight wide column">
+					<div class="ui tiny header">Other activity</div>
+					<a class="ui tag label teal mini" onclick="$('.openrpa-other-activity-module-name-input')[0].value='time'; $('.openrpa-other-activity-activity-name-input')[0].value='sleep'; $('.openrpa-other-activity-argument-list-input')[0].value='[3]'; $('.openrpa-other-activity-argument-dict-input')[0].value=''; $('.gui-code-result').html('');">Sleep 3s</a>
+					<a class="ui tag label teal mini" onclick="$('.openrpa-other-activity-module-name-input')[0].value='Window'; $('.openrpa-other-activity-activity-name-input')[0].value='DialogYesNo'; $('.openrpa-other-activity-argument-list-input')[0].value='[&quot;Type title here&quot;,&quot;Type body message here&quot;]'; $('.openrpa-other-activity-argument-dict-input')[0].value=''; $('.gui-code-result').html('');">Show dialog YesNo</a>
+					<div class="ui tiny header">Module name</div>
+					<div class="ui input" style="width:300px;">
+						<input type="text" placeholder="time|keyboard|..." class="openrpa-other-activity-module-name-input">
+					</div>
+					<div class="ui tiny header">Activity name</div>
+					<div class="ui input" style="width:300px;">
+						<input type="text" placeholder="sleep|..." class="openrpa-other-activity-activity-name-input">
+					</div>
+					<div class="ui tiny header">Argument list</div>
+					<div class="ui input" style="width:300px;">
+						<input type="text" placeholder="[3]|[...]" class="openrpa-other-activity-argument-list-input">
+					</div>
+					<div class="ui tiny header">Argument dict</div>
+					<div class="ui input" style="width:300px;">
+						<input type="text" placeholder="{&quot;title&quot;:&quot;OpenRPA&quot;}|{...}" class="openrpa-other-activity-argument-dict-input">
+					</div>
+					<button class="large ui green button" onclick="mGlobal.OtherActivityRun();">Run activity</button>
+					<button class="large ui grey button" onclick="mGlobal.OtherActivityCodeListAppend();">+ Code list</button>
+					<div class="content gui-code-list-run-result"></div>
+				</div>
+				<div class="eight wide column">
+					<div class="ui tiny header">Code list</div>
+					<div class="content gui-code-result"></div>
+					<button class="large ui green button" onclick="mGlobal.GUICodeListRun();">Run code list</button>
+					<button class="large ui pink button" onclick="$('.ui.modal.openrpa-code-list-gui-import-modal textarea')[0].value=''; $('.ui.modal.openrpa-code-list-gui-import-modal').modal('show');">Import from JSON</button>
+					<button class="large ui blue button openrpa-save-to-clipboard" onclick="mGlobal.ClipboardSet(JSON.stringify(mGlobal.ActionSpecificationList)); alert('Saved to clipboard!')">Export JSON to clipboard</button>
+				</div>
+
+
+			</div>
+		</div>
+		<div class="ui inverted vertical footer segment">
+			<div class="ui center aligned container">
+			  <div class="ui stackable inverted divided grid">
+				<div class="three wide column">
+				  <h4 class="ui inverted header">Pywinauto</h4>
+				  <div class="ui inverted link list">
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/pywinauto.findwindows.html" class="item" target="_blank">Specification manual</a>
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/code.html#main-user-modules" class="item" target="_blank">Classes manual</a>
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/code.html#main-user-modules" class="item" target="_blank">How to use manual</a>
+					<a href="https://pywinauto.readthedocs.io/en/latest/code/pywinauto.base_wrapper.html" class="item" target="_blank">Base wrapper manual</a>
+				  </div>
+				</div>
+				<div class="three wide column">
+				  <h4 class="ui inverted header">Semantic UI</h4>
+				  <div class="ui inverted link list">
+					<a href="https://semantic-ui.com/usage/theming.html" class="item" target="_blank">Color manual</a>
+					<a href="https://semantic-ui.com/elements/input.html" class="item" target="_blank">Input manual</a>
+					<a href="https://semantic-ui.com/elements/icon.html" class="item" target="_blank">Icon list</a>
+					<a href="https://semantic-ui.com/elements/button.html" class="item" target="_blank">Button manual</a>
+				  </div>
+				</div>
+				<div class="three wide column">
+				  <h4 class="ui inverted header">GitLab</h4>
+				  <div class="ui inverted link list">
+					<a href="https://gitlab.com/UnicodeLabs/OpenRPA" class="item" target="_blank">OpenRPA repository</a>
+					<a href="https://gitlab.com/UnicodeLabs" class="item" target="_blank">UnicodeLabs</a>
+					<a href="http://UnicodeLabs.ru" class="item" target="_blank">Unicode Labs Home</a>
+					<a href="#" class="item">Link -</a>
+				  </div>
+				</div>
+				<div class="seven wide column">
+				  <h4 class="ui inverted header">pyOpenRPA</h4>
+				  <p>Open source Robotic Process Automation software by the pyOpenRPA LLC (Created by Ivan Maslov in Russia). Licensed under LICENSE.PDF or https://pyopenrpa.ru/license/oferta.pdf #IT4Business</p>
+				</div>
+			  </div>
+			  <div class="ui inverted section divider"></div>
+			  <div class="ui horizontal inverted small divided link list">
+				<a class="item" href="#">Site Map</a>
+				<a class="item" href="#">Contact Us</a>
+				<a class="item" href="#">Terms and Conditions</a>
+				<a class="item" href="#">Privacy Policy</a>
+			  </div>
+			</div>
+		</div>
+		<div class="ui basic modal">
+			<div class="ui icon header">
+			</div>
+			<div class="content">
+				<p>Here is the message text!</p>
+			</div>
+			<div class="actions">
+				<div class="ui red basic cancel inverted button">
+					<i class="remove icon"></i>
+					No
+				</div>
+				<div class="ui green ok inverted button">
+					<i class="checkmark icon"></i>
+					Yes
+				</div>
+			</div>
+		</div>
+		
+		
+		<div class="ui modal openrpa-code-list-gui-import-modal">
+			<i class="close icon"></i>
+			<div class="header">
+			Code list import
+			</div>
+			<div class="content">
+				<div class="description">
+					<div class="ui header">Insert your JSON specification here.</div>
+					<p><textarea style="width:100%" rows="6" cols="60"></textarea></p>
+				</div>
+			</div>
+			<div class="actions">
+				<div class="ui black deny button">
+					Cancel
+				</div>
+				<div class="ui positive right labeled icon button" onclick="mGlobal.CodeList.fActionSpecificationImportFromJSON();">
+					Parse
+					<i class="checkmark icon"></i>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
+
