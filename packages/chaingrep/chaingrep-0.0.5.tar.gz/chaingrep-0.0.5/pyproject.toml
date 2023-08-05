@@ -1,0 +1,83 @@
+# LINTING
+
+[tool.black]
+line-length = 120
+
+[tool.pylint.message_control]
+disable = [
+    # Ignore docstrings for now
+    "missing-module-docstring",
+    "missing-function-docstring",
+    "missing-class-docstring",
+
+    # Some classes can be database models, which have no methods
+    "too-few-public-methods",
+
+    # Don't care about code duplication and other refactoring candidates *for now*
+    "similarities",
+    "too-many-locals",
+
+    # Allow broad exceptions ("except Exception:")
+    "broad-except",
+
+    # Shouldn't always be considered
+    "consider-using-dict-items",
+
+    # Pytest uses classes for grouping without using "self"
+    "no-self-use",
+
+    # Allow TODO comments for now
+    "fixme",
+
+    # There's a reasonn not to use with in certain cases
+    "consider-using-with"
+]
+
+[tool.pylint.basic]
+# Some short names are acceptable
+good-names=["i", "j", "k", "e", "_"]
+
+[tool.pylint.reports]
+output-format = "colorized"
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.master]
+# Make sure that pylint understands imports
+init-hook = "import sys; sys.path.insert(0, '.')"
+
+# Fail on any issues
+fail-under=10
+# fail-on="E"
+
+[tool.isort]
+profile = "black"
+line_length = 120
+multi_line_output = 3
+
+# TESTING & COVERAGE
+
+[tool.pytest.ini_options]
+addopts = [
+    # Ignore deprecation warnings since they're from down the dependency tree
+    "-W ignore::DeprecationWarning",
+
+    # Collect coverage, output it to the terminal and export to xml
+    "--cov=./",
+    "--cov-report=term",
+    "--cov-report=xml"
+]
+
+[tool.coverage.run]
+omit = [
+    # Exclude tests from code coverage
+    "tests/**"
+]
+
+[tool.coverage.report]
+# Skip empty files (e.g. __init__.py) in code coverage reports
+skip_empty = true
+
+# In the future we'll want to set up a minimum coverage
+# fail_under = 80
