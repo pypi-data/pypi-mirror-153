@@ -1,0 +1,114 @@
+# What is this?
+This is `pyandex-disk`, a Python HTTP API wrapper for Yandex Disk.
+
+## Starting up
+
+1. Get your access token [here](https://yandex.ru/dev/disk/poligon/)
+
+2. Install the module
+
+    `pip install pyandex-disk`
+
+3. Enjoy `pyandex-disk`, it has all the docs!
+
+## Example usage:
+```
+
+    from pyandex_disk.client import DiskClient
+
+    disk = DiskClient("my_token")
+
+    # get info about my disk
+    info = disk.get_disk_info()
+
+    # get meta info about file/directory in my app directory/trash
+    meta_info = disk.get_meta_info(
+        path="path/to/my/file.jpg",
+        preview_size="100x100",
+    )
+
+    # get audio files list in my disk
+    files_info = disk.get_files_list(
+        limit=50,
+        media_type="audio",
+    )
+
+    # get last uploaded files list
+    last_uploaded = disk.get_last_uploaded(
+        limit=10,
+        media_type="video",
+    )
+
+    # set meta data to file in your app directory
+    setted_result = disk.set_meta_to_resource(
+        "my/file/to/extra/meta/data.txt,
+        data={"Custom Header": "custom value"},
+    )
+
+    # upload file to yandex disk
+    with open("/path/to/my/file.txt", "rb") as f:
+        disk.upload_file(
+            f,
+            path="app:/directory/file.txt",
+            overwrite=True
+        )
+
+    # upload file to disk by url
+    disk.upload_file_from_url(
+        "http://example.com/sitemap.xml",
+        path="app:/sitemap_example.xml",
+    )
+
+    # download file content from yandex.disk
+    content = disk.download_file(
+        "app:/sitemap_example.xml",
+        stream=False,
+    )
+
+    # copy resource in disk
+    disk.copy_resource(
+        from_path="app:/sitemap_example.xml",
+        to_path="app:/sitemap_example_copy.xml",
+    )
+
+    # move resource in your disk
+    disk.move_resource(
+        from_path="app:/sitemap_example_copy.xml",
+        to_path="app:/sitemap_example_movied_copy.xml",
+    )
+
+    # delete resource
+    disk.delete_resource(
+        "app:/sitemap_example_movied_copy.xml",
+        permanently=False, # to trash
+    )
+
+    # create folder in your disk
+    disk.create_folder(
+        "app:/new_folder",
+    )
+
+    # publish
+    disk.publish_resource("app:/new_folder")
+
+    # unpublish
+    disk.unpublish_resource("app:/new_folder")
+
+    # fully empty trash
+    disk.empty_trash()
+    # or remove file from trash
+    disk.empty_trash("app:/sitemap_example_movied_copy.xml")
+
+    # restore resource from trash
+    disk.restore_from_trash("app:/sitemap_example_movied_copy.xml")
+
+    # upload dir to disk
+    disk.upload_directory("/path/to/source", "app:/path/to/disk", overwrite=True)
+```
+
+## Can I contribute to this project?
+Of course, we welcome all contributions to this library. Just ensure you write an awesome code!
+
+
+# License
+Read the [LICENSE](LICENSE.md) file.
