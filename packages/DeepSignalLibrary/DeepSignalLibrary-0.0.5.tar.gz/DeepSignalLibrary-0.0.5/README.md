@@ -1,0 +1,21 @@
+# Advsignals
+An Adversarial Signal Library for Deep Neural Networks.
+
+## netmodels
+
+深度神经网络模型模块主要集成了主流的各类深度神经网络模型，包括CNN、VGG
+（11、13、16、19）和深度残差网络（ResNet-18、34、50）。
+
+## frequency
+
+频域处理器主要提供频域变换功能，包括离散傅里叶变换、离散余弦变换、haar 小
+波变换等信号处理技术，并且可以结合样本生成器和网络模型模块实现控频攻击和控频
+训练，方便快捷的从频率域研究深度神经网络对抗信号。
+
+## datasets
+
+最后，目前的对抗样本库主要基于MNIST 数据集、CIFAR-10 数据集、CIFAR-100
+数据集（支持的功能完善）、TinyImageNet 和ImageNet（部分支持）等图像分类领域常
+用的数据集生成对抗信号。
+
+
