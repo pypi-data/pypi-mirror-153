@@ -1,0 +1,226 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "KIWI::SYSTEM::BOXBUILD" "8" "May 30, 2022" "0.2.23" "KIWI - Boxed Build Plugin"
+.SH NAME
+kiwi::system::boxbuild \- Self Contained Image Build
+.SH SYNOPSIS
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+kiwi\-ng [global options] service <command> [<args>]
+
+kiwi\-ng system boxbuild \-h | \-\-help
+kiwi\-ng system boxbuild \-\-box=<name>
+    [\-\-box\-memory=<vmgb>]
+    [\-\-box\-smp\-cpus=<number>]
+    [\-\-box\-debug]
+    [\-\-kiwi\-version=<version>]
+    [\-\-shared\-path=<path>]
+    [\-\-no\-update\-check]
+    [\-\-no\-snapshot]
+    [\-\-no\-accel]
+    [\-\-9p\-sharing | \-\-virtiofs\-sharing | \-\-sshfs\-sharing]
+    [\-\-ssh\-key=<name>]
+    [\-\-x86_64 | \-\-aarch64]
+    [\-\-machine=<qemu_machine>]
+    [\-\-cpu=<qemu_cpu>]
+    \-\- <kiwi_build_command_args>...
+kiwi\-ng system boxbuild \-\-list\-boxes
+kiwi\-ng system boxbuild help
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH DESCRIPTION
+.sp
+build an image in a self contained environment. The \fBboxbuild\fP
+command uses KVM to start a virtual machine and run the kiwi
+build command inside of that virtual machine. The provided
+\fB\-\-description\fP and \fB\-\-target\-dir\fP options are setup as shared
+folders between the host and the guest. No other data will be
+shared with the host which also allows for cross distribution
+builds. The boxbuild command provides the following additional
+features over the standard build command:
+.INDENT 0.0
+.IP \(bu 2
+Build images independent of the host.
+.IP \(bu 2
+Build images as normal user not as root.
+.IP \(bu 2
+Build cross distribution images on one host.
+.IP \(bu 2
+Build in predefined build VMs called boxes which includes
+all components needed to build appliances.
+.UNINDENT
+.sp
+For running the build process in a virtual machine it\(aqs required
+to provide VM images that are suitable to perform this job. We
+call the VM images \fBboxes\fP and they contain kiwi itself as well
+as all other components needed to build appliances. Those boxes
+are hosted in the Open Build Service and are publicly available
+on the \fBSubprojects\fP tab at:
+\fI\%https://build.opensuse.org/project/show/Virtualization:Appliances:SelfContained\fP
+.sp
+As a user you don\(aqt need to work with the boxes because this
+is all done by the plugin. The \fBboxbuild\fP command knows where to
+fetch the box and also cares for an update of the box when it
+has changed.
+.SH OPTIONS
+.INDENT 0.0
+.TP
+.BI \-\-box\fB= <name>
+Name of the virtual machine that should be used for
+the build process.
+.TP
+.B  \-\-list\-boxes
+show available build boxes.
+.TP
+.BI \-\-box\-memory\fB= <vmgb>
+Number of GBs to reserve as main memory for the virtual
+machine. By default 8GB will be used.
+.TP
+.BI \-\-box\-smp\-cpus\fB= <number>
+Number of CPUs to use in the SMP setup. By default
+4 CPUs will be used
+.TP
+.B  \-\-no\-update\-check
+Skip check for available box update. The option has no
+effect if the selected box does not yet exist on the host.
+.TP
+.B  \-\-no\-snapshot
+Run box with snapshot mode switched off. This causes the
+box disk file to be modified by the build process and allows
+to keep a persistent package cache as part of the box.
+The option can be used to increase the build performance
+due to data stored in the box which doesn\(aqt have to be
+reloaded from the network. On the contrary this option
+invalidates the immutable box attribute and should be
+used with care. On update of the box all data stored
+will be wiped. To prevent this combine the option with
+the \-\-no\-update\-check option.
+.TP
+.B  \-\-no\-accel
+Run box without hardware acceleration. By default KVM
+acceleration is activated
+.UNINDENT
+.sp
+\-\-9p\-sharing|\-\-virtiofs\-sharing|\-\-sshfs\-sharing
+.INDENT 0.0
+.INDENT 3.5
+Select sharing backend to use for sharing data between the
+host and the box. This can be either 9p, virtiofs or sshfs.
+By default 9p is used
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.BI \-\-ssh\-key\fB= <name>
+Name of ssh key to authorize for connection.
+By default \(aqid_rsa\(aq is used.
+.UNINDENT
+.sp
+\-\-x86_64|\-\-aarch64
+.INDENT 0.0
+.INDENT 3.5
+Select box for the x86_64 architecture. If no architecture
+is selected the host architecture is used for selecting
+the box. The selected box architecture also specifies the
+target architecture for the image build with that box.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B  \-\-box\-debug
+In debug mode the started virtual machine will be kept open
+.TP
+.BI \-\-kiwi\-version\fB= <version>
+Specify a KIWI version to use for the build. The referenced
+KIWI will be fetched from pip and replaces the box installed
+KIWI version. Note: If \-\-no\-snapshot is used in combination
+with this option, the change of the KIWI version will be
+permanently stored in the used box.
+.TP
+.BI \-\-shared\-path\fB= <path>
+Optional host path to share with the box. The same path
+as it is present on the host will also be available inside
+of the box during build time.
+.TP
+.BI \-\-machine\fB= <qemu_machine>
+Optional machine name used by QEMU. By default no specific
+value is used here and qemu selects its default machine type.
+For cross arch builds or for system architectures for which
+QEMU defines no default like for Arm, it\(aqs required to specify
+a machine name.
+.sp
+If you don’t care about reproducing the idiosyncrasies of
+a particular bit of hardware, the best option is to use
+the \(aqvirt\(aq machine type.
+.TP
+.BI \-\-cpu\fB= <qemu_cpu>
+Optional CPU type used by QEMU. By default the host CPU
+type is used which is only a good selection if the host
+and the selected box are from the same architecture. On
+cross arch builds it\(aqs required to specify the CPU
+emulation the box should use
+.UNINDENT
+.sp
+\-\- <kiwi_build_command_args>...
+.INDENT 0.0
+.INDENT 3.5
+List of command parameters as supported by the kiwi\-ng
+build command. The information given here is passed
+along to the kiwi\-ng system build command running in
+the virtual machine. See the Example below how to provide
+options to the build command correctly.
+.UNINDENT
+.UNINDENT
+.SH EXAMPLE
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ git clone https://github.com/OSInside/kiwi\-descriptions
+
+$ kiwi \-\-type vmx system boxbuild \-\-box suse \-\- \e
+    \-\-description kiwi\-descriptions/suse/x86_64/suse\-tumbleweed\-JeOS \e
+    \-\-target\-dir /tmp/myimage
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH AUTHOR
+Marcus Schäfer
+.SH COPYRIGHT
+2020, Marcus Schäfer
+.\" Generated by docutils manpage writer.
+.
