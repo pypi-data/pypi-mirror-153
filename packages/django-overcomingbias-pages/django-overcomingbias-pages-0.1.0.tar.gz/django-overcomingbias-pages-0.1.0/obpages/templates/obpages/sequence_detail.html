@@ -1,0 +1,41 @@
+{% extends "obpages/base.html" %}
+{% load sections %}
+
+{% block header %}
+    <header>
+        {% block content_title %}
+            {% if title %}
+                <h1>
+                    {{ title }}
+                    {% if user_is_owner %}
+                        <i>
+                            <a href="{% url "sequence_edit" user_slug=owner.slug sequence_slug=sequence.slug %}">edit</a>
+                        </i>
+                    {% endif %}
+                </h1>
+            {% endif %}
+        {% endblock %}
+        {% block content_subtitle %}
+            {% comment %} <p><a href="{{ owner.get_absolute_url }}">{{ owner.username }}</a></p> {% endcomment %}
+            <p>By {{ owner.username }}</p>
+            {% with total=sequence.members.count %}
+                <p>{{ total }} item{{ total|pluralize }}</p>
+            {% endwith %}
+        {% endblock %}
+        {% block abstract %}
+            {{ sequence.abstract }}
+        {% endblock%}
+    </header>
+{% endblock%}
+
+{% block content %}
+    {% block export_form %}
+        <form action="{% url "sequence_export" user_slug=owner.slug sequence_slug=sequence.slug %}" method="get" novalidate>
+            {{ export_form }}
+            <input type="submit" value="Go">
+        </form>
+    {% endblock %}
+    {% block item_list %}
+        {% sequencemember_results sequence=sequence user=user editable=False %}
+    {% endblock %}
+{% endblock %}

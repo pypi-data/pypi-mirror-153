@@ -1,0 +1,48 @@
+{% extends "obpages/base.html" %}
+{% load more_like_this sections widgets links %}
+
+{% block content_title %}
+    <header>
+        <h1>{% content_link item %}</h1>
+        <p>
+            By
+            {% author_list item.authors.all %}
+            on
+            {% site_link item %}
+            <i>{{ item.publish_date|date:"F jS, Y" }}</i>
+        </p>
+        <ul>
+            {% for idea in item.ideas.all %}
+                <li><i>{% classifier_link idea %}</i></li>
+            {% endfor %}
+            {% for topic in item.topics.all %}
+                <li><i>{% classifier_link topic %}</i></li>
+            {% endfor %}
+            {% for tag in item.tags.all %}
+                <li><i>{% classifier_link tag %}</i></li>
+            {% endfor %}
+        </ul>
+    </header>
+{% endblock %}
+
+{% block content %}
+    <section>
+        <h3>Description</h3>
+        {{ item.description_html|safe }}
+    </section>
+    {% if user.is_authenticated %}
+        <section>
+            <form action="{{ sequencemember_add_url }}" method="post">
+                <h3>Add to Sequence</h3>
+                {% csrf_token %}
+                {{ sequencemember_add_form }}
+                <input type="submit" value="Add to Sequence">
+            </form>
+        </section>
+    {% endif %}
+    {% query_results query_results=item.internal_links.select_subclasses title="Mentions" max_results=max_results %}
+    {% query_results query_results=item.internal_pingbacks.select_subclasses title="Mentioned By" max_results=max_results %}
+    {% more_like_this item as related_content %}
+    {% search_results search_results=related_content title="More Like This" max_results=max_results %}
+{% endblock %}
+

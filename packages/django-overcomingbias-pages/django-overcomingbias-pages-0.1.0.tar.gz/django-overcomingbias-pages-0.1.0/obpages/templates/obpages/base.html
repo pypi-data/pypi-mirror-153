@@ -1,0 +1,93 @@
+{% load static links %}
+<!DOCTYPE html>
+<html lang="en" data-user-theme="light">
+    <!-- Headers -->
+    <head>
+        {% comment %} Character set {% endcomment %}
+        <meta charset="utf-8">
+        {% comment %} Mobile support {% endcomment %}
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        {% comment %} Title, author, description {% endcomment %}
+        <title>{% block title %}{{ title }} | OBWiki{% endblock %}</title>
+        <meta name="author" content="Chris McDonald">
+        <meta name="description" content="A collection of Robin Hanson's content.">
+        {% comment %} Open Graph metadata (Facebook) {% endcomment %}
+        <meta property="og:url" content="{{ request.build_absolute_uri }}">
+        <meta property="og:title" content="{{ title }} | OBWiki">
+        <meta property="og:description" content="A collection of Robin Hanson's content.">
+        <meta property="og:locale" content="en-US">
+        <meta property="og:image" content="{% static "obpages/social-link-image.svg" %}">
+        {% comment %} Twitter metadata {% endcomment %}
+        <meta property="twitter:card" content="summary">
+        {% comment %} Robot instructions {% endcomment %}
+        <meta name="robots" content="index, follow">
+        {% comment %} Preconnect to content provider {% endcomment %}
+        <link rel="preconnect" href="{% static "" %}">
+        <link rel="preconnect" href="{% static "" %}" crossorigin>
+        {% comment %} Inline font for speed {% endcomment %}
+        {% comment %} See https://web.dev/font-best-practices/ {% endcomment %}
+        <style>
+            @font-face {
+                font-family: Merriweather, Georgia, serif;
+                src: url("{% block font_url %}{% static "fonts/merriweather.woff2" %}{% endblock %}") format("woff2");
+                unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+                font-display: optional;
+                font-style: normal;
+                font-weight: 400;
+            }
+
+            body {
+                font-family: Merriweather;
+            }
+        </style>
+        {% comment %} Stylesheets {% endcomment %}
+        <link rel="stylesheet" type="text/css" href="{% block style_reset %}{% static "obpages/css/reset.css" %}{% endblock %}">
+        <link rel="stylesheet" type="text/css" href="{% block style_base %}{% static "obpages/css/base.css" %}{% endblock %}">
+        {% block style_extra %}{% endblock %}
+        {% comment %} Icons {% endcomment %}
+        <link rel="icon" href="{% static "obpages/favicons/favicon-32x32.png" %}" sizes="32x32" type="img/png">
+        <link rel="icon" href="{% static "obpages/favicons/favicon-16x16.png" %}" sizes="16x16" type="img/png">
+        <link rel="apple-touch-icon" href="{% static "obpages/favicons/favicon-180x180.png" %}" sizes="180x180">
+        <link rel="icon" href="{% static "obpages/favicons/favicon.svg" %}" type="image/svg+xml">
+        {% comment %} Extra headers {% endcomment %}
+        {% block head_extra %}{% endblock %}
+    </head>
+    <!-- Body -->
+    <body>
+        <header id="site-header">
+            <nav class="main-navigation">
+                <ul>
+                    <li><a href="{% url "explore_base" %}">OBWiki</a></li>
+                    {% block search_bar %}
+                        <li class="nav-search">
+                            <form role="search" method="get" action="{% url "search" %}">
+                                <input type="search" name="query" placeholder="Search content...">
+                                <button type="submit">Go</button>
+                            </form>
+                        </li>
+                    {% endblock %}
+                    <li>{% if user.is_authenticated %}<a href="{% url "user_detail" user_slug=user.slug %}">My Profile</a>{% else %}<a href="{% url "login" %}">Log In</a>{% endif %}</li>
+                </ul>
+            </nav>
+            <nav class="sub-navigation">
+                <ul>
+                    {% nav_link request=request name="explore_base" title="Explore" %}
+                    {% nav_link request=request name="sequence_curated" title="Sequences" %}
+                    {% nav_link request=request name="search" title="Search" %}
+                </ul>
+            </nav>
+        </header>
+        <main>
+            {% block pretitle %}{% endblock %}
+            {% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
+            {% block content_subtitle %}{% if subtitle %}<h2>{{ subtitle }}</h2>{% endif %}{% endblock %}
+            {% block content %}
+                <p>Here is the main content</p>
+            {% endblock %}
+        </main>
+        {% block sidebar %}{% endblock %}
+        <footer>
+            {% block footer %}<a href="#site-header">Back to top</a>{% endblock %}
+        </footer>
+    </body>
+</html>
