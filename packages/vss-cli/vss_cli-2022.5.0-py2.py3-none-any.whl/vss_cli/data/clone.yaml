@@ -1,0 +1,53 @@
+####################################################
+# VSS-CLI Config Spec for deployment from Clone    #
+####################################################
+built: clone              # Required: Do not remove.
+machine:
+  name: &name Vm-Name     # Required: Target virtual machine name
+  # os:                   # Optional: Guest Operating System name or Id (Default: source vm)
+  source_vm:              # Required: Can be a vm name or a vm UUID.
+  cpu:                    # Optional: CPU count (Default: source vm cpu count)
+  memory:                 # Optional: Memory in GB (Default: source vm memory size)
+  folder:                 # Optional: Folder name, path or ID (Default: source vm folder)
+  disks:
+    - 40                  # Optional: Disk capacity in GB (Default: source vm disk capacity)
+# Additional (Uncomment to enable)
+#  domain:                # Optional: Domain name or ID to deploy (Default: provided by API).
+#  power_on: true         # Optional: Power on after successful deployment.
+# Networking
+networking:
+  use_custom_spec: false  # (Custom Spec) Required: attempt to apply a custom spec to this VM. (default: no)
+  hostname: *name         # (Custom Spec) Required: host name setting for the OS (default: name)
+  domain: eis.utoronto.ca # (Custom Spec) Required: full search domain
+  dns_servers:
+    - 128.100.100.128     # (Custom Spec) Required (if dhcp:false): Remove if using VSS-PUBLIC or any other DHCP based network
+  interfaces:
+    - network:            # Optional: Network name or network ID (default: source vm network)
+      type: vmxnet3       # Optional: Defaults to vmxnet3
+      dhcp: false         # (Custom Spec) Required: Whether to use DHCP for interface configuration (default: no)
+      ip_addr:            # (Custom Spec) Required (if dhcp:false): CIDR format. Remove if using VSS-PUBLIC or any other DHCP based network
+      gw_addr:            # (Custom Spec) Required (if dhcp:false): Remove if using VSS-PUBLIC or any other DHCP based network
+
+# Note Custom Spec
+# linux customization specification (optional)
+# VMware Tools and Perl is required
+# metadata required
+metadata:                 # Optional: Description of virtual machine
+  description: >
+    nginx and database server for a very important service.
+  usage: Test             # Optional: Usage between Prod | Dev | QA | Test (default: source vm usage)
+  client: Department      # Optional: Client department (default: source vm client)
+  inform:                 # Optional: list of email addresses. (default: source vm inform)
+    - email@utoronto.ca
+#  admin:                  # Optional: VM Administrator (Default: source vm admin)
+#    name:                 # (Admin) Required: VM Administrator full name
+#    email:                # (Admin) Required: VM Administrator email i.e. user@utoronto.ca
+#    phone:                # (Admin) Required: VM Administrator phone i.e. 416-123-2341
+# Recommended Metadata (Uncomment to enable)
+# notes:                  # Optional: list of key-value items to be set in Key: value form.
+#   - BillingCode: 12345
+#   - Documentation: https://uoft.me/service-docs
+# vss_service: N/A        # Optional: VSS Service name or service id
+# vss_options:            # Optional: VSS options reset_on_restore, reboot_on_restore
+#   - reset_on_restore
+#   - reboot_on_restore
