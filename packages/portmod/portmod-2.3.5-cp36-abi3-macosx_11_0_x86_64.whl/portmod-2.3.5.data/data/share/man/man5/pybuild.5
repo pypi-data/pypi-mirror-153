@@ -1,0 +1,737 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "PYBUILD" "5" "May 30, 2022" "Portmod 2.3.5" "Portmod"
+.SH NAME
+pybuild \- Portmod Repositories and related files
+.sp
+Repositories have the following basic file structure:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+\&./profiles/repo_name
+\&./CATEGORY_NAME/metadata.yaml
+\&./CATEGORY_NAME/PACKAGE_NAME/PACKAGE_NAME\-VER.pybuild
+\&./CATEGORY_NAME/PACKAGE_NAME/PACKAGE_NAME\-OTHER_VER.pybuild
+\&./CATEGORY_NAME/PACKAGE_NAME/Manifest
+\&./CATEGORY_NAME/PACKAGE_NAME/metadata.yaml
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH PROFILES
+.SS Profiles
+.sp
+Profiles are used to provide preset configurations for users.
+.SS profiles.yaml
+.sp
+The file \fBprofiles/profiles.yaml\fP describes the available profiles. It
+contains a mapping with the architecture as the key at the root,
+followed by a mapping of profile paths to profile stability keywords
+(either stable or unstable). These paths should refer to a directory
+within the profiles directory.
+.sp
+E.g.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+openmw:
+    dev: unstable
+    default/openmw/1.0: stable
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Profile Files
+.sp
+Within each profile directory the following files can be used to
+customize the profile.
+.INDENT 0.0
+.IP \(bu 2
+\fI\%packages\fP
+.IP \(bu 2
+\fI\%package.mask\fP
+.IP \(bu 2
+\fI\%package.use\fP
+.IP \(bu 2
+\fI\%use.force\fP
+.IP \(bu 2
+\fI\%package.use.force\fP
+.IP \(bu 2
+\fI\%parent\fP
+.IP \(bu 2
+\fI\%defaults.conf\fP
+.UNINDENT
+.SS packages
+.sp
+A list of atoms to be included in the system set and thus installed by
+default. Each line to be included in the system set should start with an
+asterisk (\fB*\fP), followed by the atom to include. Lines not beginning
+in an asterisk will be ignored.
+.SS package.mask
+.sp
+A profile\-specific list of masked packages.
+.sp
+See \fI\%package.mask\fP
+.SS package.use
+.sp
+Default per\-package use flags. The file can contain comments (starting
+with \fB#\fP) and lines containing a qualified atom (i.e.\ containing a
+category, can also include versions and operators) followed by a
+whitespace\-separated list of flags. Flags can be disabled by prefixing
+them with a \fB\-\fP\&.
+.sp
+See \fI\%package.use\fP
+.SS use.force
+.sp
+Global use flags that are required to always be enabled in this profile.
+The format is the same as the contents of the \fBUSE\fP variable in
+\fI\%defaults.conf\fP\&.
+.SS package.use.force
+.sp
+Per\-package use flags that are required to always be enabled in this
+profile. The format is the same as package.use.
+.SS parent
+.sp
+Defines another directory (via relative path) to be included in the
+current profile. This allows profiles to share configuration, and it is
+recommended that all profiles include the \fBprofiles/base\fP directory in
+their hierarchy.
+.SS defaults.conf
+.sp
+The format is the same as \fI\%portmod.conf\fP, but additional
+variables are available. Also note that unlike the user\-defined
+defaults.conf, variables defined in defaults.conf which are not listed
+on this page will not be set as environment variables (this is for
+security reasons, as there are variables such as PATH which could be
+abused).
+.sp
+As portmod.conf is a python file (albeit a restricted subset of the
+language), other variables defined earlier in the same file can be
+referenced directly. Additionally, you can reference the final value of
+a variable using string templating. I.e. strings containing values of
+the form \fB${VAR}\fP will be substituted for the final value of the
+referenced variable once all conf files have been parsed.
+.sp
+Collapsible Variables
+.sp
+These variables contain whitespace\-delimited sets (as strings), the
+entries of which can be disabled (if enabled in a previously loaded conf
+file) by prefixing them with a minus/hyphen (\fB\-\fP).
+.TS
+center;
+|l|l|.
+_
+T{
+Variable
+T}	T{
+Description
+T}
+_
+T{
+USE
+T}	T{
+Enabled use flags. These provide the
+profile default enabled use flags.
+T}
+_
+T{
+ACCEPT_LICENSE
+T}	T{
+A list of accepted licenses. License
+groups, as specified in
+\fBprofiles/license_groups.yaml\fP, can
+be included by prefixing the group
+name with an \fB@\fP\&. An asterisk
+(\fB*\fP) can be used to accept all
+licenses by default, with the ability
+to disable specific licenses by
+default by prefixing them with \fB\-\fP\&.
+Recommended defaults are \fB* \-@EULA\fP
+or \fB@FREE\fP\&.
+T}
+_
+T{
+ACCEPT_KEYWORDS
+T}	T{
+The default keywords to accept. Should
+usually only contain
+T}
+_
+T{
+INFO_VARS
+T}	T{
+Variables to display when
+\fBportmod <prefix> info\fP is run.
+T}
+_
+T{
+INFO_PACKAGES
+T}	T{
+Packages to display when
+\fBportmod <prefix> info\fP is run.
+T}
+_
+T{
+USE_EXPAND
+T}	T{
+The names of USE_EXPAND variables. The
+values they can take should be
+described in the \fBprofiles/desc\fP
+directory in a yaml file with a name
+equal to the lowercased variable name,
+followed by \fB\&.yaml\fP\&.
+T}
+_
+T{
+USE_EXPAND_HIDDEN
+T}	T{
+A subset of USE_EXPAND that should be
+hidden to the user and not show up in
+searches and transaction lists.
+T}
+_
+T{
+PROFILE_ONLY_VARIABLES
+T}	T{
+This defines which variables cannot be
+modified by the user in their
+portmod.conf (technically,
+portmod.conf can configure everything
+that defaults.conf can, with the
+exception of the variables listed
+here). Note that users can still use
+\fBprofile.user\fP to create a custom
+profile and override these variables.
+T}
+_
+T{
+CACHE_FIELDS
+T}	T{
+A list of fields that should be cached
+(e.g.\ fields that may be added by
+classes in this repo which it would be
+useful to have accessible to external
+software).
+T}
+_
+.TE
+.sp
+Other Variables
+.TS
+center;
+|l|l|.
+_
+T{
+Variable
+T}	T{
+Description
+T}
+_
+T{
+ARCH
+T}	T{
+The architecture for the profile. See
+\fIarch.list\fP\&. This is set automatically
+and should not be modified
+T}
+_
+T{
+TEXTURE_SIZE
+T}	T{
+The algorithm for choosing texture
+size. See \fI\%portmod.conf\fP
+T}
+_
+T{
+PORTMOD_MIRRORS
+T}	T{
+The list of download mirrors. See
+\fI\%portmod.conf\fP
+T}
+_
+T{
+CASE_INSENSITIVE_FILES
+T}	T{
+Whether or not files in the VFS should
+be case\-insensitive. When enabled,
+portmod will treat files of identical
+path other than their case as the same
+when installing. Otherwise, such files
+may be installed side by side instead
+of overriding each other.
+T}
+_
+T{
+OMWMERGE_DEFAULT_OPTS
+T}	T{
+The default options passed to
+\fBportmod <prefix> merge\fP\&. See
+\fI\%portmod.conf\fP
+T}
+_
+T{
+MODULEPATH
+T}	T{
+The directory (relative to \fBROOT\fP)
+which stores \fI\%Importing Modules\fP\&.
+T}
+_
+T{
+DOC_DEST
+T}	T{
+The default installation directory
+for documentation when the \fIdodoc\fP
+function is called.
+T}
+_
+T{
+VARIABLE_DATA
+T}	T{
+The directory, relative to \fBROOT\fP
+should contain generated portmod files
+such as the package database.
+.sp
+This variable should never be changed
+since it takes effect immediately.
+Instead, it is recommended to create
+a new profile with a new value and
+a migration tool to update the
+filesystem.
+T}
+_
+T{
+CFG_PROTECT
+T}	T{
+A glob\-style patterns (or list of
+patterns) indicating files which
+should not be overwritten on
+installation if they have been
+modified since the file was first
+installed. Instead, a \fB\&.new\fP file
+will be created and users will be able
+to run the cfg updater to merge the
+modifications.
+T}
+_
+.TE
+.SS Use Flag Priority
+.sp
+Use flags are set from the various sources in the following order:
+.INDENT 0.0
+.IP \(bu 2
+global profile flags (from defaults.conf)
+.IP \(bu 2
+global user flags (from portmod.conf)
+.IP \(bu 2
+local (i.e.\ package\-specific) profile flags (from package.use)
+.IP \(bu 2
+local user flags (from their package.use)
+.IP \(bu 2
+flags set via environment variables
+.IP \(bu 2
+forced flags (use.force and package.use.force)
+.UNINDENT
+.SS metadata.yaml
+.sp
+metadata.yaml files are used to store additional information about mods
+and categories. Note that no information stored in metadata.yaml should
+be specific to a particular version of a mod.
+.TS
+center;
+|l|l|.
+_
+T{
+Key
+T}	T{
+Value
+T}
+_
+T{
+longdescription
+T}	T{
+Description of the mod or
+category.
+T}
+_
+T{
+maintainer
+T}	T{
+Maintainer, or list of
+maintainers for the package in
+the form of Person (email is
+required, name and desc are
+optional) or Group
+T}
+_
+T{
+use
+T}	T{
+Use flags and their descriptions.
+Key is the flag name, value is
+the description
+T}
+_
+T{
+upstream
+T}	T{
+Description of the mod’s upstream
+information. Is a dictionary with
+one or more of the entries listed
+in the table below
+T}
+_
+.TE
+.SS Upstream contents
+.TS
+center;
+|l|l|.
+_
+T{
+Key
+T}	T{
+Value
+T}
+_
+T{
+maintainer
+T}	T{
+maintainers/authors of the
+original mod. Must be either a
+Person or a list of Person with a
+name attribute and/or an email
+attribute.
+T}
+_
+T{
+changelog
+T}	T{
+URL where a changelog for the mod
+can be found. Must be version
+independent
+T}
+_
+T{
+doc
+T}	T{
+URL where the location of the
+upstream documentation can be
+found. The link must not point to
+any third party documentation and
+must be version independent
+T}
+_
+T{
+bugs\-to
+T}	T{
+A place where bugs can be
+reported in the form of an URL or
+an e\-mail address prefixed with
+\fBmailto:\fP
+T}
+_
+.TE
+.SS Person
+.TS
+center;
+|l|l|.
+_
+T{
+Key
+T}	T{
+Value
+T}
+_
+T{
+name
+T}	T{
+Name of maintainer
+T}
+_
+T{
+email
+T}	T{
+email address of maintainer
+T}
+_
+T{
+desc
+T}	T{
+Can be used to note details about
+the current maintainership E.g.
+Willing to pass this off to
+someone else
+T}
+_
+.TE
+.sp
+E.g.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+name: foo
+email: foo@example.org
+# If provided with one argument, that argument is the name of the maintainer
+# The person tag can be omitted and a string can be provided instead,
+# in which case the string is treated as the maintainer\(aqs name,
+# with email optionally following in angle brackets.
+baz <foo@example.org>
+# Note that maps can also be written in a single line using braces:
+{ name: foo, email: foo@example.org }
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Groups
+.TS
+center;
+|l|l|.
+_
+T{
+Key
+T}	T{
+Value
+T}
+_
+T{
+group
+T}	T{
+Group identifier (as listed in \fBmetadata/groups.yaml\fP)
+T}
+_
+.TE
+.sp
+E.g.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+group: foo
+# Note that the groups cannot be provided as just a string,
+# as strings are treated as person maintainers
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Mod Metadata
+.sp
+Example
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+maintainer:
+    \- name: foo
+      email: foo@example.org
+      desc: E.g. Willing to pass this off to someone else
+    \- group: Group name, as defined in metadata/groups.yaml
+longdescription: "Long mod description. Can be multiple lines long, but
+should not contain version\-specific information.
+That being said, confine this to a general description only and link to
+upstream documentation rather than put extremely large amounts of detail
+in this string"
+use:
+    flag: description of flag
+    otherflag: description
+upstream:
+    maintainer:
+        name: foo
+        email: foo@example.org
+    changelog: http://doc.example.org/changelog
+    doc: http://doc.example.org/doc
+    bugs\-to: mailto:foo@example.org
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Category Metadata
+.sp
+Example
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+longdescription: The patches category contains mods that combine information from other mods to build a patch.
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+When categories are created, a metadata.yaml containing a
+longdescription is required.
+.SH CATEGORIES
+.sp
+Any category must be listed in \fBprofiles/categories\fP and contain a
+\fI\%metadata.yaml\fP file.
+.SH PACKAGES
+.sp
+Mod directories must be in a subdirectory of a category and their
+directory name should be the same as the base name of the mod’s pybuilds
+(excluding version).
+.sp
+The \fBManifest\fP file is optional, but is required to contain a manifest
+entry for each source file listed in SRC_URI (i.e.\ only optional for
+pybuilds without sources).
+.sp
+\fI\%metadata.yaml\fP is optional.
+.SH PROFILES DIRECTORY
+.sp
+The files in profiles are optional, except for repo_name.
+.TS
+center;
+|l|l|.
+_
+T{
+File
+T}	T{
+Description
+T}
+_
+T{
+arch.list
+T}	T{
+A newlline\-separated list of architectures. An
+architecture may refer to a game\-engine variant
+or an operating system, and is used to
+distinguish configurations where a package may be
+stable when used in the context of one, but
+unstable in the context of another.
+T}
+_
+T{
+categories
+T}	T{
+A newline\-separated list of categories. These
+determine which directories in the root of the
+repository are considered categories containing
+packages. Directories not listed in this file
+will not be detected as containing packages.
+T}
+_
+T{
+license_groups.yaml
+T}	T{
+A yaml file containing a mapping from license
+groups to a whitespace\-separated list of license
+names. Each group can be referenced within
+ACCEPT_LICENSE by prefixing it with an \fB@\fP, and
+they also reference each other using the same
+method.
+T}
+_
+T{
+package.mask
+T}	T{
+A \fI\%package.mask\fP
+file which applies regardless of profile
+T}
+_
+T{
+profiles.yaml
+T}	T{
+A yaml file containing profile declarations. See
+\fI\%Profiles\fP\&.
+T}
+_
+T{
+repo_name
+T}	T{
+A file containing a single line with the name of
+this repository
+T}
+_
+T{
+use.yaml
+T}	T{
+A file describing the global use flags,
+containing a mapping of use flag names to
+descriptions
+T}
+_
+T{
+use.alias.yaml
+T}	T{
+A file describing global use flags which have
+their values tied to packages. Contains a mapping
+of use flag names to package atoms.
+T}
+_
+T{
+desc
+T}	T{
+A directory containing USE_EXPAND descriptor
+files. Each file has the same form as
+\fBuse.yaml\fP\&.
+T}
+_
+.TE
+.SH METADATA DIRECTORY
+.sp
+The metadata directory is optional
+.TS
+center;
+|l|l|.
+_
+T{
+File
+T}	T{
+Description
+T}
+_
+T{
+groups.yaml
+T}	T{
+Defines maintainer groups
+T}
+_
+T{
+news
+T}	T{
+See \fI\%GLEP 42\fP, noting
+that news files are in yaml format rather than XML. Specification for
+the files can be found \fI\%here\fP
+(TODO: Rustdoc), and the directory structure follows GLEP 42.
+T}
+_
+.TE
+.SH AUTHOR
+Benjamin Winger, Roma Tentser, lumbo7332, Hristos N. Triantafillou, PopeRigby, marius david, marius851000, Joel, ultramink, Paul Infield-Harm, Tenchi, louisabraham
+.SH COPYRIGHT
+2019-2022, Portmod Authors
+.\" Generated by docutils manpage writer.
+.
