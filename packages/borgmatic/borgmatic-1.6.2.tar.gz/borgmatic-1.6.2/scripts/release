@@ -1,0 +1,48 @@
+#!/bin/bash
+
+set -e
+
+projects_token=${1:-}
+github_token=${2:-}
+
+if [[ -z $github_token ]]; then
+    echo "Usage: $0 [projects-token] [github-token]"
+    exit 1
+fi
+if [[ ! -f NEWS ]]; then
+    echo "Missing NEWS file. Try running from root of repository."
+    exit 1
+fi
+
+version=$(head --lines=1 NEWS)
+
+if [[ $version =~ .*dev* ]]; then
+    echo "Refusing to release a dev version: $version"
+    exit 1
+fi
+
+git tag $version
+git push origin $version
+git push github $version
+
+# Build borgmatic and publish to pypi.
+rm -fr dist
+python3 setup.py bdist_wheel
+python3 setup.py sdist
+gpg --detach-sign --armor dist/borgmatic-*.tar.gz
+gpg --detach-sign --armor dist/borgmatic-*-py3-none-any.whl
+twine upload -r pypi --username __token__ dist/borgmatic-*.tar.gz dist/borgmatic-*.tar.gz.asc
+twine upload -r pypi --username __token__ dist/borgmatic-*-py3-none-any.whl dist/borgmatic-*-py3-none-any.whl.asc
+
+# Set release changelogs on projects.torsion.org and GitHub.
+release_changelog="$(cat NEWS | sed '/^$/q' | grep -v '^\S')"
+escaped_release_changelog="$(echo "$release_changelog" | sed -z 's/\n/\\n/g' | sed -z 's/\"/\\"/g')"
+curl --silent --request POST \
+    "https://projects.torsion.org/api/v1/repos/borgmatic-collective/borgmatic/releases" \
+    --header "Authorization: token $projects_token" \
+    --header "Accept: application/json" \
+    --header "Content-Type: application/json" \
+    --data "{\"body\": \"$escaped_release_changelog\", \"draft\": false, \"name\": \"borgmatic $version\", \"prerelease\": false, \"tag_name\": \"$version\"}"
+
+github-release create --token="$github_token" --owner=witten --repo=borgmatic --tag="$version" \
+    --name="borgmatic $version" --body="$release_changelog"

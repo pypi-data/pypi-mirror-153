@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# This script installs test dependencies and runs all tests, including end-to-end tests. It
+# is designed to run inside a test container, and presumes that other test infrastructure like
+# databases are already running. Therefore, on a developer machine, you should not run this script
+# directly. Instead, run scripts/run-full-dev-tests
+#
+# For more information, see:
+# https://torsion.org/borgmatic/docs/how-to/develop-on-borgmatic/
+
+set -e
+
+apk add --no-cache python3 py3-pip borgbackup postgresql-client mariadb-client mongodb-tools \
+    py3-ruamel.yaml py3-ruamel.yaml.clib bash
+# If certain dependencies of black are available in this version of Alpine, install them.
+apk add --no-cache py3-typed-ast py3-regex || true
+python3 -m pip install --no-cache --upgrade pip==22.0.3 setuptools==60.8.1
+pip3 install tox==3.24.5
+export COVERAGE_FILE=/tmp/.coverage
+tox --workdir /tmp/.tox --sitepackages
+tox --workdir /tmp/.tox --sitepackages -e end-to-end
