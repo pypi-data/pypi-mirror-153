@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# slurm test suite
+
+# Where we store the jobs
+XPM_SLURM_DIR="$(realpath "$(dirname "$0")"/..)/slurm"
+if ! test -d "$XPM_SLURM_DIR"; then
+    echo "Directory $XPM_SLURM_DIR does not exist" 1>&2
+    exit 1
+fi
+
+
+find "$XPM_SLURM_DIR/jobs" -name "*.start" | while read name; do
+    jobid=${name%.start}
+    sf="$jobid.status"
+    if test -f "$sf"; then
+        exitcode="$(cat $sf)"
+        if test "$exitcode" == 0; then
+            status=COMPLETED
+        else
+            status=FAILED
+        fi
+    else
+        status=RUNNING
+    fi
+
+    echo "$(basename $jobid)|${status}|$(cat ${jobid}.start)|$(cat ${jobid}.start)|"
+done

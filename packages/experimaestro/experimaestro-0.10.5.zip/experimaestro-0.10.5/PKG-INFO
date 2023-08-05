@@ -1,0 +1,225 @@
+Metadata-Version: 2.1
+Name: experimaestro
+Version: 0.10.5
+Summary: "Experimaestro is a computer science experiment manager"
+Home-page: https://github.com/experimaestro/experimaestro-python
+Author: Benjamin Piwowarski
+Author-email: benjamin@piwowarski.fr
+License: GPL-3
+Keywords: experiment manager
+Platform: any
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+[![PyPI version](https://badge.fury.io/py/experimaestro.svg)](https://badge.fury.io/py/experimaestro)
+
+Experimaestro is a computer science experiment manager whose goals are:
+
+- To decompose experiments into a set of parameterizable tasks
+- Schedule tasks and handle dependencies between tasks
+- Avoids to re-run the same task two times by computing unique task IDs dependending on the parameters
+- Handle experimental parameters through tags
+
+The full documentation can be read by going to the following URL: [https://experimaestro-python.readthedocs.io](https://experimaestro-python.readthedocs.io)
+
+# Install
+
+## With pip
+
+You can then install the package using `pip install experimaestro`
+
+## Develop
+
+Checkout the git directory, then
+
+```
+pip install -e .
+```
+
+# Example
+
+This very simple example shows how to submit two tasks that concatenate two strings.
+Under the curtain,
+
+- A directory is created for each task (in `workdir/jobs/helloworld.add/HASHID`)
+  based on a unique ID computed from the parameters
+- Two processes for `Say` are launched (there are no dependencies, so they will be run in parallel)
+- A tag `y` is created for the main task
+
+<!-- SNIPPET: MAIN ARGS[%WORKDIR% --port 0 --sleeptime=0.0001] -->
+
+```python
+# --- Task and types definitions
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+from pathlib import Path
+from experimaestro import Task, Param, experiment, progress
+import click
+import time
+import os
+from typing import List
+
+# --- Just to be able to monitor the tasks
+
+def slowdown(sleeptime: int, N: int):
+    logging.info("Sleeping %ds after each step", sleeptime)
+    for i in range(N):
+        time.sleep(sleeptime)
+        progress((i+1)/N)
+
+
+# --- Define the tasks
+
+class Say(Task):
+    word: Param[str]
+    sleeptime: Param[float]
+
+    def execute(self):
+        slowdown(self.sleeptime, len(self.word))
+        print(self.word.upper(),)
+
+class Concat(Task):
+    strings: Param[List[Say]]
+    sleeptime: Param[float]
+
+    def execute(self):
+        says = []
+        slowdown(self.sleeptime, len(self.strings))
+        for string in self.strings:
+            with open(string.__xpm_stdout__) as fp:
+                says.append(fp.read().strip())
+        print(" ".join(says))
+
+
+# --- Defines the experiment
+
+@click.option("--port", type=int, default=12345, help="Port for monitoring")
+@click.option("--sleeptime", type=float, default=2, help="Sleep time")
+@click.argument("workdir", type=Path)
+@click.command()
+def cli(port, workdir, sleeptime):
+    """Runs an experiment"""
+    # Sets the working directory and the name of the xp
+    with experiment(workdir, "helloworld", port=port) as xp:
+        # Submit the tasks
+        hello = Say(word="hello", sleeptime=sleeptime).submit()
+        world = Say(word="world", sleeptime=sleeptime).submit()
+
+        # Concat will depend on the two first tasks
+        Concat(strings=[hello, world], sleeptime=sleeptime).tag("y", 1).submit()
+
+
+if __name__ == "__main__":
+    cli()
+```
+
+which can be launched with `python test.py /tmp/helloworld-workdir`
+
+# 0.10.0
+
+- Forces a configuration to be a meta-parameter or a parameter
+- Sphinx documentation extension
+
+# 0.9.12
+
+- Document arguments with a docstring (python 3.9+)
+- `@deprecate` configurations allows to transparently change their location (or ID)
+- A job can now notify multiple experimaestro servers
+
+# 0.9.11
+
+- Various fixes
+- Asynchronous process checking
+- Configurations can use `Enum` values
+
+# 0.9.10
+
+- More stability in scheduler (asyncio to avoid race conditions)
+
+# 0.9.9
+
+- Improved documentation generation
+- Jupyter support with `jobmonitor` and `serverwidget`
+
+# 0.9.4
+
+- Generated documentation uses relative links (so it can be moved to any directory)
+
+# 0.9.3
+
+- Task outputs objets to wrap task outputs
+- Re-submitting a failed job now works
+
+# 0.8.7
+
+- (Enhancement) Slurm support
+
+# 0.8.6
+
+- (Enhancement) Python 3.9 support
+
+# 0.8.5
+
+- (Enhancement) Dict(ionaries) parameters (keys should be simple types)
+- (Fix) Nested configurations dependencies
+- (Enhancement) Generated path conflicts are handled
+- (Fix) Validate before sealing
+- (Fix) Generate values when validation is done
+- (Fix) Fixed bug with dependencies of task returning configurations
+
+# 0.8.4
+
+- Improvement to documentation
+- Use `Task` as base class instead of `@task`
+
+# 0.8.3
+
+- Possible to use `Config` as base class instead of `@config`
+- Value checkers annotations
+- Constant values are now properly handled
+
+# 0.8.2
+
+- Alternative annotation for default values (to avoid a bug in e.g. Torch)
+
+# 0.8.1
+
+- Fixes for (un)serialization (through pickle \_\_getnewargs_ex\_\_)
+- Full type hint support
+- Initial tqdm support
+
+# 0.7.12
+
+- Tasks can access their tags at runtime (e.g. to log hyper-parameters with tensorboard)
+- Tasks and configurations can be executed without scheduling (debugging)
+
+# 0.7.11
+
+- NPM packages update (security)
+
+# 0.7.10
+
+- Sub-parameters
+- Fixes with file-based tokens
+- Fixes with duplicate objects
+
+# 0.7.9
+
+- Attribute `__xpm_default_keep__` can be used to avoid using `@configmethod` for configuration only-classes (e.g. datamaestro)
+
+# 0.7.8
+
+- Fixed dependency token deadlock
+- Directory-based tokens (with external token watch)
+
+
