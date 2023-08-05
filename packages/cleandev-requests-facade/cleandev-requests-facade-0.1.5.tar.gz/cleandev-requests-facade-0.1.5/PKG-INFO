@@ -1,0 +1,167 @@
+Metadata-Version: 2.1
+Name: cleandev-requests-facade
+Version: 0.1.5
+Summary: Fachada para autenticación de JWT
+Home-page: https://gitlab.com/cleansoftware/libs/public/cleandev-req-facade
+Author: Daniel Rodriguez Rodriguez
+Author-email: danielrodriguezrodriguez.pks@gmail.com
+License: UNKNOWN
+Project-URL: Bug Tracker, https://gitlab.com/cleansoftware/libs/public/cleandev-req-facade/-/issues
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+# Request Facade
+
+Esta librería es una fachada de la librería `requests` que añade una abstracción de la autenticación JWT mediante
+configuración en el archivo `properties.ini`
+
+## Propiedades
+
+Debido a la naturaleza de la librería y que deberemos de indicar en texto claro user y password, posee una forma
+de encriptar dicho contenido mediante una variable de entorno `FERNET_KEY` de la cual se extraerá una llave necesaria
+para desencriptar usuario y password que están en el `properties.ini` y asi no vulnerar ningún principio de seguridad.
+
+Existen dos grupos de propiedades:  
+`ENDPOINT_CONFIG`: Relacionado con la configuración que se encarga de saber donde encontrar el endpoint del API a
+consultar para obtener la autenticación.
+`AUTH`: Relaciona con el formato y datos que se le enviaran al endpoint de la autenticación.
+
+### base_url_api
+
+Es el nombre o ip del host junto con su puerto de donde está localizada el API de autenticación como por ejemplo
+`http://127.0.0.1:5000`
+
+### base_endpoint_api
+
+Parte del endpoint que es fijo normalmente usado para marcar la versión del API y mantener una retrocompatibilidad en el
+largo plazo.
+
+Ejemplo:
+`/v1/api` que unido a la propiedad anterior tendriamos algo como `http://127.0.0.1:5000/v1/api` y a partir de esta
+ruta se podria acceder a la version 1 de dicha api evitando asi que modificaciones futuras afecten a cosas antiguas.
+
+### endpoint_auth
+
+Part del endpoint en concreto que se usa para la autenticacion como por ejemplo `/auth` o `/login` que mezclado con las
+propiedades anteriores quedari asi `http://127.0.0.1:5000/v1/api/auth`
+
+### base_url_api
+
+No se deberia de tocar es un punto de union de las tres propiedades anteriores para realizar llamadas mas simples en el
+código.
+
+## AUTH
+
+Normalmente cuando enviamos los datos para la petición de `auth` el cuerpo de la peticion suele tener un aspecto similar
+a `{"username": "xxxxx", "password": "xxxxx"}` pero otras veces es de este modo `{"email": "xxxxx", "pass": "xxxxx"}`
+para controlar todas estas variantes se a dado la opcion de iniciar el nombre de las `keys` de los json que se envian
+hacia el API de autenticación de este modo adaptarse a varios casos.
+
+### user_key
+
+Key del parametro usado para el `usuario`.
+
+Ejemplo:  
+`{"{user_key}": "xxxxx", "password": "xxxxx"}`
+
+### user_value
+
+Valor del parametro usado para el `usuario`.
+
+Ejemplo:   
+`{"username": "{user_value}", "password": "xxxxx"}`
+
+### password_key
+
+Key del parametro usado para el `password`.
+
+Ejemplo:  
+`{"username": "xxxxx", "{password_key}": "xxxxx"}`
+
+### password_value
+
+Valor del parametro usado para el `password`.
+
+Ejemplo:   
+`{"username": "xxxxx", "password": "{password_value}"}`
+
+# Configurando propiedades
+
+Añadir que aparte de esta configuración existe una variable de entorno en el sistema llamada `FERNET_KEY`, dicha llave
+se puede generar de cualquier forma que sea valida para la libreria de `cryptography==37.0.2` en particular para la
+clase
+`Fernet` del paquete `from  import Fernet`.
+
+Se recomienda usar esto para generar llaves validad:
+
+```python
+from generic_utils import CleanDevGenericUtils
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils
+
+if __name__ == '__main__':
+    print(utils.get_fernet_key())
+```
+
+`mrvhq-I67IuR_vFh3L_bG-9DqVO7WOo84vxnjQdD_qg=`
+
+Una vez tengamos dicha llave la importamos al sistema `export FERNET_KEY=mrvhq-I67IuR_vFh3L_bG-9DqVO7WOo84vxnjQdD_qg=`
+
+A continuación, encriptamos el usuario y la password para la autenticacion de la siguiente forma:
+
+```python
+from generic_utils import CleanDevGenericUtils
+from requests_facade.config import FERNET_KEY
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils
+
+if __name__ == '__main__':
+    username = 'admin'
+    password = '123456789'
+
+    print(utils.encrypt(username, FERNET_KEY))
+    print(utils.encrypt(password, FERNET_KEY))
+```
+
+`gAAAAABilNDxJbYFfPDVPi64C0wA5jOsdu6O83WVNx3-Vg2BOUJ5W8EI-AKoOfindZJJN58SOxq2klRLfqTGy6failyB_GtAAg==`  
+`gAAAAABilNDxyv1pb55y8LpETyu5fBQ0AegC9z1uV8uMKIRKyZXljMVHtbJK3e4DgZvyUlI2abfqKJ9ndiV9b6cUkXAtBUZomg==`
+
+y estos son los valores que deberemos de poner en el `properties.ini` respectivamente.
+
+
+## Ejemplo de uso
+Una vez configurado todas las configuraciones hacemos lo siguiente
+
+```properties
+[ENDPOINT_CONFIG]
+base_url_api=http://127.0.0.1:5000
+base_endpoint_api=
+endpoint_auth=/auth
+url_api=%(base_url_api)s%(base_endpoint_api)s
+[AUTH]
+user_key=email
+user_value=gAAAAABikQpzO4MnZd-u5Hg2i3-kdS1FkWVPr3s5xwDxsaS-1zaOj7S_XcTOV4f4qIIzW1liJaqOc_hewjRk1Udj6DS4Vj8vrNisZBZYsI-6Nmf7RdIqn9s=
+password_key=password
+password_value=gAAAAABikQpzpoABdCzse9Nop6dnDfcSWsKdQiufY8Q-mMsmF2Xfu_mXMM4CI-cevurPZrB7ngjD8kuCFycV78mO2zCqADZ68A==
+```
+
+```python
+from requests_facade import RequestFacade
+from requests import Response
+
+if __name__ == '__main__':
+    req_facade: RequestFacade = RequestFacade(need_auth=True)
+    resp: Response = req_facade.get(url='http://127.0.0.1:5000/test/jwt')
+    resp: Response = req_facade.get(url='http://127.0.0.1:5000/test')
+```
+
+El endpoint `http://127.0.0.1:5000/test/jwt` esta securizado mientras que `http://127.0.0.1:5000/test` no lo esta como
+se observa en el ejemplo no tenemos que preocuparnos de añadir el `Bearer` en las cabeceras ya que lo hace automaticamente.
+
+Unicamente resta con usar el metodo `req_facade.get()` o `req_facade.post()` para realizar peticiones al API. 
+
+
