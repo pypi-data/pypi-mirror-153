@@ -1,0 +1,174 @@
+# Orchestrator-Core
+[![Downloads](https://pepy.tech/badge/orchestrator-core/month)](https://pepy.tech/project/orchestrator-core)
+[![codecov](https://codecov.io/gh/workfloworchestrator/orchestrator-core/branch/main/graph/badge.svg?token=5ANQFI2DHS)](https://codecov.io/gh/workfloworchestrator/orchestrator-core)
+[![pypi_version](https://img.shields.io/pypi/v/orchestrator-core?color=%2334D058&label=pypi%20package)](https://pypi.org/project/orchestrator-core)
+
+<p align="center"><em>Production ready Orchestration Framework to manage product lifecyle and workflows. Easy to use, Built on top of FastAPI</em></p>
+
+
+## Documentation
+Can be found [here](https://workfloworchestrator.org/orchestrator-core/)
+
+## Usage
+This project can be installed as follows:
+
+#### Step 1:
+Install the core.
+```shell
+pip install orchestrator-core
+```
+
+#### Step 2:
+Create a postgres database:
+```shell
+createuser -sP nwa
+createdb orchestrator-core -O nwa
+```
+
+#### Step 3 (optional):
+When using multiple workers, you will need a redis server for live updates with websockets.
+
+By default it will use memory which works with only one worker.
+```shell
+export WEBSOCKET_BROADCASTER_URL="memory://"
+```
+
+For the redis connection you need to set the env variable with the connection url.
+```shell
+export WEBSOCKET_BROADCASTER_URL="redis://localhost:6379"
+```
+
+Websockets can also be turned off with:
+```shell
+export ENABLE_WEBSOCKETS=False
+```
+
+more broadcaster info [here](https://pypi.org/project/broadcaster/)
+
+#### Step 4:
+Create a `main.py` file.
+
+```python
+from orchestrator import OrchestratorCore
+from orchestrator.cli.main import app as core_cli
+from orchestrator.settings import AppSettings
+
+app = OrchestratorCore(base_settings=AppSettings())
+
+if __name__ == "__main__":
+    core_cli()
+```
+
+#### Step 5:
+Initialize the migration environment.
+```shell
+PYTHONPATH=. python main.py db init
+PYTHONPATH=. python main.py db upgrade heads
+```
+
+### Step 6:
+Profit :)
+
+```shell
+uvicorn --reload --host 127.0.0.1 --port 8080 main:app
+```
+
+Visit [http://127.0.0.1:8080/api/redoc](http://127.0.0.1:8080/api/redoc) to view the api documentation.
+
+
+## Setting up a development environment
+
+To add features to the repository follow the following procedure to setup a working development environment.
+
+### Installation (Development standalone)
+Install the project and its dependencies to develop on the code.
+
+#### Step 1 - install flit:
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+pip install flit
+```
+
+#### Step 2 - install the development code:
+```shell
+flit install --deps develop --symlink --python venv/bin/python
+pip install redis
+```
+
+!!! danger
+    Make sure to use the flit binary that is installed in your environment. You can check the correct
+    path by running
+    ```shell
+    which flit
+    ```
+
+To be sure that the packages will be installed against the correct venv you can also prepend the python interpreter
+that you want to use:
+
+```shell
+flit install --deps develop --symlink --python venv/bin/python
+pip install redis
+```
+
+
+### Running tests
+Run the unit-test suite to verify a correct setup.
+
+#### Step 1 - Create a database
+
+```shell
+createuser -sP nwa
+createdb orchestrator-core-test -O nwa
+```
+
+#### Step 2 - Run tests
+```shell
+pytest test/unit_tests
+```
+or with xdist:
+
+```shell
+pytest -n auto test/unit_tests
+```
+
+If you do not encounter any failures in the test, you should be able to develop features in the orchestrator-core.
+
+### Installation (Development symlinked into orchestrator SURF)
+
+If you are working on a project that already uses the `orchestrator-core` and you want to test your new core features
+against it, you can use some `flit` magic to symlink the dev version of the core to your project. It will
+automatically replace the pypi dep with a symlink to the development version
+of the core and update/downgrade all required packages in your own orchestrator project.
+
+#### Step 1 - install flit:
+
+```shell
+python - m venv venv
+source venv/bin/activate
+pip install flit
+```
+
+### Step 2 - symlink the core to your own project
+
+```shell
+flit install --deps develop --symlink --python /path/to/a/orchestrator-project/venv/bin/python
+```
+
+So if you have the core and your own orchestrator project repo in the same folder and the main project folder is
+`orchestrator` and you want to use relative links, this will be last step:
+
+```shell
+flit install --deps develop --symlink --python ../orchestrator/venv/bin/python
+```
+
+# Increasing the version number for a (pre) release.
+
+When your PR is accepted you will get a version number.
+
+You can do the necessary change with a clean, e.g. every change committed, branch: 
+
+```shell
+bumpversion patch --new-version 0.4.1-rc3
+```
