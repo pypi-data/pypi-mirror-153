@@ -1,0 +1,53 @@
+syntax = "proto3";
+package sarus_data_spec;
+
+message Dataset {
+  // The dataset definition
+  string uuid = 1; // e.g. RFC 4122 id used to refer to the dataset (content linked?)
+  string name = 2;
+  string doc = 3;
+  Spec spec = 4;
+  map<string, string> properties = 5; // Other properties
+
+  // Definitions
+  message Spec {// How to obtain the dataset
+    oneof spec {
+      Transformed transformed = 1;
+      File file = 2;
+      Files files = 3;
+      Archive archive = 4;
+      Sql sql = 5;
+    }
+  }
+
+  message Transformed {
+    string transform = 1; // Transform id
+    repeated string arguments = 2; // Dataset or other object ids
+    map<string, string> named_arguments = 3;
+  }
+
+  message File {
+    string format = 1;
+    string uri = 2; // File URI
+  }
+
+  message Files {
+    string format = 1;
+    string uri_pattern = 2; // Pattern of files
+  }
+
+  message Archive {
+    string format = 1;
+    string archive_format = 2;
+    string uri = 3; // Archive URI
+  }
+
+  message Sql {
+    string uri = 1; // As in https://docs.sqlalchemy.org/en/14/core/engines.html
+    repeated Table tables = 2;// the sql schemas from which the data can be downloaded
+    message Table {
+      string schema=1;
+      string table=2;
+    }
+  }
+}

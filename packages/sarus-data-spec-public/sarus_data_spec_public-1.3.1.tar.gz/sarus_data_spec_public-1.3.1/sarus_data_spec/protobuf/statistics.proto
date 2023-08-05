@@ -1,0 +1,184 @@
+syntax = "proto3";
+package sarus_data_spec;
+
+message Statistics {
+  string name = 1;
+  oneof statistics {
+    Null null = 3;
+    Unit unit = 4;
+    Boolean boolean = 5;
+    Integer integer = 6;
+    Enum enum = 7;
+    Float float = 8;
+    Text text = 9;
+    Bytes bytes = 10;
+    Struct struct = 11;
+    Union union = 12;
+    Optional optional = 13;
+    List list = 14;
+    Array array = 15;
+    Datetime datetime = 16;
+    Id id = 17;
+    Constrained constrained = 18;
+  }
+  map<string, string> properties = 2; // Other properties
+
+  message Null {
+    int64 size = 1;
+    float multiplicity = 2;}
+
+  message Unit {
+    int64 size = 1;
+    float multiplicity = 2;
+  }
+
+  message Boolean {
+    Distribution distribution = 1;
+    int64 size = 2;
+    float multiplicity = 3;
+  }
+
+  message Id {
+    int64 size = 1;
+    float multiplicity = 2;
+  }
+
+  message Integer {
+    Distribution distribution = 1;
+    int64 size = 2;
+    float multiplicity = 3;
+  }
+
+  message Enum {
+    Distribution distribution = 1;
+    int64 size = 2;
+    float multiplicity = 3;
+  }
+
+  message Float {
+    Distribution distribution = 1;
+    int64 size = 2;
+    float multiplicity = 3;
+  }
+
+  message Text {
+    Distribution distribution = 1;
+    string example = 2;
+    int64 size = 3;
+    float multiplicity = 4;
+
+  }
+
+  message Bytes {
+    int64 size = 1;
+    float multiplicity = 2;
+  }
+
+  message Struct {
+    // A static struct with named fields
+    repeated Field fields = 1;
+    int64 size = 2;
+    string name = 3;
+    float multiplicity = 4;
+    // A single field
+    message Field {
+      string name = 1;
+      Statistics statistics = 2;
+    }
+  }
+
+  message Union {
+    repeated Field fields = 1;
+    int64 size = 2;
+    string name = 3;
+    float multiplicity = 4;
+    // A single field
+    message Field {
+      string name = 1;
+      Statistics statistics = 2;
+    }
+  }
+
+  message Optional {
+    Statistics statistics = 1;
+    int64 size = 2;
+    string name = 3;
+    float multiplicity = 4;
+
+  }
+
+  message List {
+    Statistics statistics = 1;
+    Distribution distribution = 2;
+    int64 size = 3;
+    float multiplicity = 4;
+
+  }
+
+  message Array {
+    // A numpy-like n-dimensional array
+    Statistics statistics = 1;
+    repeated Distribution distributions = 2;
+    int64 size = 3;
+    float multiplicity = 4;
+
+  }
+
+  message Datetime {
+    // for a datetime type
+    Distribution distribution = 1;
+    int64 size = 2;
+    float multiplicity = 3;
+  }
+
+  message Constrained{
+    Statistics statistics = 1;
+    int64 size = 2;
+    float multiplicity = 3;
+
+  }
+}
+
+
+message Distribution {
+  oneof distribution {
+    Double double = 1;
+    Integer integer = 2;
+    Boolean boolean = 3;
+    Enum enum = 4;
+  }
+  map<string, string> properties = 5; // Needed for compatibility with typing
+  message Double{
+    repeated Point points = 1;
+    double min = 2;
+    double max = 3;
+    message Point {
+      double value = 2;
+      double probability = 3;
+    }
+  }
+  message Integer{
+    repeated Point points = 1;
+    int64 min = 2;
+    int64 max = 3;
+    message Point {
+      int64 value = 1;
+      double probability = 2;
+    }}
+
+  message Boolean{
+    repeated Point points = 1;
+    message Point {
+      bool name = 1;
+      int64 value = 2;
+      double probability = 3;
+    }}
+  message Enum{
+    repeated Point points = 1;
+    message Point {
+      string name = 1;
+      double value = 2;
+      double probability = 3;
+    }
+  }
+}
