@@ -1,0 +1,114 @@
+.TH GPU\-PAC 1 "May 2022" "rickslab-gpu-utils" "Ricks-Lab GPU Utilities"
+.nh
+.SH NAME
+gpu-pac \- program and control compatible GPUs
+
+.SH SYNOPSIS
+.B gpu-pac
+.RB [ \-\-help " | " \-\-about "]"
+.br
+.B gpu-pac
+.RB [ \-\-execute_pac "] [" \-\-no_fan "] [" \-\-force_write "] [" \-\-debug "] [" \-\-verbose "]"
+
+.SH DESCRIPTION
+.B gpu-pac
+provides capability for Program and Control compatible GPUs with this utility.  By default,
+the commands to be written to a GPU are written to a bash file for the user to inspect and
+run.  If you have confidence, the \fB--execute_pac\fR option can be used to execute and then
+delete the saved bash file.  Since the GPU device files are writable only by root, sudo is
+used to execute commands in the bash file, as a result, you will be prompted for credentials
+in the terminal where you executed \fBgpu-pac\fR. The \fB--no_fan\fR option can be used to
+eliminate fan details from the utility. The \fB--force_write\fR option can be used to force
+all configuration parameters to be written to the GPU.  The default behavior is to only
+write changes.  Finally, the \fB--verbose\fR option will result in informational messages
+to be displayed.
+
+.SH OPTIONS
+.TP
+.BR " \-\-about"
+Will display details about
+.B gpu-pac\fP.
+.TP
+.BR " \-\-execute_pac"
+Will execute a bash file created with commands written to the driver files to modify the operating
+conditions of the selected GPU/GPUs.  The default behavior is to only create the bash files for the user
+to execute.
+.TP
+.BR " \-\-no_fan"
+Will exclude fan information from the display and will not include fans in writing or resetting
+GPU operating conditions.
+.TP
+.BR " \-\-force_write"
+Will result in all parameters being writen to the selected GPU/GPUs instead of the default behavior of
+only writing changes.
+.TP
+.BR " \-\-verbose"
+Display informational messages generated during execution.
+.TP
+.BR " \-\-debug"
+Will output additional useful debug/troubleshooting details to a log file.
+.TP
+.BR \-h , " \-\-help"
+Display help text and exit.
+
+.SH "EXAMPLES"
+.nf
+.B gpu-pac
+
+.fi
+Will open a Gtk based user interface which will display current or default values for modifiable GPU operating
+parameters.  The interface supports entry of new values for all compatible GPUs.  The user can select to save
+or reset values for individual or all GPUs. It is suggested that \fBgpu-mon\fR be used
+to make sure the changes are made as expected.
+.P
+.B gpu-pac \-\-execute_pac
+
+.fi
+To simplify this process, the \fB\-\-execute_pac\fR option can be specified to automate execution of the bash files.
+A message in the user interface will indicate if credentials are required in the original terminal window.
+.P
+.B gpu-pac \-\-force_write
+
+.fi
+With this option, all parameters will be written to the bash file, even if they are unchanged.  This is useful in
+creating bash files used to put GPU's into a known state which is convenient for use in start up routines.
+.P
+
+.SH CONFIGURATION
+In order to get maximum capability of these utilities, you should be running with a kernel that
+provides support of the GPUs you have installed.  If using AMD GPUs, installing the latest amdgpu
+driver package or the latest ROCm release, may provide additional capabilities. If you have Nvidia
+GPUs installed, nvidia-smi must also be installed in order for the utility reading of the cards
+to be possible.  Writing to GPUs is currently only possible for AMD GPUs, and only with compatible
+cards and with the AMD ppfeaturemask set to 0xfffd7fff. This can be accomplished by adding
+amdgpu.ppfeaturemask=0xfffd7fff to the GRUB_CMDLINE_LINUX_DEFAULT value in
+/etc/default/grub and executing sudo update-grub.
+
+.SH "FILES"
+.PP
+.TP
+\fB/usr/share/misc/pci.ids\fR
+The system list of all known PCI ID's (vendors, devices, classes and subclasses).
+It can be updated with the \fBupdate-pciids\fR command.
+.TP
+\fB/sys/class/drm/card*/device/pp_od_clk_voltage\fR
+Special driver file for each AMD GPU required by some \fBrickslab-gpu-utils\fR.
+.TP
+\fB/etc/default/grub\fR
+The grub defaults file where amdgpu.ppfeaturemask needs to be set.
+
+.SH BUGS
+Known to not work well with Fiji ProDuo cards and will issue warning messages for Fiji Nano cards.  The
+display of P-state masks is always the defaults, not the actual values.
+Please report any additional bugs/issues at https://github.com/Ricks-Lab/gpu-utils
+
+.SH "SEE ALSO"
+.BR gpu-mon (1),
+.BR amdgpu (4),
+.BR update-grub (8),
+.BR update-pciids (8),
+.BR lspci (8)
+
+.SH AVAILABILITY
+The gpu-pac command is part of the rickslab-gpu-utils package and is available from
+https://github.com/Ricks-Lab/gpu-utils
