@@ -1,0 +1,53 @@
+# Modify users created with an incorrect email and that might clash with the newly created users
+./manage.py lms shell -c \
+  "from django.contrib.auth import get_user_model;\
+  get_user_model().objects.filter(username='ecommerce').exclude(email='ecommerce@openedx').update(email='ecommerce@openedx')"
+
+./manage.py lms manage_user ecommerce ecommerce@openedx --staff --superuser --unusable-password
+
+# Development client
+./manage.py lms create_dot_application \
+    --grant-type client-credentials \
+    --redirect-uris "http://{{ ECOMMERCE_HOST }}:8130/complete/edx-oauth2/" \
+    --client-id {{ ECOMMERCE_OAUTH2_KEY_DEV }} \
+    --client-secret {{ ECOMMERCE_OAUTH2_SECRET }} \
+    --scopes user_id \
+    --skip-authorization \
+    --update \
+    ecommerce-dev \
+    ecommerce
+./manage.py lms create_dot_application \
+    --grant-type authorization-code \
+    --redirect-uris "http://{{ ECOMMERCE_HOST }}:8130/complete/edx-oauth2/" \
+    --client-id {{ ECOMMERCE_OAUTH2_KEY_SSO_DEV }} \
+    --client-secret {{ ECOMMERCE_OAUTH2_SECRET_SSO }} \
+    --scopes user_id \
+    --skip-authorization \
+    --update \
+    ecommerce-sso-dev \
+    ecommerce
+
+# Production client
+./manage.py lms create_dot_application \
+  --grant-type client-credentials \
+  --redirect-uris "{% if ENABLE_HTTPS %}https{% else %}http{% endif %}://{{ ECOMMERCE_HOST }}/complete/edx-oauth2/" \
+  --client-id {{ ECOMMERCE_OAUTH2_KEY }} \
+  --client-secret {{ ECOMMERCE_OAUTH2_SECRET }} \
+  --scopes user_id \
+  --skip-authorization \
+  --update \
+  ecommerce \
+  ecommerce
+./manage.py lms create_dot_application \
+  --grant-type authorization-code \
+  --redirect-uris "{% if ENABLE_HTTPS %}https{% else %}http{% endif %}://{{ ECOMMERCE_HOST }}/complete/edx-oauth2/" \
+  --client-id {{ ECOMMERCE_OAUTH2_KEY_SSO }} \
+  --client-secret {{ ECOMMERCE_OAUTH2_SECRET_SSO }} \
+  --scopes user_id \
+  --skip-authorization \
+  --update \
+  ecommerce-sso \
+  ecommerce
+
+  # Enable order bistory microfrontend
+  (./manage.py lms waffle_switch --list | grep order_history.redirect_to_microfrontend) || ./manage.py lms waffle_switch --create order_history.redirect_to_microfrontend on
