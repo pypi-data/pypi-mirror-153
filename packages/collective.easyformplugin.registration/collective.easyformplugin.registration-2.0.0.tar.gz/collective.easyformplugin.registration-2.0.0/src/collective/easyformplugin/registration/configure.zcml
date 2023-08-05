@@ -1,0 +1,61 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    i18n_domain="collective.easyformplugin.registration">
+
+  <i18n:registerTranslations directory="locales" />
+
+  <include package=".browser" />
+
+  <include file="actions.zcml" />
+  <include file="upgrades.zcml" />
+
+  <genericsetup:registerProfile
+      name="default"
+      title="Collective Easyform: Registration plugin"
+      directory="profiles/default"
+      description="Installs the collective.easyformplugin.registration add-on."
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      post_handler=".setuphandlers.post_install" />
+
+  <genericsetup:registerProfile
+      name="uninstall"
+      title="Collective Easyform: Registration plugin (uninstall)"
+      directory="profiles/uninstall"
+      description="Uninstalls the collective.easyformplugin.registration add-on."
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      post_handler=".setuphandlers.uninstall" />
+
+  <utility
+      factory=".setuphandlers.HiddenProfiles"
+      name="collective.easyformplugin.registration-hiddenprofiles" />
+
+  <!-- Behavior -->
+  <include
+      package="plone.behavior"
+      file="meta.zcml" />
+  <subscriber
+      for="collective.easyform.interfaces.easyform.IEasyForm
+            zope.lifecycleevent.interfaces.IObjectModifiedEvent"
+      handler=".event.handle_edit_form" />
+  <subscriber
+      for="collective.easyform.interfaces.easyform.IEasyForm
+            zope.lifecycleevent.interfaces.IObjectCreatedEvent"
+      handler=".event.handle_add_form" />
+  <plone:behavior
+      name="easyformplugin.registration"
+      title="Registration form"
+      description="Adds the ability to use an EasyForm content as registration form."
+      provides=".behavior.IRegistrationForm" />
+  <!-- Declare marker interface, so that it is available in the Management Interface -->
+  <interface interface="collective.easyformplugin.registration.interfaces.IEasyFormRegistrationEnabled" />
+
+  <utility
+      component=".vocabularies.registrants_vocabulary_factory"
+      name="collective.easyformplugin.registration.registrants" />
+  <utility
+      component=".vocabularies.waiting_list_vocabulary_factory"
+      name="collective.easyformplugin.registration.waiting_list" />
+</configure>
