@@ -1,0 +1,316 @@
+Metadata-Version: 2.1
+Name: castor-extractor
+Version: 0.0.19
+Summary: Extract your metadata assets.
+Home-page: https://www.castordoc.com/
+Author: Castor
+Author-email: support@castordoc.com
+License: EULA
+Project-URL: Documentation, https://docs.castordoc.com/castor-package/castor-extractor
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Provides-Extra: bigquery
+Provides-Extra: tableau
+Provides-Extra: looker
+Provides-Extra: metabase
+Provides-Extra: redshift
+Provides-Extra: snowflake
+License-File: LICENCE
+
+# Castor Extractor <img src="https://app.castordoc.com/images/castor_icon_dark.svg" width=30 />
+
+
+This library contains utilities to extract your metadata assets into `JSON` or `CSV` files, on your local machine.
+After extraction, those files can be pushed to Castor for ingestion.
+
+- Visualization assets are typically:
+  - `dashboards`
+  - `users`
+  - `folders`
+  - ...
+
+
+- Warehouse assets are typically:
+  - `databases`
+  - `schemas`
+  - `tables`
+  - `columns`
+  - `queries`
+  - ...
+
+It also embeds utilities to help you push your metadata to Castor:
+- `File Checker` to validate your [generic](https://docs.castordoc.com/integrations/data-warehouses/generic-warehouse) CSV files before pushing to Castor
+- `Uploader` to push extracted files to our Google-Cloud-Storage (GCS)
+
+
+# Table of contents
+
+
+- [Installation](#installation)
+  * [Create castor-env](#create-castor-env)
+  * [PIP Install](#pip-install)
+  * [Create the output directory](#create-the-output-directory)
+- Documentation
+  - [Extract from BI Tools](https://docs.castordoc.com/castor-package/read-me/bi-tools)
+  - [Extract from Warehouse](https://docs.castordoc.com/castor-package/read-me/warehouse)
+  - [Uploader](https://docs.castordoc.com/castor-package/read-me/uploader)
+  - [File checker](https://docs.castordoc.com/castor-package/read-me/file-checker)
+- [Contact us](#contact-us)
+
+# Installation
+
+Requirements: **python3.7+**
+<img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg" width=20 />
+
+
+## Create castor-env
+
+We advise to create a dedicated [Python environment](https://docs.python.org/3/library/venv.html).
+
+Here's an example using `Pyenv` and Python `3.7.9`:
+
+- Install Pyenv
+```bash
+brew install pyenv
+brew install pyenv-virtualenv
+```
+
+- [optional] Update your `.bashrc` if you encounter this [issue](https://stackoverflow.com/questions/45577194/failed-to-activate-virtualenv-with-pyenv/45578839)
+```bash
+eval "$(pyenv init -)"
+eval "$(pyenv init --path)"
+eval "$(pyenv virtualenv-init -)"
+```
+
+- [optional] Install python 3.7+
+
+```bash
+pyenv versions # check your local python installations
+
+pyenv install -v 3.7.9 # if none of the installed versions satisfy requirements 3.7+
+```
+
+- Create your virtual env
+```bash
+pyenv virtualenv 3.7.9 castor-env # create a dedicated env
+pyenv shell castor-env # activate the environment
+
+# optional checks
+python --version # should be `3.7.9`
+pyenv version # should be `castor-env`
+```
+
+## PIP install
+
+⚠️ `castor-env` must be created AND activated first.
+```bash
+pyenv shell castor-env
+(castor-env) $ # this means the environment is now active
+```
+
+ℹ️ please upgrade `PIP` before installing Castor.
+```
+pip install --upgrade pip
+```
+
+Run the following command to install `castor-extractor`:
+```
+pip install castor-extractor
+```
+
+Depending on your use-case, you can also install one of the following `extras`:
+```
+pip install castor-extractor[looker]
+pip install castor-extractor[tableau]
+pip install castor-extractor[bigquery]
+pip install castor-extractor[redshift]
+pip install castor-extractor[snowflake]
+```
+
+## Create the output directory
+
+```bash
+mkdir /tmp/castor
+```
+
+You will provide this path in `extraction` scripts as following:
+```
+castor-extract-bigquery --output=/tmp/castor
+```
+
+Alternatively, you can also set the following `ENV` in your `bashrc`:
+```bash
+export CASTOR_OUTPUT_DIRECTORY="/tmp/castor"
+````
+
+
+# Contact
+
+For any questions or bug report, contact us at [support@castordoc.com](mailto:support@castordoc.com)
+
+[Castor](https://castordoc.com) helps you find, understand, use your data assets
+
+# Changelog
+
+## 0.0.19 - 2022-05-30
+
+* Use versions with range to ease dependency resolution for python 3.7 to 3.10
+
+## 0.0.18 - 2022-05-19
+
+* Enhance the file checker to search for prefixed files
+
+## 0.0.17 - 2022-05-18
+
+* Add retry for mode analytics
+
+## 0.0.16 - 2022-05-18
+
+* Add options to the pager:
+  * `start_page`: to start pagination at another index (default to 1)
+  * `stop_strategy`: to use different strategy to stop pagination (default to EMPTY_PAGE)
+## 0.0.15 - 2022-05-09
+
+* Skip snowflake columns with no name
+
+## 0.0.14 - 2022-05-09
+
+* Add missing metabase dependencies on Psycopg2
+
+## 0.0.13 - 2022-05-06
+
+* Remove top-level imports to isolate modules with different extra dependencies
+
+## 0.0.12 - 2022-05-06
+
+* Improved the file checker to detect repeated quotes in CSV.
+
+## 0.0.11 - 2022-05-02
+
+* Fix import error in `file_checker` script
+
+## 0.0.10 - 2022-04-27
+
+* Snowflake: discard 11 more `query_type` values when fetching queries
+
+## 0.0.9 - 2022-04-13
+
+* allow Looker parameters `CASTOR_LOOKER_TIMEOUT_SECOND` and `CASTOR_LOOKER_PAGE_SIZE` to be passed through environment
+variables
+* fix import paths in `castor_extractor/commands/upload.py` script
+* use `storage.Client.from_service_account_info` when `credentials` is a dictionary in `uploader/upload.py`
+
+## 0.0.8 - 2022-04-07
+* Fix links to documentation in the README
+
+## 0.0.7 - 2022-04-05
+* Fix dateutil import issue
+
+## 0.0.6 - 2022-04-05
+
+First version of Castor Extractor, including:
+
+* Warehouse assets extraction
+  * BigQuery
+  * Postgres
+  * Redshift
+  * Snowflake
+
+* Visualization assets extraction
+  * Looker
+  * Metabase
+  * Mode Analytics
+  * Tableau
+
+* Utilities
+  * Uploader to cloud-storage
+  * File Checker (for generic metadata)
+
+# End-User License Agreement (EULA) of "Castor Extractor"
+
+This End-User License Agreement ("EULA") is a legal agreement between you and Castor. Our EULA was created by EULA Template (https://www.eulatemplate.com) for "Castor Extractor".
+
+This EULA agreement governs your acquisition and use of our "Castor Extractor" software ("Software") directly from Castor or indirectly through a Castor authorized reseller or distributor (a "Reseller").
+
+Please read this EULA agreement carefully before completing the installation process and using the "Castor Extractor" software. It provides a license to use the "Castor Extractor" software and contains warranty information and liability disclaimers.
+
+If you register for a free trial of the "Castor Extractor" software, this EULA agreement will also govern that trial. By clicking "accept" or installing and/or using the "Castor Extractor" software, you are confirming your acceptance of the Software and agreeing to become bound by the terms of this EULA agreement.
+
+If you are entering into this EULA agreement on behalf of a company or other legal entity, you represent that you have the authority to bind such entity and its affiliates to these terms and conditions. If you do not have such authority or if you do not agree with the terms and conditions of this EULA agreement, do not install or use the Software, and you must not accept this EULA agreement.
+
+This EULA agreement shall apply only to the Software supplied by Castor herewith regardless of whether other software is referred to or described herein. The terms also apply to any Castor updates, supplements, Internet-based services, and support services for the Software, unless other terms accompany those items on delivery. If so, those terms apply.
+
+## License Grant
+
+Castor hereby grants you a personal, non-transferable, non-exclusive licence to use the "Castor Extractor" software on your devices in accordance with the terms of this EULA agreement.
+
+You are permitted to load the "Castor Extractor" software (for example a PC, laptop, mobile or tablet) under your control. You are responsible for ensuring your device meets the minimum requirements of the "Castor Extractor" software.
+
+You are not permitted to:
+
+-   Edit, alter, modify, adapt, translate or otherwise change the whole or any part of the Software nor permit the whole or any part of the Software to be combined with or become incorporated in any other software, nor decompile, disassemble or reverse engineer the Software or attempt to do any such things
+-   Reproduce, copy, distribute, resell or otherwise use the Software for any commercial purpose
+-   Allow any third party to use the Software on behalf of or for the benefit of any third party
+-   Use the Software in any way which breaches any applicable local, national or international law
+-   use the Software for any purpose that Castor considers is a breach of this EULA agreement
+
+## Intellectual Property and Ownership
+
+Castor shall at all times retain ownership of the Software as originally downloaded by you and all subsequent downloads of the Software by you. The Software (and the copyright, and other intellectual property rights of whatever nature in the Software, including any modifications made thereto) are and shall remain the property of Castor.
+
+Castor reserves the right to grant licences to use the Software to third parties.
+
+## Termination
+
+This EULA agreement is effective from the date you first use the Software and shall continue until terminated. You may terminate it at any time upon written notice to Castor.
+
+It will also terminate immediately if you fail to comply with any term of this EULA agreement. Upon such termination, the licenses granted by this EULA agreement will immediately terminate and you agree to stop all access and use of the Software. The provisions that by their nature continue and survive will survive any termination of this EULA agreement.
+
+## Governing Law
+
+This EULA agreement, and any dispute arising out of or in connection with this EULA agreement, shall be governed by and construed in accordance with the laws of France.
+# End-User License Agreement (EULA) of "Castor Extractor"
+
+This End-User License Agreement ("EULA") is a legal agreement between you and Castor. Our EULA was created by EULA Template (https://www.eulatemplate.com) for "Castor Extractor".
+
+This EULA agreement governs your acquisition and use of our "Castor Extractor" software ("Software") directly from Castor or indirectly through a Castor authorized reseller or distributor (a "Reseller").
+
+Please read this EULA agreement carefully before completing the installation process and using the "Castor Extractor" software. It provides a license to use the "Castor Extractor" software and contains warranty information and liability disclaimers.
+
+If you register for a free trial of the "Castor Extractor" software, this EULA agreement will also govern that trial. By clicking "accept" or installing and/or using the "Castor Extractor" software, you are confirming your acceptance of the Software and agreeing to become bound by the terms of this EULA agreement.
+
+If you are entering into this EULA agreement on behalf of a company or other legal entity, you represent that you have the authority to bind such entity and its affiliates to these terms and conditions. If you do not have such authority or if you do not agree with the terms and conditions of this EULA agreement, do not install or use the Software, and you must not accept this EULA agreement.
+
+This EULA agreement shall apply only to the Software supplied by Castor herewith regardless of whether other software is referred to or described herein. The terms also apply to any Castor updates, supplements, Internet-based services, and support services for the Software, unless other terms accompany those items on delivery. If so, those terms apply.
+
+## License Grant
+
+Castor hereby grants you a personal, non-transferable, non-exclusive licence to use the "Castor Extractor" software on your devices in accordance with the terms of this EULA agreement.
+
+You are permitted to load the "Castor Extractor" software (for example a PC, laptop, mobile or tablet) under your control. You are responsible for ensuring your device meets the minimum requirements of the "Castor Extractor" software.
+
+You are not permitted to:
+
+-   Edit, alter, modify, adapt, translate or otherwise change the whole or any part of the Software nor permit the whole or any part of the Software to be combined with or become incorporated in any other software, nor decompile, disassemble or reverse engineer the Software or attempt to do any such things
+-   Reproduce, copy, distribute, resell or otherwise use the Software for any commercial purpose
+-   Allow any third party to use the Software on behalf of or for the benefit of any third party
+-   Use the Software in any way which breaches any applicable local, national or international law
+-   use the Software for any purpose that Castor considers is a breach of this EULA agreement
+
+## Intellectual Property and Ownership
+
+Castor shall at all times retain ownership of the Software as originally downloaded by you and all subsequent downloads of the Software by you. The Software (and the copyright, and other intellectual property rights of whatever nature in the Software, including any modifications made thereto) are and shall remain the property of Castor.
+
+Castor reserves the right to grant licences to use the Software to third parties.
+
+## Termination
+
+This EULA agreement is effective from the date you first use the Software and shall continue until terminated. You may terminate it at any time upon written notice to Castor.
+
+It will also terminate immediately if you fail to comply with any term of this EULA agreement. Upon such termination, the licenses granted by this EULA agreement will immediately terminate and you agree to stop all access and use of the Software. The provisions that by their nature continue and survive will survive any termination of this EULA agreement.
+
+## Governing Law
+
+This EULA agreement, and any dispute arising out of or in connection with this EULA agreement, shall be governed by and construed in accordance with the laws of France.
