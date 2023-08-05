@@ -1,0 +1,279 @@
+requires_setup: [stratis/setup/storage/setup_*, stratis/setup/general_key/1, stratis/setup/set_key]
+test: /stratis/stratis_cli/stratis_cli.py
+
+
+/restart_stratid:
+  description: Testing restart stratisd rediscover pool
+  command: libsan.host.linux.run
+  cmd: "systemctl stop stratisd;systemctl start stratisd;sleep 3"
+  message:  restart stratisd 
+  tier: 1
+  expected_ret: 0
+  requires_setup+:
+    - stratis/setup/encryption_pool_create
+  #requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+
+
+/add_cache:
+  description: Testing encryption pool add-cache command
+  command: pool_add_cache
+  tags: [multiple_device]
+  /fail:
+    description+: ", commands should failed."
+    expected_out: ["No cache has been initialized for pool"]
+    expected_ret: 1
+    tier: 2
+    requires_setup+: [stratis/setup/encryption_pool_create_single_blockdev/1]
+    requires_cleanup:
+      - stratis/setup/pool_destroy_single_blockdev/1
+      - stratis/setup/encryption_pool_create_single_blockdev/1
+    pool_name: STRATIS_POOL
+    blockdevs: STRATIS_FREE
+    /single:
+      description+: Adds single blockdev.
+      message: Adding single cache device to pool.
+    /multiple:
+      description+: Adds multiple blockdevs.
+      message: Adding multiple cache device to pool.
+
+
+/add_data_clevis:
+  description: Testing stratis encryption pool add_data' command
+  command: pool_add_data
+  tags: [multiple_device]
+  /success:
+    description+: ", commands should succeed."
+    tier: 1
+    requires_setup+:
+      - stratis/setup/set_up_tang
+      - stratis/setup/encrypted_pool_clevis_create_single_blockdev/1
+    requires_cleanup:
+      - stratis/setup/pool_destroy_single_blockdev/1
+      - stratis/setup/encrypted_pool_clevis_create_single_blockdev/1
+    pool_name: STRATIS_POOL
+    blockdevs: STRATIS_FREE
+    /single:
+      description+: Adds single blockdev.
+      message: Adding single data device to pool.
+    /multiple:
+      description+: Adds multiple blockdevs.
+      message: Adding multiple data device to pool.
+
+/add_data:
+  description: Testing stratis encryption pool add_data' command
+  command: pool_add_data
+  tags: [multiple_device]
+  /success:
+    description+: ", commands should succeed."
+    tier: 1
+    requires_setup+: [stratis/setup/encryption_pool_create_single_blockdev/1]
+    requires_cleanup:
+      - stratis/setup/pool_destroy_single_blockdev/1
+      - stratis/setup/encryption_pool_create_single_blockdev/1
+    pool_name: STRATIS_POOL
+    blockdevs: STRATIS_FREE
+    /single:
+      description+: Adds single blockdev.
+      message: Adding single data device to pool.
+    /multiple:
+      description+: Adds multiple blockdevs.
+      message: Adding multiple data device to pool.
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail adding data dev to pool after unset key
+    tier: 1
+    expected_ret: 1
+    #requires_setup+: [stratis/setup/encryption_pool_create_single_blockdev/1]
+    /key_unset:
+      description+: "Tests with unset key"
+      message+: "without key"
+      pool_name: STRATIS_POOL
+      blockdevs: STRATIS_FREE
+      requires_setup+: [stratis/setup/encryption_pool_create_single_blockdev/1, stratis/setup/remove_key]
+      expected_out: ["ERROR: Engine error: Neither the key in the kernel keyring nor Clevis could be used to perform encryption operations on the devices in the pool; check that either the appropriate key in the keyring is set or that the Clevis key storage method is available"]
+      requires_cleanup:
+        - stratis/setup/set_key
+    /key_reset:
+      description+: "Tests with reset key"
+      message+: "reset key"
+      pool_name: STRATIS_POOL
+      blockdevs: STRATIS_FREE
+      requires_setup+:
+        - stratis/setup/encryption_pool_create_single_blockdev/1
+        - stratis/setup/general_key/2
+        - stratis/setup/reset_key
+      expected_out: ["ERROR: Engine error: Neither the key in the kernel keyring nor Clevis could be used to perform encryption operations on the devices in the pool; check that either the appropriate key in the keyring is set or that the Clevis key storage method is available"]
+      requires_cleanup:
+        - stratis/setup/remove_key
+        - stratis/setup/set_key
+
+
+/create_pool:
+  description: Testing create encryption pool.
+  command: pool_create
+  /success:
+    description+: ",command should succeed"
+    message: Create encryption pool
+    tier: 1
+    expected_ret: 0
+    /keyring:
+        message+: using keyring
+        blockdevs: STRATIS_DEVICE
+        pool_name: test_pool
+        key_desc: test_key
+        #requires_setup+:
+        #  - stratis/setup/general_key/1
+        #  - stratis/setup/set_key
+        requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+    /tang_without_key:
+        active: False
+        message+: using tang server
+        blockdevs: STRATIS_DEVICE
+        pool_name: test_pool
+        clevis: tang
+        thumbprint: TANG_THUMBPRINT
+        tang_url: TANG_URL
+        requires_setup+:
+          - stratis/setup/set_up_tang
+        requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+    /tang_with_key:
+        message+: using tang server
+        blockdevs: STRATIS_DEVICE
+        pool_name: test_pool
+        clevis: tang
+        key_desc: test_key
+        thumbprint: TANG_THUMBPRINT
+        tang_url: TANG_URL
+        requires_setup+:
+          - stratis/setup/set_up_tang
+        requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+    /tang_trust_url_with_key:
+        message+: using tang server
+        blockdevs: STRATIS_DEVICE
+        pool_name: test_pool
+        clevis: tang
+        key_desc: test_key
+        trust_url: True
+        tang_url: TANG_URL
+        requires_setup+:
+          - stratis/setup/set_up_tang
+        requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+    /tang_trust_url_without_key:
+        message+: using tang server
+        blockdevs: STRATIS_DEVICE
+        pool_name: test_pool
+        clevis: tang
+        trust_url: True
+        tang_url: TANG_URL
+        requires_setup+:
+          - stratis/setup/set_up_tang
+        requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+  /fail:
+    description+: ",commands should fail."
+    message: Try to fail create encryption pool
+    tier: 2
+    expected_ret: 1
+    #/no_key_params:
+    #  expected_ret: 1
+    #  requires_setup+: [stratis/setup/pool_create]
+    #  message+: " without any desc_key arguments."
+    #  blockdevs: STRATIS_DEVICE
+    #  pool_name: test_pool
+    #  expected_out: ["ERROR: Engine error: Name is a path with 0 or more than 1 components"]
+    /wrong_desc_key:
+      message+: "with wrong desc key"
+      expected_ret: 1
+      #requires_setup+: [stratis/setup/pool_create]
+      blockdevs: STRATIS_DEVICE
+      pool_name: test_pool
+      key_desc: wrong-key
+      expected_out: ["ERROR: Cryptsetup error: Failed with error"]
+    /device_in_use:
+      message+: " on device that already has pool on top."
+      requires_setup+: [stratis/setup/encryption_pool_create]
+      pool_name: test_pool_duplicate
+      blockdevs: STRATIS_DEVICE
+      key_desc: test_key
+      expected_out: ["Engine error", "udev information indicates that device","is a LUKS encrypted block device"]
+      requires_cleanup: [stratis/stratis_cli/pool/destroy/success, stratis/setup/pool_create]
+
+
+#/rename:
+#  description+: ",rename the encryption pool"
+#  command: pool_rename
+#  /success
+#  message: Rename the encryption pool
+#  current: STRATIS_POOL
+#  new: test_pool_new
+#    requires_cleanup: [stratis/stratis_cli/pool/rename/success/return]
+
+
+/encryption_pool_rename:
+  description: Testing stratis encryption pool rename
+  command: pool_rename
+  /success:
+    description+: ", commands should succeed."
+    message: Renaming pool
+    tier: 1
+    expected_ret: 0
+    requires_setup+:
+      - stratis/setup/encryption_pool_create
+    /new_name:
+      message+: " to new name."
+      current: STRATIS_POOL
+      new: test_pool_new
+      requires_cleanup: [stratis/stratis_cli/key/encryption_pool_rename/success/return]
+    /return:
+      message+: " back to old name."
+      cleanup: True
+      current: test_pool_new
+      new: STRATIS_POOL
+      requires_cleanup: [stratis/stratis_cli/pool/destroy/success]
+
+
+/encryption_pool_create_fs:
+  description: Testing stratis encryption_pool_create_fs .
+  command: fs_create
+  /success:
+    description+: ", commands should succeed."
+    message: Creating stratis fs on STRATIS_POOL
+    tier: 1
+    fs_name: test_fs
+    pool_name: STRATIS_POOL
+    requires_setup+:
+      - stratis/setup/encryption_pool_create
+    requires_cleanup:
+      - stratis/stratis_cli/fs/destroy/success/single
+
+
+/encryption_pool_create_snapshot:
+  description: Testing encryption_pool_create_snapshot command
+  command: fs_snapshot
+  /success:
+    description+: ", commands should succeed."
+    message: Snapshotting fs on STRATIS_POOL
+    tier: 1
+    origin_name: STRATIS_FS
+    snapshot_name: test_snapshot
+    pool_name: STRATIS_POOL
+    requires_setup+:
+      - stratis/setup/encryption_pool_create
+      - stratis/setup/fs_create
+    requires_cleanup: 
+      - stratis/stratis_cli/fs/destroy/success/snapshot
+
+
+/list:
+  description: list the key in  kernel keyring.
+  command: key_list
+  /success:
+    description+: ", listing the key"
+    tier: 1
+    message: list the key in kernel keyring
+    expected_ret: 0
+    expected_out: ["Key","Description"]
+    #requires_setup+: [stratis/setup/general_key/1, stratis/setup/set_key]
+    #requires_cleanup: [stratis/setup/remove_key]
+
+
+

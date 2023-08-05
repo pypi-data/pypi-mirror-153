@@ -1,0 +1,96 @@
+description: These setups prepare the raw storage to be used.
+storage: True
+
+/setup_manual:
+  description: This lets user manually setup the storage and write the path to '/tmp/VDO_DEVICE' file
+  test: setup_manual.py
+
+/setup_iscsi:
+  description: Sets up 10G iscsi from NetApp (EqualLogic if in BRQ)
+  test: setup_iscsi.py
+  requires_cleanup: vdo/setup/storage/cleanup_iscsi
+  requires_install+:
+    - targetcli
+    - iscsi-initiator-utils
+  lun_name: vdo-small
+
+/setup_iscsi_big:
+  description: Sets up 2T iscsi from NetApp (EqualLogic if in BRQ)
+  test: setup_iscsi.py
+  requires_cleanup: vdo/setup/storage/cleanup_iscsi
+  requires_install+:
+    - targetcli
+    - iscsi-initiator-utils
+  lun_name: vdo-general
+
+/cleanup_iscsi:
+  description: Cleans up iscsi
+  test: cleanup_iscsi.py
+  requires_install+:
+    - targetcli
+    - iscsi-initiator-utils
+
+/setup_multipath:
+  description: Gets multipath on VDO_DEVICE and replaces it in the val.
+  test: setup_multipath.py
+  # requires_cleanup: vdo/setup/storage/cleanup_multipath
+
+/cleanup_multipath:
+  description: Cleans multipath devices
+  test: cleanup_multipath.py
+
+/setup_crypt:
+  description: Sets up dm-crypt on $VDO_DEVICE
+  test: setup_crypt.py
+  requires_cleanup: vdo/setup/storage/cleanup_crypt
+  requires_install+: [cryptsetup]
+
+/cleanup_crypt:
+  description: Cleans up dm-crypt from $VDO_DEVICE
+  test: cleanup_crypt.py
+  requires_install+: [cryptsetup]
+
+/setup_raid:
+  description: Sets up MD RAID on free local disks
+  test: ../setup_raid.py
+  requires_cleanup: vdo/setup/storage/cleanup_raid
+  requires_install+: [mdadm]
+  /0:
+    raid_level: 0
+    description+: ", raid level 0."
+  /1:
+    raid_level: 1
+    description+: ", raid level 1."
+  /5:
+    raid_level: 5
+    description+: ", raid level 5."
+  /6:
+    raid_level: 6
+    description+: ", raid level 6."
+  /10:
+    raid_level: 10
+    description+: ", raid level 10."
+  /50:
+    raid_level: 50
+    description+: ", raid level 50."
+  /60:
+    raid_level: 60
+    description+: ", raid level 60."
+
+/cleanup_raid:
+  description: Cleans up MD RAID
+  test: cleanup_raid.py
+  requires_install+: [mdadm]
+
+/setup_fcoe:
+  description: Connects to FCoE if it is supported and set up
+  test: setup_fcoe.py
+  requires_cleanup: vdo/setup/storage/cleanup_fcoe
+  requires_install+:
+    - fcoe-utils
+
+/cleanup_fcoe:
+  description: Cleans up FCoE
+  test: cleanup_fcoe.py
+  requires_install+:
+    - fcoe-utils

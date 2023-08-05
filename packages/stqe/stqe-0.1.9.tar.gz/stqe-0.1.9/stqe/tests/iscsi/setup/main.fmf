@@ -1,0 +1,86 @@
+setup: True
+
+/create_fileio:
+    description: Creates fileio backstore object
+    test: create_backstore.py
+    backstore_type: fileio
+    backstore_name: fileio
+    file_or_dev: fileio_file
+    size: 1M
+    requires_cleanup: targetcli/setup/delete_fileio
+
+/create_fileio_1g:
+    description: Creates fileio backstore object
+    test: create_backstore.py
+    backstore_type: fileio
+    backstore_name: fileio
+    file_or_dev: fileio_file
+    size: 1G
+    requires_cleanup: targetcli/setup/delete_fileio
+
+/create_fileio_target:
+    description: Creates iscsi target with a fileio storage object
+    test: create_fileio_target.py
+    requires_cleanup: targetcli/setup/delete_iscsi_target
+
+/create_loopback:
+    description: Creates loopback object based on fileio backstore
+    test: create_loopback.py
+    lun: 255
+    requires_cleanup: targetcli/setup/delete_loopback
+
+/delete_fileio:
+    description: Deletes fileio backstore object
+    test: delete_backstore.py
+    backstore: fileio
+
+/delete_loopback:
+    description: Deletes loopback object
+    test: delete_loopback.py
+
+/delete_iscsi_target:
+    description: Deletes iscsi target
+    test: delete_iscsi_target.py
+
+/disable_chap:
+    description: Disables CHAP and removes password and userid from iscsid config.
+    test: disable_chap.py
+
+/configure_chap:
+    description: Configures 1-way CHAP for iSCSI tests
+    test: configure_chap.py
+    userid: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-+@_=:/[],~'
+    password: '.-+@_=:/[],~9876543210ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba'
+    requires_cleanup: targetcli/setup/disable_chap
+
+/configure_chap_2ways:
+    description: Configures 2-way CHAP for iSCSI tests
+    test: configure_chap.py
+    userid: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-+@_=:/[],~'
+    password: '.-+@_=:/[],~9876543210ZYXWVUTSRQPONMLKJIHGFEDCBAzyxwvutsrqponmlkjihgfedcba'
+    mutual_userid: '0123456789.-+@_=:/[],~abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    mutual_password: '.-+@_=:/[],~abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    requires_cleanup: targetcli/setup/disable_chap
+
+/configure_chap_random:
+    description: Configures 1-way CHAP for iSCSI tests with random credentials
+    test: configure_chap.py
+    random: True
+    requires_cleanup: targetcli/setup/disable_chap
+
+/configure_chap_2ways_random:
+    description: Configures 2-way CHAP for iSCSI tests with random credentials
+    test: configure_chap.py
+    chap_ways: 2
+    random: True
+    requires_cleanup: targetcli/setup/disable_chap
+
+/stop_multipath:
+    descirption: Stops multipathd and multipathd.socket services
+    test: stop_multipath.py
+    requires_cleanup: targetcli/setup/start_multipath
+
+/start_multipath:
+    description: Starts multipathd and multipathd.socket services
+    test: start_multipath.py
+

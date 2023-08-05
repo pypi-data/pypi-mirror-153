@@ -1,0 +1,288 @@
+description: Testing 'vdo modify'
+time: 1 min
+test: /vdo/vdo_cli/vdo_cli.py
+command: modify
+requires_setup+: [vdo/setup/create_vdo]
+
+# CLI failures are already covered by 'vdo create' tests.
+
+#### alias definitions ####
+/success_alias: &success
+  tier: 1
+  message: Modifying VDO device with
+  vdo_name: vdo_test
+
+/restart_required_alias: &restart_required
+  expected_out: ["Note: Changes will not apply until VDO", "is restarted"]
+  requires_restart: True
+
+/fail_alias: &fail
+  message: Trying to fail modifying VDO device with
+  tier: 2
+  expected_ret: 2
+  vdo_name: vdo_test
+
+#### test specifications ####
+
+/ack_threads_success:
+  description: Testing 'vdo modify --vdoAckThreads', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " '1' ack threads."
+    ack_threads: 1
+    cleanup: True
+  /0:
+    message+: " '0' ack thread."
+    ack_threads: 0
+    requires_cleanup: [vdo/vdo_cli/modify/ack_threads_success/default]
+  /32:
+    message+: " '32' ack threads."
+    ack_threads: 32
+    requires_cleanup: [vdo/vdo_cli/modify/ack_threads_success/default]
+
+/bio_rotation_interval_success:
+  description: Testing 'vdo modify --vdoBioRotationInterval', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " bio rotation interval '64'."
+    bio_rotation_interval: 64
+    cleanup: True
+  /1:
+    message+: " bio rotation interval '1'."
+    bio_rotation_interval: 1
+    requires_cleanup: [vdo/vdo_cli/modify/bio_rotation_interval_success/default]
+  /1024:
+    message+: " bio rotation interval '1024'."
+    bio_rotation_interval: 1024
+    requires_cleanup: [vdo/vdo_cli/modify/bio_rotation_interval_success/default]
+
+/bio_threads_success:
+  description: Testing 'vdo modify --vdoBioThreads', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " '4' bio threads."
+    bio_threads: 4
+    cleanup: True
+  /1:
+    message+: " '1' bio thread."
+    bio_threads: 1
+    requires_cleanup: [vdo/vdo_cli/modify/bio_threads_success/default]
+  /100:
+    message+: " '100' bio threads."
+    bio_threads: 100
+    requires_cleanup: [vdo/vdo_cli/modify/bio_threads_success/default]
+
+/block_map_cache_size_success:
+  description: Testing 'vdo modify --blockMapCacheSize', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " block map cache size '128M'."
+    block_map_cache_size: 128M
+    cleanup: True
+  /256M:
+    message+: " block map cache size  '256M'."
+    block_map_cache_size: 256M
+    requires_cleanup: [vdo/vdo_cli/modify/block_map_cache_size_success/default]
+  /8G:
+    message+: " block map cache size  '8G'."
+    block_map_cache_size: 8G
+    requires_cleanup: [vdo/vdo_cli/modify/block_map_cache_size_success/default]
+    tags: [raid]
+
+/block_map_period_success:
+  description: Testing 'vdo modify --blockMapPeriod', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " block map period '16380'."
+    block_map_period: 16380
+    cleanup: True
+  /1:
+    message+: " block map period  '1'."
+    block_map_period: 1
+    requires_cleanup: [vdo/vdo_cli/modify/block_map_period_success/default]
+
+/conf_file_success:
+  description: Testing 'vdo modify --confFile', commands should succeed.
+  <<: *success
+  message+: " specifying conf file."
+  ack_threads: 1
+  conf_file: /etc/vdoconf.yml
+
+/conf_file_fail:
+  description: Testing 'vdo modify --confFile', commands should fail.
+  <<: *fail
+  /just_conf_file:
+    message+: " only --confFile."
+    conf_file: /etc/vdoconf.yml
+    expected_out: ["error: options must be specified from:"]
+
+/cpu_threads_success:
+  description: Testing 'vdo modify --vdoCpuThreads', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " '2' cpu threads."
+    cpu_threads: 2
+    cleanup: True
+  /1:
+    message+: " '1' cpu thread."
+    cpu_threads: 1
+    requires_cleanup: [vdo/vdo_cli/modify/cpu_threads_success/default]
+  /100:
+    message+: " '100' cpu threads."
+    cpu_threads: 100
+    requires_cleanup: [vdo/vdo_cli/modify/cpu_threads_success/default]
+
+/hash_zone_threads_success:
+  description: Testing 'vdo modify --vdoHashZoneThreads', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " '1' hash zone threads."
+    hash_zone_threads: 1
+    cleanup: True
+  /5:
+    message+: " '5' hash zone thread."
+    hash_zone_threads: 5
+    requires_cleanup: [vdo/vdo_cli/modify/hash_zone_threads_success/default]
+  /100:
+    message+: " '100' hash zone threads."
+    hash_zone_threads: 100
+    requires_cleanup: [vdo/vdo_cli/modify/hash_zone_threads_success/default]
+
+/log_file_success:
+  description: Testing 'vdo modify --logfile', commands should succeed.
+  <<: *success
+  message+: " specifying log file."
+  ack_threads: 1
+  log_file: vdo.log
+  requires_cleanup: [vdo/vdo_cli/create/delete_log_file/log_file_vdo.log]
+
+/log_file_fail:
+  description: Testing 'vdo modify --logfile', commands should fail.
+  <<: *fail
+  /just_log_file:
+    message+: " only --logfile."
+    log_file: vdo.log
+    expected_out: ["error: options must be specified from:"]
+
+/logical_threads_success:
+  description: Testing 'vdo modify --vdoLogicalThreads', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " '1' logical threads."
+    logical_threads: 1
+    cleanup: True
+  /5:
+    message+: " '5' logical thread."
+    logical_threads: 5
+    requires_cleanup: [vdo/vdo_cli/modify/logical_threads_success/default]
+  /60:
+    message+: " '60' logical threads."
+    logical_threads: 60
+    block_map_cache_size: 1G
+    requires_cleanup:
+      - vdo/vdo_cli/modify/logical_threads_success/default
+      - vdo/vdo_cli/modify/block_map_cache_size_success/default
+
+/max_discard_size_success:
+  description: Testing 'vdo modify --maxDiscardSize', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " max discard size '4K'."
+    max_discard_size: 4K
+    cleanup: True
+  /3.99G:
+    message+: " max discard size  '3.99G'."
+    max_discard_size: 3.99G
+    requires_cleanup: [vdo/vdo_cli/modify/max_discard_size_success/default]
+  /1:
+    message+: " max discard size  '1'."
+    max_discard_size: 1
+    requires_cleanup: [vdo/vdo_cli/modify/max_discard_size_success/default]
+
+/multiple_threads_success:
+  description: Testing 'vdo modify --vdoLogicalThreads --vdoHashZoneThreads --vdoPhysicalThreads' at once, commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " '1' logical, hash zone and physical threads."
+    logical_threads: 1
+    hash_zone_threads: 1
+    physical_threads: 1
+    cleanup: True
+  /default_all:
+    message+: " '4' bio, '2' cpu and '1' logical, ack, hash zone and physical threads."
+    logical_threads: 1
+    hash_zone_threads: 1
+    physical_threads: 1
+    ack_threads: 1
+    bio_threads: 4
+    cpu_threads: 2
+    cleanup: True
+  /0:
+    message+: " '0' logical, hash zone and physical threads."
+    logical_threads: 0
+    hash_zone_threads: 0
+    physical_threads: 0
+    requires_cleanup: [vdo/vdo_cli/modify/multiple_threads_success/default]
+  /5:
+    # This is maximum without increasing block map cache size
+    message+: " '5' logical, hash zone and physical threads."
+    logical_threads: 5
+    hash_zone_threads: 5
+    physical_threads: 5
+    requires_cleanup: [vdo/vdo_cli/modify/multiple_threads_success/default]
+  /limit_max:
+    message+: " '60' logical, '100' hash zone and '8' physical threads."
+    logical_threads: 60
+    hash_zone_threads: 100
+    physical_threads: 8
+    block_map_cache_size: 1G # need at least 16MB per logical thread
+    requires_cleanup:
+      - vdo/vdo_cli/modify/multiple_threads_success/default
+      - vdo/vdo_cli/modify/block_map_cache_size_success/default
+  /limit_max_all:
+    description: Testing 'vdo create' with all possible threads set to maximum allowed at once, commands should succeed.
+    ack_threads: 100
+    bio_threads: 100
+    cpu_threads: 100
+    logical_threads: 60
+    hash_zone_threads: 100
+    physical_threads: 8
+    block_map_cache_size: 1G # need at least 16MB per logical thread
+    requires_cleanup:
+      - vdo/vdo_cli/modify/multiple_threads_success/default_all
+      - vdo/vdo_cli/modify/block_map_cache_size_success/default
+
+/physical_threads_success:
+  description: Testing 'vdo modify --vdoPhysicalThreads', commands should succeed.
+  <<: [*success, *restart_required]
+  /default:
+    message+: " '1' physical threads."
+    physical_threads: 1
+    cleanup: True
+  /5:
+    message+: " '5' physical thread."
+    physical_threads: 5
+    requires_cleanup: [vdo/vdo_cli/modify/physical_threads_success/default]
+  /16:
+    message+: " '16' physical threads."
+    physical_threads: 16
+    block_map_cache_size: 1G
+    requires_cleanup:
+      - vdo/vdo_cli/modify/physical_threads_success/default
+      - vdo/vdo_cli/modify/block_map_cache_size_success/default
+
+/verbose_success:
+  description: Testing 'vdo modify --verbose', commands should succeed.
+  <<: *success
+  message+: " using --verbose."
+  ack_threads: 1
+  verbose: True
+
+/verbose_fail:
+  description: Testing 'vdo modify --verbose', commands should fail.
+  <<: *fail
+  /just_verbose:
+    message+: " only --verbose."
+    verbose: True
+    expected_out: ["error: options must be specified from:"]
+

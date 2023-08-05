@@ -1,0 +1,133 @@
+.\" Process this file with
+.\" groff -man -Tascii stqe-test.1
+.\"
+.TH stqe-test 1 "Test framework used by Red Hat kernel storage team"
+.SH NAME
+stqe-test \- Red Hat Kernel Storage test suite
+.SH SYNOPSIS
+.B stqe-test [-h] [list [tests|configs] |run] [-c
+.I config-file
+.B ]
+.B ...
+.SH DESCRIPTION
+
+stqe-test is a test framework used by Red Hat kernel storage team.
+
+`stqe-test` is the name of its test runner command line tool, described in
+this man page.
+
+For more information about the stqe-test project, please check its website:
+http://TODO/
+
+.SH OPTIONS
+
+The following list of options are builtin, application level `stqe-test`
+options.
+ -h, --help                 show this help message and exit
+ -v, --version              show program's version number and exit
+
+stqe-test commands:
+
+ run           Run one or more tests
+ list tests    List available test cases. Use with -c option to list tests from specific config file
+ list configs  List available test configs.
+ report        (FMF) Returns tests in tree-like structure based on FMF metadata
+
+stqe-test run options:
+ -c, --config CONFIG_FILE   Use test config file
+ -t, --test   TEST_NAME     Specific the test case name to run
+ -p, --param  TEST_PARAM    Parameters to test case specified by -t option
+                            Eg: -p " --mpath_name=mpatha"
+ --test_exit_code           In case we want to exit with test case exit code.
+                            If test case SKIP it will exit with 2 and not with 0
+ --no_report                In case we do not want to show test report
+ --fmf                      Run stqe using FMF (Flexible Metadata Format)
+ -f, --filter FILTER        (FMF, repeatable) Specify filtering, more info in 'pydoc fmf.filter'
+                            Eg. --filter "tier:1 | tier:2" gets all tests with either tier 1 or tier 2
+ --path       PATH          (FMF) Relative path from stqe/tests/. Does not have to be complete.
+ --verbose                  ('list tests' and FMF) More verbose output when listing using FMF.
+ --setup      SETUP         (FMF) Setup string to replace '*' in required_setup.
+ --bz         BZ_NUMBER     (FMF) BugZilla number, runs all test with the same bz number in metadata.
+                            This option runs all test with that number, even ones with 'active: False'!
+ --norun                    Flag to not run commands, for debugging purposes.
+
+stqe-test list options:
+ --type
+ -c, --config CONFIG_FILE   Use test config file
+ --fmf                      Run stqe using FMF (Flexible Metadata Format)
+ -f, --filter FILTER        (FMF, repeatable) Specify filtering, more info in 'pydoc fmf.filter'
+                            Eg. --filter "tier:1 | tier:2" gets all tests with either tier 1 or tier 2
+ --path       PATH          (FMF) Relative path from stqe/tests/. Does not have to be complete.
+ --verbose                  ('list tests' and FMF) More verbose output when listing using FMF.
+
+stqe-test report options (FMF only):
+ --no_metadata              Return just test names, no metadata.
+ -m, --metadata ATTRIBUTE   (repeatable) FMF attribute to report.
+ -p, --path     PATH        Relative path from stqe/tests/
+ -f, --filter   FILTER      (repeatable) Specify filtering, more info in 'pydoc fmf.filter'
+                            Eg. --filter "tier:1 | tier:2" gets all tests with either tier 1 or tier 2
+ --file         FILE        File to save to instead of printing out.
+
+.SH RUNNING A TEST
+
+The most common use of the `stqe-test` command line tool is to run a test set:
+
+ $ stqe-test run -c lvm/lvm-thinp-basic.conf
+
+This command will run all tests on lvm/lvm-thinp-basic.conf.
+
+To run a single test case from a test set it is possible to specify the test case name:
+
+ $ stqe-test run -c lvm/lvm-thinp-basic.conf -t lvm/thinp/lvcreate-stripe.py
+
+To run a single test case using different parameters as from the test config use:
+
+ $ stqe-test run -c lvm/lvm-thinp-basic.conf -t lvm/thinp/lvcreate-stripe.py -p "[new parameters]"
+
+.SH Using with FMF
+
+stqe-test is compatible with FMF found at https://github.com/psss/fmf.
+
+Some attributes have added meaning:
+ test: path to test_file (required)
+ tier: int
+ requires_install: packages to install using yum before all tests
+ component: relevant component for this test
+ setup: True / False to identify setup / cleanup scripts used by 'requires_setup' / 'requires_cleanup'
+ requires_setup: path to setup script
+ requires_cleanup: on setup scrit metadata. Path to cleanup script, 'setup: True' is required
+ active: True / False, allows deactivating tests
+ bz: BugZilla number
+
+Note: all paths in attributes are either in the same directory or from stqe/tests/
+
+Examples:
+ This command will list all tests for component 'kmod-kvdo' with tier 1 from path stqe/tests/vdo/vdo_c*
+  $ stqe-test list tests --fmf --path vdo/vdo_c --filter "tier:1 & component:kmod-kvdo"
+
+ This command will run the same tests as above:
+  $ stqe-test run --fmf --path vdo/vdo_c --filter "tier:1 & component:kmod-kvdo"
+
+.SH BUGS
+
+If you find a bug, please report it over our <TODO> page as an issue.
+
+.SH LICENSE
+
+ stqe-test is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ You should have received a copy of the GNU General Public License
+ along with stqe-test.  If not, see <http://www.gnu.org/licenses/>
+
+.SH MORE INFORMATION
+
+For more information please check stqe-test's project website, located at
+`TODO`.
+
+.SH AUTHOR
+
+Bruno Goncalves <bgoncalv@redhat.com>
+
+(FMF) Jakub Krysl <jkrysl@redhat.com>

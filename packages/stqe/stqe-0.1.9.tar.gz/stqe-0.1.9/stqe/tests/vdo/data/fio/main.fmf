@@ -1,0 +1,51 @@
+description: Testing vdo using 'fio' tool
+requires_install: fio
+# fio settings
+ioengine: libaio
+direct: 1
+group_reporting: 1
+bs: 4k
+iodepth: 16
+numjobs: 8
+rw: randrw
+rwmixread: 80
+randrepeat: 0
+norandommap: 1
+size: 4G
+verify: crc32c
+runtime: 15
+/basic_stress:
+  description: Simple stress test on basic vdo device.
+  tier: 1
+  time: 20 min
+  test: basic_stress.py
+  tags+: [kernel_smoke]
+
+/vdo_on_vdo_stress:
+  description: Simple stress test on vdo device on vdo device.
+  tier: 2
+  time: 20 min
+  test: vdo_on_vdo.py
+
+/xfs_stress:
+  description: Simple stress test on XFS on LVM on basic vdo device.
+  tier: 1
+  time: 20 min
+  test: fs.py
+  requires_setup+:
+   - vdo/setup/create_vg
+   - vdo/setup/create_lv/whole
+   - vdo/setup/create_xfs/lv_whole
+   - vdo/setup/mkdir/mount_vdo
+   - vdo/setup/mount/lv_whole
+
+/xfs_vdo_stress:
+  description: Simple stress test on XFS on basic vdo device.
+  tier: 1
+  time: 20 min
+  test: fs.py
+  requires_setup+:
+   - vdo/setup/create_xfs/vdo
+   - vdo/setup/mkdir/mount_vdo
+   - vdo/setup/mount/vdo
+  active: False

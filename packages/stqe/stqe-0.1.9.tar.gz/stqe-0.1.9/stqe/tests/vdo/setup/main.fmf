@@ -1,0 +1,226 @@
+description: Tests to prepare and clean up devices for VDO
+setup: True
+test: /vdo/setup/setup.py
+
+/create_vg:
+  description: Sets up LVM VG on VDO_DEVICE
+  message: Creating VG on VDO_DEVICE
+  command: libsan.host.lvm.vg_create
+  requires_cleanup:
+    - vdo/setup/remove_vg
+    - vdo/setup/remove_pv
+  pv_name: VDO_DEVICE
+  vg_name: vg_vdo_test
+
+/remove_vg:
+  description: Removes LVM VG VG_NAME
+  message: Removing VG
+  command: libsan.host.lvm.vg_remove
+  vg_name: VG_NAME
+  force: True
+
+/remove_pv:
+  description: Removes PV on device
+  message: Removing PV on VDO_DEVICE
+  command: libsan.host.lvm.pv_remove
+  pv_name: VDO_DEVICE
+  force: True
+
+/create_lv:
+  description: Sets up LVM LV on whole VG_DEVICE with env var LV_WHOLE
+  command: libsan.host.lvm.lv_create
+  vg_name: VG_NAME
+  /whole:
+    requires_cleanup: vdo/setup/remove_lv/whole
+    message: Creating LVM LV on whole VG_DEVICE.
+    options: ["-l 100%FREE"]
+    lv_name: lv_whole
+  /thinpool:
+    requires_cleanup: vdo/setup/remove_lv/thinpool
+    message: Creating LVM thinpool on whole VG_DEVICE.
+    options: ["-l 100%FREE", "-T"]
+    lv_name: lv_thinpool
+  /thinvol:
+    requires_cleanup: vdo/setup/remove_lv/thinvol
+    message: Creating LVM thinvol on half of LV_THINPOOL.
+    options: ["-V 50%FREE"]
+    lv_name: lv_thin
+    vg_name: VG_NAME/LV_THINPOOL
+
+/remove_lv:
+  description: Removes LVM LV from env var.
+  message: Removing LVM LV
+  command: libsan.host.lvm.lv_remove
+  vg_name: VG_NAME
+  /whole:
+    message+: " LV_WHOLE."
+    lv_name: LV_WHOLE
+  /thinpool:
+    message+: " LV_THINPOOL."
+    lv_name: THINPOOL
+  /thinvol:
+    message+: " LV_THIN."
+    lv_name: LV_THIN
+
+/create_vdo:
+  description: Sets up vdo device on VDO_DEVICE, replaces var with this device
+  message: Creating VDO on
+  command: create
+  device: VDO_DEVICE
+  slab_size: minimum
+  requires_cleanup: vdo/setup/remove_vdo
+  vdo_name: vdo_test
+
+/remove_vdo:
+  description: Removes vdo device VDO_DEVICE, replaces var with underlying device
+  message: Removing device
+  command: remove
+  vdo_name: vdo_test
+
+/create_xfs:
+  description: Sets up xfs filesystem on VDO device
+  message: Creating XFS filesystem on VDO_DEVICE.
+  command: libsan.host.linux.run
+  /vdo:
+    requires_cleanup: vdo/setup/remove_xfs/vdo
+    cmd: "mkfs.xfs -f -K VDO_DEVICE"
+  /lv_whole:
+    requires_cleanup: vdo/setup/remove_xfs/lv_whole
+    cmd: "mkfs.xfs -f -K /dev/mapper/VG_NAME-LV_WHOLE"
+
+/remove_xfs:
+  description: Removes xfs filesystem.
+  message: Removing XFS filesystem.
+  command: libsan.host.linux.run
+  /vdo:
+    cmd: "dd if=/dev/zero of=VDO_DEVICE bs=4k count=100"
+  /lv_whole:
+    cmd: "dd if=/dev/zero of=/dev/mapper/VG_NAME-LV_WHOLE bs=4k count=100"
+
+/interrupt_command:
+  command: interrupt_command
+  /vdo_creation:
+    message: Starting vdo creation process
+    vdo_name: vdo_test
+    device: VDO_DEVICE
+    slab_size: minimum
+    command_string: ["vdo create --verbose", "--name=name", "--device=device", "--vdoSlabSize=slab_size"]
+    requires_cleanup: vdo/setup/remove_vdo
+    /fast:
+      kill_delay: 0.8
+    /slow:
+      kill_delay: 1.2
+    # These are to find the correct time to trigger issue on RHEL-8
+    /1.10:
+      kill_delay: 1.10
+    /1.11:
+      kill_delay: 1.11
+    /1.12:
+      kill_delay: 1.12
+    /1.13:
+      kill_delay: 1.13
+    /1.14:
+      kill_delay: 1.14
+    /1.15:
+      kill_delay: 1.15
+    /1.16:
+      kill_delay: 1.16
+    /1.17:
+      kill_delay: 1.17
+    /1.18:
+      kill_delay: 1.18
+    /1.19:
+      kill_delay: 1.19
+    /1.20:
+      kill_delay: 1.20
+    /1.21:
+      kill_delay: 1.21
+    /1.22:
+      kill_delay: 1.22
+    /1.23:
+      kill_delay: 1.23
+    /1.24:
+      kill_delay: 1.24
+    /1.25:
+      kill_delay: 1.25
+    /1.26:
+      kill_delay: 1.26
+    /1.27:
+      kill_delay: 1.27
+    /1.28:
+      kill_delay: 1.28
+    /1.29:
+      kill_delay: 1.29
+    /1.30:
+      kill_delay: 1.30
+    /1.31:
+      kill_delay: 1.31
+    /1.32:
+      kill_delay: 1.32
+    /1.33:
+      kill_delay: 1.33
+    /1.34:
+      kill_delay: 1.34
+    /1.35:
+      kill_delay: 1.35
+    /1.36:
+      kill_delay: 1.36
+    /1.37:
+      kill_delay: 1.37
+    /1.38:
+      kill_delay: 1.38
+    /1.39:
+      kill_delay: 1.39
+    /1.40:
+      kill_delay: 1.40
+    /1.41:
+      kill_delay: 1.41
+    /1.42:
+      kill_delay: 1.42
+    /1.43:
+      kill_delay: 1.43
+    /1.44:
+      kill_delay: 1.44
+    /1.45:
+      kill_delay: 1.45
+    /1.46:
+      kill_delay: 1.46
+    /1.47:
+      kill_delay: 1.47
+    /1.48:
+      kill_delay: 1.48
+    /1.49:
+      kill_delay: 1.49
+
+/mkdir:
+  description: Creating directory in /mnt
+  message: Creating directory in /mnt
+  requires_cleanup: vdo/setup/rmdir/mount_vdo
+  command: libsan.host.linux.run
+  /mount_vdo:
+    message+: to mount vdo device to.
+    cmd: "mkdir -m 1777 /mnt/vdo_test"
+
+/rmdir:
+  description: Removes directory in /mnt.
+  message: Removing directory
+  command: shutil.rmtree
+  /mount_vdo:
+    message+: " FS_DIR."
+    path: FS_DIR
+
+/mount:
+  description: Mounts VDO device to existing directory
+  message: Mounts VDO device to FS_DIR.
+  requires_cleanup: vdo/setup/umount
+  command: libsan.host.linux.run
+  /vdo:
+    cmd: "mount VDO_DEVICE FS_DIR"
+  /lv_whole:
+    cmd: "mount /dev/mapper/VG_NAME-LV_WHOLE FS_DIR"
+
+/umount:
+  description: Umounts VDO device.
+  message: Umounts VDO_DEVICE.
+  command: libsan.host.linux.run
+  cmd: umount FS_DIR

@@ -1,0 +1,228 @@
+description: Tests to prepare and clean up devices for stratis
+setup: True
+test: /stratis/setup/setup.py
+
+/pool_create:
+  description: Creates stratis pool on STRATIS_DEVICE
+  pool_name: test_pool
+  requires_cleanup: stratis/setup/pool_destroy
+  test: pool_create.py
+
+/encryption_pool_create:
+  description: Testing encryption_pool_create
+  test: pool_create.py
+  message: Create encryption pool
+  blockdevs: STRATIS_DEVICE
+  pool_name: test_pool
+  key_desc: test_key
+  requires_cleanup: stratis/setup/pool_destroy
+
+/pool_destroy:
+  description: Destroys stratis pool STRATIS_POOL
+  test: pool_destroy.py
+
+/encryption_pool_create_single_blockdev:
+  description: Creates stratis encryption pool on 1 blockdev from STRATIS_DEVICE
+  pool_name: test_pool
+  test: ../pool_create.py
+  key_desc: test_key
+  /1:
+    requires_cleanup: stratis/setup/pool_destroy_single_blockdev/1
+  /2:
+    id: 2
+    requires_cleanup: stratis/setup/pool_destroy_single_blockdev/2
+
+
+/pool_create_single_blockdev:
+  description: Creates stratis  pool on 1 blockdev from STRATIS_DEVICE
+  pool_name: test_pool
+  test: ../pool_create.py
+  /1:
+    requires_cleanup: stratis/setup/pool_destroy_single_blockdev/1
+  /2:
+    id: 2
+    requires_cleanup: stratis/setup/pool_destroy_single_blockdev/2
+
+/encrypted_pool_clevis_create_single_blockdev:
+  description: Creates stratis pool on 1 blockdev from STRATIS_DEVICE
+  pool_name: test_pool
+  clevis: tang
+  thumbprint: TANG_THUMBPRINT
+  tang_url: TANG_URL
+  test: ../pool_create.py
+  /1:
+    requires_cleanup: stratis/setup/pool_destroy_single_blockdev/1
+  /2:
+    id: 2
+    requires_cleanup: stratis/setup/pool_destroy_single_blockdev/2
+
+/encrypted_pool_keyring_tang:
+  command: pool_create
+  message: Create encryption pool
+  blockdevs: STRATIS_DEVICE
+  pool_name: test_pool
+  clevis: tang
+  key_desc: test_key
+  thumbprint: TANG_THUMBPRINT
+  tang_url: TANG_URL
+  requires_setup+:
+    - stratis/setup/set_up_tang
+  requires_cleanup: stratis/setup/pool_destroy_test
+
+/pool_destroy_test:
+  command: pool_destroy
+  message: Destroying test_pool
+  pool_name: test_pool
+
+/pool_destroy_single_blockdev:
+  description: Destroys stratis pool STRATIS_POOL
+  test: ../pool_destroy.py
+  /1:
+    First: True
+  /2:
+    id: 2
+
+/fs_create:
+  description: Creates stratis fs on STRATIS_POOL
+  message: Creating fs on STRATIS_POOL
+  command: fs_create
+  fs_name: test_fs
+  pool_name: STRATIS_POOL
+  requires_cleanup: stratis/setup/fs_destroy/fs
+
+/fs_destroy:
+  description: Destroys stratis fs STRATIS_FS
+  message: Destroying fs
+  command: fs_destroy
+  pool_name: STRATIS_POOL
+  /fs:
+    message+: " STRATIS_FS on STRATIS_POOL."
+    fs_name: STRATIS_FS
+  /snapshot:
+    message+: " STRATIS_SNAPSHOT on STRATIS_POOL."
+    fs_name: STRATIS_SNAPSHOT
+
+/init_cache:
+  description: init device as cache add to pool
+  message: init-cache
+  #command: pool_init_cache
+  pool_name: test_pool
+  test: cache_disk.py
+  #blockdevs: STRATIS_FREE
+  #blockdevs: CACHE_DISK
+  #/1:
+  #  requires_cleanup: stratis/setup/pool_destroy_single_blockdev/1
+  #/single:
+  #  description+: Adds single blockdev.
+  #  message: Adding single cache device to pool
+
+/snapshot_create:
+  description: Snapshots stratis fs on STRATIS_POOL
+  message: Creating fs snapshot on STRATIS_POOL
+  command: fs_snapshot
+  snapshot_name: test_snapshot
+  origin_name: STRATIS_FS
+  pool_name: STRATIS_POOL
+  requires_cleanup: stratis/setup/fs_destroy/snapshot
+
+/mkdir:
+  description: Creating directory in /mnt
+  message: Creating directory in /mnt
+  requires_cleanup: stratis/setup/rmdir/mount_fs
+  command: libsan.host.linux.run
+  /mount_fs:
+    message+: to stratis fs to.
+    cmd: "mkdir -m 1777 /mnt/STRATIS_FS"
+
+/rmdir:
+  description: Removes directory in /mnt.
+  message: Removing directory
+  command: shutil.rmtree
+  /mount_fs:
+    message+: " FS_DIR."
+    path: FS_DIR
+
+/mount:
+  description: Mounts fs to existing directory
+  message: Mounts fs STRATIS_FS to FS_DIR.
+  requires_cleanup: stratis/setup/umount
+  command: libsan.host.linux.run
+  /fs:
+    cmd: "mount /dev/stratis/STRATIS_POOL/STRATIS_FS FS_DIR"
+
+/umount:
+  description: Umounts stratis fs.
+  message: Umounts /stratis/STRATIS_POOL/STRATIS_FS.
+  command: libsan.host.linux.run
+  cmd: umount /dev/stratis/STRATIS_POOL/STRATIS_FS
+
+/restart_stratisd:
+  description: restart sratisd services
+  message: restart stratisd
+  command: libsan.host.linux.run
+  cmd: systemctl restart stratisd
+
+/general_key:
+  description: General encryption key to kernel keyring
+  message: general key in file
+  #key: ''
+  lens: 12
+  test: ../pool_key.py
+  /1:
+    keyfile: keyfile
+  /2:
+    keyfile: keyfile2
+
+/set_key:
+  description: add key to kernel keyring
+  message: add key to kernel keyring
+  command: key_set
+  keyfile_path: /tmp/keyfile
+  key_desc: test_key
+
+/reset_key:
+  description: reset key to kernel keyring
+  message: reset key
+  command: key_reset
+  keyfile_path: /tmp/keyfile2
+  key_desc: test_key
+
+/remove_key:
+  description: Remove key from kernel keyring
+  message: remove key
+  command: key_unset
+  key_desc: test_key
+
+
+/pool_unlock:
+  description: unlock all pool after reboot/restart stratisd
+  command: pool_unlock
+  message: unlock all pool
+
+/set_up_tang:
+  description: A
+  test: tang_server.py
+  requires_cleanup: stratis/setup/cleanup_tang
+
+/cleanup_tang:
+    description: B
+    tang_cleanup: True
+    test: tang_server.py
+
+/pool_bind_clevis:
+  message: Binding pool using clevis method
+  description: PLACEHOLDER
+  command: pool_bind
+  binding_method: tang
+  pool_name: test_pool
+  thumbprint: TANG_THUMBPRINT
+  tang_url: TANG_URL
+
+/pool_bind_keyring:
+  description: PLACEHOLDER
+  message: Binding pool using keyring method
+  command: pool_bind
+  binding_method: keyring
+  pool_name: test_pool
+  key_desc: test_key
+

@@ -1,0 +1,270 @@
+requires_setup:
+  - stratis/setup/storage/setup_*
+  - stratis/setup/pool_create
+test: /stratis/stratis_cli/stratis_cli.py
+
+/create:
+  description: Testing 'stratis fs create' command.
+  command: fs_create
+  /success:
+    description+: ", commands should succeed."
+    message: Creating stratis fs on STRATIS_POOL
+    tier: 1
+    fs_name: test_fs
+    pool_name: STRATIS_POOL
+    requires_cleanup: [stratis/stratis_cli/fs/destroy/success/single]
+  /fail:
+    description+: ", commands should fail."
+    tier: 2
+    expected_ret: 2
+    message: Trying to fail create stratis fs
+    /no_params:
+      description+: Tests without any arguments.
+      message+: " without any arguments at all."
+      expected_out: ["error: the following arguments are required: pool_name, fs_name"]
+    /no_fs_name:
+      description+: Tests without fs name.
+      message+: " without fs name."
+      pool_name: STRATIS_POOL
+      expected_out: ["error: the following arguments are required: fs_name"]
+    /no_pool_name:
+      description+: Tests without any pool name.
+      message+: " without pool_name"
+      # This makes no sense until there is keyword support
+      active: False
+      fs_name: test_fs
+      expected_out: [""]
+    /wrong_pool:
+      description+: Tests with pool name 'wrong'.
+      message+: " with pool name 'wrong'"
+      fs_name: test_fs
+      pool_name: wrong
+      expected_ret: 1
+      expected_out: ["No unique match found for", "Name", "wrong"]
+    /existing_fs:
+      description+: Tries to create fs with same name that already exists.
+      message+: " with fs name that is already taken."
+      requires_setup+: [stratis/setup/fs_create]
+      fs_name: STRATIS_FS
+      pool_name: STRATIS_POOL
+      expected_out: ["The 'create' action has no effect for resource"]
+      expected_ret: 1
+    /pool_out_of_space:
+      active: False
+      # TODO
+
+/destroy:
+  description: Testing 'stratis fs destroy' command
+  command: fs_destroy
+  /success:
+    description+: ", commands should succeed."
+    message: Destroying stratis fs on STRATIS_POOL
+    tier: 1
+    cleanup: True
+    pool_name: STRATIS_POOL
+    /single:
+      fs_name: test_fs
+    /snapshot:
+      fs_name: test_snapshot
+    # TODO: Destroy multiple FS at once
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail destroying stratis fs
+    tier: 2
+    expected_ret: 1
+    requires_setup+: [stratis/setup/fs_create]
+    /no_params:
+      description+: Tests without any arguments.
+      message+: " without any arguments at all."
+      expected_out: ["error: the following arguments are required: pool_name, fs_name"]
+      expected_ret: 2
+    /no_fs_name:
+      description+: Does not use fs_name at all.
+      message+: " without fs name"
+      pool_name: STRATIS_POOL
+      expected_out: ["error: the following arguments are required: fs_name"]
+      expected_ret: 2
+    /wrong_fs_name:
+      description+: Gives fs_name that does not exist.
+      message+: " with fs name 'wrong'."
+      fs_name: wrong
+      pool_name: STRATIS_POOL
+      expected_out: ["destroy", "action has no effect for resource wrong"]
+    /wrong_pool_name:
+      description+: Gives fs_name that does not exist.
+      message+: " with fs name 'wrong'."
+      fs_name: STRATIS_FS
+      pool_name: wrong
+      expected_out: ["No unique match found for", "Name"]
+    /pool_instead_of_name:
+      description+: Uses the pool instead of fs name.
+      message+: " with pool name instead of fs name."
+      fs_name: STRATIS_POOL
+      pool_name: STRATIS_POOL
+      expected_out: ["destroy", "action has no effect for resource","STRATIS_POOL"]
+    /fs_in_use:
+      fs_name: STRATIS_FS
+      pool_name: STRATIS_POOL
+      expected_out: ["ERROR: low-level ioctl error due to nix error: EBUSY: Device or resource busy"]
+      requires_setup+:
+        - stratis/setup/mkdir/mount_fs
+        - stratis/setup/mount/fs
+
+/list:
+  description: Testing 'stratis fs list' command
+  command: fs_list
+  /success:
+    message: Listing stratis fs
+    description+: ", commands should succeed."
+    tier: 1
+    expected_ret: 0
+    expected_out: ["Pool Name", "Name", "Used", "Created", "Device", "UUID", "STRATIS_POOL", "STRATIS_FS"]
+    requires_setup+: [stratis/setup/fs_create]
+    /no_params:
+      description+: Tests without any arguments.
+      message+: " without any arguments at all."
+    /specific_pool:
+      description+: Tests with pool name.
+      message+: " with specifying pool name."
+      pool_name: STRATIS_POOL
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail listing stratis fs
+    expected_ret: 1
+    /wrong_pool_name:
+      description+: Tests with pool_name 'wrong'.
+      message+: " with pool name 'wrong'."
+      pool_name: wrong
+      expected_out: ["No unique match found for interface", "Name", "wrong"]
+    /device_instead_of_name:
+      tags: [single_device]
+      description+: Tests with pool_name STRATIS_DEVICE.
+      message+: " with device instead of pool name."
+      pool_name: STRATIS_DEVICE
+      expected_out: ["No unique match found for interface", "Name"]
+
+/rename:
+  description: Testing 'stratis fs rename' command
+  command: fs_rename
+  /success:
+    description+: ", commands should succeed."
+    message: Renaming fs on STRATIS_POOL
+    tier: 1
+    pool_name: STRATIS_POOL
+    requires_setup+: [stratis/setup/fs_create]
+    /new_name:
+      message+: " to new name."
+      fs_name: STRATIS_FS
+      new_name: test_fs_new
+      requires_cleanup: [stratis/stratis_cli/fs/rename/success/return]
+    /return:
+      message+: " back to old name."
+      cleanup: True
+      fs_name: test_fs_new
+      new_name: STRATIS_FS
+    /long_return:
+      message+: " back to old name."
+      cleanup: True
+      fs_name: STRATIS_FS_123
+      new_name: STRATIS_FS
+    /long_name:
+      description+: Tries to rename to the long name.
+      message+: " to the long name."
+      fs_name: STRATIS_FS
+      new_name: STRATIS_FS_123
+      requires_cleanup: [stratis/stratis_cli/fs/rename/success/long_return]
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail renaming fs on STRATIS_POOL
+    tier: 2
+    expected_ret: 1
+    requires_setup+: [stratis/setup/fs_create]
+    pool_name: STRATIS_POOL
+    /no_params:
+      description+: Do not use any params at all.
+      message+: " with no params at all."
+      expected_ret: 2
+      expected_out: ["error: the following arguments are required: fs_name, new_name"]
+    /wrong_name:
+      description+: Gives fs_name that does not exist.
+      message+: " with fs name 'wrong'."
+      fs_name: wrong
+      new_name: test_fs_new
+      expected_out: ["No unique match found for interface org.storage.stratis2.filesystem", "and properties", "Name", "wrong", "Pool"]
+    /pool_instead_of_name:
+      description+: Uses the pool instead of fs name.
+      message+: " with pool name instead of fs name."
+      fs_name: STRATIS_POOL
+      new_name: test_fs_new
+      expected_out: ["No unique match found for interface org.storage.stratis2.filesystem", "Name", "STRATIS_POOL", "Pool"]
+
+/snapshot:
+  description: Testing 'stratis fs snapshot' command
+  requires_setup+: [stratis/setup/fs_create]
+  command: fs_snapshot
+  /success:
+    description+: ", commands should succeed."
+    message: Snapshotting fs on STRATIS_POOL
+    tier: 1
+    origin_name: STRATIS_FS
+    snapshot_name: test_snapshot
+    pool_name: STRATIS_POOL
+    requires_cleanup: [stratis/stratis_cli/fs/destroy/success/snapshot]
+  /fail:
+    description+: ", commands should fail."
+    message: Trying to fail snapshotting fs on STRATIS_POOL
+    tier: 2
+    expected_ret: 1
+    /no_params:
+      description+: Tests without any arguments.
+      message+: " with no params at all."
+      expected_ret: 2
+      expected_out: ["error: the following arguments are required: pool_name, origin_name, snapshot_name"]
+    /wrong_pool_name:
+      description+: Tests with pool_name 'wrong'.
+      message+: " with pool name 'wrong'"
+      pool_name: wrong
+      origin_name: STRATIS_FS
+      snapshot_name: test_snapshot
+      expected_out: ["No unique match found for", "Name"]
+    /wrong_origin_name:
+      description+: Tests with origin_name 'wrong'.
+      message+: " with origin fs name 'wrong'"
+      origin_name: wrong
+      snapshot_name: test_snapshot
+      pool_name: STRATIS_POOL
+      expected_out: ["No unique match found for interface", "Name", "wrong", "Pool"]
+    /device_instead_of_pool_name:
+      tags: [single_device]
+      description+: Tests with pool_name STRATIS_DEVICE.
+      message+: " with device instead of pool name."
+      pool_name: STRATIS_DEVICE
+      snapshot_name: test_snapshot
+      origin_name: STRATIS_FS
+      expected_out: ["No unique match found for interface", "Name"]
+    /device_instead_of_snapshot_name:
+      description+: Tests with fs_name STRATIS_DEVICE.
+      message+: " with device instead of snapshot name."
+      origin_name: STRATIS_DEVICE
+      snapshot_name: test_snapshot
+      pool_name: STRATIS_POOL
+      expected_out: ["No unique match found for interface org.storage.stratis2.filesystem", "Name", "Pool"]
+      tags: [single_device]
+    /existing_snapshot:
+      description+: Tries to snapshot fs with snapshot name that already exists.
+      message+: " with snapshot name of snapshot that already exists."
+      requires_setup+: [stratis/setup/snapshot_create]
+      snapshot_name: STRATIS_SNAPSHOT
+      origin_name: STRATIS_FS
+      pool_name: STRATIS_POOL
+      expected_out: ["The 'snapshot' action has no effect for resource"]
+    /existing_fs:
+      description+: Tries to snapshot fs with fs name that already exists.
+      message+: " with snapshot name of fs that already exists."
+      snapshot_name: STRATIS_FS
+      origin_name: STRATIS_FS
+      pool_name: STRATIS_POOL
+      expected_out: ["The 'snapshot' action has no effect for resource"]
+    /pool_out_of_space:
+      active: False
+      # TODO
