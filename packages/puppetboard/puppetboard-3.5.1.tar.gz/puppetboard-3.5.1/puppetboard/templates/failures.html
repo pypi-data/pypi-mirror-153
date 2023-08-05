@@ -1,0 +1,37 @@
+{% extends 'layout.html' %}
+{% import '_macros.html' as macros %}
+{% block content %}
+<div class="ui fluid icon input hide" style="margin-bottom:20px">
+  <input autofocus="autofocus" class="filter-table" placeholder="Type here to filter...">
+</div>
+{{ macros.checkbox_toggle("friendly", current_show_error_as, "friendly", "raw", "Friendly error messages") }}
+<table id="failures_table" class='ui basic vertically padded sortable fixed wrapped table'>
+  <thead>
+    <tr>
+      <th class="default default-sort four wide">Certname</th>
+      <th class="date two wide">Report time</th>
+      <th class="date ten wide">Error</th>
+    </tr>
+  </thead>
+  <tbody class="searchable">
+    {% for failure in failures %}
+    <tr>
+      <td>
+        <a href="{{url_for('node', env=current_env, node_name=failure.certname)}}">
+          {{failure.certname}}
+        </a>
+      </td>
+      <td>
+        <a href="{{url_for('report', env=current_env, node_name=failure.certname, report_id=failure.report_hash)}}" rel="utctimestamp">
+            {{failure.timestamp}}
+        </a>
+      </td>
+      <td class="negative error_message">
+          {{failure.error | safe}}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock content %}

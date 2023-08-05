@@ -1,0 +1,233 @@
+{% extends 'layout.html' %}
+{% import '_macros.html' as macros %}
+
+{% block head %}
+    {% if config.OFFLINE_MODE %}
+    <link href='{{ url_for('static', filename='datatables-buttons-2.2.1/buttons.semanticui.min.css') }}' rel='stylesheet' type='text/css'>
+
+    <script src="{{ url_for('static', filename='datatables-buttons-2.2.1/dataTables.buttons.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='datatables-buttons-2.2.1/buttons.semanticui.min.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='datatables-buttons-2.2.1/buttons.colVis.min.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='luxon.min.js') }}"></script>
+    {% else %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables.net-buttons-se/2.2.1/buttons.semanticui.min.css" integrity="sha512-hl3VMm68d4X+QrotTnQNhYnc3zkDumRs7DzR+alVMCbtYB7yAcEB1KCnZNNbtV8pyt/jsL/fB59ZsOXnBFJSvw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables-buttons/2.2.1/js/dataTables.buttons.min.js" integrity="sha512-jkZdPkP9WyF6ZI8552JPp6HutV7Pb7Hhn++DCKkuToPPlTvB8Y7N3u+HoITJn/LQP9dEXarrfzqPlAmCA++BQw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables.net-buttons-se/2.2.1/buttons.semanticui.min.js" integrity="sha512-b2Tf8aCqx6EZY5mJBmHlKfpwk2Zq8K1bRrsO4pogAUiZYTmHsIU+kxcjrU5wwHQRvdhHxTUQg7/sUe1JHrTt9g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables-buttons/2.2.1/js/buttons.colVis.min.js" integrity="sha512-TDM0Ek51cJSpP8Btld1ahY8LpMImyQ1k+Ve81qGMdjBLKhADu99JQrUWDuRnT8M0qfkJb+Mt+ZwMaMi46UXA8g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/2.4.0/luxon.min.js" integrity="sha512-v1zUTZ9zv9Wb2scL/ANxXM6m7yegm/W5SN8SRHNFADdZIuSFFkrEBjNxO803DdFkjoCcJ88g1WHRVlLN6K/O1A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    {% endif %}
+
+{% endblock head %}
+
+{% block content %}
+
+<p>Scroll to: <a href="#logs">Logs</a>, <a href="#events">Events</a>, <a href="#metrics">Metrics</a>.</p>
+
+<h1>Summary</h1>
+<table class='ui basic table'>
+  <thead>
+    <tr>
+      <th>Certname</th>
+      <th>Configuration version</th>
+      <th>Start time</th>
+      <th>End time</th>
+      <th>Duration</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="{{url_for('node', env=current_env, node_name=report.node)}}">{{ report.node }}</a></td>
+      <td>
+        {{report.version|safe}}
+      </td>
+      <td rel="utctimestamp">
+        {{report.start}}
+      </td>
+      <td rel="utctimestamp">
+        {{report.end}}
+      </td>
+      <td>
+        {{report.end - report.start}}
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="logs">Logs</h1>
+{{ macros.checkbox_toggle("friendly", current_show_error_as, "friendly", "raw", "Friendly error messages") }}
+<table id="logs_table" class='ui basic compact table'>
+  <thead>
+    <tr>
+      <th>Timestamp</th>
+      <th>Level</th>
+      <th>Source</th>
+      <th>Tags</th>
+      <th>Message</th>
+      <th>Location</th>
+      <th>Location (short)</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+
+<h1 id="events">Events</h1>
+<table id="events_table" class='ui basic compact table'>
+  <thead>
+    <tr>
+      <th>Resource</th>
+      <th>Status</th>
+      <th>Changed From</th>
+      <th>Changed To</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+
+<h1 id="metrics">Metrics</h1>
+<table class="ui basic table compact">
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Name</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for metric in metrics %}
+      <tr>
+        <td>{{metric.category}}</td>
+        <td>{{metric.name}}</td>
+        <td>{{metric.value|round(2)}}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock content %}
+
+{% block onload_script %}
+
+$.fn.dataTable.ext.errMode = 'throw';
+
+// Init the DataTable for Logs
+var logs = {{ logs|tojson }}
+var logs_table = $('#logs_table').DataTable({
+
+    "data": logs,
+    'columns': [
+        { data: 'timestamp', name: 'timestamp',
+          // don't show the date as puppet runs (almost never) span across multiple days
+          // and we already show the full date in the "Summary" section
+          render: function ( data, type, row, meta ) {
+              parsed_date = luxon.DateTime.fromISO(data);
+              return parsed_date.toFormat('HH:mm:ss');
+          }
+        },
+        { data: 'level', name: 'level' },
+        { data: 'source', name: 'source', visible: false },
+        { data: 'tags', name: 'tags', visible: false },
+        { data: 'message', name: 'message' },
+        // see also the comment about these columns in reports.py
+        { data: 'location', name: 'location', visible: false },
+        { data: 'short_location', name: 'short_location' },
+    ],
+
+    "paging": false,
+
+    'createdRow': function (row, data, index) {
+        // color the row based on log level
+        if (data['level'] == 'info' || data['level'] == 'notice') {
+            $(row).addClass('positive');
+        } else if (data['level'] == 'warning') {
+            $(row).addClass('warning');
+        } else {
+            $(row).addClass('error');
+        }
+
+        // fixed-width font for message and location columns
+        $('td', row).eq(2).addClass('code');
+        $('td', row).eq(3).addClass('code');
+    },
+
+    buttons: [
+        {
+            extend: 'colvisGroup',
+            name: 'columns_new',
+            text: 'Minimal columns',
+            show: ['timestamp:name', 'level:name', 'message:name', 'short_location:name'],
+            hide: ['source:name', 'tags:name', 'location:name'],
+        },
+        {
+            extend: 'colvisGroup',
+            name: 'columns_old',
+            text: 'More columns (classic)',
+            show: ['timestamp:name', 'source:name', 'tags:name', 'message:name', 'location:name'],
+            hide: ['level:name', 'short_location:name'],
+        },
+    ],
+
+    dom: "<'ui stackable grid'"+
+            "<'row'"+
+                "<'eight wide column'B>"+
+                "<'right aligned eight wide column'f>"+
+            ">"+
+            "<'row dt-table'"+
+                "<'sixteen wide column'tr>"+
+            ">"+
+            "<'row'>"+
+        ">",
+});
+
+// on any button click show the clicked button as active and all other button(s) as inactive
+logs_table.on( 'buttons-action', function ( e, button, dataTable, node, config ) {
+    dataTable.buttons().active(false);
+    button.active(true);
+} );
+logs_table.button("columns_new:name").active( true );
+
+
+// Init the DataTable for Events
+var events = {{ events|tojson }}
+var events_table = $('#events_table').DataTable({
+
+    "data": events,
+    'columns': [
+        { data: 'resource' },
+        { data: 'status' },
+        { data: 'old' },
+        { data: 'new' },
+    ],
+
+    "ordering": false,
+    "paging": false,
+
+    createdRow: function (row, data, index) {
+        if (!data['failed'] && data['old'] != data['new']) {
+            $(row).addClass('ui line changed');
+        } else if (data['failed']) {
+            $(row).addClass('ui line failed');
+        } else {
+            $(row).addClass('ui line ' + data['status']);
+        }
+    },
+
+    dom: "<'ui stackable grid'"+
+            "<'row'"+
+                "<'eight wide column'B>"+
+                "<'right aligned eight wide column'f>"+
+            ">"+
+            "<'row dt-table'"+
+                "<'sixteen wide column'tr>"+
+            ">"+
+            "<'row'>"+
+        ">",
+});
+
+{% endblock onload_script %}
