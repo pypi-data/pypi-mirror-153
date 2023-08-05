@@ -1,0 +1,72 @@
+Metadata-Version: 2.1
+Name: swh.scrubber
+Version: 0.0.5
+Summary: Software Heritage Datastore Scrubber
+Home-page: https://forge.softwareheritage.org/diffusion/swh-scrubber
+Author: Software Heritage developers
+Author-email: swh-devel@inria.fr
+Project-URL: Bug Reports, https://forge.softwareheritage.org/maniphest
+Project-URL: Funding, https://www.softwareheritage.org/donate
+Project-URL: Source, https://forge.softwareheritage.org/source/swh-scrubber
+Project-URL: Documentation, https://docs.softwareheritage.org/devel/swh-scrubber/
+Classifier: Programming Language :: Python :: 3
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 3 - Alpha
+Requires-Python: >=3.7
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+License-File: AUTHORS
+Requires-Dist: dulwich
+Requires-Dist: swh.core[http] (>=0.3)
+Requires-Dist: swh.loader.git (>=1.4.0)
+Requires-Dist: swh.model (>=5.0.0)
+Requires-Dist: swh.storage (>=1.1.0)
+Requires-Dist: swh.journal (>=0.9.0)
+Provides-Extra: testing
+Requires-Dist: pytest ; extra == 'testing'
+Requires-Dist: pytest-mock ; extra == 'testing'
+Requires-Dist: pyyaml ; extra == 'testing'
+Requires-Dist: swh.graph ; extra == 'testing'
+Requires-Dist: types-pyyaml ; extra == 'testing'
+
+Software Heritage - Datastore Scrubber
+======================================
+
+Tools to periodically checks data integrity in swh-storage and swh-objstorage,
+reports errors, and (try to) fix them.
+
+This is a work in progress; some of the components described below do not
+exist yet (cassandra storage checker, objstorage checker, recovery, and reinjection)
+
+The Scrubber package is made of the following parts:
+
+
+Checking
+--------
+
+Highly parallel processes continuously read objects from a data store,
+compute checksums, and write any failure in a database, along with the data of
+the corrupt object.
+
+There is one "checker" for each datastore package: storage (postgresql and cassandra),
+journal (kafka), and objstorage.
+
+
+Recovery
+--------
+
+Then, from time to time, jobs go through the list of known corrupt objects,
+and try to recover the original objects, through various means:
+
+* Brute-forcing variations until they match their checksum
+* Recovering from another data store
+* As a last resort, recovering from known origins, if any
+
+
+Reinjection
+-----------
+
+Finally, when an original object is recovered, it is reinjected in the original
+data store, replacing the corrupt one.
