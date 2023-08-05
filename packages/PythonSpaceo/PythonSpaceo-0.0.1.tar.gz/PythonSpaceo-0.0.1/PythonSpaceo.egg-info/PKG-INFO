@@ -1,0 +1,211 @@
+Metadata-Version: 2.1
+Name: PythonSpaceo
+Version: 0.0.1
+Summary: python basecode package(api,admin panel)
+Home-page: UNKNOWN
+Author: deepak
+Author-email: deepak@example.com
+License: MIT
+Description: =====
+        authentication(user api),CMS
+        =====
+        BaseCode of Space-o Technology 
+        Detailed documentation is in the "docs" directory.
+        
+        Quick start
+        
+        -----------
+        
+        1. include in  settings.py :
+        
+        INSTALLED_APPS = [
+            'jazzmin', 
+            .
+            .
+            .                         
+            'CMS',                               
+            'authentication' ,                    
+            'debug_toolbar',                    
+            'tinymce',                           
+            'rest_framework',                    
+            'drf_spectacular',
+            'rest_framework_simplejwt',
+        ]
+        
+        #add middel ware
+        MIDDLEWARE = [
+            "debug_toolbar.middleware.DebugToolbarMiddleware"
+            ...
+            ...
+            ...
+            'authentication.custom_middleware.simple_middleware',
+            
+        ]
+        
+        
+        
+        #for password hashing
+        PASSWORD_HASHERS = [
+            'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+            'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+            'django.contrib.auth.hashers.Argon2PasswordHasher',
+        ]
+        #add language
+        LANGUAGE_CODE = 'en-us'
+        LANGUAGES = [
+            ('en', ('English')),
+            ('hi', ('hindi')),
+        ]
+        TIME_ZONE = 'Asia/Kolkata'
+        
+        
+        
+        
+        #rest framework
+        REST_FRAMEWORK = {
+            'DEFAULT_AUTHENTICATION_CLASSES': [],
+            'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+        }
+        
+        
+        #Spectacular
+        SPECTACULAR_SETTINGS = {
+            'PREPROCESSING_HOOKS': ["Custom.url_remover.preprocessing_filter_spec"]
+        }
+        
+        #add custom user 
+        AUTH_USER_MODEL = "authentication.User"
+        
+        
+        
+        
+        #add admin pannel jazzmin settings
+        JAZZMIN_SETTINGS = {
+            "language_chooser": True,
+            "site_title": "Django",
+            "show_ui_builder" : True,
+            "copyright": "Space-O",
+            "navigation_expanded": False,   
+            "related_modal_active": False,
+            "site_brand": "BaseCode",
+            "welcome_sign": "welcome to www.site.com",
+            "icons": {
+                "auth": "fas fa-users-cog",
+                "authentication.user": "fas fa-user",
+                "auth.Group": "fas fa-users",
+                "cms.Cms":"fas fa-regular fa-keyboard",
+                "authentication.setting":"fas fa-edit",
+                "authentication.mobile":"fa fa-mobile"        
+            },
+            
+        }
+        JAZZMIN_UI_TWEAKS = {
+            "theme": 'litera',
+        }
+        
+        
+        
+        2. Include all this in your project urls.py like this::
+        
+        urlpatterns = [
+            path('__debug__/',include('debug_toolbar.urls')),
+            path('api-auth/', include('rest_framework.urls')),
+            path('', include('authentication.urls')),
+            path('content-pages/', include('CMS.urls')),
+            path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+            path('schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+            path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+        ]
+        #reset password for admin pannel
+        urlpatterns += [
+            path(                                               
+                'account/reset/',
+                auth_views.PasswordResetView.as_view(),
+                name='admin_password_reset',
+            ),  
+        ]
+        #fir language in admin pannel
+        urlpatterns += [path('i18n/', include('django.conf.urls.i18n')),]
+        urlpatterns += i18n_patterns(path('admin/', admin.site.urls))
+        
+        
+        
+        3. Run ``python manage.py makemigrations authentication`` 
+          after Run python manage.py migrate
+        to create the authentication models.
+        
+        4. Run ``python manage.py makemigrations CMS`` 
+          after Run python manage.py migrate
+        to create the authentication models.
+        
+        4. Start the development server and visit http://127.0.0.1:8000/admin/
+         
+        
+        5. Visit http://127.0.0.1:8000/api/schema/swagger-ui/ to user api
+        
+        6. customization-
+        how to import module
+        example-
+        from authentication.view import loginAPIView
+        now you can simplay customiz it 
+        
+        7. we have three module authentication,BaseCode,CMS and custom
+        authentication- having all api and models
+        CMS-having content api and models
+        custom-having all validation,response and pagination classes
+        BaseCode- having only one module settings.py all setting in this
+        
+        8. (OPTIONAL)
+        add this script in your base.html of admin panel
+        <script>
+            function myFunction(id, elem)
+            {  
+                
+                url = 'http://172.16.17.30:8000/verified/inactive/'+id
+                $.ajax({
+                    url: url,
+                    success: function(data) 
+                    {   console.log(id)
+                        elem.textContent = "Inactive"
+                        elem.className = "btn btn-danger btn-sm"
+                    },
+                    error:function(a,b,c)
+                    {
+                        console.log(c);
+                    }   
+                }); 
+            }
+            function myFunctions(id, elem)
+            {  
+                url = 'http://172.16.17.30:8000/verified/active/'+id
+                $.ajax({
+                    url: url,
+                    success: function(data) 
+                    {   console.log(id, "bha")
+                    elem.textContent = "active"
+                    elem.className = "btn btn-primary btn-sm"
+        
+                },
+                error:function(a,b,c)
+                {
+                    console.log(c);
+                }   
+            });
+            }
+            function activeInactive(id){
+                var elem = document.getElementById('myButton'+id)
+                if(elem.textContent == 'active'){
+                    myFunction(id, elem)
+                }else{
+                    myFunctions(id, elem)
+                }
+            }
+        
+        </script>
+        
+        8. if you have any query please contact 
+            @deppak.spaceo@gmail.com
+        
+        
+Platform: UNKNOWN
+Description-Content-Type: text/markdown
