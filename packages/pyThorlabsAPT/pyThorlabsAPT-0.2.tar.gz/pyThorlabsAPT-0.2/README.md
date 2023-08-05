@@ -1,0 +1,1 @@
+As per thorlabs_apt instructions, the APT thorlabs software must be installed for this library to work https://github.com/qpit/thorlabs_apt
