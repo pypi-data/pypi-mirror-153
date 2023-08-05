@@ -1,0 +1,43 @@
+/**
+ * @file iCubModels.cpp
+ * @authors Giulio Romualdi
+ * @copyright 2022 Istituto Italiano di Tecnologia Released under the terms of the Creative Commons
+ * Attribution Share Alike 4.0 International
+ */
+
+#include <iCubModels/iCubModels.h>
+
+#include <algorithm>
+
+namespace iCubModels
+{
+std::string getModelsPath()
+{
+    std::string retstr = "@ICUB_MODELS_MODELS_PATH@";
+    // Sometimes the relocation of the C++ library in conda or similar systems is not working correctly
+    // and is leaving at the end of the retstr many \0 characters. To be sure not to return a faulty
+    // string, we remove all the trailing \0
+    // See https://github.com/ami-iit/bipedal-locomotion-framework/pull/526
+    retstr.erase(std::find(retstr.begin(), retstr.end(), '\0'), retstr.end());
+    return retstr;
+}
+
+std::unordered_set<std::string> getRobotNames()
+{
+    return std::unordered_set<std::string>{@INSTALLED_URDF_MODELS@};
+}
+
+std::string getModelFile(const std::string& modelName)
+{
+    const std::unordered_set<std::string> robots = getRobotNames();
+    std::string modelFile;
+
+    if (robots.find(modelName) == robots.cend())
+    {
+        return modelFile;
+    }
+
+    modelFile = getModelsPath() +  "/" + modelName + "/model.urdf";
+    return modelFile;
+}
+} // namespace iCubModels
