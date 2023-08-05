@@ -1,0 +1,811 @@
+{
+    "connection": {
+        "type": {
+            "displayName": "IBM\u00ae Guardium",
+            "type": "connectorType"
+        },
+        "host": {
+            "type": "text",
+            "regex": "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9_:/\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9_:/\\-]*[A-Za-z0-9])$"
+        },
+        "port": {
+            "default": 8443,
+            "type": "number",
+            "min": 1,
+            "max": 65535
+        },
+        "help": {
+            "default": "data-sources-guardium.html",
+            "type": "link"
+        },
+        "sni": {
+            "type": "text",
+            "optional": true
+        },
+        "selfSignedCert": {
+            "type": "password",
+            "optional": true
+        },
+        "client_id": {
+            "type": "text",
+            "previous": "connection.options.client_id"
+        },
+        "client_secret": {
+            "type": "password",
+            "previous": "connection.options.client_secret"
+        },
+        "options": {
+            "type": "fields",
+            "async_call": {
+                "type": "text",
+                "hidden": true,
+                "optional": true
+            },
+            "result_limit": {
+                "default": 10000,
+                "min": 1,
+                "max": 500000,
+                "type": "number",
+                "previous": "connection.resultSizeLimit"
+            },
+            "time_range": {
+                "default": 5,
+                "min": 1,
+                "max": 10000,
+                "type": "number",
+                "previous": "connection.timerange",
+                "nullable": true
+            },
+            "timeout": {
+                "default": 30,
+                "min": 1,
+                "max": 60,
+                "hidden": true,
+                "type": "number",
+                "previous": "connection.timeoutLimit"
+            },
+            "dialects": {
+                "type": "array",
+                "hidden": true,
+                "optional": true
+            },
+            "language": {
+                "type": "string",
+                "default": "stix",
+                "optional": true,
+                "hidden": true
+            },
+            "validate_pattern": {
+                "type": "boolean",
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.validate_pattern"
+            },
+            "stix_validator": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true,
+                "previous": "connection.stix_validator"
+            },
+            "mapping": {
+                "type": "json",
+                "optional": true,
+                "previous": "connection.mapping",
+                "default": {
+                    "guardium_qsearch_def": {
+                        "Policy Violation": {
+                            "ATA Open Cases": {
+                                "category": "VIOLATION",
+                                "startTime": {
+                                    "info": "START",
+                                    "default": "1970-07-01T00:00:10.000Z",
+                                    "transformer": "TimestampToGuardiumQS"
+                                },
+                                "endTime": {
+                                    "info": "STOP",
+                                    "default": "2019-07-01T00:00:10.000Z",
+                                    "transformer": "TimestampToGuardiumQS"
+                                },
+                                "filters": {
+                                    "Database": {
+                                        "info": "map",
+                                        "default": "*"
+                                    },
+                                    "DB User": {
+                                        "info": "map",
+                                        "default": "*"
+                                    },
+                                    "Server": {
+                                        "info": "map",
+                                        "default": "*"
+                                    },
+                                    "Client IP": {
+                                        "info": "map",
+                                        "default": "*"
+                                    },
+                                    "OS User": {
+                                        "info": "map",
+                                        "default": "*"
+                                    }
+                                },
+                                "query": {
+                                    "Severity": {
+                                        "info": "map",
+                                        "default": "Low",
+                                        "transformer": "GuardiumMapSeverityNum",
+                                        "default_operator": ">"
+                                    }
+                                },
+                                "fetchSize": "1000"
+                            }
+                        }
+                    },
+                    "guardium_qsearch_params_map": {
+                        "common": {
+                            "QUERY_FROM_DATE": "*",
+                            "QUERY_TO_DATE": "*",
+                            "SHOW_ALIASES": "*",
+                            "REMOTE_SOURCE": "*"
+                        },
+                        "maps": {
+                            "DB User": [
+                                "Policy Violation:ATA Open Cases"
+                            ],
+                            "Database": [
+                                "Policy Violation:ATA Open Cases"
+                            ],
+                            "ServerIP": [
+                                "Policy Violation:ATA Open Cases"
+                            ],
+                            "Severity": [
+                                "Policy Violation:ATA Open Cases"
+                            ],
+                            "OS User": [
+                                "Policy Violation:ATA Open Cases"
+                            ],
+                            "Client IP": [
+                                "Policy Violation:ATA Open Cases"
+                            ]
+                        },
+                        "defaultQsearch": [
+                            "Policy Violation:ATA Open Cases"
+                        ]
+                    },
+                    "guardium_report_params": {
+                        "Threat Case": {
+                            "ATA Open Cases": {
+                                "reportName": "ATA Open Cases",
+                                "indexFrom": "0",
+                                "fetchSize": "1000",
+                                "sortType": "asc",
+                                "reportParameter": {
+                                    "QUERY_FROM_DATE": {
+                                        "info": "START",
+                                        "default": "1970-07-01T00:00:10.000Z",
+                                        "transformer": "TimestampToGuardium"
+                                    },
+                                    "QUERY_TO_DATE": {
+                                        "info": "STOP",
+                                        "default": "2019-07-01T00:00:10.000Z",
+                                        "transformer": "TimestampToGuardium"
+                                    },
+                                    "SHOW_ALIASES": {
+                                        "info": "None",
+                                        "default": "TRUE"
+                                    },
+                                    "REMOTE_SOURCE": {
+                                        "info": "None",
+                                        "default": "%"
+                                    },
+                                    "OSUser": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "DBUser": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "Database": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "ServerIP": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "Severity": {
+                                        "info": "map",
+                                        "default": "low"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "guardium_report_params_map": {
+                        "common": {
+                            "QUERY_FROM_DATE": "*",
+                            "QUERY_TO_DATE": "*",
+                            "SHOW_ALIASES": "*",
+                            "REMOTE_SOURCE": "*"
+                        },
+                        "maps": {
+                            "DBUser": [
+                                "Threat Case:ATA Open Cases"
+                            ],
+                            "Database": [
+                                "Threat Case:ATA Open Cases"
+                            ],
+                            "ServerIP": [
+                                "Threat Case:ATA Open Cases"
+                            ],
+                            "Severity": [
+                                "Threat Case:ATA Open Cases"
+                            ],
+                            "OSUser": [
+                                "Threat Case:ATA Open Cases"
+                            ]
+                        },
+                        "defaultReports": [
+                            "Threat Case:ATA Open Cases"
+                        ]
+                    },
+                    "guardium_reports_def": {
+                        "Threat Case": {
+                            "ATA Open Cases": {
+                                "reportName": "ATA Open Cases",
+                                "indexFrom": "0",
+                                "fetchSize": "1000",
+                                "sortType": "asc",
+                                "reportParameter": {
+                                    "QUERY_FROM_DATE": {
+                                        "info": "START",
+                                        "default": "1970-07-01T00:00:10.000Z",
+                                        "transformer": "TimestampToGuardium"
+                                    },
+                                    "QUERY_TO_DATE": {
+                                        "info": "STOP",
+                                        "default": "2019-07-01T00:00:10.000Z",
+                                        "transformer": "TimestampToGuardium"
+                                    },
+                                    "SHOW_ALIASES": {
+                                        "info": "None",
+                                        "default": "TRUE"
+                                    },
+                                    "REMOTE_SOURCE": {
+                                        "info": "None",
+                                        "default": "%"
+                                    },
+                                    "OSUser": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "DBUser": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "Database": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "ServerIP": {
+                                        "info": "map",
+                                        "default": "%"
+                                    },
+                                    "Severity": {
+                                        "info": "map",
+                                        "default": "low",
+                                        "transformer": "GuardiumMapSeverity"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "operators": {
+                        "ComparisonExpressionOperators.And": "AND",
+                        "ComparisonExpressionOperators.Or": "OR",
+                        "ComparisonComparators.Equal": "=",
+                        "ObservationOperators.Or": "OR",
+                        "ObservationOperators.And": "OR",
+                        "ComparisonComparators.In": "="
+                    },
+                    "qsearch_from_stix_map": {
+                        "x-ibm-finding": {
+                            "fields": {
+                                "finding_type": [
+                                    "datacategory"
+                                ],
+                                "start": [
+                                    "startTime"
+                                ],
+                                "end": [
+                                    "endTime"
+                                ],
+                                "database_name": [
+                                    "Database"
+                                ],
+                                "dst_device": [
+                                    "Database"
+                                ]
+                            }
+                        },
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "Client IP",
+                                    "Server"
+                                ],
+                                "src_ip": [
+                                    "Client IP"
+                                ],
+                                "dst_ip": [
+                                    "Server"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "fields": {
+                                "value": [
+                                    "Client IP",
+                                    "Server"
+                                ],
+                                "src_ip": [
+                                    "Client IP"
+                                ],
+                                "dst_ip": [
+                                    "Server"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "fields": {
+                                "dst_ref.value": [
+                                    "Server"
+                                ],
+                                "src_ref.value": [
+                                    "Client IP"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "value": [
+                                    "DB User",
+                                    "OS User"
+                                ],
+                                "db_user": [
+                                    "DB User"
+                                ],
+                                "os_user": [
+                                    "OS User"
+                                ],
+                                "user_id": [
+                                    "DB User"
+                                ],
+                                "login_name": [
+                                    "OS User"
+                                ]
+                            }
+                        },
+                        "x-guardium": {
+                            "fields": {
+                                "severity": [
+                                    "Severity"
+                                ]
+                            }
+                        }
+                    },
+                    "reference_data_types4Query": {
+                        "QUERY_FROM_DATE": [
+                            "start"
+                        ],
+                        "QUERY_TO_DATE": [
+                            "end"
+                        ],
+                        "SHOW_ALIASES": [
+                            "TRUE",
+                            "FALSE"
+                        ],
+                        "REMOTE_SOURCE": [
+                            "remotesource"
+                        ],
+                        "Server": [
+                            "ipv4",
+                            "ipv6"
+                        ],
+                        "ServerIP": [
+                            "ipv4",
+                            "ipv6"
+                        ],
+                        "Client IP": [
+                            "ipv4",
+                            "ipv6"
+                        ],
+                        "DBUser": [
+                            "db_user"
+                        ],
+                        "Database": [
+                            "database_name"
+                        ],
+                        "Severity": [
+                            "severity"
+                        ],
+                        "OSUser": [
+                            "os_user"
+                        ]
+                    },
+                    "report_from_stix_map": {
+                        "x-ibm-finding": {
+                            "fields": {
+                                "finding_type": [
+                                    "datacategory"
+                                ],
+                                "start": [
+                                    "QUERY_FROM_DATE"
+                                ],
+                                "end": [
+                                    "QUERY_TO_DATE"
+                                ],
+                                "database_name": [
+                                    "Database"
+                                ],
+                                "dst_device": [
+                                    "Database"
+                                ]
+                            }
+                        },
+                        "ipv4-addr": {
+                            "fields": {
+                                "value": [
+                                    "ServerIP"
+                                ],
+                                "dst_ip": [
+                                    "ServerIP"
+                                ]
+                            }
+                        },
+                        "ipv6-addr": {
+                            "fields": {
+                                "value": [
+                                    "ServerIP"
+                                ],
+                                "dst_ip": [
+                                    "ServerIP"
+                                ]
+                            }
+                        },
+                        "network-traffic": {
+                            "fields": {
+                                "dst_ref.value": [
+                                    "ServerIP"
+                                ]
+                            }
+                        },
+                        "user-account": {
+                            "fields": {
+                                "value": [
+                                    "DBUser",
+                                    "OSUser"
+                                ],
+                                "db_user": [
+                                    "DBUser"
+                                ],
+                                "os_user": [
+                                    "OSUser"
+                                ],
+                                "user_id": [
+                                    "DBUser"
+                                ],
+                                "login_name": [
+                                    "OSUser"
+                                ]
+                            }
+                        },
+                        "artifact": {
+                            "fields": {
+                                "payload_bin": [
+                                    "Payload-dialect1"
+                                ]
+                            }
+                        },
+                        "domain-name": {
+                            "fields": {
+                                "value": [
+                                    "DomainName-dialect1"
+                                ]
+                            }
+                        },
+                        "x-guardium": {
+                            "fields": {
+                                "severity": [
+                                    "Severity"
+                                ]
+                            }
+                        }
+                    },
+                    "to_stix_map": {
+                        "DB User": [
+                            {
+                                "key": "user-account.user_id",
+                                "object": "account"
+                            },
+                            {
+                                "key": "x-ibm-finding.src_database_user_ref",
+                                "object": "finding",
+                                "references": "account"
+                            }
+                        ],
+                        "db_user": [
+                            {
+                                "key": "user-account.user_id",
+                                "object": "account"
+                            },
+                            {
+                                "key": "x-ibm-finding.src_database_user_ref",
+                                "object": "finding",
+                                "references": "account"
+                            }
+                        ],
+                        "OSUser": [
+                            {
+                                "key": "user-account.login_name",
+                                "object": "account"
+                            },
+                            {
+                                "key": "x-ibm-finding.src_os_user_ref",
+                                "object": "account",
+                                "references": "user_id"
+                            }
+                        ],
+                        "LogSourceId": {
+                            "key": "x-guardium.log_source_id"
+                        },
+                        "Magnitude": {
+                            "key": "x-guardium.magnitude"
+                        },
+                        "SourceIpV4": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "network-traffic.src_ref",
+                                "object": "nt",
+                                "references": "src_ip"
+                            }
+                        ],
+                        "client_ip": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "src_ip"
+                            },
+                            {
+                                "key": "x-ibm-finding.src_ip_ref",
+                                "object": "finding",
+                                "references": "src_ip"
+                            }
+                        ],
+                        "server": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "x-ibm-finding.dst_ip_ref",
+                                "object": "finding",
+                                "references": "dst_ip"
+                            }
+                        ],
+                        "Server IP": [
+                            {
+                                "key": "ipv4-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "ipv6-addr.value",
+                                "object": "dst_ip"
+                            },
+                            {
+                                "key": "x-ibm-finding.dst_ip_ref",
+                                "object": "finding",
+                                "references": "dst_ip"
+                            }
+                        ],
+                        "db_type": [
+                            {
+                                "key": "software.name",
+                                "object": "software"
+                            },
+                            {
+                                "key": "x-ibm-finding.dst_application_ref",
+                                "object": "finding",
+                                "references": "software"
+                            }
+                        ],
+                        "Server Type": [
+                            {
+                                "key": "software.name",
+                                "object": "software"
+                            },
+                            {
+                                "key": "x-ibm-finding.dst_application_ref",
+                                "object": "finding",
+                                "references": "software"
+                            }
+                        ],
+                        "source_program": [
+                            {
+                                "key": "software.name",
+                                "object": "source_software"
+                            },
+                            {
+                                "key": "x-ibm-finding.src_application_ref",
+                                "object": "finding",
+                                "references": "source_software"
+                            }
+                        ],
+                        "EventCount": {
+                            "key": "number_observed",
+                            "cybox": false,
+                            "transformer": "ToInteger"
+                        },
+                        "timestamp": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "GuardiumToTimestamp",
+                                "cybox": false
+                            },
+                            {
+                                "key": "last_observed",
+                                "transformer": "GuardiumToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "Create Date": [
+                            {
+                                "key": "first_observed",
+                                "transformer": "GuardiumToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "Timestamp": [
+                            {
+                                "key": "last_observed",
+                                "transformer": "GuardiumToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "Last updated": [
+                            {
+                                "key": "last_observed",
+                                "transformer": "GuardiumToTimestamp",
+                                "cybox": false
+                            }
+                        ],
+                        "Url": {
+                            "key": "url.value"
+                        },
+                        "FileName": {
+                            "key": "file.name"
+                        },
+                        "Payload": {
+                            "key": "artifact.payload_bin"
+                        },
+                        "DestinationPort": {
+                            "key": "network-traffic.dst_port",
+                            "object": "nt",
+                            "transformer": "ToInteger"
+                        },
+                        "SourcePort": {
+                            "key": "network-traffic.src_port",
+                            "object": "nt",
+                            "transformer": "ToInteger"
+                        },
+                        "NetworkProtocol": {
+                            "key": "network-traffic.protocols",
+                            "object": "nt",
+                            "transformer": "ToLowercaseArray"
+                        },
+                        "DomainName": {
+                            "key": "domain-name.value"
+                        },
+                        "Process": {
+                            "Path": [
+                                {
+                                    "object": "proc",
+                                    "key": "process.command_line"
+                                }
+                            ],
+                            "Pid": [
+                                {
+                                    "object": "proc",
+                                    "key": "process.id"
+                                }
+                            ]
+                        },
+                        "violation": {
+                            "key": "x-ibm-finding.name",
+                            "object": "finding"
+                        },
+                        "Threat Category": {
+                            "key": "x-ibm-finding.name",
+                            "object": "finding"
+                        },
+                        "details": {
+                            "key": "x-ibm-finding.details",
+                            "object": "finding"
+                        },
+                        "database": {
+                            "key": "x-ibm-finding.dst_device",
+                            "object": "finding"
+                        },
+                        "Database": {
+                            "key": "x-ibm-finding.dst_device",
+                            "object": "finding"
+                        },
+                        "severity": [
+                            {
+                                "key": "x-guardium.severity",
+                                "transformer": "GuardiumMapSeverity"
+                            },
+                            {
+                                "key": "x-ibm-finding.finding_type",
+                                "object": "finding",
+                                "transformer": "GuardiumQS"
+                            }
+                        ],
+                        "Severity": [
+                            {
+                                "key": "x-guardium.severity"
+                            },
+                            {
+                                "key": "x-ibm-finding.finding_type",
+                                "object": "finding",
+                                "transformer": "GuardiumRep"
+                            }
+                        ],
+                        "guardium_appliance": {
+                            "key": "x-ibm-finding.source",
+                            "object": "finding"
+                        },
+                        "Originating Unit": {
+                            "key": "x-ibm-finding.source",
+                            "object": "finding"
+                        }
+                    }
+                }
+            },
+            "unmapped_fallback": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            },
+            "stix_2.1": {
+                "type": "boolean",
+                "default": false,
+                "optional": true,
+                "hidden": true
+            }
+        }
+    },
+    "configuration": {
+        "auth": {
+            "type": "fields",
+            "username": {
+                "type": "password"
+            },
+            "password": {
+                "type": "password"
+            }
+        }
+    }
+}
