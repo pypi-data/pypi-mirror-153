@@ -1,0 +1,72 @@
+testbed:
+
+  name: {{ name }}
+
+  tacacs:
+    username: "%ENV{PYATS_USERNAME}"
+  passwords:
+    tacacs: "%ENV{PYATS_PASSWORD}"
+    enable: "%ENV{PYATS_AUTH_PASS}"
+    line: "%ENV{PYATS_PASSWORD}"
+
+  {%- if servers.items() %}
+  servers:
+    {%- for srv_name, props in servers.items() %}
+    {{ srv_name }}:
+      address: {{ props.address|default("''", true) }}
+      server: {{ props.server|default("''", true) }}
+    {%- endfor %}
+  {%-endif %}
+
+devices:
+  {%- for dev_name, props in devices.items() %}
+
+  {{ dev_name }}:
+    alias: {{ props.alias|default("''", true) }}
+    {%- if props.os %}
+    os: {{ props.os }}
+    {%- endif %}
+    type: {{ props.type|default("''", true) }}
+    platform: {{ props.type|default("unknown", true) }}
+
+    connections:
+
+      defaults:
+        class: {{ conn_class }}
+
+      {%- for key, props in props.connections.items() %}
+      {{ key }}:
+        {%- for prop, prop_value in props.items() %}
+        {%- if prop and prop_value %}
+        {{ prop }}: {{ prop_value }}
+        {%- endif %}
+
+        {%- endfor %}
+      {%- endfor %}
+    custom:
+      abstraction:
+        order: [os, type]
+  {%- endfor %}
+
+topology:
+  {%- for dev, dev_ints in topology.items() %}
+  {%- if dev in devices %}
+  {{dev}}:
+    interfaces:
+      {%- for id, interface in dev_ints.items() %}
+      {{ interface.name }}:
+        {%- if interface['ip-address'] %}
+        ipv4: {{ interface['ip-address'] }}
+        {%- endif %}
+        {%- if interface['network'] %}
+        link: {{ interface['network'] }}
+        {%- endif %}
+        {%- if interface['type'] and 'oop' in interface['type'] %}
+        type: loopback
+        {%- else %}
+        type: ethernet
+        {%- endif %}
+
+      {%- endfor %}
+  {%- endif %}
+  {%- endfor %}
