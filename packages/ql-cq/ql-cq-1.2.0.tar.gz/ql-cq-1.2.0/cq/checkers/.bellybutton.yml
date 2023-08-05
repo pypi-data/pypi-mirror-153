@@ -1,0 +1,26 @@
+settings:
+  all_files: &all_files !settings
+    included:
+      - "*"
+    excluded: []
+    allow_ignore: yes
+
+
+default_settings: *all_files
+
+rules:
+  MissingPytestMarkAsyncio:
+    description: "Asynchronous test function requires the `@pytest.mark.asyncio` decorator"
+    expr: //AsyncFunctionDef[starts-with(@name, 'test_')]/decorator_list[not(Attribute[@attr = 'asyncio']/value/Attribute[@attr = 'mark']/value/Name[@id = 'pytest'])]
+  LogFormatf-string:
+    description: "Do not use f-strings in log messages."
+    expr: //JoinedStr[ancestor::Call/func/Attribute[@attr = 'debug' or @attr = 'error' or @attr = 'info' or @attr = 'warning' or @attr = 'exception' or @attr = 'fatal' or @attr = 'critical'] and ancestor::Call/func/Attribute/value/Name[starts-with(@id, 'log') or starts-with(@id, '_log')]]
+    instead: "logger.info('Received request with id = {} on instrument = {}', request_id, instrument)"
+  LogFormat.format():
+    description: "Do not use str.format() in log messages."
+    expr: //Call[func/Attribute[@attr = 'format'] and ancestor::Call/func/Attribute[@attr = 'debug' or @attr = 'error' or @attr = 'info' or @attr = 'warning' or @attr = 'exception' or @attr = 'fatal' or @attr = 'critical'] and ancestor::Call/func/Attribute/value/Name[starts-with(@id, 'log') or starts-with(@id, '_log')]]
+    instead: "logger.info('Received request with id = {} on instrument = {}', request_id, instrument)"
+  LogFormat.format()inclass:
+    description: "Do not use str.format() in log messages."
+    expr: //Call[func/Attribute[@attr = 'format'] and ancestor::Call/func/Attribute[@attr = 'debug' or @attr = 'error' or @attr = 'info' or @attr = 'warning' or @attr = 'exception' or @attr = 'fatal' or @attr = 'critical'] and ancestor::Call/func/Attribute/value/Attribute[starts-with(@attr, 'log') or starts-with(@attr, '_log')] and ancestor::Call/func/Attribute/value/Attribute/value/Name[@id = 'self']]
+    instead: "logger.info('Received request with id = {} on instrument = {}', request_id, instrument)"
