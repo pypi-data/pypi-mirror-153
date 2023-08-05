@@ -1,0 +1,153 @@
+
+
+{% extends 'accounting.html' %}
+
+{% load i18n widget_tweaks %}
+
+
+{% block content %}
+
+    {{ block.super }}
+
+    <style>
+        .filter-form {
+            margin-bottom: 10px
+        }
+    </style>
+
+    <h4 class="pull-left">
+        {% block report_name %}
+        {% endblock %}
+        ({{ date_from|date:'d.m.Y' }} - {{ date_to|date:'d.m.Y' }})
+    </h4>
+
+    <button class="btn btn-primary pull-right print-btn" onClick="window.print();">
+        {% trans 'Print' %}
+    </button>
+
+    <div class="clearfix"></div>
+
+    <hr class="hidden-print" />
+
+    <form class="filter-form" data-role="filter-form">
+        {{ form.errors }}
+        <div class="row">
+            <div class="col-md-2">
+                {{ form.manager|add_class:'form-control' }}
+            </div>
+            <div class="col-md-2">
+                {{ form.date_from|add_class:'form-control'|attr:'autocomplete:off' }}
+            </div>
+            <div class="col-md-2">
+                {{ form.date_to|add_class:'form-control'|attr:'autocomplete:off' }}
+            </div>
+            <div class="col-md-2">
+                <div class="checkbox">
+                    {{ form.is_wholesale_price_included }}
+                    {{ form.is_wholesale_price_included.label }}
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="checkbox">
+                    {{ form.is_profit_included }}
+                    {{ form.is_profit_included.label }}
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="checkbox">
+                    {{ form.is_discount_included }}
+                    {{ form.is_discount_included.label }}
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="clearfix"></div>
+
+    <table class="table table-bordered table-condensed">
+        {% block report_table %}
+            <thead>
+                {% if is_wholesale_price_included %}
+                    <tr>
+                        <th>№</th>
+                        <th>{% trans 'Product' %}</th>
+                        <th>{% trans 'Bar code' %}</th>
+                        <th>{% trans 'Quantity' %}</th>
+                        <th colspan="2" class="text-center">
+                            {% trans 'Wholesale' %}
+                        </th>
+                        <th colspan="2" class="text-center">
+                            {% trans 'Retail' %}
+                        </th>
+                        {% if is_profit_included %}
+                            <th>{% trans 'Profit' %}</th>
+                        {% endif %}
+                    </tr>
+                    <tr>
+                        <th colspan="4"></th>
+                        <th>{% trans 'Price' %}</th>
+                        <th>{% trans 'Subtotal' %}</th>
+                        <th>{% trans 'Price' %}</th>
+                        <th>{% trans 'Subtotal' %}</th>
+                        {% if is_profit_included %}
+                            <th></th>
+                        {% endif %}
+                    </tr>
+                {% else %}
+                    <tr>
+                        <th>№</th>
+                        <th>{% trans 'Product' %}</th>
+                        <th>{% trans 'Bar code' %}</th>
+                        <th>{% trans 'Quantity' %}</th>
+                        <th>{% trans 'Price' %}</th>
+                        <th>{% trans 'Subtotal' %}</th>
+                        {% if is_profit_included %}
+                            <th>{% trans 'Profit' %}</th>
+                        {% endif %}
+                    </tr>
+                {% endif %}
+            </thead>
+            <tbody>
+                {% block report_items %}
+                    {% for item in items %}
+                        {% include 'invoices/report/report-item.html' %}
+                    {% endfor %}
+
+                    <tr>
+                        <td colspan="3" class="text-right">
+                            <b>{% trans 'Total' %}:</b>
+                        </td>
+                        <td><b>{{ totals.qty }}</b></td>
+                        {% if is_wholesale_price_included %}
+                            <td></td>
+                            <td><b>{{ totals.wholesale_total|stringformat:".1f" }}</b></td>
+                        {% endif %}
+                        <td></td>
+                        <td>
+                            <b>{{ totals.retail_total|stringformat:".1f" }}</b>
+                            {% if is_discount_included %}
+                                <small>(-{{ totals.discounted_retail_total }})</small>
+                            {% endif %}
+                        </td>
+                        {% if is_profit_included %}
+                            <td><b>{{ totals.profit_total|stringformat:".1f" }}</b></td>
+                        {% endif %}
+                    </tr>
+                {% endblock %}
+            </tbody>
+        {% endblock %}
+    </table>
+{% endblock %}
+
+
+{% block js %}
+    {{ block.super }}
+    <script>
+        (function ($) {
+            var $form = $('[data-role=filter-form]');
+            $form.find('input, select').change(function () {
+                $form.submit();
+            });
+        })(jQuery);
+    </script>
+{% endblock %}
