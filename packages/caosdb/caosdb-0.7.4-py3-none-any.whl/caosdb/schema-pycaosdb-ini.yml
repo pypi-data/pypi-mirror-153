@@ -1,0 +1,103 @@
+schema-pycaosdb-ini:
+  type: object
+  additionalProperties: false
+  properties:
+    Container:
+      additionalProperties: false
+      properties:
+        debug:
+          default: 0
+          type: integer
+          enum: [0, 1, 2]
+    Connection:
+      description: Settings for the connection to the CaosDB server
+      additionalProperties: false
+      properties:
+        url:
+          description: URL of the CaosDB server
+          type: string
+          pattern: https://[-a-zA-Z0-9\.]+(:[0-9]+)?(/)?
+          examples: ["https://demo.indiscale.com/", "https://localhost:10443/"]
+        username:
+          type: string
+          description: User name used for authentication with the server
+          examples: [admin]
+        password_method:
+          description: The password input method defines how the password is supplied that is used for authentication with the server.
+          type: string
+          default: input
+          enum: [input, plain, pass, keyring]
+        password_identifier:
+          type: string
+        password:
+          type: string
+          examples: [caosdb]
+        auth_token:
+          type: string
+          description: Using an authentication token to connect with the server. This setting is not recommended for users.
+        cacert:
+          type: string
+          description: If the server's SSL certificate cannot be validated by your installed certificates (default or installed by your admins), you may also need to supply the matching key (pem file)
+          examples: [/path/to/caosdb.ca.pem]
+        ssl_insecure:
+          description: If this option is set, the SSL certificate of the server will not be validated. This has the potential of a man-in-the-middle attack. Use with care!
+          type: boolean
+          default: false
+        ssl_version:
+            description: You may define the ssl version to be used. It has to be the name of the corresponding attribute in the Python ssl module.
+            examples: [PROTOCOL_TLS]
+        debug:
+          default: 0
+          type: integer
+          enum: [0, 1, 2]
+          description: The debug key allows control the verbosity. Set it to 1 or 2 in case you  want to see debugging output or if you want to learn more about the internals of the protocol.  0 disables debugging output.
+        socket_proxy:
+          examples: ["localhost:12345"]
+          type: string
+          description: You can define a socket proxy to be used. This is for the case that the server sits behind a firewall which is being tunnelled with a socket proxy (SOCKS4 or SOCKS5) (e.g. via ssh's -D option or a dedicated proxy server).
+        implementation:
+          description: This option is used internally and for testing. Do not override.
+          examples: [_DefaultCaosDBServerConnection]
+        timeout:
+          type: integer
+      allOf:
+        - if:
+            properties:
+              password_method:
+                const: input
+            required: [password_method]
+          then:
+            required: [url]
+        - if:
+            properties:
+              password_method:
+                const: plain
+            required: [password_method]
+          then:
+            required: [url, username, password]
+        - if:
+            properties:
+              password_method:
+                const: pass
+            required: [password_method]
+          then:
+            required: [url, username, password_identifier]
+        - if:
+            properties:
+              password_method:
+                const: keyring
+            required: [password_method]
+          then:
+            required: [url, username]
+    IntegrationTests:
+      description: "Used by the integration test suite from the caosdb-pyinttest repo."
+      additionalProperties: true
+    Misc:
+      description: "Some additional configuration settings."
+      additionalProperties: true
+    advancedtools:
+      description: "Configuration settings for the caosadvancedtools."
+      additionalProperties: true
+    sss_helper:
+      description: "Configuration settings for server-side scripting."
+      additionalProperties: true
