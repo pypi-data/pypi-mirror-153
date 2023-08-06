@@ -1,0 +1,25 @@
+# use sha256 form of our base image name to ensure it hasn't changed
+# FROM {}/{} as base
+FROM {}/{} as base
+
+FROM singularitybase.azurecr.io/installer/base/singularity-installer:20220218T112740648 as installer
+FROM singularitybase.azurecr.io/validations/base/singularity-tests:20220309T233405410 as validator
+
+FROM base
+
+# get the installation scripts
+COPY --from=installer /installer /opt/microsoft/_singularity/installations/
+
+# install components required for running this image in Singularity
+RUN /opt/microsoft/_singularity/installations/singularity/installer.sh
+
+# get the validation scripts
+COPY --from=validator /validations /opt/microsoft/_singularity/validations/
+
+# set validation arguments for expected use of this image
+ENV SINGULARITY_IMAGE_ACCELERATOR=NVIDIA
+
+# run the validation
+RUN /opt/microsoft/_singularity/validations/validator.sh
+
+# run user's post-singularity commands
