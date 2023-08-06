@@ -1,0 +1,45 @@
+{% extends theme('base.html') %}
+
+{% block style %}
+    <link href="/static/datatables/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="/static/datatables/dataTables.semanticui.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block script %}
+    <script src="/static/datatables/jquery.dataTables.min.js"></script>
+    <script src="/static/datatables/dataTables.semanticui.min.js"></script>
+    <script src="/static/js/users.js"></script>
+{% endblock %}
+
+{% block content %}
+
+    <table class="ui table" data-order="[[ 3, &quot;desc&quot; ]]">
+        <thead>
+            <th data-orderable="false">{% trans %}Token{% endtrans %}</th>
+            <th>{% trans %}Client{% endtrans %}</th>
+            <th>{% trans %}Subject{% endtrans %}</th>
+            <th>{% trans %}Created{% endtrans %}</th>
+        </thead>
+        {% for token, client, user in items %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('oidc.tokens.view', token_id=token.token_id) }}">
+                        {{ token.token_id }}
+                    </a>
+                </td>
+                <td>
+                    <a href="{{ url_for('oidc.clients.edit', client_id=client.client_id) }}">
+                        {{ client.name }}
+                    </a>
+                </td>
+                <td>
+                    <a href="{{ url_for("account.profile_edition", username=user.uid[0]) }}">
+                        {{ user.uid[0] }}
+                    </a>
+                </td>
+                <td data-order="{{ token.issue_date|timestamp }}">{{ token.issue_date }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}
