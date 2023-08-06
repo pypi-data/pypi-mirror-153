@@ -1,0 +1,418 @@
+params:
+  reads_layout: "pe"
+  interleaved: False
+  have_long: False
+  fq_encoding: "sanger"
+  begin: "trimming"
+  samples: "samples.tsv"
+
+  simulate:
+    do: False
+    threads: 8
+
+  raw:
+    do: True
+    threads: 8
+    save_reads: True
+    fastqc:
+      do: False
+
+  trimming:
+    save_reads: False
+    oas1:
+      do: False
+      quality_system: 33
+      min_length: 30
+      seed_oa: 0.9
+      fragment_oa: 0.8
+    sickle:
+      do: False
+      quality_type: "sanger"
+      sickle_pe: ""
+      length_cutoff: 51
+      quality_cutoff: 20
+    fastp: # recommand
+      do: True
+      threads: 4
+      use_slide_window: False # strict when using slide window
+      disable_adapter_trimming: False
+      detect_adapter_for_se: True # If activated, adapter_sequence will not used
+      detect_adapter_for_pe: True # If activated, adapter_sequence and adapter_sequence_r2 will not used
+      adapter_sequence: "AAGTCGGAGGCCAAGCGGTCTTAGGAAGACAA" # MGI adapter 3
+      adapter_sequence_r2: "AAGTCGGATCGTAGCCATGTCGTTCTGTGAGCCAAGGAGTTG" # MGI adapter 5
+      # "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"         # eg: Illumina TruSeq adapter 3
+      # "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"         # eg: Illumina TruSeq adapter 5
+      compression: 6
+      cut_front_window_size: 4
+      cut_front_mean_quality: 20
+      cut_tail_window_size: 4
+      cut_tail_mean_quality: 20
+      cut_right_window_size: 4
+      cut_right_mean_quality: 20
+      length_required: 51
+      n_base_limit: 5
+
+  rmhost:
+    host_fasta: "/home/jiezhu/databases/genomics/human/CHM13/chm13v2.0_plusY/chm13v2.0.fa"
+    threads: 8
+    save_reads: True
+    save_bam: False
+    compression: 6
+    soap:
+      do: False
+      index_prefix: "/home/jiezhu/databases/genomics/human/CHM13/chm13v2.0_plusY/chm13v2.0.fa"
+      match_model: 4
+      align_seed: 30
+      report_repeat_hits: 1
+      max_mismatch_num: 7
+      identity: 0.9
+    bwa:
+      do: False
+      algorithms: "mem" # "mem2"
+      index_prefix: "/home/jiezhu/databases/genomics/human/CHM13/chm13v2.0_plusY/bwa_index/chm13v2.0.fa"
+      # /ldfssz1/ST_META/share/User/zhujie/database/galaxy_indexes/hg38/hg38full/bwa_mem2_index/hg38full.fa
+      # /ldfssz1/ST_META/share/User/zhujie/database/mouse/GRCm39/bwa_mem2_index/GRCm39.fna
+      minimum_seed_length: 23
+    bowtie2: # recommand
+      do: True
+      index_prefix: "/home/jiezhu/databases/genomics/human/CHM13/chm13v2.0_plusY/chm13v2.0.fa"
+      presets: "--very-sensitive"
+    minimap2:
+      do: False
+      split_size: "4G"
+      preset: "sr"
+      index: "/home/jiezhu/databases/genomics/human/CHM13/chm13v2.0_plusY/minimap_index/chm13v2.0.fa"
+    kraken2:
+      do: False
+      database: "/home/jiezhu/databases/kraken/minikraken2_v2_8GB_201904_UPDATE"
+      host_taxid: 9606
+      # must include human reference genome
+      confidence: 0
+      min_base_quality: 0
+      min_hit_groups: 2
+    kneaddata:
+      do: False
+      do_trf: False
+      do_trimmomatic: False
+      trimmomatic_options: 'MINLEN:50 ILLUMINACLIP:/-PE.fa:2:40:15 SLIDINGWINDOW:4:20'
+      sequencer_source: "TruSeq3" # ["NexteraPE", "TruSeq2", "TruSeq3", "none"]
+      do_bmtagger: False
+      do_bowtie2: True
+      decontaminate_pairs: "strict" # ["strict", "lenient", "unpaired"]
+      bowtie2_options: "--very-sensitive --dovetail"
+      bowtie2_database: "/home/jiezhu/databases/genomics/human/CHM13/chm13v2.0_plusY/chm13v2.0.fa"
+ 
+  qcreport:
+    do: True
+    seqkit:
+      threads: 4
+
+  assembly:
+    threads: 8
+    megahit:
+      do: False
+      min_contig: 100
+      only_save_scaftigs: True
+      k_list: ["21", "33", "55", "77"]
+      presets: "" # choose from "meta-sensitive" or "meta-large"
+      # 15-255, increment <= 28
+      # k_min: 21, default
+      # k_max: 141, default
+      # k_step: 12, default
+    idba_ud:
+      do: False
+      mink: 27
+      maxk: 127
+      step: 10
+      min_contig: 500
+      only_save_scaftigs: True
+    metaspades:
+      do: True
+      only_assembler: False
+      only_save_scaftigs: True
+      link_scaffolds: True
+      memory: 81
+      kmers: ["21", "33", "55", "77"]
+      # K_MERS_RNA = [33, 49]
+      # K_MERS_SHORT = [21, 33, 55]
+      # K_MERS_150 = [21, 33, 55, 77]
+      # K_MERS_250 = [21, 33, 55, 77, 99, 127]
+      # K_MERS_PLASMID_100 = [21, 33, 55, 77]
+      # K_MERS_PLASMID_LONG = [21, 33, 55, 77, 99, 127]
+    spades:
+      do: False
+      only_assembler: False
+      only_save_scaftigs: True
+      link_scaffolds: True
+      memory: 50
+      kmers: ["21", "33", "55", "77"]
+    plass:
+      do: False
+      min_seq_id:
+      min_length: 45
+      evalue:
+      filter_protiens: 1
+    opera_ms:
+      do: False
+      path: "~/toolkit/OPERA-MS/OPERA-MS.pl"
+      no_ref_clustering: True
+      no_strain_clustering: False
+      no_gap_filling: False
+      polishing: True
+      long_read_mapper: "blasr"
+      short_read_assembler: "megahit"
+      contig_len_threshold: 500
+      contig_edge_len: 80
+      contig_window_len: 340
+      genome_db: "~/toolkit/OPERA-MS/OPERA-MS-DB"
+
+    metaquast:
+      do: False
+      threads: 8
+      min_contig: 500
+
+    report:
+      threads: 8
+      min_length: 500 # calculate Nx from min length
+      len_ranges: [0, 1000, 1500, 2000, 2500, 3000]
+
+  alignment:
+    do: True
+    threads: 8
+    algorithms: "mem" # mem2
+    cal_base_depth: False
+    report: True
+
+  binning:
+    threads: 8
+    metabat2:
+      do: True
+      percent_identity: 97
+      min_map_qual: 0
+      output_paired_contigs: False
+      output_gc: False
+      output_gc_window: False
+      min_contig: 2000
+      maxP: 95
+      minS: 60
+      maxEdges: 200
+      pTNF: 0
+      noAdd: False
+      minCV: 1
+      minCVSum: 1
+      minClsSize: 200000
+      saveCls: False
+      seed: 2020
+    maxbin2:
+      do: True
+      min_contig: 2000
+      max_iteration: 50
+      prob_threshold: 0.9
+      plotmarker: True
+      markerset: 107
+    concoct:
+      do: True
+      chunk_size: 10000
+      overlap_size: 0
+      clusters: 400
+      kmer_length: 4
+      length_threshold: 2000
+      read_length: 100
+      total_percentage_pca: 90
+      iterations: 500
+      seed: 2020
+      no_cov_normalization: False
+      no_total_coverage: False
+      no_original_data: False
+      coverage_out: False
+    graphbin2:
+      do: False
+      depth: 5
+      threshold: 1.5
+    vamb:
+      do: True
+      cuda: True
+      cuda_module: "cuda/11.2" # take effect only when use_cuda_module
+      use_cuda_module: False # avoid conda's CUDA issue
+      save_bam: False
+      allow_small_scaftigs: False
+      min_contig: 2000
+      min_fasta: 200000 # 200K, 500K # For viral genome, choose ? 1kb ?
+      index_size: "500G"
+      external_params: ""
+    dastools:
+      do: True
+      search_engine: "diamond"
+      score_threshold: 0.5
+      duplicate_penalty: 0.6
+      megabin_penalty: 0.5
+
+  identify:
+    threads: 2 
+    virsorter2:
+      do: True
+      db: /home/jiezhu/databases/ecogenomics/VirSorter2/db
+      include_groups: ["dsDNAphage", "ssDNA"] # ["dsDNAphage", "NCLDV", "RNA", "ssDNA", "lavidaviridae"]
+      min_score: 0.5
+      min_length: 2000
+      prep_for_dramv: True
+      provirus_off: False
+      rm_tmpdir: True
+      keep_original_seq: True # CheckV need
+    deepvirfinder:
+      do: True
+      script: /home/jiezhu/toolkit/DeepVirFinder/dvf.py
+      min_length: 2000
+    phamb:
+      do: True
+      micompletedb: /home/jiezhu/databases/ecogenomics/miComplete/Bact105.hmm
+      vogdb: /home/jiezhu/databases/ecogenomics/VOGDB/vog211/ALLVOG.hmm
+      hmmsearch_evalue: 1.0e-05
+      randomforest_script: /home/jiezhu/toolkit/phamb/workflows/mag_annotation/scripts/run_RF.py
+      min_binsize: 2000 # default: 5000
+
+  predict:
+    threads: 8
+    scaftigs_to_gene:
+      prokka:
+        do: False
+    bins_to_gene:
+      prokka:
+        do: False
+        kingdom: "Bacteria"
+
+  checkm:
+    do: True
+    check_binners: ["metabat2", "concoct", "maxbin2", "vamb", "dastools"]
+    report: True
+    threads: 8
+    pplacer_threads: 4 # 1: 30G, 2: 60G, 3: 90G, 4: 120G
+    reduced_tree: False
+    completeness: 90
+    contamination: 10
+    standard: "MIMAG" # SGB
+    batch_num: 500
+
+  taxonomic:
+    threads: 8
+    gtdbtk:
+      do: True
+      pplacer_threads: 1
+      batch_num: 1000
+      gtdb_data_path: "/home/jiezhu/databases/ecogenomics/GTDB/release202"
+      ar122_metadata: "/home/jiezhu/databases/ecogenomics/GTDB/release202/ar122_metadata_r202.tsv"
+      bac120_metadata: "/home/jiezhu/databases/ecogenomics/GTDB/release202/bac120_metadata_r202.tsv"
+      gtdb_to_ncbi_script: "/home/jiezhu/toolkit/GTDBTk/scripts/gtdb_to_ncbi_majority_vote.py"
+
+  dereplicate:
+    drep:
+      do: True
+      threads: 32
+      filtering_genome_min_length: 50000
+      filtering_completeness: 75
+      filtering_contamination: 25
+      genome_comparison_algorithm: "ANImf"
+      clustering_primary_ANI: 0.9
+      clustering_secondary_ANI: 0.99
+      cov_thresh: 0.1
+      coverage_method: "larger"
+      cluster_algorithm: "average"
+      external_params: ""
+    cdhit:
+      do_gene: True
+      do_proteins: False
+      threads: 32
+      sequence_identity_threshold: 0.95
+      alignment_coverage_for_shorter_sequence: 0.9
+      word_length: 8
+      use_global_sequence_identity: 0
+      memory_limit: 0
+      cluster_description_length: 0
+      default_algorithm: 0
+      both_alignment: 1
+    galah:
+      ani: 99
+      max_contamination:
+      min_completeness: 0
+      prethreshold_ani: 95
+      threads: 32
+
+output:
+  simulate: "results/00.simulate"
+  raw: "results/00.raw"
+  trimming: "results/01.trimming"
+  rmhost: "results/02.rmhost"
+  qcreport: "results/03.qcreport"
+  assembly: "results/04.assembly"
+  alignment: "results/05.alignment"
+  binning: "results/06.binning"
+  multisplit_binning: "results/06.multisplit_binning"
+  identify: "results/06.identify"
+  predict: "results/07.predict"
+  checkm: "results/08.checkm"
+  dereplicate: "results/09.dereplicate"
+  taxonomic: "results/10.taxonomic"
+  upload: "results/99.upload"
+
+upload:
+  do: False
+  threads: 8
+  project_accession: "CNP0000000"
+
+  samples:
+    tax_id: "447426"
+    organism: "human oral metagenome"
+    investigation_type: "metagenome"
+    collection_date: "2018-11-19"
+    env_biome: "saliva"
+    env_feature: "saliva"
+    env_material: "saliva material"
+    geo_loc_name: "China: Shenzhen"
+    host: "Homo sapiens"
+    lat_lon: "22.35 N 114.27 E"
+    strain: "missing"
+    estimated_size: "missing"
+    isol_growth_condt: "not collected"
+    num_replicons: "not collected"
+    ref_biomaterial: "not collected"
+    ploidy: "missing"
+    propagation: "not collected"
+
+  sequencing_run:
+    experiment_title: "WGS of human oral metagenome"
+    library_name: "LIBRARY_NAME-BARCODE_ID"
+    library_strategy: "WGS"
+    library_source: "METAGENOMIC"
+    library_selection: "RANDOM"
+    library_layout: "paired"
+    platform: "BGISEQ"
+    instrument_model: "BGISEQ-500"
+    design_description: "human oral metagenome"
+    library_construction_protocol: "RANDOM"
+    spot_layout: ""
+    nominal_size: "350"
+    file_type: "fastq"
+
+  assembly:
+    assembly_method: "SPAdes"
+    assembly_method_version: "v3.13.0"
+    assembly_partial: True
+    assembly_coverage: "30"
+    sequencing_technology: "BGISEQ"
+    assembly_min_gap_length: ""
+    assembly_mol_type: "genomic DNA"
+    reference_genome: ""
+
+envs:
+  minimap2: "envs/minimap2.yaml"
+  metabat2: "envs/metabat2.yaml"
+  maxbin2: "envs/maxbin2.yaml"
+  concoct: "envs/concoct.yaml"
+  dastools: "envs/dastools.yaml"
+  vamb: "envs/vamb.yaml"
+  virsorter2: "envs/virsorter2.yaml"
+  deepvirfinder: "envs/deepvirfinder.yaml"
+  phamb: "envs/phamb.yaml"
+  checkm: "envs/checkm.yaml"
+  drep: "envs/drep.yaml"
+  gtdbtk: "envs/gtdbtk.yaml"
