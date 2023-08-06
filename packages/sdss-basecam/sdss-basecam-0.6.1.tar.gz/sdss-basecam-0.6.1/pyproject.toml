@@ -1,0 +1,129 @@
+[tool.poetry]
+name = "sdss-basecam"
+version = "0.6.1"
+description = "A base library for camera wrapping and actor."
+authors = ["José Sánchez-Gallego <gallegoj@uw.edu>"]
+license = "BSD 3-Clause License"
+readme = "README.md"
+homepage = "https://github.com/sdss/basecam"
+repository = "https://github.com/sdss/basecam"
+documentation = "https://sdss-basecam.readthedocs.io/en/latest/"
+keywords = ["astronomy", "software"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Documentation :: Sphinx",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+packages = [
+    { include = "basecam" }
+]
+include = ["basecam/actor/schema.json"]
+
+[tool.poetry.dependencies]
+python = "^3.7,<4.0"
+astropy = "^4.0"
+numpy = "^1.17"
+sdss-clu = "^1.6.0"
+sdsstools = ">=0.4.0"
+typing-extensions = {version = "^3.7.4", python = "<=3.7"}
+
+[tool.poetry.dev-dependencies]
+ipython = [
+    {version = ">=8.0.0rc1", python = ">=3.8", allow-prereleases = true},
+    {version = ">=7.0.0", python = ">=3.7,<3.8"}
+]
+matplotlib = ">=3.1.1"
+flake8 = ">=3.7.9"
+doc8 = ">=0.8.0"
+pytest = ">=6.0.0"
+pytest-asyncio = ">=0.10.0"
+pytest-cov = ">=2.8.1"
+pytest-mock = ">=1.13.0"
+pytest-sugar = ">=0.9.2"
+isort = ">=5.0.0"
+codecov = ">=2.0.15"
+coverage = {version = ">=5.0", extras = ["toml"]}
+ipdb = ">=0.12.3"
+sphinx = ">=3.0.0"
+black = {version = ">=20.8b1", allow-prereleases = true}
+asynctest = ">=0.13.0"
+sphinx-autodoc-typehints = ">=1.12.0"
+sphinx-jsonschema = ">=1.16.7"
+sphinx-click = ">=2.5.0"
+sphinx-copybutton = ">=0.5.0"
+furo = ">=2021.7.5-beta.38"
+myst-parser = ">=0.15.1"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+fast = true
+
+[tool.isort]
+profile = "black"
+sections = ["FUTURE", "STDLIB", "TYPING", "THIRDPARTY", "SDSS", "FIRSTPARTY", "LOCALFOLDER"]
+default_section = "THIRDPARTY"
+known_first_party = "basecam"
+known_typing = ["typing"]
+known_sdss = ["sdsstools", "clu"]
+lines_after_imports = 2
+
+[tool.pytest.ini_options]
+addopts = "--cov basecam --cov-report xml --cov-report html --cov-report term"
+
+[tool.coverage.run]
+branch = true
+include = [
+    "basecam/*"
+]
+omit = [
+    "*/__init__.py",
+    "*/actor/commands/__doc_parser.py"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "class Poller",  # Already tested in jaeger
+    "def __repr__",
+    "raise NotImplementedError",
+    "async def _post_process_internal"
+]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py37, py38, build_docs
+requires =
+
+[testenv]
+extras =
+    dev
+commands = pytest
+
+[testenv:py37]
+commands = pytest --cov basecam --cov-report html
+
+[testenv:build_docs]
+description = Build docs using Sphinx
+basepython = python3.7
+changedir = docs
+extras =
+    dev
+    docs
+whitelist_externals =
+    rm
+    cd
+    sphinx
+    make
+commands =
+    rm -Rf _build
+    sphinx-build . _build --color -W -bhtml {posargs}
+"""
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
