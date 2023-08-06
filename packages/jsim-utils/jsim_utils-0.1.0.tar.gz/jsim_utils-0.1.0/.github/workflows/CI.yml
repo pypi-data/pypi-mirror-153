@@ -1,0 +1,65 @@
+name: CI
+
+on:
+    push:
+        branches: [master, dev]
+    pull_request:
+    workflow_dispatch:
+
+jobs:
+  run-tests:
+    runs-on: ${{matrix.platform}}
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+        python-version: ["3.8", "3.9"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/cache@v3
+      id: cache-tox-tests
+      with:
+        path: .tox
+        key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt') }}-${{ hashFiles('tests/requirements.txt') }}-${{ hashFiles('setup.cfg') }}
+        restore-keys: |
+          ${{ runner.os }}-tox-tests
+
+    - run: pip install tox
+
+    - name: Test with tox
+      run: tox -e default,types
+
+    - uses: codecov/codecov-action@v2.1.0
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: coverage.xml
+        fail_ci_if_error: true
+
+
+  run-doc-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+
+    - uses: actions/cache@v3
+      id: cache-tox-docs
+      with:
+        path: .tox
+        key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt') }}-${{ hashFiles('tests/requirements.txt') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('docs/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-tox-docs
+
+    - run: sudo apt-get install pandoc
+
+    - run: pip install tox
+
+    - name: Test with tox
+      run: tox -e doctests
