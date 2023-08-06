@@ -1,0 +1,88 @@
+{
+  "$schema": "metaschema/strict_meta_schema.json#",
+  "$id": "participant",
+  "title": "Participant",
+  "description": "The collection of all data related to a specific participant in the context of a specific clinical trial.\n",
+  "additionalProperties": false,
+  "type": "object",
+  "properties": {
+    "cimac_participant_id": {
+      "type": "string",
+      "in_doc_ref_pattern": "/participants/*/cimac_participant_id",
+      "$comment": "With `in_doc_ref_pattern` here, there's no need to specify it each time cimac_participant_id is $ref'ed, constrain will be pulled in place by ref resolver automatically, assuring that it will be checked for every cimac_participant_id $ref.",
+      "pattern": "^C[A-Z0-9]{3}[A-Z0-9]{3}$",
+      "example": "CTTTP01",
+      "description": "Participant identifier assigned by the CIMAC-CIDC Network. Formated as: C?????? (first 7 characters of CIMAC ID)"
+    },
+    "cidc_participant_id": {
+      "type": "string",
+      "in_doc_ref_pattern": "/participants/*/cidc_participant_id",
+      "pattern": "^CIDC-\\w+-\\w+$",
+      "example": "CIDC-Trial101-e1b2c3",
+      "description": "The generated, CIDC-internal identifier for this participant."
+    },
+    "participant_id": {
+      "type": "string",
+      "description": "Trial Participant Identifier. Crypto-hashed after upload.",
+      "encrypt": true
+    },
+    "cohort_name": {
+      "type": "string",
+      "description": "Categorical description of cohorts, arms, and treatment groups.",
+      "example": "Arm_Z",
+      "in_doc_ref_pattern": "/allowed_cohort_names/*",
+      "$comment": "Values in this field are validated dynamically by `in_doc_ref_pattern`."
+    },
+    "essential_patient_entry_number": {
+      "description": "Deprecated",
+      "$comment": "Used to provide id for patient entry in a shipment manifest, left here for back-compat.",
+      "type": "integer"
+    },
+    "gender": {
+      "type": "string",
+      "description": "Identifies the gender of the participant.",
+      "enum": ["Male", "Female", "Not Specified", "Other"]
+    },
+    "race": {
+      "type": "string",
+      "description": "'NIH Racial and Ethnic Categories and Definitions for NIH Diversity Programs and for Other Reporting Purposes (NOT-OD-15-089),  Release Date: April 8, 2015.'\n",
+      "enum": [
+        "American Indian/Alaska Native",
+        "Asian",
+        "Black/African American",
+        "Native Hawaiian/Pacific Islander",
+        "White",
+        "Not Reported",
+        "Unknown",
+        "Other"
+      ]
+    },
+    "ethnicity": {
+      "type": "string",
+      "description": "'NIH Racial and Ethnic Categories and Definitions for NIH Diversity Programs and for Other Reporting Purposes (NOT-OD-15-089),  Release Date: April 8, 2015.'\n",
+      "enum": [
+        "Hispanic or Latino",
+        "Not Hispanic or Latino",
+        "Not reported",
+        "Unknown",
+        "Other"
+      ]
+    },
+    "clinical":{
+      "type": "object",
+      "$comment": "holds whatever non-harmonized annotations trial team provides",
+      "additionalProperties": true
+    },
+    "samples": {
+      "type": "array",
+      "items": {
+        "$ref": "sample.json"
+      },
+      "mergeStrategy": "arrayMergeById",
+      "mergeOptions": {
+        "idRef": "/cimac_id"
+      }
+    }
+  },
+  "required": ["cimac_participant_id", "samples"]
+}
