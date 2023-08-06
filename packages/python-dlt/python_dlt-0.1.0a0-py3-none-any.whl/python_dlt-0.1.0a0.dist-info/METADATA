@@ -1,0 +1,129 @@
+Metadata-Version: 2.1
+Name: python-dlt
+Version: 0.1.0a0
+Summary: DLT is an open-source python-native scalable data loading framework that does not require any devops efforts to run.
+Home-page: https://github.com/scale-vector
+License: Apache-2.0
+Keywords: etl
+Author: ScaleVector
+Author-email: services@scalevector.ai
+Maintainer: Marcin Rudolf
+Maintainer-email: marcin@scalevector.ai
+Requires-Python: >=3.8,<3.11
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Software Development :: Libraries
+Provides-Extra: dbt
+Provides-Extra: gcp
+Provides-Extra: postgres
+Provides-Extra: redshift
+Requires-Dist: GitPython[dbt] (>=3.1.26,<4.0.0); extra == "dbt"
+Requires-Dist: PyYAML (>=5.4.1,<6.0.0)
+Requires-Dist: cachetools (>=5.2.0,<6.0.0)
+Requires-Dist: dbt-bigquery[dbt] (==1.0.0); extra == "dbt"
+Requires-Dist: dbt-core[dbt] (==1.0.6); extra == "dbt"
+Requires-Dist: dbt-redshift[dbt] (==1.0.1); extra == "dbt"
+Requires-Dist: google-cloud-bigquery (>=2.26.0,<3.0.0); extra == "gcp"
+Requires-Dist: grpcio (==1.43.0); extra == "gcp"
+Requires-Dist: hexbytes (>=0.2.2,<0.3.0)
+Requires-Dist: json-logging (==1.4.1rc0)
+Requires-Dist: jsonlines (>=2.0.0,<3.0.0)
+Requires-Dist: pendulum (>=2.1.2,<3.0.0)
+Requires-Dist: prometheus-client (>=0.11.0,<0.12.0)
+Requires-Dist: psycopg2-binary (>=2.9.1,<3.0.0); extra == "postgres" or extra == "redshift"
+Requires-Dist: requests (>=2.26.0,<3.0.0)
+Requires-Dist: semver (>=2.13.0,<3.0.0)
+Requires-Dist: sentry-sdk (>=1.4.3,<2.0.0)
+Requires-Dist: simplejson (>=3.17.5,<4.0.0)
+Project-URL: Repository, https://github.com/scale-vector/dlt
+Description-Content-Type: text/markdown
+
+![](docs/DLT-Pacman-Big.gif)
+
+<p align="center">
+
+[![PyPI version](https://badge.fury.io/py/python-dlt.svg)](https://pypi.org/project/python-dlt/)
+[![LINT Badge](https://github.com/scale-vector/dlt/actions/workflows/lint.yml/badge.svg)](https://github.com/scale-vector/dlt/actions/workflows/lint.yml)
+
+</p>
+
+# DLT
+DLT enables simple python-native data pipelining for data professionals.
+
+DLT is an open-source python-native scalable data loading framework that does not require any devops efforts to run.
+
+## [Quickstart guide](QUICKSTART.md)
+
+## How does it work?
+
+DLT aims to simplify data loading for everyone.
+
+
+To achieve this, we take into account the progressive steps of data pipelining:
+
+![](docs/DLT_Diagram_1.jpg)
+### 1. Data discovery, typing, schema, metadata
+
+When we create a pipeline, we start by grabbing data from the source.
+
+Usually, the source metadata is lacking, so we need to look at the actual data to understand what it is and how to ingest it.
+
+In order to facilitate this, DLT includes several features
+* Auto-unpack nested json if desired
+* generate an inferred schema with data types and load data as-is for inspection in your warehouse.
+* Use an ajusted schema for follow up loads, to better type and filter your data after visual inspection (this also solves dynamic typing of Pandas dfs)
+
+### 2. Safe, scalable loading
+
+When we load data, many things can intrerupt the process, so we want to make sure we can safely retry without generating artefacts in the data.
+
+Additionally, it's not uncommon to not know the data size in advance, making it a challenge to match data size to loading infrastructure.
+
+With good pipelining design, safe loading becomes a non-issue.
+
+* Idempotency: The data pipeline supports idempotency on load, so no risk of data duplication.
+* Atomicity: The data is either loaded, or not. Partial loading occurs in the s3/storage buffer, which is then fully committed to warehouse/catalogue once finished. If something fails, the buffer is not partially-commited further.
+* Data-size agnostic: By using generators (like incremental downloading) and online storage as a buffer, it can incrementally process sources of any size without running into worker-machine size limitations.
+
+
+### 3. Modelling and analysis
+
+* Instantiate a dbt package with the source schema, enabling you to skip the dbt setup part and go right to SQL modelling.
+
+
+### 4. Data contracts
+
+* If using an explicit schema, you are able to validate the incoming data against it. Particularly useful when ingesting untyped data such as pandas dataframes, json from apis, documents from nosql etc.
+
+### 5. Maintenance & Updates
+
+* Auto schema migration: What do you do when a new field appears, or if it changes type? With auto schema migration you can default to ingest this data, or throw a validation error.
+
+## Why?
+
+Data loading is at the base of the data work pyramid.
+
+The current ecosystem of tools follows an old paradigm where the data pipeline creator is a software engineer, while the data pipeline user is an analyst.
+
+In the current world, the data analyst needs to solve problems end to end, including loading.
+
+Currently there are no simple frameworks to achieve this, but only clunky applications that need engineering and devops expertise to run, install, manage and scale. The reason for this is often an artificial monetisation insert (open source but pay to manage).
+
+Additionally, these existing loaders only load data sources for which somebody developed an extractor, requiring a software developer once again.
+
+DLT aims to bring loading into the hands of analysts with none of the unreasonable redundacy waste of the modern data platform.
+
+Additionally, the source schemas will be compatible across the community, creating the possiblity to share reusable analysis and modelling back to the open source community without creating tool-based vendor locks.
+
+
+
+
+
+
