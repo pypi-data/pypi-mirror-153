@@ -1,0 +1,33 @@
+name: "Test all requirements"
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      # install all requirements
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r tests/requirements.txt
+        
+    - name: Test with pytest
+      env:
+        NUMBA_WARNINGS: 1
+        MPLBACKEND: agg
+      run: |
+        cd tests
+        python run_tests.py --unit --showconfig
