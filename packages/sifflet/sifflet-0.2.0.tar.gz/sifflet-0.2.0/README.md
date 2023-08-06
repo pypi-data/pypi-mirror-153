@@ -1,0 +1,98 @@
+Sifflet CLI
+==========
+
+This package provides a command line interface (CLI) to Sifflet application.
+
+# Getting Started
+## Installation
+
+Sifflet CLI requires Python >= 3.7
+
+```shell
+pip install sifflet
+
+sifflet --version
+```
+
+## Configuration
+
+Before using the Sifflet CLI, you need to set your tenant and credentials. 
+You can do it in several ways:
+- Sifflet command line `sifflet configure` (which will persists configuration in a file)
+- Or with environment variables
+
+#### Sifflet configure
+You can input the tenant and credentials directly with the `sifflet configure` command
+```shell
+> sifflet configure
+Your tenant name [foo]: foo
+Your API access token [*********]: bar
+```
+The use of `sifflet configure` will persist the configuration in a file located at `~/.sifflet/config.ini` 
+(or in `%UserProfile%\.sifflet/config.ini` on Windows).
+
+#### Environment variables
+To use environment variables, you can do the following:
+
+```shell
+> export SIFFLET_TENANT=<my_tenant>
+> export SIFFLET_TOKEN=<my_secret_token> 
+```
+
+You can check that setup is done correctly with `sifflet status`.
+
+```shell
+> sifflet status
+
+Sifflet version = x.x.x
+Tenant = my_tenant
+Tenant is up and reachable
+Token expiration date = 2024-01-01 00:00:00
+Token is valid with scope API
+Status = OK
+```
+
+If you encounter any error at this step, please check your tenant and token configurations.
+
+## Documentation
+The documentation with the available commands can be found [here](https://docs.siffletdata.com/docs/cli-command-line-interface).
+
+## Help
+The `--help` option is available for any command, for instance `sifflet --help` or `sifflet rules list --help`.
+
+## Examples
+
+### Trigger a specific rule 
+- First, find your rule id with `sifflet rules list`. You can filter with `--name` to narrow your search.
+
+```shell
+# Display rules
+sifflet rules list
+sifflet rules list --name <search_criteria>
+```
+
+- Then you can trigger one of several rules with `sifflet rules run`
+
+```shell
+# Run one or many rules
+sifflet rules run --id <rule_id>
+sifflet rules run --id <rule_id_1> --id <rule_id_2> --id <rule_id_3>
+```
+
+- Finally, retrieve the run status of a rule with `sifflet rules run_history`
+
+```shell
+# Display rule runs history for a given rule id
+sifflet rules run_history --id <rule_id>
+```
+
+### Send dbt artifacts
+- tbd
+```shell
+# 
+tbd
+```
+
+## Contact
+
+For any queries, you can reach us at `contact@siffletdata.com`
