@@ -1,0 +1,63 @@
+{% extends "allianceauth/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% translate "Available Groups" %}{% endblock page_title %}
+{% block extra_css %}{% endblock extra_css %}
+
+{% block content %}
+    <div class="col-lg-12">
+        <h1 class="page-header text-center">{% translate "Available Groups" %}</h1>
+        {% if groups %}
+            <table class="table table-aa">
+                <thead>
+                    <tr>
+                        <th>{% translate "Name" %}</th>
+                        <th>{% translate "Description" %}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for g in groups %}
+                        <tr>
+                            <td>{{ g.group.name }}</td>
+                            <td>{{ g.group.authgroup.description|linebreaks|urlize }}</td>
+                            <td class="text-right">
+                                {% if g.group in user.groups.all %}
+                                    {% if not g.request %}
+                                        <a href="{% url 'groupmanagement:request_leave' g.group.id %}" class="btn btn-danger">
+                                            {% translate "Leave" %}
+                                        </a>
+                                    {% else %}
+                                        <button type="button" class="btn btn-primary" disabled>
+                                            {% translate "Pending" %}
+                                        </button>
+                                    {% endif %}
+                                {% elif not g.request %}
+                                    {% if g.group.authgroup.open %}
+                                        <a href="{% url 'groupmanagement:request_add' g.group.id %}" class="btn btn-success">
+                                            {% translate "Join" %}
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'groupmanagement:request_add' g.group.id %}" class="btn btn-primary">
+                                            {% translate "Request" %}
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    <button type="button" class="btn btn-primary" disabled>
+                                        {% translate "Pending" %}
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="alert alert-warning text-center">
+                {% translate "No groups available." %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock content %}

@@ -1,0 +1,73 @@
+{% extends "allianceauth/base.html" %}
+{% load bootstrap %}
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% translate "Personal fatlink statistics" %}{% endblock page_title %}
+
+{% block content %}
+    <div class="col-lg-12">
+        <h1 class="page-header text-center">{% blocktrans %}Participation data statistics for {{ month }}, {{ year }}{% endblocktrans %}
+            {% if char_id %}
+            <div class="text-right">
+                <a href="{% url 'fatlink:user_statistics_month' char_id previous_month|date:'Y' previous_month|date:'m' %}" class="btn btn-info">{% translate "Previous month" %}</a>
+                <a href="{% url 'fatlink:user_statistics_month' char_id next_month|date:'Y' next_month|date:'m'  %}" class="btn btn-info">{% translate "Next month" %}</a>
+            </div>
+            {% endif %}
+        </h1>
+        <h2>
+            {% blocktrans count links=n_fats trimmed %}
+                {{ user }} has collected one link this month.
+            {% plural %}
+                {{ user }} has collected {{ links }} links this month.
+            {% endblocktrans %}
+        </h2>
+        <table class="table table-responsive">
+            <tr>
+                <th class="col-md-2 text-center">{% translate "Ship" %}</th>
+                <th class="col-md-2 text-center">{% translate "Times used" %}</th>
+            </tr>
+            {% for ship, n_fats in shipStats %}
+            <tr>
+                <td class="text-center">{{ ship }}</td>
+                <td class="text-center">{{ n_fats }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {%  if created_fats %}
+        <h2>
+            {% blocktrans count links=n_created_fats trimmed  %}
+                {{ user }} has created one link this month.
+            {% plural %}
+                {{ user }} has created {{ links }} links this month.
+            {% endblocktrans %}
+        </h2>
+        {% if created_fats %}
+        <table class="table">
+            <tr>
+                <th class="text-center">{% translate "Fleet" %}</th>
+                <th class="text-center">{% translate "Creator" %}</th>
+                <th class="text-center">{% translate "Eve Time" %}</th>
+                <th class="text-center">{% translate "Duration" %}</th>
+                <th class="text-center">{% translate "Edit" %}</th>
+            </tr>
+            {% for link in created_fats %}
+            <tr>
+                <td class="text-center"><a href="{%  url 'fatlink:click' link.hash %}" class="label label-primary">{{ link.fleet }}</a></td>
+                <td class="text-center">{{ link.creator.username }}</td>
+                <td class="text-center">{{ link.fatdatetime }}</td>
+                <td class="text-center">{{ link.duration }}</td>
+                <td class="text-center">
+                    <a href="{%  url 'fatlink:modify' link.hash %}">
+                        <button type="button" class="btn btn-info"><span
+                                class="glyphicon glyphicon-edit"></span></button>
+                    </a>
+                </td>
+            </tr>
+            {%  endfor %}
+
+        </table>
+        {% endif %}
+        {% endif %}
+    </div>
+{% endblock content %}

@@ -1,0 +1,167 @@
+{% extends "allianceauth/base.html" %}
+{% load static %}
+{% load i18n %}
+{% load evelinks %}
+
+{% block page_title %}{% translate "Groups Management" %}{% endblock page_title %}
+
+{% block extra_css %}
+    <style>
+        .nav-tabs > li.active > a {
+            background-color: rgb(236, 240, 241) !important;
+            color: rgb(44, 62, 80);
+        }
+    </style>
+{% endblock extra_css %}
+
+{% block content %}
+    <div class="col-lg-12">
+        <br>
+        {% include 'groupmanagement/menu.html' %}
+
+        <ul class="nav nav-tabs">
+            <li class="active">
+                <a data-toggle="tab" href="#add">
+                    {% translate "Join Requests" %}
+
+                    {% if acceptrequests %}
+                        <span class="badge">{{ acceptrequests|length }}</span>
+                    {% endif %}
+                </a>
+            </li>
+
+            {%  if not auto_leave %}
+                <li>
+                    <a data-toggle="tab" href="#leave">
+                        {% translate "Leave Requests" %}
+
+                        {% if leaverequests %}
+                            <span class="badge">{{ leaverequests|length }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+
+        <div class="panel panel-default panel-tabs-aa">
+            <div class="panel-body">
+                <div class="tab-content">
+
+                    <div id="add" class="tab-pane active">
+                        {% if acceptrequests %}
+                            <div class="table-responsive">
+                                <table class="table table-aa">
+                                    <thead>
+                                        <tr>
+                                            <th>{% translate "Character" %}</th>
+                                            <th>{% translate "Organization" %}</th>
+                                            <th>{% translate "Group" %}</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        {% for acceptrequest in acceptrequests %}
+                                            <tr>
+                                                <td>
+                                                    <img src="{{ acceptrequest.main_char|character_portrait_url:32 }}" class="img-circle" style="margin-right: 1rem;">
+                                                    {% if acceptrequest.main_char %}
+                                                        <a href="{{ acceptrequest.main_char|evewho_character_url }}" target="_blank">
+                                                            {{ acceptrequest.main_char.character_name }}
+                                                        </a>
+                                                    {% else %}
+                                                        {{ acceptrequest.user.username }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if acceptrequest.main_char %}
+                                                        <a href="{{ acceptrequest.main_char|dotlan_corporation_url }}" target="_blank">
+                                                            {{ acceptrequest.main_char.corporation_name }}
+                                                        </a><br>
+                                                        {{ acceptrequest.main_char.alliance_name|default_if_none:"" }}
+                                                    {% else %}
+                                                        {% translate "(unknown)" %}
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ acceptrequest.group.name }}</td>
+                                                <td class="text-right">
+                                                    <a href="{% url 'groupmanagement:accept_request' acceptrequest.id %}" class="btn btn-success">
+                                                        {% translate "Accept" %}
+                                                    </a>
+
+                                                    <a href="{% url 'groupmanagement:reject_request' acceptrequest.id %}" class="btn btn-danger">
+                                                        {% translate "Reject" %}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning text-center">{% translate "No group add requests." %}</div>
+                        {% endif %}
+                    </div>
+
+                    {%  if not auto_leave %}
+                        <div id="leave" class="tab-pane">
+                            {% if leaverequests %}
+                                <div class="table-responsive">
+                                    <table class="table table-aa">
+                                        <thead>
+                                            <tr>
+                                                <th>{% translate "Character" %}</th>
+                                                <th>{% translate "Organization" %}</th>
+                                                <th>{% translate "Group" %}</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {% for leaverequest in leaverequests %}
+                                                <tr>
+                                                    <td>
+                                                        <img src="{{ leaverequest.main_char|character_portrait_url:32 }}" class="img-circle" style="margin-right: 1rem;">
+                                                        {% if leaverequest.main_char %}
+                                                            <a href="{{ leaverequest.main_char|evewho_character_url }}" target="_blank">
+                                                                {{ leaverequest.main_char.character_name }}
+                                                            </a>
+                                                        {% else %}
+                                                            {{ leaverequest.user.username }}
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if leaverequest.main_char %}
+                                                            <a href="{{ leaverequest.main_char|dotlan_corporation_url }}" target="_blank">
+                                                                {{ leaverequest.main_char.corporation_name }}
+                                                            </a><br>
+                                                            {{ leaverequest.main_char.alliance_name|default_if_none:"" }}
+                                                        {% else %}
+                                                            {% translate "(unknown)" %}
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ leaverequest.group.name }}</td>
+                                                    <td class="text-right">
+                                                        <a href="{% url 'groupmanagement:leave_accept_request' leaverequest.id %}" class="btn btn-success">
+                                                            {% translate "Accept" %}
+                                                        </a>
+
+                                                        <a href="{% url 'groupmanagement:leave_reject_request' leaverequest.id %}" class="btn btn-danger">
+                                                            {% translate "Reject" %}
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning text-center">{% translate "No group leave requests." %}</div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
