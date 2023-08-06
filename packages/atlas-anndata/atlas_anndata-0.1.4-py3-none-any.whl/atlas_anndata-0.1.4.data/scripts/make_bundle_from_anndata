@@ -1,0 +1,184 @@
+#!python
+
+import click
+import os
+from scanpy_scripts.click_utils import CommaSeparatedText
+
+
+@click.command()
+@click.argument("exp_name")
+@click.argument(
+    "step",
+    type=click.Choice(
+        ["init", "init_magetab", "inject_magetab", "final"],
+        case_sensitive=False,
+    ),
+)
+@click.option(
+    "--anndata-file",
+    type=click.Path(exists=True),
+    default=None,
+    help=(
+        "For the 'init' stage, specify a path to a file of the  annData hdf5"
+        " specification, with all necessaryinformation for SCXA."
+    ),
+)
+@click.option(
+    "--bundle_dir",
+    type=click.Path(dir_okay=True),
+    default=os.getcwd(),
+    help=(
+        "A directory under which bundle directories should be created."
+        " Defaults to the current working directory."
+    ),
+)
+@click.option(
+    "--atlas-style",
+    default=False,
+    is_flag=True,
+    help="Assume the tight conventions from SCXA, e.g. on .obsm slot naming?",
+)
+@click.option(
+    "--analysis-versions-file",
+    type=click.Path(exists=True),
+    help=(
+        "A four-column tab-delimited file with analys, analysis, version and"
+        " citation"
+    ),
+)
+@click.option(
+    "--droplet",
+    default=False,
+    is_flag=True,
+    help="Is this a droplet experiment?",
+)
+@click.option(
+    "--gene-id-field",
+    default="index",
+    help="Field in .var where gene ID is stored.",
+)
+@click.option(
+    "--gene-name-field",
+    default="gene_name",
+    help="Field in .var where gene name (symbol) is stored.",
+)
+@click.option(
+    "--sample-field",
+    default="sample",
+    help="Field in .obs which separates cells from different libraries.",
+)
+@click.option(
+    "--default-clustering",
+    help=(
+        "Of the unsupervised clusterings, which clustering should be set as"
+        " the default? If not set, the middle (or first middle) clustering"
+        " will be selected, or if --atlas-style is set, this will be the"
+        " clustering corresponding to a resolution of 1."
+    ),
+)
+@click.option(
+    "--max-rank-for-stats",
+    type=click.INT,
+    default=5,
+    help=(
+        "For how many top marker genes should stats (mean, median expression)"
+        " be output?"
+    ),
+)
+@click.option(
+    "--matrix-for-markers",
+    required=True,
+    default="X",
+    help=(
+        "Where cell groups in the configuration file have been flagged with"
+        " markers, which matrix should be used? Can be X, or an entry in"
+        " .layers(). The matrix must be appropriate for Scanpy's"
+        " tl.rank_genes_groups() method, usually meaning filtered, normalised"
+        " and log transformed, but without additional scaling."
+    ),
+)
+@click.option(
+    "--conda-prefix",
+    type=click.Path(dir_okay=True),
+    default=None,
+    help=(
+        "Specify a Conda directory to be used for environments when running"
+        " Snakemake workflows."
+    ),
+)
+@click.option(
+    "--scxa-metadata-branch",
+    required=True,
+    default="master",
+    help=(
+        "When searching the SCXA metadata repository for curation for this"
+        " experiment, which branch should we use?"
+    ),
+)
+@click.option(
+    "--sanitize-columns",
+    default=True,
+    is_flag=True,
+    help=(
+        "When adding data from curation into the anndata object, should we"
+        " remove the Comment, Characteristic etc?"
+    ),
+)
+@click.option(
+    "--exp-name",
+    required=True,
+    default="NONAME",
+    help=(
+        "Specify an Expression Atlas identifier that will be used for this"
+        " experiment. If not set, a placeholder value E-EXP-1234 will be used"
+        " and can be edited in the bundle later."
+    ),
+)
+@click.option(
+    "--scxa-db-scale",
+    type=click.INT,
+    default=1000000,
+    help=(
+        "To what overall scale should cell counts be multiplied for the SCXA"
+        " DB? A multiplier will be calculated from this value and the median"
+        " cell-wise sum in the given matrix."
+    ),
+)
+@click.option(
+    "--write-matrices",
+    default=False,
+    is_flag=True,
+    help=(
+        "Write matrices to the bundle at non-final steps? This must"
+        " necessarily happen in the final matrix bundling, but it's a slow"
+        " process so is not normally done at the previous steps. Activate this"
+        " flag to override that behaviour and write regardless."
+    ),
+)
+def make_bundle(step, *args, **kwargs):
+
+    """Build a bundle directory compatible with Single Cell Expression Atlas
+    (SCXA) build proceseses
+
+    \b
+    exp_name       - Specify an Expression Atlas identifier for this experiment.
+    step           - Specify the bundle creation step. One of:
+                        * 'init': start a bundle based on anndata file content
+                        * 'init_magetab': create starting MAGE-TAB files as a
+                          basis for curation, having checked and refined
+                          configuration at the 'init' stage.
+                        * 'inject_magetab': With curation done, read metadata
+                          from the scxa-metadata repo, and modify bundle
+                          configuration and annData object accordingly.
+                        * 'final': Having made any refinements to the field
+                          configuration modified by 'inject_magetab', produce the
+                          final bundle.
+    """
+
+    from atlas_anndata import make_bundle_from_anndata
+
+    make_bundle_from_anndata(step=step, *args, **kwargs)
+
+
+if __name__ == "__main__":
+    make_bundle()
