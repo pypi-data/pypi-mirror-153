@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <record id="res_partner_form" model="ir.ui.view">
+    <field name="name">res.partner.form.somconnexio</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="easy_my_coop_sponsorship.res_partner_form_easy_my_coop" />
+    <field name="arch" type="xml">
+      <field name="cooperator_register_number" position="before">
+        <field name="category_id" position="move"/>
+        <field name="user_id"/>
+      </field>
+      <field name="sponsor_id" position="attributes">
+        <attribute name="attrs">{
+              'invisible': ['|', ('member','!=',False), ('coop_candidate', '!=', False)],
+              'readonly': 0
+              }</attribute>
+      </field>
+      <field name="sponsor_id" position="after">
+        <field name="inactive_sponsored"
+          attrs="{'invisible': [('sponsor_id','=',False)]}"
+        />
+        <field name="has_active_contract"/>
+        <field name="block_contract_creation_in_OC"/>
+        <field name="coop_agreement"/>
+        <field
+          name="coop_agreement_id"
+          attrs="{
+            'invisible': ['|', ('member','!=',False), ('coop_candidate', '!=', False)],
+            }"
+          domain="[('code', '!=', 'SC')]"
+        />
+        <field name="volunteer"/>
+      </field>
+      <group name="approvals" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </group>
+      <field name="effective_date" position="after">
+        <field
+          name="cooperator_end_date"
+          attrs="{'invisible': [('cooperator_end_date','=',False)]}"
+        />
+      </field>
+      <field name="priority_id" position="after">
+        <field name="discovery_channel_id"/>
+      </field>
+    </field>
+  </record>
+  <record id="act_res_partner_2_mail_activity" model="ir.actions.act_window">
+      <field name="name">Activities</field>
+      <field name="res_model">mail.activity</field>
+      <field name="view_type">form</field>
+      <field name="view_mode">tree,form</field>
+      <field name="context">{'search_default_partner_id': active_id}</field>
+  </record>
+
+  <record id="res_partner_view_buttons" model="ir.ui.view">
+    <field name="name">res.partner.view.buttons</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_partner_form" />
+    <field name="priority" eval="3"/>
+    <field name="arch" type="xml">
+        <button name="toggle_active" position="before">
+            <button class="oe_stat_button" type="action" name="%(somconnexio.act_res_partner_2_mail_activity)d"
+                icon="fa-clock-o">
+                <field name="mail_activity_count" widget="statinfo"/>
+            </button>
+        </button>
+    </field>
+  </record>
+
+  <record id="res_partner_contract_email_form" model="ir.ui.view">
+    <field name="name">res.partner.form.contract.email</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_partner_form" />
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='opportunity_count']/.." position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='meeting_count']/.." position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='sale_order_count']/.." position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='child_ids']/form/sheet/group/group[1]" position="attributes">
+        <!-- TODO: deprecated 'contact' type -->
+        <attribute name="attrs">{'invisible': ['|',('type','=', 'contact'),('type','=','contract-email')]}</attribute>
+      </xpath>
+      <xpath expr="//field[@name='child_ids']/form/sheet/group/group[2]/field[@name='phone']" position="attributes">
+        <attribute name="attrs">{'invisible': [('type','=','contract-email')]}</attribute>
+      </xpath>
+      <xpath expr="//field[@name='child_ids']/form/sheet/group/group[2]/field[@name='mobile']" position="attributes">
+        <attribute name="attrs">{'invisible': [('type','=','contract-email')]}</attribute>
+      </xpath>
+      <xpath expr="//field[@name='child_ids']/form/sheet/group/group[2]/field[@name='comment']" position="attributes">
+        <attribute name="attrs">{'invisible': [('type','=','contract-email')]}</attribute>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="res_partner_required_fields_form" model="ir.ui.view">
+    <field name="name">res.partner.view.required</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_partner_form" />
+    <field name="priority" eval="3"/>
+    <field name="arch" type="xml">
+        <field name="vat" position="attributes">
+          <attribute name="required">1</attribute>
+        </field>
+        <!-- TODO: put back to required when all tryton imported
+              partners have this field filled-->
+        <field name="country_id" position="attributes">
+          <attribute name="required">0</attribute>
+        </field>
+    </field>
+  </record>
+
+  <!-- TODO: Remove this view when update EMC with the next MR:
+    https://github.com/coopiteasy/vertical-cooperative/pull/158 -->
+  <record id="res_partner_readonly_fields_form" model="ir.ui.view">
+    <field name="name">res.partner.view.readonly</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="easy_my_coop.view_partner_form_easy_my_coop" />
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='member'][1]" position="attributes">
+        <attribute name="readonly">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='member'][2]" position="attributes">
+        <attribute name="readonly">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='cooperator_register_number']" position="after">
+        <field name="sponsorship_hash" attrs="{'invisible': [('member', '=', False),('coop_candidate', '=', False)]}" />
+      </xpath>
+      <field name="email" position="attributes">
+        <attribute name="readonly">1</attribute>
+      </field>
+    </field>
+  </record>
+
+  <record id="res_partner_shares_tree_form" model="ir.ui.view">
+    <field name="name">res.partner.shares.tree.view</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="easy_my_coop.view_partner_form_easy_my_coop" />
+    <field name="arch" type="xml">
+      <xpath expr="//tree[1]" position="attributes">
+        <attribute name="delete">false</attribute>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_partner_form_firstname_inherit" model="ir.ui.view">
+    <field name="name">Hides name, firstname and surnames in Contract Emails</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="partner_firstname.view_partner_form_firstname"/>
+    <field name="arch_db" type="xml">
+      <xpath expr="//field[@name='child_ids']/form//field[@name='name']" position="attributes">
+        <attribute name="attrs">{
+                        'readonly': [('is_company', '=', False)],
+                        'required': [('is_company', '=', True)],
+                        'invisible': [('type','=','contract-email')]
+                        }</attribute>
+      </xpath>
+      <xpath expr="//field[@name='child_ids']/form//field[@name='lastname']" position="attributes">
+        <!-- TODO: deprecated 'contact' type -->
+        <attribute name="attrs">{
+                        'required': [('firstname', '=', False),('is_company', '=', False),('type', '=', 'contact')],
+                        'invisible': [('type','=','contract-email')]
+                        }</attribute>
+      </xpath>
+      <xpath expr="//field[@name='child_ids']/form//field[@name='firstname']" position="attributes">
+        <!-- TODO: deprecated 'contact' type -->
+        <attribute name="attrs">{
+                        'required': [('lastname', '=', False),('is_company', '=', False),('type', '=', 'contact')],
+                        'invisible': [('type','=','contract-email')]
+                        }</attribute>
+      </xpath>
+      <xpath expr="//div[@class='oe_kanban_details']//field[@name='function']/.." position="attributes">
+        <attribute name="t-if">record.function.raw_value and record.type.raw_value != 'contract-email'</attribute>
+      </xpath>
+      <xpath expr="//div[@class='oe_kanban_details']//field[@name='city']/../.." position="attributes">
+        <!-- TODO: deprecated 'contact' type -->
+        <attribute name="t-if">record.type.raw_value != 'contact' and record.type.raw_value != 'contract-email'</attribute>
+      </xpath>
+      <xpath expr="//div[@class='oe_kanban_details']//field[@name='state_id']/.." position="attributes">
+        <attribute name="t-if">record.state_id.raw_value and record.type.raw_value != 'contract-email'</attribute>
+      </xpath>
+      <xpath expr="//div[@class='oe_kanban_details']//field[@name='country_id']/.." position="attributes">
+        <attribute name="t-if">record.type.raw_value != 'contract-email'</attribute>
+      </xpath>
+      <xpath expr="//div[@class='oe_kanban_details']//field[@name='phone']/.." position="attributes">
+        <attribute name="t-if">record.phone.raw_value and record.type.raw_value != 'contract-email'</attribute>
+      </xpath>
+      <xpath expr="//div[@class='oe_kanban_details']//field[@name='mobile']/.." position="attributes">
+        <attribute name="t-if">record.mobile.raw_value and record.type.raw_value != 'contract-email'</attribute>
+      </xpath>
+      <xpath expr="//div[@class='oe_kanban_details']//field[@name='name']" position="attributes">
+        <attribute name="t-if">record.type.raw_value != 'contract-email'</attribute>
+      </xpath>
+    </field>
+  </record>
+  <record id="view_res_partner_filter_somconnexio" model="ir.ui.view">
+    <field name="name">res.partner.select</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_res_partner_filter"/>
+    <field name="arch" type="xml">
+      <filter name="supplier" position="after">
+        <filter string="No Contract Emails" name="filter_no_contract_emails"
+                domain="[('type','!=','contract-email')]"
+                help="Hide Contract Emails"/>
+      </filter>
+      <field name="user_id" position="after">
+        <field name="vat" />
+        <field name="email" />
+      </field>
+      <field name="name" position="attributes">
+        <attribute name="filter_domain">['|','|','|',('display_name','ilike',self),('ref','=',self),('email','ilike',self),('vat','ilike',self)]</attribute>
+      </field>
+    </field>
+  </record>
+  <record id="contacts.action_contacts" model="ir.actions.act_window">
+    <field name="domain">[('parent_id', '=', False)]</field>
+    <field name="context">{'search_default_filter_no_contract_emails': True}</field>
+    <field name="view_mode">tree,form,kanban</field>
+  </record>
+  <record id="contacts.action_contacts_view_tree" model="ir.actions.act_window.view">
+    <field name="sequence" eval="0" />
+  </record>
+  <record id="contacts.action_contacts_view_kanban" model="ir.actions.act_window.view">
+    <field name="sequence" eval="1" />
+  </record>
+  <record id="view_res_partner_tree_somconnexio" model="ir.ui.view">
+    <field name="name">res.partner.tree</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="easy_my_coop.view_partner_tree_easy_my_coop"></field>
+    <field name="arch" type="xml">
+      <field name="display_name" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </field>
+      <field name="display_name" position="before">
+        <field name="id" widget="open_tab"/>
+      </field>
+      <field name="display_name" position="after">
+        <field name="firstname" />
+        <field name="lastname" />
+      </field>
+      <field name="lastname" position="after">
+        <field name="lang" />
+        <field name="vat" />
+      </field>
+      <field name="is_company" position="attributes">
+        <attribute name="invisible" />
+      </field>
+    </field>
+  </record>
+
+  <record id="res_partner_form_sponsorship_inherited" model="ir.ui.view">
+    <field name="name">res.partner.form</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="easy_my_coop_sponsorship.res_partner_form" />
+    <field name="arch" type="xml">
+      <page name="sponsees" position="attributes">
+        <attribute name="attrs">{'invisible': [('member','!=',True),('coop_candidate','!=',True)]}</attribute>
+      </page>
+      <field name="sponsee_ids" position="replace">
+        <field name="sponsee_ids">
+          <tree string="Sponsees" decoration-muted="inactive_sponsored">
+            <field name="id" widget="open_tab"/>
+            <field name="firstname"/>
+            <field name="lastname"/>
+            <field name="lang"/>
+            <field name="vat"/>
+            <field name="phone" class="o_force_ltr"/>
+            <field name="email"/>
+            <field name="inactive_sponsored" invisible="1"/>
+          </tree>
+        </field>
+      </field>
+    </field>
+  </record>
+</odoo>
+
