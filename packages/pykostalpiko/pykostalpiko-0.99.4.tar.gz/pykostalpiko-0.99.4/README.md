@@ -1,0 +1,1 @@
+A library and CLI-tool to fetch the data from a Kostal Piko inverter
