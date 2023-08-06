@@ -1,0 +1,352 @@
+<html>
+ <head>
+    <meta charset="utf-8"/>
+	
+    <title>Ecore Editor</title>
+
+    <!-- STYLE -->
+    <link rel="stylesheet" type="text/css" href="./contrib/jQuery-contextMenu-2.8/jquery.contextMenu.min.css"/>
+    <link rel="stylesheet" type="text/css" href="./contrib/font-awesome/css/all.min.css"/>
+    <link rel="stylesheet" type="text/css" href="./contrib/jquery-ui/jquery-ui.min.css"/>
+
+    <link rel="stylesheet" type="text/css" href="./jsa/jsapplication.css"/>
+
+    <link rel="stylesheet" type="text/css" href="./css/contextmenu.css"/>
+    <link rel="stylesheet" type="text/css" href="./css/canvas.css"/>
+    <link rel="stylesheet" type="text/css" href="./css/layout.css"/>
+    <link rel="stylesheet" type="text/css" href="./css/uiControls.css"/>
+    <link rel="stylesheet" type="text/css" href="./css/palette.css"/>
+    <link rel="stylesheet" type="text/css" href="./css/UIComponents.canvasSearch.css"/>
+        
+    <link rel="stylesheet" type="text/css" href="./css/app.css"/> <!-- define the basic application theme-->
+
+    <!-- CUSTOMIZATION 
+    <link href="./xyz-theme/css/app.css" rel="stylesheet"/>
+    -->
+
+    <!-- CONTRIB -->
+    <script type="text/javascript" src="./contrib/jquery/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="./contrib/jquery-ui/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="./contrib/underscore-min.js"></script>	
+    <script type="text/javascript" src="./contrib/notify.min.js"></script>
+    <script type="text/javascript" src="./contrib/bluebird.js"></script> <!-- Promise Debugging-->
+
+    <!-- JS APPLICATION-->
+    <script type="text/javascript" src="./jsa/jsapplication.js"></script>
+    <script type="text/javascript" src="./jsa/jsapplicationPlugins.js"></script>
+  
+    <!-- GRAPH -->
+    <script type="text/javascript">mxBasePath='./mxgraph/';</script>
+    <script type="text/javascript" src="./mxgraph/js/mxClient.js"></script>	
+    
+    <!-- COMMANDS -->
+    <script type="text/javascript" src="./js/commands.js"></script>	
+    
+    <!-- UI COMPONENTS -->
+    <script type="text/javascript" src="./js/ui/ui.colorProvider.js"></script>
+    <script type="text/javascript" src="./js/ui/DomainStatusTool.js"></script> 
+    
+    <!-- CONNECTORS -->
+    <script type="text/javascript" src="./js/connectors/connectors.selection.js"></script>	
+    <script type="text/javascript" src="./js/connectors/connectors.graph.js"></script>	
+
+	<!-- UI  -->
+      <!-- CONTEXTMENU -->
+      <script type="text/javascript" src="./contrib/jQuery-contextMenu-2.8/jquery.contextMenu.min.js"></script>
+      <script type="text/javascript" src="./contrib/jQuery-contextMenu-2.8/jquery.ui.position.min.js"></script>
+    
+      <!-- GRAPH EDITOR UI -->
+      <script type="text/javascript" src="./js/ports.js"></script>	
+
+      <!-- APPLICATION -->
+      <script type="text/javascript" src="./js/DomainStatistics.js"></script>
+      <script type="text/javascript" src="./js/app.js"></script>  
+    
+
+</head> 
+<body>
+
+    <script>
+    //Globals
+
+    var $DEBUG = true; //set to true if debug related code parts shall become active
+    var $app =  null; //the singleton of the js application class. all others should be stored below this.
+
+    /* STARTUP SEQUENCE*/
+    if($DEBUG) {
+      Promise.config({
+        longStackTraces: true,
+        warnings: true // note, run node with --trace-warnings to see full stack traces for warnings
+      });
+    }
+    
+    /*SETTINGS*/
+    let appSettings = {
+      name: 'Ecore Editor',
+      version: '0.8.2',
+      hasTabbar: true,
+      syncTabbarStyleWithViewHeaders: true,
+      hasStatusbar: true,
+      settings: {
+        iconPath: 'img',
+        rootPath: './',
+      }
+    };
+
+    /*PLUGIN CONFIG*/
+    let pluginConf = {
+      pluginManagerBasePath: '../',
+      pluginPath: './plugins/',
+      plugins: {
+        'eventBroker' : {enabled: true},
+        'eoq2' : {enabled: true, config: {
+          instances: [{
+            eoq2DomainId: 'eoq2domain',
+            url : 'ws://localhost:8000/ws/eoq.do',
+            user : 'admin',
+            password : '!ToBeReplacedByTheRealPW_01!',
+            enableLegacy : true,
+            eoq1DomainId : 'eoq1domain'
+          }]
+        }},
+        'ecoreSync' : {enabled: true, config: {
+          instances : [{
+            ecoreSyncId: 'ecoreSync',
+            eoq2DomainId: 'eoq2domain',
+          }]
+        }},
+        'eoq.actions' : {enabled: true, config: {
+          menuId : 'ACTIONS_MENU',
+          menuName : 'Actions',
+          appendBefore: true, 
+          appendMenuId: 'HELP_MENU', //if none is given, the menu is attached at the beginning or end.
+        }},
+         //'ecoreDebuggerUi': {enabled: true},
+        // 'viewsTabbar' : {enabled: true,config : {
+        //   syncWithHeaderStyles : true
+        // }},
+        'clipboard': {enabled: true},
+        'contextMenu': {enabled: true},
+        'contextMenu.eoq': {enabled: true},
+        'contextMenu.oaam': {enabled: true},
+        'iconProvider.oaam': {enabled: true},
+        'editor' : {enabled: true},
+        'editor.oaam.functions' : {enabled: true},
+        'editor.oaam.hardware' : {enabled: true},
+        'editor.oaam.allocations' : {enabled: true},
+        'plugin.ecoreTreeView' : {enabled: true},
+        'plugin.ecoreTreeView.eoq' : {enabled: true},
+        'plugin.ecoreTreeView.oaam' : {enabled: true},
+        'propertiesView' : {enabled: true, config : {
+          mode: 'BUBBLE',
+          enabledModeChanges : true
+        }},
+        'propertiesView.info' : {enabled: true, config: {
+          name : 'General'
+        }},
+        'propertiesView.ecore' : {enabled: true, config: {
+          name : 'All Features',
+          importance : 3, //the higher, the more left the tab is shown
+          ecoreSyncId : 'ecoreSync' 
+        }},
+        'propertiesView.ecore.modify' : {enabled: true, config : { 
+          name : "Modify",
+          importance : 7, //the higher, the more left the tab is shown
+          ecoreSyncId : 'ecoreSync'
+        }},
+        'propertiesView.ecore.oaam' : {enabled: true, config : { 
+          name : "Oaam",
+          importance : 10, //the higher, the more left the tab is shown
+          //readonly : false, // disable all inputs if true
+          ecoreSyncId : 'ecoreSync' 
+        }},
+        'propertiesView.ecore.workspace' : {enabled: true, config : { 
+          name : "Workspace",
+          importance : 10, //the higher, the more left the tab is shown
+          //readonly : false, // disable all inputs if true
+          ecoreSyncId : 'ecoreSync' 
+        }},
+        'propertiesView.ecore.editors' : {enabled: true, config : { 
+          name : "Editors",
+          importance : 5, //the higher, the more left the tab is shown
+          ecoreSyncId : 'ecoreSync'
+        }},
+        'view.dashboard' : {enabled: true, config : {
+          instances: [
+            {
+              viewId : 'DASHBOARD_VIEW',
+              position : 0,
+              viewName : 'Welcome',
+              hasHeader : true,
+              //viewIcon : pluginApi.getPath()+'img/view-dashboard.svg',
+              //viewStyle : 'dashboard-view',
+              rows : 1,
+              closable : false, //whether the view can be closed
+              activateView: true //activate on start
+            }
+          ]
+        }},
+        'view.dashboard.startModellingDash': {enabled: true, config : {
+          instances : [
+            {
+              name: 'Start your OAAM model',
+              modelSuffix: '.oaam',
+              existingSectionLabel: 'Open existing OAAM model',
+              createNewSectionLabel: 'Create new OAAM model',
+              createTemplate: 'templates/OAAMTemplate.oaam',
+              //preferredEditors: ['Functions Editor','Hardware Editor','Allocations Editor'],
+              row : 0, //a dashboard must be configured to a number rows
+              tiles : 4, //relative width in the range of 1-12, where 12 is 100% 
+              position : 2, //the lower the position, the more left the dash is in its row
+              dashboardId : 'DASHBOARD_VIEW', //referres to the dashboard, when multiple dashboard views shall be created.
+              ecoreSyncId : 'ecoreSync'
+            },
+            // {
+            //   name: 'Work with XML',
+            //   modelSuffix: '.xml',
+            //   //existingSectionLabel: 'Continue development',
+            //   //createNewSectionLabel: 'Create platform',
+            //   //createTemplate: 'templates/***.oaam',
+            //   //preferredEditors: ['Functions Editor','Hardware Editor','Allocations Editor'],
+            //   row : 0, //a dashboard must be configured to a number rows
+            //   tiles : 4, //relative width in the range of 1-12, where 12 is 100% 
+            //   position : 3, //the lower the position, the more left the dash is in its row
+            //   dashboardId : 'DASHBOARD_VIEW', //referres to the dashboard, when multiple dashboard views shall be created.
+            //   ecoreSyncId : 'ecoreSync'
+            // }
+          ]
+        }},
+        'view.dashboard.infoDash': {enabled: true, config : {
+          instances : [
+            {
+              name: 'Welcome to Ecore Editor',
+              content: '<h6 class="card-subtitle mb-2 text-muted">About</h6>'+
+                        '<p>'+
+                        'EE is a html based interface to ecore-based domain-specific models. It can be enriched with custom models and graphical editors. It runs without a web server and uses EOQ as a backend for storing and parsing model information.'+
+                        '</p>'+
+                        '</ul>'+
+                        '<div class="jsa-button">Learn more</div>',
+              row : 0, //a dashboard must be configured to a number rows
+              tiles : 4, //relative width in the range of 1-12, where 12 is 100% 
+              position : 1, //the lower the position, the more left the dash is in its row
+              dashboardId : 'DASHBOARD_VIEW' //referres to the dashboard, when multiple dashboard views shall be created.
+            }
+          ]
+        }},
+        'view.workspace' : {enabled: true, config : {
+          instances: [
+            {
+              viewId : 'WORKSPACE_VIEW',
+              position : 3,
+              viewName : 'Workspace',
+              hasHeader : true,
+              //ecoreSync : 'ecoreSync, //is not active currently
+              //viewIcon : pluginApi.getPath()+'img/view-dashboard.svg',
+              //viewStyle : 'dashboard-view',
+              closable : false, //wheter the view can be closed
+              activateView: false //activate on start
+            }
+          ]
+        }},
+        'viewsMenu' : {enabled: true, config: {
+          menuId : 'VIEWS_MENU',
+          menuName : 'Views',
+          appendBefore: false, 
+          appendMenuId: 'EDIT_MENU', //if none is given, the menu is attached at the beginning or end.
+        }},
+        'tools' : {enabled: true},
+        'tool.notes' : {enabled: true, config : {
+          position : 10
+        }},
+        'tool.goToView' : {enabled: true, config : {
+          instances : [
+            {
+              position: 2,
+              viewId : 'DASHBOARD_VIEW' //the view id that shall be opened on click
+            },
+            {
+              position: 0,
+              viewId : 'WORKSPACE_VIEW' //the view id that shall be opened on click
+            },
+            {
+              position: 3,
+              viewId : 'VIEW_DOES_NOT_EXIST' //the view id that shall be opened on click
+            }
+          ]
+        }}
+      }
+    };
+
+    /* =====================================
+     * |             MAIN                  |
+     * ===================================== */
+  
+    $app = InitApplication(appSettings);
+    $app.InitReady();
+
+    $app.splash = ShowSplash($app);
+
+    //init the plugins
+    InitPlugins(pluginConf,$app).then(function(plugins){
+
+      //$app.plugins = plugins; //this is to late since some plugins rely on $app.plugins :(
+
+      $app.editMenu = InitEditMenu($app);
+      $app.helpMenu = InitHelpMenu($app);
+      $app.MenuReady();
+
+      $app.stickies = InitStickys($app);
+
+      // InitDomain($app).then(function(domain) {
+      // //domain works: continue
+      // Compatibility hack
+      $app.domain = $app.plugins.require('eoq2').instances['eoq2domain'];
+      $app.legacyDomain = $app.plugins.require('eoq2').instances['eoq1domain'];
+  
+      //$app.ecoreSync = InitEcoreSync($app); //happens no on plugin start-up
+      //ecoreSync = $app.ecoreSync; /*TODO: get rid of this global, which is here for compatibility reasons*/
+      $app.ecoreSync = $app.plugins.require('ecoreSync').getInstanceById('ecoreSync') ; /*TODO: get rid of this global, which is here for compatibility reasons*/
+      ecoreSync= $app.ecoreSync;
+      
+      $app.DataReady();
+
+      $app.tools = InitTools($app);
+      $app.ToolsReady();
+
+      InitWorkspace($app).then(function(workspacePrivate) {
+       // $app.workspace = workspacePrivate;
+       // workspace = $app.workspace; /*TODO: get rid of this global, which is here for compatibility reasons*/
+
+        InitAppData($app).then(function(){
+
+            AttachTreeToWorkspaceSticky($app);
+
+            $app.ViewsReady();
+
+            HideSplash($app);
+
+            $app.AppReady();
+        }).catch(function(error) { //InitAppData failed
+          //TODO: can not be reached because init app data provides no failure callback
+          TerminateWithError($app,'Startup Error','Initialization of application data failed: '+error.toString());
+          console.error(error.stack);
+          throw error;
+          // STARTUP-FAILED
+        }); 
+      }).catch(function(error) { //InitWorkspace failed
+        //TODO: can not be reached because init workspace provides no failure callback
+        TerminateWithError($app,'Startup Error','Initialization of the workspace failed: '+error.toString());
+        console.error(error.stack);
+        throw error;
+        // STARTUP-FAILED
+      }); 
+  }).catch(function(error) { //InitPlugins failed
+    TerminateWithError($app,'Startup Error','Plugin initialization failed: '+error.toString());
+    console.error(error.stack);
+    throw(error);
+    // STARTUP-FAILED
+  });
+
+  </script>	
+</body>
+</html>
