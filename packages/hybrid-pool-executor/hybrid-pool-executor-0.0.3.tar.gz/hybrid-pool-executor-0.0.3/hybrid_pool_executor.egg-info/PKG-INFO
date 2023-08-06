@@ -1,0 +1,112 @@
+Metadata-Version: 2.1
+Name: hybrid-pool-executor
+Version: 0.0.3
+Summary: Pool executor supporting thread, process and async.
+Author-email: Leavers <leavers930@gmail.com>
+License: MIT License
+        
+        Copyright (c) 2021-present leavers
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Keywords: concurrent,thread
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Natural Language :: English
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Utilities
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/x-rst
+Provides-Extra: extra
+Provides-Extra: dev
+License-File: LICENSE
+
+|Build Status|
+
+HybridPoolExecutor
+==================
+
+HybridPoolExecutor is a parallel executor that supports thead, process and async three operating models at the same time.
+
+Example:
+
+.. code-block:: python
+
+    import asyncio
+    import time
+    import random
+
+    from hybrid_pool_executor import HybridPoolExecutor
+
+
+    def solve(v: int) -> int:
+        print(f"You give worker a value {v}")
+        time.sleep(random.randint(1, 4))
+        print(f"The square of value {v} is {v * v}")
+        return v
+
+
+    async def solve_async(v: int) -> int:
+        print(f"You give async worker a value {v}")
+        await asyncio.sleep(random.randint(1, 4))
+        print(f"The square of value {v} is {v * v}")
+        return v
+
+
+    async def main():
+        pool = HybridPoolExecutor()
+
+        # run in a thread
+        future0 = pool.submit(solve, 0)
+
+        # run in a process by setting "_mode" to "process"
+        future1 = pool.submit(solve, 1, _mode="process")
+        # or you can use a more precise approach: submit_task
+        future2 = pool.submit_task(solve, kwargs={"v": 2}, mode="process")
+
+        # run in an async worker
+        future3 = pool.submit(solve_async, 3)  # run as a coroutine
+        # you can also submit a coroutine
+        future4 = pool.submit(solve_async(4))
+        # async function/coroutine can be executed in thread/process too
+        # run coroutine in a thread
+        future5 = pool.submit(solve_async(5), _mode="thread")
+        # or in a process
+        future6 = pool.submit(solve_async, 6, _mode="process")
+
+        # all futures can be get either synchronously or asynchronously
+        await future0  # result from a thread worker
+        await future1  # result from a process worker
+        future2.result()  # result from a async worker
+        # ......
+
+
+    if __name__ == "__main__":
+        asyncio.run(main())
+
+.. |Build Status| image:: https://github.com/leavers/hybrid-pool-executor/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/leavers/hybrid-pool-executor/actions/workflows/tests.yml
