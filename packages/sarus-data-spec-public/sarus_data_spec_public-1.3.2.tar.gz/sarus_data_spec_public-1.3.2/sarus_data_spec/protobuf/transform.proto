@@ -1,0 +1,181 @@
+syntax = "proto3";
+import "sarus_data_spec/protobuf/type.proto";
+import "sarus_data_spec/protobuf/path.proto";
+import "sarus_data_spec/protobuf/statistics.proto";
+
+message Transform {
+  // A dataset transform
+  string uuid = 1; // e.g. RFC 4122 id used to refer to the transform
+  string name = 2;
+  string doc = 3;
+  Spec spec = 4;
+  map<string, string> properties = 5; // Other properties
+  bool inversible = 6;
+  bool schema_preserving = 7;
+
+  // Definitions
+  message Spec {
+    oneof spec {
+      Identity identity = 1;
+      Variable variable = 2;
+      Composed composed = 3;
+      Project project = 4;
+      Filter filter = 5;
+      Shuffle shuffle = 6;
+      Join join = 7;
+      Cast cast = 8;
+      Sample sample = 9;
+      UserSettings user_settings = 10;
+      Protect protect_dataset=11;
+      External external = 12; // np transforms, pd transforms,...
+      Synthetic synthetic = 13;
+      Transcode transcode=14;
+      InverseTranscode inverse_transcode=15;
+    }
+  }
+
+  enum ExternalOp {
+      PD_MEAN = 0;
+      PD_STD = 1;
+      PD_LOC = 2;
+      PD_EQ = 3;
+      NP_MEAN = 4;
+      NP_STD = 5;
+      NP_ADD = 6;
+      NP_SUB = 7;
+      TF_BATCH = 8;
+      TF_MAP = 9;
+      SK_FIT = 10;
+      SK_DP_FIT = 11;
+      ADD = 12;
+      SUB = 13;
+      MUL = 14;
+      DIV = 15;
+      PD_ANY = 16;
+      INVERT = 17;
+      GETITEM = 18;
+      SK_SCALE = 19;
+      LEN = 20;
+      PD_PROFILE_REPORT = 21;
+      PD_DESCRIBE = 22;
+      PD_SELECT_DTYPES = 23;
+      PD_QUANTILE=24;
+      PD_SUM=25;
+      PD_FILLNA=26;
+      PD_ROUND=27;
+      PD_RENAME=28;
+      PD_COUNT=29;
+      PD_TRANSPOSE=30;
+      PD_UNIQUE=31;//class method
+      PD_VALUE_COUNTS=32;
+      PD_TO_DICT=33;
+      PD_APPLY=34;
+      PD_SUB=35;
+      PD_MEDIAN=36;
+      PD_ABS=37;
+      PD_MAD=38;
+      PD_SKEW=39;
+      PD_KURTOSIS=40;
+      PD_AGG=41;
+      PD_DROPLEVEL=42;
+      PD_SORT_VALUES=43;
+      PD_DROP=44;
+      PD_CORR=45;
+      GT=46;
+      GE=47;
+      LT=48;
+      LE=49;
+      NE=50;
+      POS=51;
+      NEG=52;
+      ABS=53;
+      ROUND=54;
+      MOD=55;
+      OR=56;
+      AND=57;
+    };
+
+  message External {
+    bytes arguments = 1;
+    bytes named_arguments = 2;
+    ExternalOp op = 3;
+  };
+
+  message Identity {} // Does nothing
+
+  message Variable {
+    int32 position = 1;
+    string name = 2;
+  } // Numbered or named identity to use as input of the composed transform
+
+  message Composed {
+    string transform = 1; // Transform
+    repeated string arguments = 2; // Arguments of the current transform are transforms
+    map<string, string> named_arguments = 3;
+  }
+
+  message Project {
+     sarus_data_spec.Type projection = 1; // This should be a 'supertype' the type the data can project into.
+    // For product types (struct or tuple), this is a type with a subset of the fields
+    // For map types, this is a map type with subset (subtype) of key and superset (supertype) of value
+    // For union types, this is a type with more terms in the union
+    // To start wit let's simply use this with structs
+  }
+
+  message Filter {
+    sarus_data_spec.Type filter = 1; // This should be a 'subtype' the type the data can be retricted to.
+    // For union types, this is a type with less terms in the union.
+    // Optional types can for instance be filtered to non-optional
+    // Value type and Predicate types can be used to restrict values
+  }
+
+  message Shuffle {}
+
+  message Join {
+    sarus_data_spec.Type on = 1; // This should be a common 'supertype' between tables.
+  }
+
+  message Cast {
+    sarus_data_spec.Type type = 1; // Type to cast into.
+  }
+
+  message Sample {
+    // Sample a dataset
+    oneof proportion {
+      float fraction = 1;
+      int64 size = 2;
+    }
+  }
+
+  message SchemaInference {
+    CastPolicy cast_policy = 1;
+    enum CastPolicy {
+      NONE = 0;
+      MOST_LIKELY = 1;
+    }
+  }
+
+  message GroupBy {
+    string key = 1;
+  }
+
+  message Synthetic {}
+
+  message UserSettings {
+    sarus_data_spec.Type type = 1;
+  }
+  message Protect{
+    repeated sarus_data_spec.Path protected_entities=1;
+    repeated sarus_data_spec.Path public_entities=2;
+  }
+
+  message Transcode{
+    sarus_data_spec.Statistics statistics=1;
+    sarus_data_spec.Type data_type = 2;
+    sarus_data_spec.Path protected_path = 3;
+  }
+
+  message InverseTranscode{
+    Transcode transcode=1;
+  }
+}

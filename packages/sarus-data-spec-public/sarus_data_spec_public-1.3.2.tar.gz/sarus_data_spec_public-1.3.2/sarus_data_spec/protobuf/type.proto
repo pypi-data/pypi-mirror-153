@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+import "sarus_data_spec/protobuf/predicate.proto";
+import "sarus_data_spec/protobuf/path.proto";
+package sarus_data_spec;
+
+// Types can be simple or composed
+
+message Type {
+  // Type definition
+  string name = 1;
+  oneof type {
+    Null null = 3;
+    Unit unit = 4;
+    Boolean boolean = 5;
+    Integer integer = 6;
+    Enum enum = 7;
+    Float float = 8;
+    Text text = 9;
+    Bytes bytes = 10;
+    Struct struct = 11;
+    Union union = 12;
+    Optional optional = 13;
+    List list = 14;
+    Array array = 15;
+    Datetime datetime = 16;
+    Constrained constrained = 17;
+    Hypothesis hypothesis = 18;
+    Id id = 19;
+  }
+  map<string, string> properties = 2; // Other properties
+  // Nested definitions
+
+  // Basic types are close to what can be found in:
+  // - Arrow: https://arrow.apache.org/docs/status.html#data-types
+  // - Tensorflow: https://www.tensorflow.org/api_docs/python/tf/dtypes/DType
+  // - Parquet: https://github.com/apache/parquet-format
+  // - Protobuf: https://developers.google.com/protocol-buffers/docs/proto3#scalar
+
+  message Null {} // The type with no value (see [Bottom type](https://en.wikipedia.org/wiki/Bottom_type)), not to be confused with Unit.
+  // A function returning Null type cannot return. It crashes or never returns. No value can actually have the Null type.
+  // This type is to indicate no value is possible.
+
+  message Unit {} // The type with just one value. In python NoneType (the type of the value None) is a unit type.
+
+  message Boolean {}
+
+  message Integer {
+    Base base = 1;
+    int64 min = 2;
+    int64 max = 3;
+    repeated int64 possible_values = 4;
+    enum Base {
+      INT64 = 0;
+      INT32 = 1;
+      INT16 = 2;
+      INT8 = 3;
+    }
+  }
+
+  message Enum {
+    Base base = 1;
+    bool ordered = 2;
+    repeated NameValue name_values = 3;
+    enum Base {
+      INT64 = 0;
+      INT32 = 1;
+      INT16 = 2;
+      INT8 = 3;
+    }
+    message NameValue {
+      string name = 1;
+      int64 value = 2;
+    }
+  }
+
+  message Float {
+    Base base = 1;
+    double min = 2;
+    double max = 3;
+    repeated float possible_values = 4;
+    enum Base {
+      FLOAT64 = 0;
+      FLOAT32 = 1;
+      FLOAT16 = 2;
+    }
+  }
+
+  message Text {
+    string encoding = 1;
+  }
+
+  message Bytes {}
+
+  // Structured types
+  message Struct {
+    repeated Field fields = 1;
+    // A single field
+    message Field {
+      string name = 1;
+      Type type = 2;
+    }
+  }
+
+  message Union {
+    // A sum of type (tagged union)
+     repeated Field fields = 1;
+    // A single field
+    message Field {
+      string name = 1;
+      Type type = 2;
+    }
+  }
+
+  message Optional {
+    // A value of type 'type' or null
+    Type type = 1;
+  }
+
+  message List {
+    // A repeated value of type 'type'
+    Type type = 1;
+    int64 max_size = 2;
+  }
+
+
+  message Array {
+    // A numpy-like n-dimensional array
+    Type type = 1;
+    repeated int64 shape = 2;
+  }
+
+  message Datetime {
+    // A datetime type
+    string format = 1;
+    string min = 2;
+    string max = 3;
+    repeated string possible_values = 4;
+    Base base = 5;
+    enum Base {
+      INT64_NS = 0;
+      INT64_MS = 1;
+      STRING = 2;
+    }
+  }
+  message Constrained {
+    // A type for simple relations
+    Type type = 1;
+    Predicate constraint = 2;
+  }
+
+  // A constructor to express an uncertain type
+  message Hypothesis {
+    // A type among those with a score
+    repeated Scored types = 2;
+    message Scored {
+      // A type with a score (log-probability)
+      Type type = 1;
+      double score = 2;
+    }
+  }
+
+  message Id {
+    Base base = 1;
+    bool unique = 2;
+    Path reference =3;
+    enum Base {
+      INT64 = 0;
+      INT32 = 1;
+      INT16 = 2;
+      INT8 = 3;
+      STRING = 4;
+      BYTES = 5;
+    }
+  }
+}
