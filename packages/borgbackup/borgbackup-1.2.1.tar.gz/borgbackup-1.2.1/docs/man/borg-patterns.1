@@ -1,0 +1,309 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "BORG-PATTERNS" 1 "2022-06-05" "" "borg backup tool"
+.SH NAME
+borg-patterns \- Details regarding patterns
+.SH DESCRIPTION
+.sp
+The path/filenames used as input for the pattern matching start from the
+currently active recursion root. You usually give the recursion root(s)
+when invoking borg and these can be either relative or absolute paths.
+.sp
+If you give \fI/absolute/\fP as root, the paths going into the matcher will
+look relative like \fIabsolute/.../file.ext\fP, because file paths in Borg
+archives are always stored normalized and relative. This means that e.g.
+\fBborg create /path/to/repo ../some/path\fP will store all files as
+\fIsome/path/.../file.ext\fP and \fBborg create /path/to/repo /home/user\fP
+will store all files as \fIhome/user/.../file.ext\fP\&.
+.sp
+A directory exclusion pattern can end either with or without a slash (\(aq/\(aq).
+If it ends with a slash, such as \fIsome/path/\fP, the directory will be
+included but not its content. If it does not end with a slash, such as
+\fIsome/path\fP, both the directory and content will be excluded.
+.sp
+File patterns support these styles: fnmatch, shell, regular expressions,
+path prefixes and path full\-matches. By default, fnmatch is used for
+\fB\-\-exclude\fP patterns and shell\-style is used for the \fB\-\-pattern\fP
+option. For commands that support patterns in their \fBPATH\fP argument
+like (\fBborg list\fP), the default pattern is path prefix.
+.sp
+Starting with Borg 1.2, discovered fs paths are normalised, have leading
+slashes removed and then are matched against your patterns.
+Note: You need to review your include / exclude patterns and make
+sure they do not expect leading slashes. Borg can only deal with this
+for some very simple patterns by removing leading slashes there also.
+.sp
+If followed by a colon (\(aq:\(aq) the first two characters of a pattern are
+used as a style selector. Explicit style selection is necessary when a
+non\-default style is desired or when the desired pattern starts with
+two alphanumeric characters followed by a colon (i.e. \fIaa:something/*\fP).
+.INDENT 0.0
+.TP
+.B \fI\%Fnmatch\fP, selector \fIfm:\fP
+This is the default style for \fB\-\-exclude\fP and \fB\-\-exclude\-from\fP\&.
+These patterns use a variant of shell pattern syntax, with \(aq*\(aq matching
+any number of characters, \(aq?\(aq matching any single character, \(aq[...]\(aq
+matching any single character specified, including ranges, and \(aq[!...]\(aq
+matching any character not specified. For the purpose of these patterns,
+the path separator (backslash for Windows and \(aq/\(aq on other systems) is not
+treated specially. Wrap meta\-characters in brackets for a literal
+match (i.e. \fI[?]\fP to match the literal character \fI?\fP). For a path
+to match a pattern, the full path must match, or it must match
+from the start of the full path to just before a path separator. Except
+for the root path, paths will never end in the path separator when
+matching is attempted.  Thus, if a given pattern ends in a path
+separator, a \(aq*\(aq is appended before matching is attempted. A leading
+path separator is always removed.
+.TP
+.B Shell\-style patterns, selector \fIsh:\fP
+This is the default style for \fB\-\-pattern\fP and \fB\-\-patterns\-from\fP\&.
+Like fnmatch patterns these are similar to shell patterns. The difference
+is that the pattern may include \fI**/\fP for matching zero or more directory
+levels, \fI*\fP for matching zero or more arbitrary characters with the
+exception of any path separator. A leading path separator is always removed.
+.TP
+.B Regular expressions, selector \fIre:\fP
+Regular expressions similar to those found in Perl are supported. Unlike
+shell patterns regular expressions are not required to match the full
+path and any substring match is sufficient. It is strongly recommended to
+anchor patterns to the start (\(aq^\(aq), to the end (\(aq$\(aq) or both. Path
+separators (backslash for Windows and \(aq/\(aq on other systems) in paths are
+always normalized to a forward slash (\(aq/\(aq) before applying a pattern. The
+regular expression syntax is described in the \fI\%Python documentation for
+the re module\fP\&.
+.TP
+.B Path prefix, selector \fIpp:\fP
+This pattern style is useful to match whole sub\-directories. The pattern
+\fIpp:root/somedir\fP matches \fIroot/somedir\fP and everything therein. A leading
+path separator is always removed.
+.TP
+.B Path full\-match, selector \fIpf:\fP
+This pattern style is (only) useful to match full paths.
+This is kind of a pseudo pattern as it can not have any variable or
+unspecified parts \- the full path must be given. \fIpf:root/file.ext\fP matches
+\fIroot/file.ext\fP only. A leading path separator is always removed.
+.sp
+Implementation note: this is implemented via very time\-efficient O(1)
+hashtable lookups (this means you can have huge amounts of such patterns
+without impacting performance much).
+Due to that, this kind of pattern does not respect any context or order.
+If you use such a pattern to include a file, it will always be included
+(if the directory recursion encounters it).
+Other include/exclude patterns that would normally match will be ignored.
+Same logic applies for exclude.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+\fIre:\fP, \fIsh:\fP and \fIfm:\fP patterns are all implemented on top of the Python SRE
+engine. It is very easy to formulate patterns for each of these types which
+requires an inordinate amount of time to match paths. If untrusted users
+are able to supply patterns, ensure they cannot supply \fIre:\fP patterns.
+Further, ensure that \fIsh:\fP and \fIfm:\fP patterns only contain a handful of
+wildcards at most.
+.UNINDENT
+.UNINDENT
+.sp
+Exclusions can be passed via the command line option \fB\-\-exclude\fP\&. When used
+from within a shell, the patterns should be quoted to protect them from
+expansion.
+.sp
+The \fB\-\-exclude\-from\fP option permits loading exclusion patterns from a text
+file with one pattern per line. Lines empty or starting with the number sign
+(\(aq#\(aq) after removing whitespace on both ends are ignored. The optional style
+selector prefix is also supported for patterns loaded from a file. Due to
+whitespace removal, paths with whitespace at the beginning or end can only be
+excluded using regular expressions.
+.sp
+To test your exclusion patterns without performing an actual backup you can
+run \fBborg create \-\-list \-\-dry\-run ...\fP\&.
+.sp
+Examples:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Exclude \(aq/home/user/file.o\(aq but not \(aq/home/user/file.odt\(aq:
+$ borg create \-e \(aq*.o\(aq backup /
+
+# Exclude \(aq/home/user/junk\(aq and \(aq/home/user/subdir/junk\(aq but
+# not \(aq/home/user/importantjunk\(aq or \(aq/etc/junk\(aq:
+$ borg create \-e \(aqhome/*/junk\(aq backup /
+
+# Exclude the contents of \(aq/home/user/cache\(aq but not the directory itself:
+$ borg create \-e home/user/cache/ backup /
+
+# The file \(aq/home/user/cache/important\(aq is *not* backed up:
+$ borg create \-e home/user/cache/ backup / /home/user/cache/important
+
+# The contents of directories in \(aq/home\(aq are not backed up when their name
+# ends in \(aq.tmp\(aq
+$ borg create \-\-exclude \(aqre:^home/[^/]+\e.tmp/\(aq backup /
+
+# Load exclusions from file
+$ cat >exclude.txt <<EOF
+# Comment line
+home/*/junk
+*.tmp
+fm:aa:something/*
+re:^home/[^/]+\e.tmp/
+sh:home/*/.thumbnails
+# Example with spaces, no need to escape as it is processed by borg
+some file with spaces.txt
+EOF
+$ borg create \-\-exclude\-from exclude.txt backup /
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+A more general and easier to use way to define filename matching patterns exists
+with the \fB\-\-pattern\fP and \fB\-\-patterns\-from\fP options. Using these, you may
+specify the backup roots (starting points) and patterns for inclusion/exclusion.
+A root path starts with the prefix \fIR\fP, followed by a path (a plain path, not a
+file pattern). An include rule starts with the prefix +, an exclude rule starts
+with the prefix \-, an exclude\-norecurse rule starts with !, all followed by a pattern.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Via \fB\-\-pattern\fP or \fB\-\-patterns\-from\fP you can define BOTH inclusion and exclusion
+of files using pattern prefixes \fB+\fP and \fB\-\fP\&. With \fB\-\-exclude\fP and
+\fB\-\-exclude\-from\fP ONLY excludes are defined.
+.UNINDENT
+.UNINDENT
+.sp
+Inclusion patterns are useful to include paths that are contained in an excluded
+path. The first matching pattern is used so if an include pattern matches before
+an exclude pattern, the file is backed up. If an exclude\-norecurse pattern matches
+a directory, it won\(aqt recurse into it and won\(aqt discover any potential matches for
+include rules below that directory.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+It\(aqs possible that a sub\-directory/file is matched while parent directories are not.
+In that case, parent directories are not backed up thus their user, group, permission,
+etc. can not be restored.
+.UNINDENT
+.UNINDENT
+.sp
+Note that the default pattern style for \fB\-\-pattern\fP and \fB\-\-patterns\-from\fP is
+shell style (\fIsh:\fP), so those patterns behave similar to rsync include/exclude
+patterns. The pattern style can be set via the \fIP\fP prefix.
+.sp
+Patterns (\fB\-\-pattern\fP) and excludes (\fB\-\-exclude\fP) from the command line are
+considered first (in the order of appearance). Then patterns from \fB\-\-patterns\-from\fP
+are added. Exclusion patterns from \fB\-\-exclude\-from\fP files are appended last.
+.sp
+Examples:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# backup pics, but not the ones from 2018, except the good ones:
+# note: using = is essential to avoid cmdline argument parsing issues.
+borg create \-\-pattern=+pics/2018/good \-\-pattern=\-pics/2018 repo::arch pics
+
+# use a file with patterns:
+borg create \-\-patterns\-from patterns.lst repo::arch
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+The patterns.lst file could look like that:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# \(dqsh:\(dq pattern style is the default, so the following line is not needed:
+P sh
+R /
+# can be rebuild
+\- home/*/.cache
+# they\(aqre downloads for a reason
+\- home/*/Downloads
+# susan is a nice person
+# include susans home
++ home/susan
+# also back up this exact file
++ pf:home/bobby/specialfile.txt
+# don\(aqt backup the other home directories
+\- home/*
+# don\(aqt even look in /proc
+! proc
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+You can specify recursion roots either on the command line or in a patternfile:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# these two commands do the same thing
+borg create \-\-exclude home/bobby/junk repo::arch /home/bobby /home/susan
+borg create \-\-patterns\-from patternfile.lst repo::arch
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+The patternfile:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# note that excludes use fm: by default and patternfiles use sh: by default.
+# therefore, we need to specify fm: to have the same exact behavior.
+P fm
+R /home/bobby
+R /home/susan
+
+\- home/bobby/junk
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+This allows you to share the same patterns between multiple repositories
+without needing to specify them on the command line.
+.SH AUTHOR
+The Borg Collective
+.\" Generated by docutils manpage writer.
+.
