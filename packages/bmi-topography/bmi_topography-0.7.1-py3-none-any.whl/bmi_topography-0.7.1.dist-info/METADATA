@@ -1,0 +1,495 @@
+Metadata-Version: 2.1
+Name: bmi-topography
+Version: 0.7.1
+Summary: Fetch and cache land elevation data from OpenTopography
+Home-page: https://github.com/csdms/bmi-topography
+Author: Mark Piper
+Author-email: mark.piper@colorado.edu
+License: MIT License
+Keywords: bmi,srtm,alos,nasadem,copernicus,topography,elevation,dem,data
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Education
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+Requires-Dist: requests
+Requires-Dist: numpy
+Requires-Dist: click
+Requires-Dist: pyyaml
+Requires-Dist: rasterio
+Requires-Dist: xarray
+Requires-Dist: bmipy
+
+[![Basic Model Interface](https://img.shields.io/badge/CSDMS-Basic%20Model%20Interface-green.svg)](https://bmi.readthedocs.io/)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/bmi-topography.svg)](https://anaconda.org/conda-forge/bmi-topography)
+[![PyPI](https://img.shields.io/pypi/v/bmi-topography)](https://pypi.org/project/bmi-topography)
+[![Build/Test CI](https://github.com/csdms/bmi-topography/actions/workflows/build-test-ci.yml/badge.svg)](https://github.com/csdms/bmi-topography/actions/workflows/build-test-ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/csdms/bmi-topography/badge.svg?branch=main)](https://coveralls.io/github/csdms/bmi-topography?branch=main)
+[![Documentation Status](https://readthedocs.org/projects/bmi-topography/badge/?version=latest)](https://bmi-topography.readthedocs.io/en/latest/?badge=latest)
+
+# bmi-topography
+
+*bmi-topography* is a Python library for fetching and caching
+land elevation data
+using the [OpenTopography][ot] [REST API][ot-rest].
+
+The *bmi-topography* library provides access to the following global raster datasets:
+
+* SRTMGL3 (SRTM GL3 90m)
+* SRTMGL1 (SRTM GL1 30m)
+* SRTMGL1_E (SRTM GL1 Ellipsoidal 30m)
+* AW3D30 (ALOS World 3D 30m)
+* AW3D30_E (ALOS World 3D Ellipsoidal, 30m)
+* SRTM15Plus (Global Bathymetry SRTM15+ V2.1)
+* NASADEM (NASADEM Global DEM)
+* COP30 (Copernicus Global DSM 30m)
+* COP90 (Copernicus Global DSM 90m)
+
+The library includes an API and a CLI that accept
+the dataset type,
+a latitude-longitude bounding box, and
+the output file format.
+Data are downloaded from OpenTopography and cached locally.
+The cache is checked before downloading new data.
+Data from a cached file can optionally be loaded into an
+[xarray][xarray] [DataArray][xarray-da]
+using the experimental [open_rasterio][xarray-or] method.
+
+The *bmi-topography* API is wrapped with a
+[Basic Model Interface][bmi] (BMI),
+which provides a standard set of functions for coupling with data or models
+that also expose a BMI.
+More information on the BMI can found in its [documentation][bmi].
+
+## Installation
+
+Install the latest stable release of *bmi-topography* with `pip`:
+```
+pip install bmi-topography
+```
+or with `conda`:
+```
+conda install -c conda-forge bmi-topography
+```
+
+The *bmi-topography* library can also be built and installed from source.
+The library uses several other open source libraries,
+so a convenient way of building and installing it is within a
+[conda environment][conda-env].
+After cloning or downloading the *bmi-topography*
+[repository][bmi-topo-repo],
+change into the repository directory
+and set up a conda environment with the included environment file:
+```
+conda env create --file=environment.yml
+```
+Then build and install *bmi-topography* from source with
+```
+make install
+```
+
+## API key
+
+To better understand usage,
+OpenTopography [requires an API key][ot-api-key] to access datasets they host.
+Getting an API key is easy, and it's free:
+just follow the instructions in the link above.
+
+Once you have an API key,
+there are three ways to use it with *bmi-topography*:
+
+1. *parameter*: Pass the API key as a string through the `api_key` parameter.
+2. *environment variable*: In the shell, set the `OPENTOPOGRAPHY_API_KEY` environment variable to the API key value.
+3. *dot file*: Put the API key in the file `.opentopography.txt` in the current directory or in your home directory.
+
+If you attempt to use *bmi-topography* to access an OpenTopography dataset without an API key,
+you'll get a error like this: 
+```
+requests.exceptions.HTTPError: 401 Client Error: This dataset requires an API Key for access.
+```
+
+## Examples
+
+A brief example of using the *bmi-topography* API is given in the following steps.
+
+Start a Python session and import the `Topography` class:
+```python
+>>> from bmi_topography import Topography
+```
+
+For convenience,
+a set of default parameter values for `Topography` are included in the class definition.
+Copy these and modify them with custom values:
+```python
+>>> params = Topography.DEFAULT.copy()
+>>> params["south"] = 39.93
+>>> params["north"] = 40.00
+>>> params["west"] = -105.33
+>>> params["east"] = -105.26
+>>> params
+{'dem_type': 'SRTMGL3',
+ 'south': 39.93,
+ 'north': 40.0,
+ 'west': -105.33,
+ 'east': -105.26,
+ 'output_format': 'GTiff',
+ 'cache_dir': '~/.bmi_topography'}
+```
+These coordinate values represent an area around Boulder, Colorado.
+
+Make a instance of `Topography` with these parameters:
+```python
+>>> boulder = Topography(**params)
+```
+then fetch the data from OpenTopography:
+```python
+>>> boulder.fetch()
+PosixPath('/Users/mpiper/.bmi_topography/SRTMGL3_39.93_-105.33_40.0_-105.26.tif')
+```
+This step might take a few moments,
+and it will increase for requests of larger areas.
+Note that the file has been saved to a local cache directory.
+
+Load the data into an xarray `DataArray` for further work:
+```python
+>>> boulder.load()
+<xarray.DataArray 'SRTMGL3' (band: 1, y: 84, x: 84)>
+array([[[2052, 2035, ..., 1645, 1643],
+        [2084, 2059, ..., 1643, 1642],
+        ...,
+        [2181, 2170, ..., 1764, 1763],
+        [2184, 2179, ..., 1773, 1769]]], dtype=int16)
+Coordinates:
+  * band     (band) int64 1
+  * y        (y) float64 40.0 40.0 40.0 40.0 40.0 ... 39.93 39.93 39.93 39.93
+  * x        (x) float64 -105.3 -105.3 -105.3 -105.3 ... -105.3 -105.3 -105.3
+Attributes:
+    transform:      (0.000833333333333144, 0.0, -105.33041666668363, 0.0, -0....
+    crs:            +init=epsg:4326
+    res:            (0.000833333333333144, 0.000833333333333144)
+    is_tiled:       1
+    nodatavals:     (0.0,)
+    scales:         (1.0,)
+    offsets:        (0.0,)
+    AREA_OR_POINT:  Area
+    units:          meters
+    location:       node
+```
+
+Display the elevations with the default xarray `DataArray` [plot][xarray-plot] method.
+```python
+>>> import matplotlib.pyplot as plt
+>>> boulder.da.plot()
+>>> plt.show()
+```
+
+![Example elevation data displayed through *xarray*.](./examples/bmi-topography_ex.png)
+
+For examples with more detail,
+see the two Jupyter Notebooks,
+Python script, and shell script
+included in the [examples][bmi-topo-examples] directory
+of the *bmi-topography* repository.
+
+User and developer documentation for *bmi-topography*
+is available at https://bmi-topography.readthedocs.io.
+
+<!-- Links (by alpha) -->
+
+[bmi]: https://bmi.readthedocs.io
+[bmi-topo-examples]: https://github.com/csdms/bmi-topography/tree/main/examples
+[bmi-topo-repo]: https://github.com/csdms/bmi-topography
+[conda-env]: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
+[ot]: https://opentopography.org/
+[ot-api-key]: https://opentopography.org/blog/introducing-api-keys-access-opentopography-global-datasets
+[ot-rest]: https://portal.opentopography.org/apidocs/
+[xarray]: http://xarray.pydata.org/en/stable/
+[xarray-da]: http://xarray.pydata.org/en/stable/api.html#dataarray
+[xarray-or]: http://xarray.pydata.org/en/stable/generated/xarray.open_rasterio.html#xarray.open_rasterio
+[xarray-plot]: https://xarray.pydata.org/en/stable/generated/xarray.plot.plot.html
+
+Changes for bmi-topography
+==========================
+
+0.7.1 (2022-06-03)
+------------------
+
+- Provide a better reason for 401 errors (#41)
+
+
+0.7 (2022-03-24)
+----------------
+
+- Support all OpenTopography global datasets (#39)
+- Create test matrix of datasets and file types (#38)
+
+
+0.6 (2022-02-17)
+----------------
+
+- Use dashes in command line options (#36)
+- Use a demo API key if a user key can't be found (#34)
+
+
+0.5.1 (2022-02-15)
+------------------
+
+- Document use of OpenTopography API key (#33)
+- Add text to exception raised when API key is missing (#32)
+- Use new black syntax (#31)
+
+
+0.5 (2022-01-25)
+----------------
+
+- Use an API key when requesting OpenTopography data (#25)
+- Add python 3.10 to tests (#24)
+- Address technical debt (#22)
+
+
+0.4 (2021-09-03)
+----------------
+
+- Support ALOS World 3D 30m products (#13)
+- Support .asc and .img files (#14)
+- Add format job to CI
+- Use CITATION.cff file
+
+
+0.3.2 (2021-04-23)
+------------------
+
+- Add citation recommendation with DOI
+- Fix typos, update text in example notebooks
+- Create CREDITS.md and rearrange docs
+
+
+0.3.1 (2021-03-04)
+------------------
+
+- Install with conda
+- Include shell script demonstrating CLI
+
+
+0.3 (2021-02-25)
+----------------
+
+- Update README with overview and install instructions
+- Write documentation
+
+
+0.2 (2021-02-24)
+----------------
+
+- Implement BMI for Topography class from template generated by `bmipy-render`
+- Include sample config file and Jupyter Notebook to demo BMI
+- Add CI with GitHub Actions
+
+
+0.1.1 (2021-02-22)
+------------------
+
+- Add Makefile rule to test upload to TestPyPI
+- Test upload to TestPyPI
+
+
+0.1 (2021-02-22)
+----------------
+
+- Create base library that calls OpenTopography API
+- Create CLI for library
+- Write tests for library and CLI
+- Include demo Jupyter Notebook for library
+
+# Contributing
+
+Contributions are welcome, and they are greatly appreciated! Every
+little bit helps, and credit will always be given.
+
+You can contribute in many ways:
+
+## Types of Contributions
+
+### Report Bugs
+
+Report bugs at <https://github.com/csdms/bmi-topography/issues>.
+
+If you are reporting a bug, please include:
+
+-   Your operating system name and version.
+-   Any details about your local setup that might be helpful in
+    troubleshooting.
+-   Detailed steps to reproduce the bug.
+
+### Fix Bugs
+
+Look through the GitHub issues for bugs. Anything tagged with "bug"
+and "help wanted" is open to whoever wants to implement it.
+
+### Implement Features
+
+Look through the GitHub issues for features. Anything tagged with
+"enhancement" and "help wanted" is open to whoever wants to
+implement it.
+
+### Write Documentation
+
+*bmi-topography* could always use more documentation, whether as part of the
+official docs, in docstrings, or even on the web in blog
+posts, articles, and such.
+
+### Submit Feedback
+
+The best way to send feedback is to file an issue at
+<https://github.com/csdms/bmi-topography/issues>.
+
+If you are proposing a feature:
+
+-   Explain in detail how it would work.
+-   Keep the scope as narrow as possible, to make it easier to
+    implement.
+-   Remember that this is a volunteer-driven project, and that
+    contributions are welcome :)
+
+## Get Started!
+
+Ready to contribute? Here\'s how to set up *bmi-topography* for local
+development.
+
+1.  Fork the *bmi-topography* repo on GitHub.
+
+2.  Clone your fork locally:
+
+    ``` {.shell}
+    $ git clone git@github.com:your_name_here/bmi-topography.git
+    ```
+
+3.  Install your local copy into a conda environment. A conda enviroment file is
+    supplied at the root of the repository. Assuming you have conda installed,
+    this is how you set up your fork for local development:
+
+    ``` {.shell}
+    $ cd bmi-topography
+    $ conda env create --file=environment.yml
+    $ conda activate topography
+    $ make install
+    ```
+
+4.  Create a branch for local development:
+
+    ``` {.shell}
+    $ git checkout -b name-of-your-bugfix-or-feature
+    ```
+
+    Now you can make your changes locally.
+
+5.  When you're done making changes, check that your changes pass
+    flake8 and the tests:
+
+    ``` {.shell}
+    $ make lint
+    $ make test
+    ```
+
+    Both flake8 and pytest are included in the environment.
+
+6.  Commit your changes and push your branch to GitHub:
+
+    ``` {.shell}
+    $ git add .
+    $ git commit -m "Your detailed description of your changes."
+    $ git push origin name-of-your-bugfix-or-feature
+    ```
+
+7.  Submit a pull request through the GitHub website.
+
+## Pull Request Guidelines
+
+Before you submit a pull request, check that it meets these guidelines:
+
+1.  The pull request should include tests.
+2.  If the pull request adds functionality, the docs should be updated.
+    Put your new functionality into a function with a docstring, and add
+    the feature to the list in README.rst.
+3.  The pull request need only work with Python >= 3.8.
+
+
+## Deploying
+
+A reminder for the maintainers on how to deploy. To make a new release,
+you will need to have
+[zest.releaser](https://zestreleaser.readthedocs.io/en/latest/)
+installed, which can be installed with *pip*,
+
+``` {.bash}
+$ pip install zest.releaser[recommended]
+```
+
+Make sure all your changes are committed (including an entry in
+CHANGES.md). Then run,
+
+``` {.bash}
+$ fullrelease
+```
+
+This will create a new tag and alert the *bmi-topography* feedstock on
+*conda-forge* that there is a new release.
+
+Credits
+=======
+
+Project lead
+------------
+
+* Mark Piper
+
+Contributors
+------------
+
+* Eric Hutton
+* Mark Piper
+
+Acknowledgments
+---------------
+
+This work is supported by the National Science Foundation under Award No.
+[2026951](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2026951), 
+*EarthCube Capabilities: Cloud-Based Accessible and Reproducible Modeling for Water and Sediment Research*.
+
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Piper
+    given-names: Mark
+    orcid: https://orcid.org/0000-0001-6418-277X
+title: "CSDMS Topography data component"
+version: 0.3.1
+doi: 10.5281/zenodo.4608653
+date-released: 2021-03-16
+
+MIT License
+===========
+
+Copyright (c) 2021 Community Surface Dynamics Modeling System
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
