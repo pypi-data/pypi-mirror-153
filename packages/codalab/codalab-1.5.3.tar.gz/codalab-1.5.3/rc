@@ -1,0 +1,36 @@
+# Handy macros the CodaLab CLI.
+
+# Usage: clhist <bundle>
+# Put the command used to create the bundle in the history.
+clhist() {
+  history -s cl $(cl info -f args $1)
+}
+
+clwdiff() {
+  vimdiff <(cl print -r $1) <(cl print -r $2)
+}
+
+# Useful for chaining cl commands.
+# Example: cl search .orphan -u | xcl info
+alias xcl='xargs cl'
+
+# Activate autocomplete
+# If you are using zsh, you will also need to include the following in your .zshrc:
+#   autoload -U +X compinit && compinit
+#   autoload -U +X bashcompinit && bashcompinit
+# Certain arguments (those that contain colons) do not autocomplete correctly in zsh at the moment.
+if [[ -z "${BASH_SOURCE[0]}" ]]; then
+    # Assume zsh
+    codalabdir=$(dirname $0)
+else
+    # Assume bash
+    codalabdir=$(dirname ${BASH_SOURCE[0]})
+fi
+if [ ! -e "$codalabdir/venv/bin/register-python-argcomplete" ]; then
+    echo "Could not find register-python-argcomplete script, have you run $codalabdir/setup.sh yet?"
+else
+    eval "$($codalabdir/venv/bin/register-python-argcomplete cl)"
+fi
+
+# Used the version of `cl` that's installed into `venv` by default.
+. venv/bin/activate
