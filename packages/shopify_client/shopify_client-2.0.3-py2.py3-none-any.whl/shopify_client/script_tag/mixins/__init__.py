@@ -1,0 +1,1 @@
+from .script_tag_parser_mixin import ScriptTagParserMixin

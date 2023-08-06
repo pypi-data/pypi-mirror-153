@@ -1,0 +1,3 @@
+from .product_metafield_input import ProductMetafieldInput
+from .product_metafield_update_input import ProductMetafieldUpdateInput
+from .products_input import ProductsInput
