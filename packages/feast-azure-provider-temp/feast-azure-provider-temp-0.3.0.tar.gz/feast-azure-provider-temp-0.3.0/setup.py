@@ -1,0 +1,50 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+import os
+import pathlib
+from setuptools import find_packages
+
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
+# README file from repo root directory
+repo_root = str(pathlib.Path(__file__).resolve().parent)
+
+# README file from Feast repo root directory
+README_FILE = os.path.join(repo_root, "README.md")
+with open(README_FILE, "r", encoding="utf-8") as f:
+    LONG_DESCRIPTION = f.read()
+
+setup(
+    name="feast-azure-provider-temp",
+    author="Microsoft",
+    version="0.3.0",
+    description="A Feast Azure Provider",
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type="text/markdown",
+    python_requires=">=3.8.0, <=3.8.12",
+    packages=find_packages(exclude=("tests",)),
+    install_requires=[
+        "feast[redis]==0.19.4",
+        "databricks-connect==9.1.*",
+        "azure-storage-blob>=0.37.0",
+        "azure-identity>=1.6.1"
+    ],
+    extras_require={"dev": ["pytest", "mypy", "assertpy"],
+                    "snowflake": ["snowflake-connector-python[pandas]>=2.7.3"]},
+    # https://stackoverflow.com/questions/28509965/setuptools-development-requirements
+    # Install dev requirements with: pip install -e .[dev]
+    include_package_data=True,
+    license="MIT",
+    classifiers=[
+        # Trove classifiers
+        # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+    ],
+)
