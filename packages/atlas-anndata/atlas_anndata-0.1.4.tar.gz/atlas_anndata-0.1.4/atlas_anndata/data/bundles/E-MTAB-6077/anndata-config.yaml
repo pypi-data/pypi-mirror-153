@@ -1,0 +1,120 @@
+# Top-level parameters
+
+exp-name: E-MTAB-1234
+droplet: False
+
+# Matrices, slots correspond to keys in .layers, unless .X or .raw.X, which
+# which case those are interpreted as explicit top-level slots in the anndata.
+
+matrices:
+  entries:
+  - slot: raw.X
+    name: raw
+    measure: counts
+    cell_filtered: True
+    gene_filtered: False
+    normalised: False
+    log_transformed: False
+    scaled: False
+
+  - slot: filtered
+    name: filtered
+    measure: counts
+    cell_filtered: True
+    gene_filtered: True
+    normalised: False
+    log_transformed: False
+    scaled: False
+    
+    parameters:
+      min_count: 3
+  
+  - slot: normalised
+    name: normalised
+    measure: counts
+    cell_filtered: True
+    gene_filtered: True
+    normalised: True
+    log_transformed: True
+    scaled: False
+  
+  load_to_scxa_db: 'normalised'
+    
+
+# Cell groups, slots correspond to columns in .obs. Two categories:
+#     - curated: present before analysis. These will be output for curation.
+#     - analysis: derived from analysis: e.g. clusters.  
+# 
+# Cell groupings marked with 'markers: True' will have those markers written to
+# the bundle
+
+cell_meta:
+  entries:
+  - slot: organism_part
+    kind: curation
+    markers: False
+    default: False
+
+  - slot: louvain_resolution_0.7
+    kind: clustering
+    markers: True
+    default: False
+    parameters:
+      alorithm: louvain
+      resolution: 0.7
+      
+  - slot: louvain_resolution_1.0
+    kind: clustering
+    markers: True
+    default: True
+    parameters:
+      alorithm: louvain
+      resolution: 1.0
+
+# Gene metadata field used to describe gene-wise info. Currently limited to
+# describing which field is the gene name/symbol, but may be expanded in
+# future.
+
+gene_meta:
+  name_field: gene_name
+  id_field: index
+
+# Dimension reductions, slots correspond to keys in .obsm
+
+dimension_reductions:
+  entries:
+  - slot: X_umap_neighbors_n_neighbors_3
+    kind: umap
+    parameters:
+      n_neighbors: 3
+ 
+  - slot: X_umap_neighbors_n_neighbors_10
+    kind: umap
+    parameters:
+      n_neighbors: 5
+ 
+  - slot: X_umap_neighbors_n_neighbors_10
+    kind: umap
+    default: True
+    parameters:
+     n_neighbors: 10
+
+# Analysis version specifications (software, files etc)
+
+analysis_versions:
+- analysis: Reference
+  asset: Ensembl
+  citation: Danio_rerio.GRCz11.cdna.all.104.fa.gz, Danio_rerio.GRCz11.104.gtf.gz
+  kind: file
+  version: '104'
+- analysis: Mapping
+  asset: kallisto
+  citation: "Nicolas L Bray, Harold Pimentel, P\xE1ll Melsted, Lior Pachter. Near-optimal\
+    \ probabilistic RNA-seq quantification. Nature Biotechnology (2016)."
+  kind: software
+  version: 0.46.2
+- analysis: Pipeline
+  citation: https://github.com/ebi-gene-expression-group/scxa-control-workflow
+  asset: Gene expression group single-cell analysis pipeline (Nextflow)
+  version: 20.04.1
+  kind: software
