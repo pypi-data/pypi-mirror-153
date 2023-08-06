@@ -1,0 +1,210 @@
+[tool.micropython-stubber]
+stub-path = "./all-stubs"
+repo-path = "./repos"
+
+[tool.poetry]
+name = "micropython-stubber"
+version = "1.6.8"
+description = "Tooling to create and maintain stubs for MicroPython"
+authors = ["Jos Verlinde"]
+license = "MIT"
+readme = "readme.md"
+keywords = ["Micropython","stubs","vscode","static type check"]
+homepage= "https://micropython-stubber.readthedocs.io/"
+repository= "https://github.com/Josverl/micropython-stubber"
+classifiers = [
+    "Programming Language :: Python :: Implementation :: MicroPython",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Text Editors :: Integrated Development Environments (IDE)",
+    "Topic :: Software Development :: Build Tools"
+]
+packages = [
+    { include = "**/*.*", from = "src" },
+]
+include =[
+
+]
+exclude = [
+    "**/tests/**" 
+    ,"**/*-test" 
+    ,"**/samples.py" 
+    ,"**/OneOff" 
+    ,"**/.vscode"
+    
+]
+
+[tool.poetry.scripts]
+stubber = "stubber.stubber:stubber_cli"
+pyboard = "stubber.pyboard:main"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.11"
+python-minifier = "2.5.0"
+requests = "2.27.0"
+mypy = "0.931"
+mpy-cross = "1.18"
+black = "22.1.0"
+libcst = "0.4.1"
+autoflake = "1.4"
+click = "8.0.3"
+
+rshell = {version = "0.0.31", optional = true}
+esptool = {version = "3.2", optional = true}
+importlib-metadata = {version = "^1.0", python = "<3.8"}
+tomli = { version ="^2.0.1", python = "<3.11"}
+typed-config = "^1.1.0"
+packaging = "^21.3"
+
+
+[tool.poetry.dev-dependencies]
+pytest = "7.0.1"
+pytest-mock = "3.7.0"
+pytest-json-report = "1.4.1"
+pytest-metadata = "1.11.0"
+mock = "4.0.3"
+coverage = "6.3.1"
+pyright = "0.0.13"
+packaging = "21.3"
+distro = "1.7.0"
+
+[tool.poetry.extras]
+tools = ["rshell","esptool"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+# use long lines to avoid _log lines from wrapping , as this causes issues with the minification.
+line-length = 140
+target_version = ['py38']
+include = '\.pyi?$'
+exclude = '''
+(
+    /(
+        | \..*
+        | minified
+        | micropython
+        | micropython-lib
+        | tests[\\/]mocks
+        | scratch
+    )/
+)
+'''
+
+[tool.pytest.ini_options]
+junit_family = "xunit1"
+# verbose
+# super verbose 
+# --cov coverage with json report and html report
+# Skip 'basicgit' test to avoid changing the cheked-out repo branch
+#addopts = "-v -sv --cov json --cov-report html -m 'not basicgit'"
+#addopts = "-v --cov --cov-report html -m 'not basicgit'"
+#addopts = "-v -sv --cov --cov-report html --json-report --json-report-file coverage/report.json --json-report-indent=4 -m 'not basicgit'"
+
+# Remove pytest-cov
+addopts = "-v -sv  -m 'not basicgit'"
+
+testpaths = [
+    "tests",
+    "src",
+]
+
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "basicgit: marks tests in the basicgit module that manipulate the checkout",
+    "minified: marks test of the minified version of createstubs",
+    "docfix: upstream documentation fix needed",
+    "micropython: tests of MicroPython code on Cpython with mocks",
+    "rst_stub: tests to generate stobs from the rst documentation",
+    # os versions
+    "win32: run test only on Windows",
+    "linux: run test only on linux",
+    "darwin: run test only on Mac",
+]
+
+# coverage reports
+[tool.coverage.run]
+parallel = false
+branch = true
+source = [
+        "board",
+        "src"
+        ]
+omit = [
+        # helper files in board
+        "*/boot.py",
+        "*/main.py",
+        "*/stub_lvgl.py",
+
+        # not my code 
+        "*/logging.py",
+        "*/make_stub_files.py",
+
+        # codemods
+        "*/_apply_stubber_annotations.py",
+        "*/commands/__init__.py",
+
+        "*/rst/report_return.py",
+
+        ]
+
+
+[tool.coverage.html]
+directory = "coverage"
+
+[tool.coverage.xml]
+output = "results/coverage.xml"
+
+[tool.coverage.json]
+output = "results/coverage.json"
+
+[tool.coverage.lcov]
+output = "results/coverage.lcov"
+
+[tool.coverage.report]
+show_missing = true
+# Regexes for lines to exclude from consideration
+exclude_lines = [ 
+    # Have to re-enable the standard pragma
+    "pragma: no cover",
+    "pragma: nocover",
+
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self.debug",         # <-- Fix this 
+    "self._log.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    "except subprocess.CalledProcessError as e:",
+
+    # Don't complain if non-runnable code isn't run:
+    "if __name__ == .__main__.:",
+
+    # mind the quotes 
+    'if __name__ == "__main__" or isMicroPython():', 
+    "main()",
+    
+    # utility functions
+    "show_help()",
+    "isMicroPython()",
+    "read_path()",
+
+    #unreachable
+    # mind the quotes 
+    'info["release"] = "2.0.0" ',
+    "if arch",
+
+    # Micropython detection
+    "except (NotImplementedError, SyntaxError):",
+    # catch error
+    "except (OSError, KeyError):",
+    "except (OSError, AttributeError):",
+
+    # Backward compat <= 3.7 
+    "if sys.version_info.major == 3 and sys.version_info.minor <= 7:"
+
+]
