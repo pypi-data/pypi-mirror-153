@@ -1,0 +1,2 @@
+This package is a companion to the book  Applied Time Series Analysis and Forecasting with Python, Springer 2022. It contains several 
+important Python functions for analyzing time series and most data sets analyzed in the book.
