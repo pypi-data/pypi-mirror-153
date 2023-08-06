@@ -1,0 +1,160 @@
+# dialog specification schema version 2.0
+# discussed with Jose Robins and team 2021-02-03 at wed night mob programming
+#
+# Additional features not yet discussed:
+#   - next condition: `null` causes the chatbot program to say goodbye and exit
+#   - `yes`, `y`, `true` creates a default list of affirmative intents
+# If only a single next_condition intent string is found, additional intents are inferred:
+#   - If there is another list of intents that starts with a single intent string? use that
+#   - state names and keywords (like next_condition) fall back to normalized version that remove spaces, underscores, and fold case to lowercase (like wiki_normalize_text but dont delete/ignore digits)
+
+-
+  # optional defaults for this yml file
+  state: __default__
+  nlp:
+    __default__: FUZZY_KEYWORD #change to SPACY; PLAY WITH THIS A BIT - KEYWORD.
+  version: 2.0  # added by Hobson 2021-03-14
+-
+  state: __welcome__
+
+  bot:
+    - Describe an upsetting event.
+
+  next: RECOGNIZE
+  next_condition:
+# FIXME: this list is not being sorted based on intent string here and its similarity user statement
+    RECOGNIZE:
+      - family
+      - everyone
+      - be
+      - belief
+    RATE:
+      - sad
+      - miserable
+      - terrible
+      - depresses
+    EXTEND:
+      - satisfied
+      - excited
+      - desire
+    __welcome__:
+      - 'no'
+      - go back
+      - nope
+-
+  state: RATE
+
+  bot:
+    - On a scale of 0 (the least) to 100 (the highest). How would you rate this feeling?
+  next: RATE
+  next_condition:
+    DISTORTION:
+      - rating
+    __finish__:
+
+      - finish
+      - stop
+      - I'm done
+-
+  state: RECOGNIZE
+
+  bot:
+    - How did this make you feel?
+  next: RATE
+  next_condition:
+    RATE:
+      - mad
+      - worry
+      - sad
+      - cannot
+    EXTEND:
+      - satisfied
+      - excited
+      - desire
+    __finish__:
+      - finish
+      - stop
+      - I'm done
+-
+  state: DISTORTION
+
+  bot:
+    - Three options (yep->EXTEND/nope->DISTORTION/maybe->RERATE,stop->finish/quit)
+  next: DISTORTION
+  next_condition:
+    RERATE:
+      - "maybe"
+    DISTORTION:
+      - "nope"
+    EXTEND:
+      - "yep"
+    __finish__:
+      - finish
+      - stop
+      - I'm done
+-
+  state: RERATE
+
+  bot:
+    - Re-rate your feelings on a scale of 0-100.
+  next: RATE
+  next_condition:
+    REEVALUATE:
+      - rating
+    __finish__:
+      - finish
+      - stop
+      - I'm done
+-
+  state: REEVALUATE
+
+  bot:
+    - Now how do you feel?
+  next_condition:
+    RATE:
+      - mad
+      - worry
+      - sad
+      - cannot
+    resolve:
+      - happy
+      - satisfied
+      - excited
+      - better
+    __finish__:
+      - finish
+      - stop
+      - I'm done
+-
+  state: EXTEND
+
+  bot:
+    - Is there anything else that you're feeling?
+  next: __welcome__
+  next_condition:
+    RATE:
+      - mad
+      - worry
+      - sad
+      - cannot
+    __welcome__:
+      - re-do
+      - start over
+    __finish__:
+      - finish
+      - stop
+      - I'm done
+      - nope
+      - no
+-
+  state: resolve
+  next: __finish__
+  Bot:
+    - One can find themselves at a state of resolve once they recognize these negative emotions as being associated with cognitive distortions.
+      I'm glad you're feeling better.
+-
+  state: __finish__
+  Bot:
+    - See me again when you're ready to reflect and resolve against some negativity.
+-
+

@@ -1,0 +1,216 @@
+-
+  Q: What is a good way to productize and deploy a machine learning model, especially for NLP. #student #springboard #GuSu #20200602130000
+  A: For NLP the entire pipeline should be provided to the development team to integrate into a production app and deploy. Sciki-Learn Pipeline objects can be pickled after you have a trained model and then this can be depickled within any other python application by your development team.
+-
+  Q: Is it important to normalize or standardize your feature and target variables before performing a fit? #student #springboard #EdLe #20200602150000
+  A: Normalizing your dataset would have **NO** effect for an Ordinary Least Squares linear regression (`sklearn.LinearRegression`). For linear regression normalizing your data can make it more difficult to interpret and verify your results. However for many models, such as `LogisticRegression` or any other model performing regularization or feature selection internally, it is extremely important. For these models it can be critical to improving the accuracy of your model. Just remember to store the fitted `Scaler` object in a variable so you can later use it to inverse_transform the coefficients of your model to help you interpret and explain your results.
+-
+  Q: How should I deal with nan's in a datetime? #student #springboard #ElHo #20200602163000
+  A: First clean up all the categorical and numerical variables in your dataset and build a model to predict your target variable.  Next, create a datetime_isna column to record the presence/absence of NaNs in your datetime column. Then you can try different `.fillna()` methods like `"mean"` or 0 and compare the accuracy of these models to the baseline and fill the nans with zeros and This gives you a baseline accuracy that you can compare your accuracy to after you've cleaned up the datetime columns. Then create a regression model that predicts datetime as a continuous value (such as seconds since 1970) using the rows where you have nonnan values. Do not use the target variable when you are predicting datetime. Finally, use that regression model to predict the NaN datetime values. Finally, train and validate a model trained on all your features including the datetime column and confirm that accuracy on your test set is no worse than before the fill method. You should also convirm that it is no worse than if you just fill the datetime with zeros or a mean.
+-
+  Q: When should I train my first model on my dataset? #student #springboard #YeHe #20200602170000
+  A: As soon as you have at least one target variable and one feature variable cleaned up. A cleaned variable is one that has all numerical or boolean values without any NaNs or strings or object dtypes.
+-
+  Q: How can I consolidate my code for training models and tuning hyperparameters?  #student #springboard #SaSi #20200603090000
+  A: "Try something like this at the beginning of your notebook: `hypertable = []`. Then for every model you train create a dictionary to contain the hyperparameters and the accuracy metrics: `hyperrow['model'] = model.__class__.__name__` and `hyperrow['testset_score'] = model.score(X_test, y_test)`."
+-
+  Q: What's a good dataset for contributing to governmental reform to combat racism. #student #springboard #GaLi #20200603093000
+  A: This [collection of datasets](https://www.policedatainitiative.org/datasets/) contains police reports from various cities in the US.
+-
+  Q: Should I clean up all my data first or train a model. #student #springboard #AlDe #20200603100000
+  A: I like to first train a model on the features that are already clean, such as all the numerical features that do not have missing or NaN values. That gives you a benchmark accuracy for a simple model. Then you can add more features as you clean them to see how your accuracy improves.
+-
+  Q: Should I filter outliers from my dataset before training a model? #student #springboard #HaSe #20200603103000
+  A: Only if your stakeholders, the ones using your model in the real world, do not need to use that model to make predictions on data similar to that for your outliers.
+-
+  Q: Should I include double integrated (cumsum) accelerometer data in my model as a feature to predict sobriety? #student #springboard #MaDu #20200603113000
+  A: Always include all feature variables, even if you are not sure whether they are relevant to your target variable. And position information derived from accelation is an especially good representation of data that often says a lot about the world, including whether people on a pub crawl are sober or not.
+-
+  Q: What is the residual for a machine learning model? #student #springboard #DaLo #20200603120000
+  A: The signed error or the difference between the model predictions and the truth. For example `residual = y_test_pred - y_train_pred`. If you see any pattern like a U shape or curvature in the plots of residual vs any of your features, that's an indication that you could generate a new feature by squaring or taking the square root of that feature variable. #teacher #springboard #DaLo #20200603113000
+-
+  Q: Besides identifying which model was the best and what it's accuracy is what else should I include in my final report.  #student #springboard #JuCh ##202006031800
+  A: You should also answer "why" questions rather than just "what" questions. Consider questions that two different audiences would ask, data scientists and business managers. Why should each of them care about your results. How can business managers use your results to improve their businesses. How can data scientists learn from your approach and apply it to future data science problems.
+-
+  Q: I have a categorical variable like gender or business segment as a feature in my model. Would it improve the accuracy of my model to build separate models for each category or class?
+  A: No. It would be much better to engineer additional features from those categorical variables that multiply those categorical variables by some of the other features.
+-
+  Q: How would you improve a model that seems to do really well on the training data but poorly in the real world.  #teacher #202006091500
+  A: You likely need to generalize or regularize the model. I would also do a hyper-parameter search to optimize the hyperparameters so that the model maximizes the performance that you care about. #student #202006091500 #EdLe
+-
+  Q: You see a column that contains city and sometimes state or county, what kind of variable is this in Data Science?   #202006091800 #SeOk
+  A: It's a categorical variable.
+  Q: Yes, but won't it contain a lot of unique values, kind of like the name of a person, you can treat it as a categorical variable but you can also treat a name like a special natural language variable. What kind of special variable is city, county, and state?
+  A: It's a geographic or location variable. It can be transformed to latitude and longitude and other useful information can be extracted like the distance from the centroid (mean) or distance to the nearest state capital.
+-
+  Q: Rather than dropping rows (records) for outliers, is there a better way to deal with outliers?  #student #202006091630 #ElHo
+  A: Plot the residuals (error) against each of your features, looking for some curvature or nonlinear shape that you recognize from algebra class, like `exp`, `x^2`, `1/x`. If you find a nonlinear pattern you can apply that transform to that feature variable and improve the accuracy of your model on both the outlier and the bulk of the data where the residual is already low.
+-
+  Q: How do I find and deal with spurious correlations? #student #202006091800 #YeHe
+  A: Without deep domain knowledge and experience a Data Scientist cannot detect spurious correlations. Only a scientist that performs experiments in the real world can detect causal relationships and spurrious correlations. Data Science performs experiments on data. Real science performs experiments on the real world, like randomized controled trials (RCTs). RCTs are the gold standard for identifying cause and effect relationships and spurious correlations. To  learn more, check out _The Book of Why_ by Judea Pearl.
+-
+  Q: How can I compose a hyperparameter table that includes both classifier F1-scores and regressor RMSE? #SaSa #202006100900 #student
+  A: Create a dictionary for each row in your hyper parameter table. You should have one row for every time you call a `model.fit()` method. Then you want to append that hyperparameter dictionary to a hyper parameter list. That list of dictionaries can be converted to a nicely formatted dataframe with `pd.DataFrame(hyperparameter_list_of_dicts)`. And for each model type it will contain different metrics (like RMSE or F1-score) and different hyperparameters as key value pairs. The DataFrame will just contain NaNs in the appropriate positions in your table where no key-value pair was present for a particular model.
+-
+  Q: How can I decide the right `min_df` for a `TFIDFVectorizer`? #student #GaLi
+  A: The `min_df` argument is a hyperparameter. Even the choice of a preprocessor, like `TFIDFVectorizer` is a hyperparameter. Any value, that when changed, affects the performance of your ML pipeline, that's a hyperparameter. It's your challenge to parameterize as much of your pipeline as possible so you can optimize your choices for each of those hyperparameter. In Data Science and Machine Learning, how do you decide which choice for a hyperparameter value is best? #teacher
+  A1: Since `min_df` can be parameterized and treated as a hyperparameter, you can use random or directed search or your intuition to try different values for `min_df`. You then compare the test set accuracy for each value for that hyperparameter. #student
+-
+  Q: When do I do `train_test_split()`? #AlDr #student #202006101000
+  A: After data cleaning and before spliting your columns into `X` and `y` to fit a model.
+-
+  Q: I'm training a model to predict home prices in Boston and my dataset has some homes with a price of $0. Should I drop rows for home prices with $0? #202006101030 #HaSe #student
+  A: Only if you think they are erroneous prices or some of the other features are errors.
+-
+  Q: Where can I find 311 call logs for New York City? #202006101100 #LjHe #student
+  A: The JSON REST API is located at [](https://data.cityofnewyork.us/resource/erm2-nwe9.json)
+  Q1: When I try to download data from the Socrata REST API at data.cityofnewyork.us/resource/erm2-nwe9.json it only returns 1000 records. I'd like to download the entire dataset.
+  A1: You'll need to add GET parameters like `?create_date=20200610` to the end of the url to download subsets of the dataset one at a time.
+-
+  Q: Why did you recommend I start with `n_components=10` in my PCA dimension reduction for a TFIDF vector? Why didn't you set a threshold on explained variance like 95%? #student #KeLa #202006111800
+  A: Because explained variance often doesn't measure what you care about. You care about test set accuracy or test set score. So try many different n_components values to search for the best hyperparameter value for your problem.
+-
+  Q: What are some good transformations to use during feature engineering? #NiSa #202006111830 #student
+  A: Some transformations to try would be `X**2`, `X**3`, `X**.5`, `X**-1`, `np.log(X)`, `np.exp(X)`, `X[:,0] * X[:,1]`, etc. There are an infinite number of transformations you could try. So do not search blindly. Instead, pay attention to the test set and training set accuracy after each transformation. This will help you make an informed guesses about each transformation you decide to try.
+-
+  Q: Is there a good way to filter out unimportant words like `the` or `of` when creating a Data Science model? #KeLa #student #202006141800
+  A: Yes, but you should not do it based on your human judgement and domain knowledge. Instead rely on the `TfidfVectorizer` to weight words according to their importance. If you cannot load all possible words or n-grams into memory for processing then you can set `min_df` and `max_df` to values like `min_df=10` and `max_df=.5`. Keep reducing `max_df` and increasing `min_df` until your pipeline runs quickly and you get an accuracy score. Then continue to tune the other hyperparameters of your pipeline to try to improve accuracy.
+-
+  Q: "My friends who work at large corporations, banks, and consulting firms find that they are mostly required to do software development and debugging of existing Data Science pipelines. Where can I find employers that provide more creative work developing new approaches to Data Science?" #202006160930 #MaJu #student
+  A: "Startups require employees to perform many roles. Data Scientists at startups often have architect databases and software while also designing and building data science pipelines. You can find startup job postings by following startups in your region and reading blogs and news sites that investors read, like Y-Combinator, AngelList, and TechCrunch. There's a good list of startup blogs on feedspot.com: https://blog.feedspot.com/startup_blogs/."
+-
+  Q: What kind of data science variable is a Amazon store star-rating for products like 5-stars and 2-stars?  #EdLe #20200616 #student
+  A: Ordinal, because it's a categorical variable with a natural order to it.
+-
+  Q: How do I decide what numerical value to associate with an ordinal variable?   #EdLe #20200616 #student
+  A: Easiest way is to assign consecutive integers to the sorted (ordered) categories and then apply a MinMaxScaler if you want the values to be within a particular range, like 0 to 1. Alternatively, if you have some idea of a nonlinear scale you want to apply then you can manually create a mapping from category names to numerical value that represents your understanding of that nonlinearity.
+-
+  Q: LinearRegression almost always produces lower accuracy than any other model, like KNN or RandomForest. What is the use of a LinearRegression in the real world? #student #SeOk #20200616
+  A: The results of a LinearRegression are very easy to explain and interpret, even for people without Data Science experience. Examine the coefficients of your model in the `.coeff_` attribute of a SciKit-Learn model to see if you can glean some useful insights from them.
+-
+  Q: Why do I get negative correlation score for the guided capstone 2 when I filter our NaNs and outliers?  #student #YeHe #20200616
+  A: If your testset contains all the records for a particular state (or any other categorical variable), then the coefficients in your model for that value of the categorical variable will be counterproductive. Since there are quite a few states with only 1 or 2 records, that can cause your model to fit poorly and give a negative score.
+-
+  Q: What is a good data science project that would impress employers? #student #202006170900
+  A: Reputation tracking on Twitter and other social media networks is something most businesses are interested in. So a sentiment analysis pipeline applied to Twitter feeds or public youtube comments would be a good project.
+-
+  Q: What goes on the x and y axis of a residual plot?
+  A: The x-axis should be the feature value that you are working on (doing feature engineering for). The vertical (y) axis should be the residual which equals y_pred - y_true.
+-
+  Q: My dataset contains a count of deaths by State, cause, and week of the year for the past few years. How should I process the dataset to create a testset to verify accuracy. #student #202006171000
+  A: In your training set, remove the last 4 weeks (records) for each state then use those records (50 states x 4 weeks = 200 records) as your test set.
+-
+  Q: What is target encoding?  #202006
+  A: When you have high cardinality categorical features you can use target encoding to create a single numerical feature for each categorical feature. You just replace the category ID with the mean of your target variable for that category. In a Pandas DataFrame this is `df['target_encoding'] = df.groupby('category_column_name').mean()`.
+-
+  Q: What are the advantages of target encoding vs. get_dummies (one-hot encoding)?
+  A: Target encoding only requires one continuous numerical column to store information about a categorical variable. One-hot encoding (`pd.get_dummies`) creates a binary variable for each possible categorical value in each categorical variable.
+-
+  Q: I'm trying to complete the statistical data analysis portion of my project. Do you have any tips for me? #student
+  A: Try choosing a target variable then choose one or two features that you think might be interesting, then calculate some statistics on those features. For example, if your target variable is continuous (like price) and one of the features you'd like to examine is categorical (like US state), then you might plot histograms of your target variable (price) within each of the categories (states) for that variable. You could also calculate the mean price for each US state and see if you seen anything interesting in those 50 mean prices. If your target is categorical and the interesting feature you want to examine is continuous, then you just flip the analysis around and calculate the mean on your feature for each category in your target.
+-
+  Q: What makes a good data science problem?
+  A: A good dataset that is much taller than it is wide. It should have a variety of variable types for features and target variables and have many more examples (rows) than it has features (columns).
+-
+  Q: What kinds of variables should I look for in a good machine learning dataset for learning?
+  A: "You want a variety of column types (variable types): continuous numeric variables, ordinal, categorical, NLP, date/time, and geographic (address, zip, city, lat/lon) variables."
+-
+  Q: I have categorical variables with a lot of NaNs or missing values. I filled them with the most frequent value within each category. Is this the right approach?
+  A: Usually that will make your model less accurate. You want to avoid using domain knowledge or intuition as much as possible when cleaning up your data. You want to extract information rather than add or change information in your table. So the best thing to do with NaNs in a categorical variable is to create a new category called "missing" or "unknown" or "NaN". You should create a different category for each kind of missing value ("", "unknown", "N/A", np.nan, "None") because these may represent different ways that missing values are created in your data.
+-
+  Q: How can I give weight to important words in my NLP pipeline?
+  A: Use a TFIDFVectorizer to create a vector for each document that automatically divides the counts for documents (term frequency that CountVectorizer computes) by the number of documents that word occurs in (inverse document fequency).
+-
+  Q: When I try to clone a repository from gitlab with a URL like this `git@gitlab.com:/tangibleai/qary` I get a permission denied error. Do I need to ask for permission to get access to this repository?
+  A: First, try visiting the repository [directly in your browser](gitlab.com/tangibleai/qary). Gitlab will give you helpful messages and popups if you do not have permission to access the repository, or your account hasn't been set up correctly.
+-
+  Q: How do I extract features from geographic data like latitude and longitude?  #student #springboard #SaSi #202006240900
+  A: "Typically you calculate the distance to landmarks or POIs (Points of Interest). This tutorial explains how to compute real distances in meters, but that's not necessary. Distances in degrees (latitude and longitude are in degrees) are fine: https://towardsdatascience.com/going-dutch-part-2-improving-a-machine-learning-model-using-geographical-data-a8492b67b885"
+-
+  Q: I've trained an NLP sentiment analysis model on financial reports that can predict SLOAN ratios and financial performance metrics a bit better than random chance. Is this good enough for a final report?  #student #springboard #GaLi #202006240930
+  A: "Yes. Summarize all the models you've trained with their accuracies in a single table. Then start on some explanations for why a particular model works best and why some features (words or LDA topics) are correlated with your target variable."
+-
+  Q: Why are chatbots useful in Healthcare? How can they be used effectively?
+  A: They are good for short, high value interactions with patients by automating parts of the workflow like patient intake. They help your providers and patients avoid time-consuming low-value interactions between humans. #JuneCho #pluralsight #2019 #talk #conference
+-
+  Q: What is one of the reasons people are dissatisfied with chatbots?
+  A: When someone needs help from a healthcare or mental healthcare bot, they want it to be able to interact with them quickly, anywhere, on demand. Also they expect chatbots to personalize the conversation with them in the same way a nurse would. They expect context-aware bots.
+-
+  Q: Why are chatbots useful in Healthcare? How can they be used effectively?
+  A: They are good for short, high value interactions with patients by automating parts of the workflow like patient intake. They help your providers and patients avoid time-consuming low-value interactions between humans. #JuneCho #pluralsight #2019 #talk #conference
+-
+  Q: Where should I deploy my first chatbot?
+  A: Within a messaging platform or forum where people are already interacting with you or your team or each other. Ideally this should be an internal system that isn't exposed to customers or beneficiaries until it is deemed useful. For example use it on Slack internally with your team before you deploy it to Twitter, Reddit, Facebook, or SMS.
+-
+  Q: What is a CDG (clinical decision guidelines)?
+  A: An example is the _Schmitt-Thompson Nurse Triage Guidelines_ a manual for
+
+-
+  Q: I don't have enough RAM to use `read_csv` on a large CSV file.
+  A: Create a skip_rows list of integers that skips 99% of the rows. `skip_rows = np.random.sample(range(1, n + 1))`  #student #springboard #LjHe #202006241030
+-
+  Q: What's a good way to sample a large CSV file for machine learning?  #student #springboard #LjHe #202006241030
+  A: "Create a skip_rows list of integers that skips 99% of the rows. `skip_rows = np.random.sample(range(1, n + 1))`"
+-
+  Q: How can I count the number of rows in a CSV file without loading it all into RAM.  #student #springboard #LjHe #202006241030
+  A: "You can count the lines by opening the file and iterating through it like this: `num_lines = sum(1 for line in open('filename.csv'))`. You may need to subtrace 1 from the total number of lines if there's a header row that you don't want to include in your count."
+-
+  Q: Why are chatbots useful in Healthcare? How can they be used effectively?
+  A: "They are good for short, high value interactions with patients by automating parts of the workflow like patient intake. They help your providers and patients avoid time-consuming low-value interactions between humans. #JuneCho #pluralsight #2019 #talk #conference"
+-
+  Q: Where should I deploy my first chatbot?
+  A: "Within a messaging platform or forum where people are already interacting with you or your team or each other. Ideally this should be an internal system that isn't exposed to customers or beneficiaries until it is deemed useful. For example use it on Slack internally with your team before you deploy it to Twitter, Reddit, Facebook, or SMS."
+-
+  Q: What is a CDG (clinical decision guidelines)?
+  A: An example is the _Schmitt-Thompson Nurse Triage Guidelines_ a manual for nurse triage decisions.
+-
+  Q: Where should I deploy my first chatbot?  #student
+  A: "Within a messaging platform or forum where people are already interacting with you or your team or each other. Ideally this should be an internal system that isn't exposed to customers or beneficiaries until it is deemed useful. For example use it on Slack internally with your team before you deploy it to Twitter, Reddit, Facebook, or SMS."
+-
+  Q: I don't have enough RAM to use `read_csv` on a large CSV file.  #student
+  A: "Create a skip_rows list of integers that skips 99% of the rows. `skip_rows = np.random.sample(range(1, n + 1))`  #student #springboard #LjHe #202006241030"
+-
+  Q: "What's a good way to sample a large CSV file for machine learning?  #student #springboard #LjHe #202006241030"
+  A: "Create a skip_rows list of integers that skips 99% of the rows. `skip_rows = np.random.sample(range(1, n + 1))`"
+-
+  Q: How can I count the number of rows in a CSV file without loading it all into RAM.  #student #springboard #LjHe #202006241030
+  A: "You can count the lines by opening the file and iterating through it like this: `num_lines = sum(1 for line in open('filename.csv'))`. You may need to subtrace 1 from the total number of lines if there's a header row that you don't want to include in your count."
+-
+  Q: "Where should I deploy my first chatbot?"  #student
+  A: "Within a messaging platform or forum where people are already interacting with you or your team or each other. Ideally this should be an internal system that isn't exposed to customers or beneficiaries until it is deemed useful. For example use it on Slack internally with your team before you deploy it to Twitter, Reddit, Facebook, or SMS."
+-
+  Q: "How can I use the `scipy.t.ppf()` function to calculate the critical value for a one-sided 95% confidence interval so that I could be 95% confident that a random draw would be above this value? #student #springboard #JuCh #202006241800"
+  A: "`scipy.t.ppf(0.05, len(samples)-1)` will give you the t-score for the critical value. You can then multiply that by the standard deviation and add the mean to get the minimum expected value for your 1-sided 95% confidence interval."
+-
+  Q: How can I use the `scipy.t.ppf()` function to calculate the critical value for a one-sided 95% confidence interval so that I could be 95% confident that a random draw would be above this value? #student #springboard #JuCh #202006241800
+  A: "`scipy.t.ppf(0.05, len(samples)-1)` will give you the t-score for the critical value. You can then multiply that by the standard deviation and add the mean to get the minimum expected value for your 1-sided 95% confidence interval."
+-
+  Q: I have downloaded an activity recognition dataset that includes recordings of dozens of parameters over time for thousands of sessions. Is this a good beginner project? #student #202006291530 #StKi
+  A1: What do you think? Is the dataset taller than it is wide? How many examples do you have for each dimension or feature in your dataset? Do you have a clear feature of the kind of variable in each feature? Is each of your features among the basic types your are familiar with, numeric, categorical, and ordinal? Are there many special features like date or time variables, location variables, or natural language variables? How many of these special variables are there? Are there any variables that are not among these basic and special variables that you are familiar with? #teacher #socratic
+  A2: No, this is a very advanced project. It is more complicated even than time series analysis or image recognition and classification. Each example record is multidimensional time series so it's another level more complicated than modeling a single time series, which is itself quite difficult. Just splitting your dataset into training and test sets would be challenging. Expanding window cross-validation might be required which is computationally expensive and complicated to set up correctly.
+-
+  Q: Imagine rolling a pair of dice. What is the probability of rolling a two (one plus one)?  #teacher
+  A-wrong: One out of six? One out of twelve?  #wrong #student
+-
+  Q: Imagine rolling a two on a pair of dice. What does it look like? It's often called "snake eyes". There's only one way that can happen. What are all the combinations of rolls you can get on a pair of dice? You could roll a one and a one, or a one and a two, or a one and a three and so on. Or you could roll a two and a one, a two and a two, or a two and a three and so on. If you counted up all the different ways you could roll two dice, how many would there be? It's not twelve.
+  A: Thirty Six.
+-
+  Q: Why is my root mean square error (RMSE) so much smaller than mean absolute error (MAE)?
+  A: That means you must have some outliers in your predictions that have large error. These can cause the RMSE to shift much more than the MAE.
+-
+  Q: What have you heard about Data Science in Telcom working in Quality Assurance?
+  A: It's often used to mine historical data for customer behavior prediction and predicting customer satisfaction or mobile phone coverage outages.
+-
+  Q: What is Google Colab?
+  A: It is a Jupyter Notebook service that allows you to run Jupyter Notebooks in a browser and share them with other without installing python or Anaconda on your computer.
+-
+  Q: What's a good visualization to use for EDA on categorical variables or `isnull()` binary variables?
+  A: You can visualize categorical variables on a scatter plot of other continuous variables using the color or the marker style to represent the categorical variable values. You can visualize a categorical variable on a histogram of a continuous variable by creating a histogram for each category as groups. Each category can be a different color, as on the scatterplot. And the histogram bars can be transparent so that the overlap between categories is apparent.
+-
+  Q: What do I need to create a natural language pipeline for sentiment analysis like predicting hate-speech?
+  A: You need a collection of texts labeled with whether or not each text represents hateful speech.
+-
+  Q: Can I use a collection of YouTube comments to build a sentiment analyzer?
+  A: Only if you have a numerical or categorical rating for the sentiment for each comment.
+
+
