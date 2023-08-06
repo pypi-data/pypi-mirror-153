@@ -1,0 +1,1016 @@
+tabs:
+  national: "NationalData"
+  subnational: "SubNationalData"
+
+googlesheets:
+  test: "https://docs.google.com/spreadsheets/d/1JOJUE853J3TFNYtBQgB8TOFNJdtfTzgqDVhaPK99q7A/edit"
+
+json:
+  additional_inputs:
+    - name: "Other"
+      source: "Some org"
+      source_url: "https://data.humdata.org/organization/world-bank-group"
+      format: "json"
+      url: "https://github.com/additional-json.json"
+      jsonpath: "[*]"
+  output: "test_scraper_all.json"
+  additional_outputs:
+    - filepath: "test_scraper_population.json"
+      tabs:
+        - tab: "national"
+          key: "cumulative"
+          filters:
+            "#country+code": "{{countries_to_save}}"
+          output:
+            - "#country+code"
+            - "#country+name"
+            - "#population"
+    - filepath: "test_scraper_population_2.json"
+      tabs:
+        - tab: "national"
+          key: "cumulative"
+          filters:
+            "#country+code":
+              - "AFG"
+          output:
+            - "#country+code"
+            - "#country+name"
+            - "#population"
+    - filepath: "test_scraper_other.json"
+      remove:
+        - "national"
+
+additional_sources:
+  - indicator: "#date+start+conflict"
+    source_date: "2022-02-24"
+    source: "Meduza"
+    source_url: "https://meduza.io/en/news/2022/02/24/putin-announces-start-of-military-operation-in-eastern-ukraine"
+
+# national
+scraper_national:
+  population:
+    source: "World Bank"
+    source_url: "https://data.humdata.org/organization/world-bank-group"
+    url: "http://api.worldbank.org/v2/en/indicator/SP.POP.TOTL?downloadformat=excel&dataformat=list"
+    format: "xls"
+    sheet: "Data"
+    headers: 3
+    sort:
+      keys:
+        - "Year"
+    admin:
+      - "Country Code"
+    admin_exact: True
+    date: "Year"
+    date_type: "year"
+    input:
+      - "Value"
+    output:
+      - "Population"
+    output_hxl:
+      - "#population"
+  # only for testing dividing by population
+  who_national:
+    source: "WHO"
+    url: "https://covid19.who.int/WHO-COVID-19-global-data.csv"
+    format: "csv"
+    admin:
+      - "Country_code"
+    date: "Date_reported"
+    date_type: "date"
+    use_date: True
+    input:
+      - "Cumulative_cases"
+      - "Cumulative_deaths"
+    process:
+      - "number_format(Cumulative_cases / #population * 100000, format='%.2f')"
+      - "number_format(Cumulative_deaths / #population * 100000, format='%.2f')"
+    output:
+      - "CasesPer100000"
+      - "DeathsPer100000"
+    output_hxl:
+      - "#affected+infected+per100000"
+      - "#affected+killed+per100000"
+  # A fake one where we sum all values in cumulative column across dates which in practice makes no sense
+  who_national2:
+    source: "WHO"
+    url: "https://covid19.who.int/WHO-COVID-19-global-data.csv"
+    format: "csv"
+    admin:
+      - "Country_code"
+    date: "Date_reported"
+    date_type: "date"
+    use_date: True
+    subsets:
+      - filter: "Date_reported == '2020-08-06'"
+        input:
+          - "Cumulative_cases"
+          - "Cumulative_deaths"
+        sum:
+          - formula: "number_format(Cumulative_cases / #population * 100000, format='%.2f')"
+            mustbepopulated: True
+          - formula: "number_format(Cumulative_deaths / #population * 100000, format='%.2f')"
+            mustbepopulated: True
+        output:
+          - "Cases2Per100000"
+          - "Deaths2Per100000"
+        output_hxl:
+          - "#affected+infected+2+per100000"
+          - "#affected+killed+2+per100000"
+  access:
+    source:
+      "#access+visas+pct": "OCHA"
+      "#access+travel+pct": "OCHA"
+      "#event+year+previous+num": "Aid Workers Database"
+      "#event+year+todate+num": "Aid Workers Database"
+      "#event+year+previous+todate+num": "Aid Workers Database"
+      "#activity+cerf+project+insecurity+pct": "UNCERF"
+      "#activity+cbpf+project+insecurity+pct": "UNCERF"
+      "#population+education": "UNESCO"
+      "default_source": "Multiple sources"
+    source_url:
+      "#event+year+previous+num": "https://data.humdata.org/dataset/security-incidents-on-aid-workers"
+      "#event+year+todate+num": "https://data.humdata.org/dataset/security-incidents-on-aid-workers"
+      "#event+year+previous+todate+num": "https://data.humdata.org/dataset/security-incidents-on-aid-workers"
+      "default_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRSzJzuyVt9i_mkRQ2HbxrUl2Lx2VIhkTHQM-laE8NyhQTy70zQTCuFS3PXbhZGAt1l2bkoA4_dAoAP/pub?gid=1565063847&single=true&output=csv"
+    format: "csv"
+    url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRSzJzuyVt9i_mkRQ2HbxrUl2Lx2VIhkTHQM-laE8NyhQTy70zQTCuFS3PXbhZGAt1l2bkoA4_dAoAP/pub?gid=574237756&single=true&output=csv"
+    use_hxl: True
+    sort:
+      keys:
+        - "#country+code"
+    transform:
+      "#access+visas+pct": "get_numeric_if_possible(#access+visas+pct)"
+      "#access+travel+pct": "get_numeric_if_possible(#access+travel+pct)"
+      "#activity+cerf+project+insecurity+pct": "get_numeric_if_possible(#activity+cerf+project+insecurity+pct)"
+      "#activity+cbpf+project+insecurity+pct": "get_numeric_if_possible(#activity+cbpf+project+insecurity+pct)"
+      "#population+education": "get_numeric_if_possible(#population+education)"
+  sadd:
+    source: "SADD"
+    source_date: "2020-08-07"
+    url: "https://globalhealth5050.org/?_covid-data=dataset-fullvars&_extype=csv"
+    format: "csv"
+    external_filter:
+      url: "https://github.com/mcarans/hdx-python-scraper/raw/main/tests/fixtures/sadd-countries-to-include.csv"
+      hxl:
+        - "#country+code+v_iso2"
+    admin:
+      - "Country code"
+    input:
+      - "Cases (% male)"
+      - "Cases (% female)"
+      - "Deaths (% male)"
+      - "Deaths (% female)"
+    transform:
+      "Cases (% male)": "get_numeric_if_possible(Cases (% male))"
+      "Cases (% female)": "get_numeric_if_possible(Cases (% female))"
+      "Deaths (% male)": "get_numeric_if_possible(Deaths (% male))"
+      "Deaths (% female)": "get_numeric_if_possible(Deaths (% female))"
+    process:
+      - "number_format(Cases (% male))"
+      - "number_format(Cases (% female))"
+      - "number_format(Deaths (% male))"
+      - "number_format(Deaths (% female))"
+    output:
+      - "Cases (% male)"
+      - "Cases (% female)"
+      - "Deaths (% male)"
+      - "Deaths (% female)"
+    output_hxl:
+      - "#affected+infected+m+pct"
+      - "#affected+f+infected+pct"
+      - "#affected+killed+m+pct"
+      - "#affected+f+killed+pct"
+  ourworldindata:
+    source: "Our World in Data"
+    url: "https://proxy.hxlstandard.org/data.csv?tagger-match-all=on&tagger-01-header=location&tagger-01-tag=%23country%2Bname&tagger-02-header=iso_code&tagger-02-tag=%23country%2Bcode&tagger-03-header=date&tagger-03-tag=%23date&tagger-04-header=total_vaccinations&tagger-04-tag=%23total%2Bvaccinations&tagger-08-header=daily_vaccinations&tagger-08-tag=%23total%2Bvaccinations%2Bdaily&url=https%3A%2F%2Fraw.githubusercontent.com%2Fowid%2Fcovid-19-data%2Fmaster%2Fpublic%2Fdata%2Fvaccinations%2Fvaccinations.csv&header-row=1&dest=data_view"
+    format: "csv"
+    use_hxl: True
+    external_filter:
+      url: "https://github.com/OCHA-DAP/hdx-python-scraper/raw/main/tests/fixtures/covax_2pacx-1vtvzu79pptfaa2syevoqfyrrjy63djwitqu0ffbxiqczoun9k9timwmrvfgg1rbsnlmgyugzseiaye2-pub-gid-992438980-single-true-output-csv.csv"
+      hxl:
+       - "#country+code"
+    admin:
+      - "#country+code"
+    date: "#date"
+    date_type: "date"
+    input:
+      - "#total+vaccinations"
+    process:
+      - "#total+vaccinations"
+      - "number_format((#total+vaccinations / 2) / #population)"
+    output:
+      - "TotalDosesAdministered"
+      - "PopulationCoverageAdministeredDoses"
+    output_hxl:
+      - "#capacity+doses+administered+total"
+      - "#capacity+doses+administered+coverage+pct"
+  # for testing broken url
+  broken_owd_url:
+    source: "Our World in Data"
+    url: "NOTEXIST.csv"
+    format: "csv"
+    use_hxl: True
+    external_filter:
+      url: "https://github.com/OCHA-DAP/hdx-python-scraper/raw/main/tests/fixtures/covax_2pacx-1vtvzu79pptfaa2syevoqfyrrjy63djwitqu0ffbxiqczoun9k9timwmrvfgg1rbsnlmgyugzseiaye2-pub-gid-992438980-single-true-output-csv.csv"
+      hxl:
+       - "#country+code"
+    admin:
+      - "#country+code"
+    date: "#date"
+    date_type: "date"
+    input:
+      - "#total+vaccinations"
+    output:
+      - "TotalDosesAdministered"
+    output_hxl:
+      - "#capacity+doses+administered+total"
+  covidtests:
+    source: "Our World in Data"
+    dataset: "total-covid-19-tests-performed-by-country"
+    url: "https://covid.ourworldindata.org/data/owid-covid-data.xlsx"
+    format: "xlsx"
+    prefilter: "new_tests is not None and new_tests > 0"
+    force_date_today: True
+    date: "date"
+    date_type: "date"
+    use_date: True
+    admin:
+      - "iso_code"
+    input:
+      - "new_tests"
+      - "new_tests_per_thousand"
+      - "new_tests_smoothed_per_thousand"
+      - "positive_rate"
+    output:
+      - "New Tests"
+      - "New Tests Per Thousand"
+      - "New Tests Per Thousand (7-day)"
+      - "Positive Test Rate"
+    output_hxl:
+      - "#affected+tested"
+      - "#affected+tested+per1000"
+      - "#affected+tested+avg+per1000"
+      - "#affected+tested+positive+pct"
+  idps:
+    dataset: "idmc-internally-displaced-persons-idps"
+    url: "https://data.humdata.org/dataset/459fc96c-f196-44c1-a0a5-1b5a7b3592dd/resource/0fb4e415-abdb-481a-a3c6-8821e79919be/download/displacement_data.csv"
+    format: "csv"
+    use_hxl: True
+    date: "#date+year"
+    date_type: "year"
+    input:
+      - "#affected+idps+ind+stock+conflict"
+      - "#affected+idps+ind+stock+disaster"
+    transform:
+      "#affected+idps+ind+stock+conflict": "int(#affected+idps+ind+stock+conflict) if #affected+idps+ind+stock+conflict else 0"
+      "#affected+idps+ind+stock+disaster": "int(#affected+idps+ind+stock+disaster) if #affected+idps+ind+stock+disaster else 0"
+    process:
+      - "#affected+idps+ind+stock+conflict + #affected+idps+ind+stock+disaster"
+    output:
+      - "TotalIDPs"
+    output_hxl:
+      - "#affected+displaced"
+  casualties:
+    source: "OHCHR"
+    source_url: "https://data.humdata.org/dataset/ukraine-key-figures-2022"
+    url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQIdedbZz0ehRC0b4fsWiP14R7MdtU1mpmwAkuXUPElSah2AWCURKGALFDuHjvyJUL8vzZAt3R1B5qg/pub?gid=0&single=true&output=csv"
+    format: "csv"
+    headers: 2
+    date: "Date"
+    date_type: "date"
+    ignore_future_date: False
+    admin_single: "UKR"
+    input:
+      - "Civilian casualities(OHCHR) - Killed"
+      - "Civilian casualities(OHCHR) - Injured"
+    output:
+      - "CiviliansKilled"
+      - "CiviliansInjured"
+    output_hxl:
+      - "#affected+killed"
+      - "#affected+injured"
+
+unhcr_myanmar_idps:
+  url: "https://data.unhcr.org/population/?widget_id=264111&geo_id=693&population_group=5407,4999"
+
+education_closures:
+    dataset: "global-school-closures-covid19"
+    resource: "School Closures"
+    url: "https://data.humdata.org/dataset/6a41be98-75b9-4365-9ea3-e33d0dd2668b/resource/3b5baa74-c928-4cbc-adba-bf543c5d3050/download/covid_impact_education.csv"
+    format: "csv"
+
+education_enrolment:
+    dataset: "global-school-closures-covid19"
+    resource: "Enrollment data"
+    url: "https://data.humdata.org/dataset/6a41be98-75b9-4365-9ea3-e33d0dd2668b/resource/cdd903ea-d1c0-461e-8c6e-08feb102f9cb/download/countries-enrollment-data-uis-feb-22.xlsx"
+    format: "xlsx"
+
+scraper_global:
+  covax:
+    source: "covax"
+    source_date: "2020-08-07"
+    url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVzu79PPTfaA2syevOQfyRRjy63dJWitqu0fFbXIQCzoUn9K9TiMWMRvFGg1RBsnLmgYugzSEiAye2/pub?gid=992438980&single=true&output=csv"
+    format: "csv"
+    use_hxl: True
+    admin:
+      - "#country+code"
+    input:
+      - "#capacity+covax+total"
+      - "#capacity+covax+delivered+doses"
+      - "#capacity+others+delivered+doses"
+      - "#capacity+delivered+total"
+      - "#capacity+covax+pfizerbiontech+doses"
+      - "#capacity+covax+azsii+doses"
+      - "#capacity+covax+azskbio+doses"
+    input_ignore_vals:
+      - "N/A"
+    transform:
+      "#capacity+covax+total": "get_numeric_if_possible(#capacity+covax+total) if #capacity+covax+total else 0"
+      "#capacity+covax+delivered+doses": "get_numeric_if_possible(#capacity+covax+delivered+doses) if #capacity+covax+delivered+doses else 0"
+      "#capacity+others+delivered+doses": "get_numeric_if_possible(#capacity+others+delivered+doses) if #capacity+others+delivered+doses else 0"
+      "#capacity+delivered+total": "get_numeric_if_possible(#capacity+delivered+total) if #capacity+delivered+total else 0"
+      "#capacity+covax+pfizerbiontech+doses": "get_numeric_if_possible(#capacity+covax+pfizerbiontech+doses) if #capacity+covax+pfizerbiontech+doses else 0"
+      "#capacity+covax+azsii+doses": "get_numeric_if_possible(#capacity+covax+azsii+doses) if #capacity+covax+azsii+doses else 0"
+      "#capacity+covax+azskbio+doses": "get_numeric_if_possible(#capacity+covax+azskbio+doses) if #capacity+covax+azskbio+doses else 0"
+    sum:
+      - formula: "number_format(#capacity+covax+total, format='%.0f')"
+        mustbepopulated: False
+      - formula: "number_format(#capacity+covax+delivered+doses, format='%.0f')"
+        mustbepopulated: False
+      - formula: "number_format(#capacity+others+delivered+doses, format='%.0f')"
+        mustbepopulated: False
+      - formula: "number_format(#capacity+delivered+total, format='%.0f')"
+        mustbepopulated: False
+      - formula: "number_format(#capacity+covax+pfizerbiontech+doses, format='%.0f')"
+        mustbepopulated: False
+      - formula: "number_format(#capacity+covax+azsii+doses, format='%.0f')"
+        mustbepopulated: False
+      - formula: "number_format(#capacity+covax+azskbio+doses, format='%.0f')"
+        mustbepopulated: False
+    output:
+      - "Covax Interim Forecast Doses"
+      - "Covax Delivered Doses"
+      - "Other Delivered Doses"
+      - "Total Delivered Doses"
+      - "Covax Pfizer-BioNTech Doses"
+      - "Covax Astrazeneca-SII Doses"
+      - "Covax Astrazeneca-SKBio Doses"
+    output_hxl:
+      - "#capacity+doses+forecast+covax"
+      - "#capacity+doses+delivered+covax"
+      - "#capacity+doses+delivered+others"
+      - "#capacity+doses+delivered+total"
+      - "#capacity+doses+covax+pfizerbiontech"
+      - "#capacity+doses+covax+astrazenecasii"
+      - "#capacity+doses+covax+astrazenecaskbio"
+  ourworldindata:
+    source: "Our World in Data"
+    url: "https://proxy.hxlstandard.org/data.csv?tagger-match-all=on&tagger-01-header=location&tagger-01-tag=%23country%2Bname&tagger-02-header=iso_code&tagger-02-tag=%23country%2Bcode&tagger-03-header=date&tagger-03-tag=%23date&tagger-04-header=total_vaccinations&tagger-04-tag=%23total%2Bvaccinations&tagger-08-header=daily_vaccinations&tagger-08-tag=%23total%2Bvaccinations%2Bdaily&url=https%3A%2F%2Fraw.githubusercontent.com%2Fowid%2Fcovid-19-data%2Fmaster%2Fpublic%2Fdata%2Fvaccinations%2Fvaccinations.csv&header-row=1&dest=data_view"
+    format: "csv"
+    use_hxl: True
+    external_filter:
+      url: "https://github.com/OCHA-DAP/hdx-python-scraper/raw/main/tests/fixtures/covax_2pacx-1vtvzu79pptfaa2syevoqfyrrjy63djwitqu0ffbxiqczoun9k9timwmrvfgg1rbsnlmgyugzseiaye2-pub-gid-992438980-single-true-output-csv.csv"
+      hxl:
+       - "#country+code"
+    admin:
+      - "#country+code"
+    date: "#date"
+    date_type: "date"
+    date_level: "national"
+    input:
+      - "#total+vaccinations"
+    sum:
+      - formula: "number_format(#total+vaccinations, format='%.0f')"
+        mustbepopulated: False
+    output:
+      - "TotalDosesAdministered"
+    output_hxl:
+      - "#capacity+doses+administered+total"
+  cerf_global:
+    dataset: "cerf-covid-19-allocations"
+    url: "https://cbpfgms.github.io/pfbi-data/download/full_pfmb_allocations.csv"
+    format: "csv"
+    force_date_today: True
+    date: "AllocationYear"
+    date_type: "year"
+    single_maxdate: True
+    filter_cols:
+      - "FundType"
+      - "GenderMarker"
+    subsets:
+      - filter: "FundType == 'CBPF'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFunding"
+        output_hxl:
+          - "#value+cbpf+funding+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker is None"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGMEmpty"
+        output_hxl:
+          - "#value+cbpf+funding+gmempty+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '0'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM0"
+        output_hxl:
+          - "#value+cbpf+funding+gm0+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '1'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM1"
+        output_hxl:
+          - "#value+cbpf+funding+gm1+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '2'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM2"
+        output_hxl:
+          - "#value+cbpf+funding+gm2+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '3'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM3"
+        output_hxl:
+          - "#value+cbpf+funding+gm3+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '4'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM4"
+        output_hxl:
+          - "#value+cbpf+funding+gm4+total+usd"
+      - filter: "FundType == 'CERF'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFunding"
+        output_hxl:
+          - "#value+cerf+funding+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker is None"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGMEmpty"
+        output_hxl:
+          - "#value+cerf+funding+gmempty+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '0'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM0"
+        output_hxl:
+          - "#value+cerf+funding+gm0+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '1'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM1"
+        output_hxl:
+          - "#value+cerf+funding+gm1+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '2'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM2"
+        output_hxl:
+          - "#value+cerf+funding+gm2+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '3'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM3"
+        output_hxl:
+          - "#value+cerf+funding+gm3+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '4'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM4"
+        output_hxl:
+          - "#value+cerf+funding+gm4+total+usd"
+  # for testing broken url with subsets
+  broken_cerf_url:
+    dataset: "cerf-covid-19-allocations"
+    url: "NOTEXIST.csv"
+    format: "csv"
+    force_date_today: True
+    date: "AllocationYear"
+    date_type: "year"
+    single_maxdate: True
+    filter_cols:
+      - "FundType"
+      - "GenderMarker"
+    subsets:
+      - filter: "FundType == 'CBPF'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFunding"
+        output_hxl:
+          - "#value+cbpf+funding+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker is None"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGMEmpty"
+        output_hxl:
+          - "#value+cbpf+funding+gmempty+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '0'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM0"
+        output_hxl:
+          - "#value+cbpf+funding+gm0+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '1'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM1"
+        output_hxl:
+          - "#value+cbpf+funding+gm1+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '2'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM2"
+        output_hxl:
+          - "#value+cbpf+funding+gm2+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '3'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM3"
+        output_hxl:
+          - "#value+cbpf+funding+gm3+total+usd"
+      - filter: "FundType == 'CBPF' and GenderMarker == '4'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CBPFFundingGM4"
+        output_hxl:
+          - "#value+cbpf+funding+gm4+total+usd"
+      - filter: "FundType == 'CERF'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFunding"
+        output_hxl:
+          - "#value+cerf+funding+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker is None"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGMEmpty"
+        output_hxl:
+          - "#value+cerf+funding+gmempty+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '0'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM0"
+        output_hxl:
+          - "#value+cerf+funding+gm0+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '1'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM1"
+        output_hxl:
+          - "#value+cerf+funding+gm1+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '2'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM2"
+        output_hxl:
+          - "#value+cerf+funding+gm2+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '3'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM3"
+        output_hxl:
+          - "#value+cerf+funding+gm3+total+usd"
+      - filter: "FundType == 'CERF' and GenderMarker == '4'"
+        input:
+          - "Budget"
+        transform:
+          Budget: "float(Budget)"
+        sum:
+          - formula: "Budget"
+            mustbepopulated: False
+        output:
+          - "CERFFundingGM4"
+        output_hxl:
+          - "#value+cerf+funding+gm4+total+usd"
+
+
+other:
+  population_other:
+    source: "World Bank"
+    source_url: "https://data.humdata.org/organization/world-bank-group"
+    url: "http://api.worldbank.org/v2/en/indicator/SP.POP.TOTL?downloadformat=excel&dataformat=list"
+    format: "xls"
+    sheet: "Data"
+    headers: 3
+    sort:
+      keys:
+        - "Year"
+    admin:
+      - "Country Code"
+    admin_filter:
+      - "WLD"
+    date: "Year"
+    date_type: "year"
+    input:
+      - "Value"
+    population_key: "global"
+    output:
+      - "Population"
+    output_hxl:
+      - "#population"
+  gam_other:
+    source: "UNICEF"
+    url: "https://data.humdata.org/dataset/87b86e7d-e9b2-4922-a48e-1f10afd528e6/resource/eabba7e7-16d0-436c-a62c-df6edd03be7c/download/unicef_who_wb_global_expanded_databases_severe_wasting.xlsx"
+    format: "xlsx"
+    sheet: "Trend"
+    headers:
+      - 3
+      - 4
+    flatten:
+      - original: "Region {{1}} Region Name"
+        new: "Region Name"
+      - original: "Region {{1}} Point Estimate"
+        new: "Region Point Estimate"
+    admin:
+      - "ISO"
+      - "Region Name"
+    admin_filter:
+      - ["AFG"]
+      - ["AF09", "AF24"]
+    date: "Year*"
+    date_type: "year"
+    input:
+      - "Region Point Estimate"
+    output:
+      - "Malnutrition Estimate"
+    output_hxl:
+      - "#severity+malnutrition+num+subnational"
+  ourworldindata_other:
+    source: "Our World in Data"
+    url: "https://proxy.hxlstandard.org/data.csv?tagger-match-all=on&tagger-01-header=location&tagger-01-tag=%23country%2Bname&tagger-02-header=iso_code&tagger-02-tag=%23country%2Bcode&tagger-03-header=date&tagger-03-tag=%23date&tagger-04-header=total_vaccinations&tagger-04-tag=%23total%2Bvaccinations&tagger-08-header=daily_vaccinations&tagger-08-tag=%23total%2Bvaccinations%2Bdaily&url=https%3A%2F%2Fraw.githubusercontent.com%2Fowid%2Fcovid-19-data%2Fmaster%2Fpublic%2Fdata%2Fvaccinations%2Fvaccinations.csv&header-row=1&dest=data_view"
+    format: "csv"
+    use_hxl: True
+    admin:
+      - "#country+code"
+    admin_filter:
+      - "OWID_WRL"
+    date: "#date"
+    date_type: "date"
+    date_level: "national"
+    input:
+      - "#total+vaccinations"
+    output:
+      - "TotalDosesAdministered"
+    output_hxl:
+      - "#capacity+doses+administered+total"
+  altworldindata:
+    source: "Our World in Data"
+    url: "https://proxy.hxlstandard.org/data.csv?tagger-match-all=on&tagger-01-header=location&tagger-01-tag=%23country%2Bname&tagger-02-header=iso_code&tagger-02-tag=%23country%2Bcode&tagger-03-header=date&tagger-03-tag=%23date&tagger-04-header=total_vaccinations&tagger-04-tag=%23total%2Bvaccinations&tagger-08-header=daily_vaccinations&tagger-08-tag=%23total%2Bvaccinations%2Bdaily&url=https%3A%2F%2Fraw.githubusercontent.com%2Fowid%2Fcovid-19-data%2Fmaster%2Fpublic%2Fdata%2Fvaccinations%2Fvaccinations.csv&header-row=1&dest=data_view"
+    format: "csv"
+    use_hxl: True
+    filter_cols:
+      - "#country+code"
+    prefilter: "#country+code == 'OWID_WRL'"
+    date: "#date"
+    date_type: "date"
+    input:
+      - "#total+vaccinations"
+    population_key: "global"
+    process:
+      - "#total+vaccinations"
+      - "number_format((#total+vaccinations / 2) / #population)"
+    output:
+      - "TotalDosesAdministered"
+      - "PopulationCoverageAdministeredDoses"
+    output_hxl:
+      - "#capacity+doses+administered+total"
+      - "#capacity+doses+administered+coverage+pct"
+
+scraper_subnational:
+  gam:
+    source: "UNICEF"
+    url: "https://data.humdata.org/dataset/87b86e7d-e9b2-4922-a48e-1f10afd528e6/resource/eabba7e7-16d0-436c-a62c-df6edd03be7c/download/unicef_who_wb_global_expanded_databases_severe_wasting.xlsx"
+    format: "xlsx"
+    sheet: "Trend"
+    headers:
+      - 3
+      - 4
+    flatten:
+      - original: "Region {{1}} Region Name"
+        new: "Region Name"
+      - original: "Region {{1}} Point Estimate"
+        new: "Region Point Estimate"
+    admin:
+      - "ISO"
+      - "Region Name"
+    date: "Year*"
+    date_type: "year"
+    input:
+      - "Region Point Estimate"
+    output:
+      - "Malnutrition Estimate"
+    output_hxl:
+      - "#severity+malnutrition+num+subnational"
+
+# aggregation
+aggregation_hxl:
+  aggregation_sum:
+    "#population":
+      action: "sum"
+
+  aggregation_mean:
+    "#population":
+      action: "mean"
+
+  aggregation_range:
+    "#population":
+      action: "range"
+
+  aggregation_global:
+    "#population":
+      action: "sum"
+      population_key: "global"
+    "#affected+infected+per100000":
+      action: "mean"
+    "#affected+infected+perpop":
+      output: "CasesPerPopulation"
+      input:
+        - "#affected+infected+per100000"
+      action: "eval"
+      population_key: "global"
+      formula: "number_format(#affected+infected+per100000 * 100000 / #population)"
+
+aggregation_nohxl:
+  aggregation_sum:
+    "Population":
+      action: "sum"
+
+  aggregation_mean:
+    "Population":
+      action: "mean"
+
+  aggregation_range:
+    "Population":
+      action: "range"
+
+  aggregation_global:
+    "Population":
+      action: "sum"
+      population_key: "allregions"
+    "CasesPer100000":
+      action: "mean"
+    "CasesPerPopulation":
+      output: "#affected+infected+perpop"
+      input:
+        - "CasesPer100000"
+      action: "eval"
+      population_key: "allregions"
+      formula: "number_format(CasesPer100000 * 100000 / #population)"
+
+timeseries:
+  casualties:
+    source: "OHCHR"
+    source_url: "https://data.humdata.org/dataset/ukraine-key-figures-2022"
+    dataset: "ukraine-who-does-what-where-3w"
+    url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQIdedbZz0ehRC0b4fsWiP14R7MdtU1mpmwAkuXUPElSah2AWCURKGALFDuHjvyJUL8vzZAt3R1B5qg/pub?gid=0&single=true&output=csv"
+    format: "csv"
+    headers: 2
+    date: "Date"
+    date_type: "date"
+    date_hxl: "#date"
+    input:
+      - "Civilian casualities(OHCHR) - Killed"
+      - "Civilian casualities(OHCHR) - Injured"
+    output:
+      - "CiviliansKilled"
+      - "CiviliansInjured"
+    output_hxl:
+      - "#affected+killed"
+      - "#affected+injured"
+
+copyfiles:
+  - dataset: "ukraine-border-crossings"
+    format: "xlsx"
+    filename: "my_output.xlsx"
+    hxltag: "#xlsx"
+
+HRPs:
+  - AFG
+  - BDI
+  - BFA
+  - CAF
+  - CMR
+  - COD
+  - COL
+  - ETH
+  - HTI
+  - IRQ
+  - LBY
+  - MLI
+  - MMR
+  - MOZ
+  - NER
+  - NGA
+  - PAK
+  - PSE
+  - SDN
+  - SOM
+  - SSD
+  - SYR
+  - TCD
+  - UKR
+  - VEN
+  - YEM
+  - ZWE
+
+admin1_info:
+  - {pcode: AF01, name: Kabul, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF02, name: Kapisa, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF03, name: Parwan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF04, name: Maidan Wardak, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF05, name: Logar, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF06, name: Nangarhar, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF07, name: Laghman, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF08, name: Panjsher, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF09, name: Baghlan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF10, name: Bamyan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF11, name: Ghazni, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF12, name: Paktika, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF13, name: Paktya, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF14, name: Khost, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF15, name: Kunar, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF16, name: Nuristan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF17, name: Badakhshan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF18, name: Takhar, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF19, name: Kunduz, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF20, name: Samangan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF21, name: Balkh, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF22, name: Sar E Pul, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF23, name: Ghor, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF24, name: Daykundi, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF25, name: Uruzgan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF26, name: Zabul, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF27, name: Kandahar, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF28, name: Jawzjan, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF29, name: Faryab, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF30, name: Hilmand, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF31, name: Badghis, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF32, name: Hirat, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF33, name: Farah, iso2: AF, iso3: AFG, country: Afghanistan}
+  - {pcode: AF34, name: Nimroz, iso2: AF, iso3: AFG, country: Afghanistan}
