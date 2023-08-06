@@ -1,0 +1,34 @@
+freebsd_instance:
+  image_family: freebsd-12-2
+
+env:
+  RUST_BACKTRACE: 1
+  # Workaround `error: sysinfo not supported on this platform`
+  # seen on FreeBSD platforms, affecting rustup
+  #
+  # References: https://github.com/rust-lang/rustup/issues/2774
+  RUSTUP_IO_THREADS: 1
+
+freebsd_task:
+  name: $TOOLCHAIN x86_64-unknown-freebsd
+  env:
+    matrix:
+      - TOOLCHAIN: stable
+  registry_cache:
+    folder: $HOME/.cargo/registry
+    fingerprint_script: cat Cargo.lock
+  target_cache:
+    folder: target
+    fingerprint_script:
+      - cat Cargo.lock
+  install_script:
+    - pkg install -y curl bash python
+  setup_script:
+    - curl https://sh.rustup.rs -sSf --output rustup.sh
+    - sh rustup.sh -y --default-toolchain $TOOLCHAIN
+    - python -m ensurepip
+    - python -m pip install --upgrade cffi virtualenv
+  build_script:
+    - $HOME/.cargo/bin/rustup run $TOOLCHAIN cargo build
+  test_script:
+    - $HOME/.cargo/bin/rustup run $TOOLCHAIN cargo test
