@@ -1,0 +1,102 @@
+
+/control/execute mac/verbose.mac
+
+#=====================================================
+# GEOMETRY
+#=====================================================
+
+/gate/geometry/setMaterialDatabase data/GateMaterials.db
+
+# World
+/gate/world/geometry/setXLength 2 m
+/gate/world/geometry/setYLength 2 m
+/gate/world/geometry/setZLength 2 m
+/gate/world/setMaterial G4_AIR
+
+# no colli !
+#/control/execute mac/spect_head.mac
+/control/execute mac/spect_head2.mac
+#/control/execute mac/spect_head_large.mac
+/control/execute mac/spect_digit.mac
+
+
+#=====================================================
+# PHYSICS
+#=====================================================
+
+/gate/physics/addPhysicsList emstandard_opt4
+
+/gate/physics/Gamma/SetCutInRegion      world 0.01 mm
+/gate/physics/Electron/SetCutInRegion   world 0.01 mm
+/gate/physics/Positron/SetCutInRegion   world 1 mm
+/gate/physics/Proton/SetCutInRegion     world 1 mm
+
+/gate/physics/displayCuts
+
+
+#=====================================================
+# OUTPUT
+#=====================================================
+
+/gate/actor/addActor              SimulationStatisticActor stat
+/gate/actor/stat/save             output/stats.txt
+
+/control/execute mac/output.mac
+
+#=====================================================
+# INITIALISATION
+#=====================================================
+
+/gate/run/initialize
+#/control/execute mac/visu.mac
+
+
+#=====================================================
+# BEAMS
+#=====================================================
+
+/gate/source/addSource mybeam1 gps
+/gate/source/mybeam1/setActivity 40000 Bq
+#/gate/source/mybeam1/setActivity 20 Bq
+/gate/source/mybeam1/gps/particle gamma
+/gate/source/mybeam1/gps/ene/mono 333 keV
+/gate/source/mybeam1/gps/pos/type Volume
+/gate/source/mybeam1/gps/pos/shape Sphere
+/gate/source/mybeam1/gps/pos/radius 5 cm
+/gate/source/mybeam1/gps/pos/centre 0 0 0 cm
+/gate/source/mybeam1/gps/direction 0 0 1
+#/gate/source/mybeam1/gps/angtype iso
+
+/gate/source/addSource mybeam2 gps
+/gate/source/mybeam2/setActivity 40000 Bq
+#/gate/source/mybeam2/setActivity 20 Bq
+/gate/source/mybeam2/gps/particle gamma
+/gate/source/mybeam2/gps/ene/mono 222 keV
+/gate/source/mybeam2/gps/pos/type Volume
+/gate/source/mybeam2/gps/pos/shape Sphere
+/gate/source/mybeam2/gps/pos/radius 5 cm
+/gate/source/mybeam2/gps/pos/centre 0 0 0 cm
+/gate/source/mybeam2/gps/direction 0 0 -1
+#/gate/source/mybeam1/gps/angtype iso
+
+
+#=====================================================
+# START BEAMS
+#=====================================================
+
+# JamesRandom Ranlux64 MersenneTwister
+/gate/random/setEngineName MersenneTwister
+/gate/random/setEngineSeed auto
+
+/run/verbose 1
+# /gate/random/verbose 1
+# /gate/source/verbose 0
+
+# to check Steplimiter
+# /tracking/verbose 1
+
+/gate/application/setTimeStart 0 s
+/gate/application/setTimeSlice 1 s
+/gate/application/setTimeStop  1 s
+/gate/application/startDAQ
+

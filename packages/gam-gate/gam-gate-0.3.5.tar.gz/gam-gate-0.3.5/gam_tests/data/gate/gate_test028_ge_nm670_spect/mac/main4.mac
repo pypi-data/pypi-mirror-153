@@ -1,0 +1,139 @@
+
+#=====================================================
+/control/execute mac/verbose.mac
+#/control/execute mac/visu.mac
+
+#=====================================================
+# GEOMETRY
+#=====================================================
+
+/gate/geometry/setMaterialDatabase data/GateMaterials.db
+
+# World
+/gate/world/geometry/setXLength 1 m
+/gate/world/geometry/setYLength 1 m
+/gate/world/geometry/setZLength 1 m
+/gate/world/setMaterial G4_AIR
+
+# SPECT imaging system
+/control/alias RADIONUCLIDE Tc99m
+/control/alias COLLIMATOR lehr
+/control/alias SPECT_RADIUS 15
+/control/alias SPECT_PSD_POSITION 6.11
+/control/alias SPEED 15 # deg/sec
+
+#/control/execute mac/spect.mac
+/control/execute mac/spect_alias_{RADIONUCLIDE}.mac
+/control/execute mac/spect_head.mac
+
+/control/execute mac/spect_collimator_{COLLIMATOR}.mac
+/control/execute mac/spect_digitizer_{RADIONUCLIDE}_fake.mac
+#/control/execute mac/spect_digitizer_{RADIONUCLIDE}.mac
+/control/execute mac/spect_translation.mac
+/control/execute mac/spect_rotation.mac
+/control/listAlias
+
+# waterbox
+/gate/world/daughters/name              waterbox
+/gate/world/daughters/insert            box
+/gate/waterbox/geometry/setXLength      15 cm
+/gate/waterbox/geometry/setYLength      15 cm
+/gate/waterbox/geometry/setZLength      15 cm
+/gate/waterbox/setMaterial G4_WATER
+/gate/waterbox/vis/setVisible 1
+/gate/waterbox/vis/setColor blue
+
+#=====================================================
+# PHYSICS
+#=====================================================
+
+/gate/physics/addPhysicsList emstandard_opt4
+
+/gate/physics/Gamma/SetCutInRegion      world 10 mm
+/gate/physics/Electron/SetCutInRegion   world 10 mm
+/gate/physics/Positron/SetCutInRegion   world 10 mm
+/gate/physics/Proton/SetCutInRegion     world 10 mm
+
+/gate/physics/Gamma/SetCutInRegion      SPECThead 0.1 mm
+/gate/physics/Electron/SetCutInRegion   SPECThead 0.1 mm
+/gate/physics/Positron/SetCutInRegion   SPECThead 0.1 mm
+
+/gate/physics/displayCuts
+
+
+#=====================================================
+# OUTPUT
+#=====================================================
+
+/gate/actor/addActor              SimulationStatisticActor stat
+/gate/actor/stat/save             output/stat4.txt
+
+/control/execute mac/output_projections_{RADIONUCLIDE}.mac
+/gate/output/projection/setFileName output/projection4
+
+#=====================================================
+# INITIALISATION
+#=====================================================
+
+/gate/run/initialize
+
+
+#=====================================================
+# BEAMS
+#=====================================================
+
+/control/alias ACTIVITY_KBQ 1000
+
+/gate/source/addSource mybeam1 gps
+/gate/source/mybeam1/attachTo waterbox
+/gate/source/mybeam1/setActivity {ACTIVITY_KBQ} kBq
+/gate/source/mybeam1/gps/particle gamma
+/gate/source/mybeam1/gps/ene/mono 140.5 keV
+/gate/source/mybeam1/gps/pos/type Volume
+/gate/source/mybeam1/gps/pos/shape Sphere
+/gate/source/mybeam1/gps/pos/radius 1 cm
+/gate/source/mybeam1/gps/pos/centre 0 0 0 cm
+/gate/source/mybeam1/gps/angtype iso
+
+/gate/source/addSource mybeam2 gps
+/gate/source/mybeam2/attachTo waterbox
+/gate/source/mybeam2/setActivity {ACTIVITY_KBQ} kBq
+/gate/source/mybeam2/gps/particle gamma
+/gate/source/mybeam2/gps/ene/mono 140.5 keV
+/gate/source/mybeam2/gps/pos/type Volume
+/gate/source/mybeam2/gps/pos/shape Sphere
+/gate/source/mybeam2/gps/pos/radius 3 cm
+/gate/source/mybeam2/gps/pos/centre 18 0 0 cm
+/gate/source/mybeam2/gps/angtype iso
+
+/gate/source/addSource mybeam3 gps
+/gate/source/mybeam3/attachTo waterbox
+/gate/source/mybeam3/setActivity {ACTIVITY_KBQ} kBq
+/gate/source/mybeam3/gps/particle gamma
+/gate/source/mybeam3/gps/ene/mono 140.5 keV
+/gate/source/mybeam3/gps/pos/type Volume
+/gate/source/mybeam3/gps/pos/shape Sphere
+/gate/source/mybeam3/gps/pos/radius 1 cm
+/gate/source/mybeam3/gps/pos/centre 0 10 0 cm
+/gate/source/mybeam3/gps/angtype iso
+
+#=====================================================
+# START BEAMS
+#=====================================================
+
+# JamesRandom Ranlux64 MersenneTwister
+/gate/random/setEngineName MersenneTwister
+/gate/random/setEngineSeed auto
+
+/run/verbose 1
+# /gate/random/verbose 1
+# /gate/source/verbose 0
+
+# to check Steplimiter
+# /tracking/verbose 1
+
+/gate/application/setTimeStart 0 s
+/gate/application/setTimeSlice 1 s
+/gate/application/setTimeStop  1 s
+/gate/application/startDAQ
+

@@ -1,0 +1,60 @@
+
+# Default orientation is collimator look towards Z axis (photon going towards collimator are -Z)
+# Rotation around X to start looking towards Y, like CT image.
+
+# SPECT Head: main volume, everything is included in SPECThead
+# the name MUST be SPECThead
+/gate/world/daughters/name SPECThead
+/gate/world/daughters/insert box
+/gate/SPECThead/geometry/setXLength 55 cm
+/gate/SPECThead/geometry/setYLength 42 cm
+/gate/SPECThead/geometry/setZLength 18 cm
+/gate/SPECThead/setMaterial G4_AIR
+/gate/SPECThead/vis/setColor white
+/gate/SPECThead/placement/setTranslation  0 0 15 cm
+
+
+# crystal box
+/gate/SPECThead/daughters/name crystal
+/gate/SPECThead/daughters/insert box
+/gate/crystal/geometry/setXLength 55 cm
+/gate/crystal/geometry/setYLength 42 cm
+/gate/crystal/geometry/setZLength 2 cm
+/gate/crystal/placement/setTranslation  0 0 4 cm
+/gate/crystal/setMaterial Plastic
+/gate/crystal/vis/setColor red
+
+# crystal block
+/gate/crystal/daughters/name crystal_voxel
+/gate/crystal/daughters/insert box
+/gate/crystal_voxel/geometry/setXLength 0.5 cm
+/gate/crystal_voxel/geometry/setYLength 0.5 cm
+/gate/crystal_voxel/geometry/setZLength 2 cm
+/gate/crystal_voxel/setMaterial NaITl
+/gate/crystal_voxel/vis/setColor yellow
+
+# repeated voxelized crystal_voxel blocks
+/gate/crystal_voxel/repeaters/insert cubicArray
+/gate/crystal_voxel/cubicArray/setRepeatNumberX 110
+/gate/crystal_voxel/cubicArray/setRepeatNumberY 84
+/gate/crystal_voxel/cubicArray/setRepeatNumberZ 1
+/gate/crystal_voxel/cubicArray/setRepeatVector 0.5 0.5 0 cm
+
+
+# repeated head
+/gate/SPECThead/repeaters/insert ring
+/gate/SPECThead/ring/setRepeatNumber 2
+/gate/SPECThead/ring/setPoint1 0. 1. 0. mm
+/gate/SPECThead/ring/setPoint2 0. 0. 0. mm
+/gate/SPECThead/ring/setFirstAngle 0 deg
+/gate/SPECThead/ring/setAngularSpan 180 deg
+
+
+# special command to say that this volume is the crystal
+/gate/systems/SPECThead/crystal/attach crystal
+/gate/systems/SPECThead/pixel/attach crystal_voxel
+
+# This is needed !
+/gate/crystal/attachCrystalSD
+/gate/crystal_voxel/attachCrystalSD
+
