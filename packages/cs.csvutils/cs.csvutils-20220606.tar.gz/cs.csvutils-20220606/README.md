@@ -1,0 +1,111 @@
+Utility functions for CSV files.
+
+*Latest release 20220606*:
+* Make csv_reader() a generator to cue the @strable decorator.
+* Plumb the new optional snake_case parameter.
+
+In python 2 the stdlib CSV reader reads 8 bit byte data and returns str objects;
+these need to be decoded into unicode objects.
+In python 3 the stdlib CSV reader reads an open text file and returns str
+objects (== unicode).
+So we provide `csv_reader()` generators to yield rows containing unicode.
+
+## Function `csv_import(fp, class_name=None, column_names=None, computed=None, preprocess=None, mixin=None, snake_case=False, **kw)`
+
+Read CSV data where the first row contains column headers.
+Returns a row namedtuple factory and an iterable of instances.
+
+Parameters:
+* `fp`: a file object containing CSV data, or the name of such a file
+* `class_name`: optional class name for the namedtuple subclass
+  used for the row data.
+* `column_names`: optional iterable of column headings; if
+  provided then the file is not expected to have internal column
+  headings
+* `computed`: optional keyword parameter providing a mapping
+  of str to functions of `self`; these strings are available
+  via __getitem__
+* `preprocess`: optional keyword parameter providing a callable
+  to modify CSV rows before they are converted into the namedtuple.
+  It receives a context object and the data row. It may return
+  the row (possibly modified), or None to drop the row.
+* `mixin`: an optional mixin class for the generated namedtuple subclass
+  to provide extra methods or properties
+
+All other keyword parameters are passed to csv_reader(). This
+is a very thin shim around `cs.mappings.named_column_tuples`.
+
+Examples:
+
+      >>> rowtype, rows = csv_import(['a, b', '1,2', '3,4'], class_name='Example_AB')
+      >>> rowtype     #doctest: +ELLIPSIS
+      <function named_row_tuple.<locals>.factory at ...>
+      >>> list(rows)
+      [Example_AB(a='1', b='2'), Example_AB(a='3', b='4')]
+
+      >>> rowtype, rows = csv_import(['1,2', '3,4'], class_name='Example_DEFG', column_names=['D E', 'F G '])
+      >>> list(rows)
+      [Example_DEFG(d_e='1', f_g='2'), Example_DEFG(d_e='3', f_g='4')]
+
+## Function `csv_reader(arg, *a, **kw)`
+
+Read the file `fp` using csv.reader.
+`fp` may also be a filename.
+Yield the rows.
+
+Warning: _ignores_ the `encoding` and `errors` parameters
+because `fp` should already be decoded.
+
+## Function `csv_writerow(csvw, row, encoding='utf-8')`
+
+Write the supplied row as strings encoded with the supplied `encoding`,
+default 'utf-8'.
+
+## Function `xl_import(workbook, sheet_name=None, skip_rows=0, **kw)`
+
+Read the named `sheet_name` from the Excel XLSX file named
+`filename` as for `csv_import`.
+Returns a row namedtuple factory and an iterable of instances.
+
+Parameters:
+* `workbook`: Excel work book from which to load the sheet; if
+  this is a str then the work book is obtained from
+  openpyxl.load_workbook()
+* `sheet_name`: optional name of the work book sheet
+  whose data should be imported;
+  the default (`None`) selects the active worksheet
+
+Other keyword parameters are as for cs.mappings.named_column_tuples.
+
+NOTE: this function requires the `openpyxl` module to be available.
+
+# Release Log
+
+
+
+*Release 20220606*:
+* Make csv_reader() a generator to cue the @strable decorator.
+* Plumb the new optional snake_case parameter.
+
+*Release 20201228*:
+Python 3 csv_reader new a generator.
+
+*Release 20191118*:
+xl_import: make sheet_name parameter optional with useful default
+
+*Release 20190103*:
+Documentation updates.
+
+*Release 20180720*:
+csv_import and xl_import function to load spreadsheet exports via cs.mappings.named_column_tuples.
+
+*Release 20170608*:
+Recode using new simpler cs.sharedfile.SharedAppendLines.
+
+*Release 20160828*:
+* Update metadata with "install_requires" instead of "requires".
+* Python 2 and 3 portability fixes.
+* Assorted minor improvements.
+
+*Release 20150116*:
+Initial PyPI release.
