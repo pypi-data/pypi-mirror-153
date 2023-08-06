@@ -1,0 +1,44 @@
+<div class="{{class}}">
+    <div class="form-group">
+        <label id="label_auto_co" name="label_auto_co">Pa&zwj;ys</label>
+        <input id="auto_co" name="auto_co"
+               class="form-control"
+               type="text"
+               value="{{country}}"
+                {% if tabindex %} tabindex="{{tabindex}}"{% endif %}
+               spellcheck="false" autocorrect="off" autocomplete="off"/>
+        <input type="hidden" id="country" name="country" value="{{country}}"/>
+    </div>
+</div>
+
+<script>
+    old_country = null;
+    $(document).ready(function(){
+        $("#auto_co").autocomplete({
+            source: "/country_autocomplete/",
+            minLength: 1,
+            open: function(){
+                setTimeout(function () {
+                    $('.ui-autocomplete').css('z-index', 99);
+                }, 0);
+            },
+            select: function (event, ui) {
+                document.getElementById('country').value = ui.item.value;
+            },
+            focus: function (event, ui) {
+                document.getElementById('country').value = ui.item.value;
+                event.cancelled = true
+            }
+        });
+        document.getElementById("auto_co").onfocus = function() {
+            old_country = document.getElementById("auto_co").value;
+        };
+        document.getElementById("auto_co").addEventListener('keydown', function(event){
+            if(event.key === "Escape") {
+                if (old_country != null && document.getElementById("auto_co").value != old_country)
+                    document.getElementById("auto_co").value = old_country;
+            }
+        });
+
+    });
+</script>
