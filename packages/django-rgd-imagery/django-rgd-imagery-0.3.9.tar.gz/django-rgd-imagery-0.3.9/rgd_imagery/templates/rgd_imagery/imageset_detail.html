@@ -1,0 +1,141 @@
+{% extends "rgd/_base/detail.html" %}
+
+{% block meta_table_body %}
+  <tr>
+    <td>Name</td>
+    <td>{{ object.name }}</td>
+  </tr>
+  <tr>
+    <td>Description</td>
+    <td>{{ object.description }}</td>
+  </tr>
+  <tr>
+    <td>Image Count</td>
+    <td>{{ object.count }}</td>
+  </tr>
+  <tr>
+    <td>Image Bands Count</td>
+    <td>{{ object.number_of_bands }}</td>
+  </tr>
+{% endblock %}
+
+{% block extra_meta %}
+  <br/>
+
+  <select id="image-selector" onchange="updateImage()">
+    {% for image in object.all_images.all %}
+      <option value="{{ image.id }}">{{ image.file.basename }}</option>
+    {% endfor %}
+  </select>
+
+  <select id="band-selector" onchange="updateTiles()">
+  </select>
+
+  {% if object.imagesetspatial %}
+    <br/>
+
+    {% include 'rgd/_include/empty_viewer.html' %}
+
+    <script>
+
+      let reader = geo.createFileReader('geojsonReader', {
+        'layer': layer
+      });
+      var footprint = '{{ object.imagesetspatial.footprint.json|escapejs }}'
+      reader.read(footprint, (features) => {
+        features[0].style({
+          strokeColor: '#FF0000',
+          fill: true,
+        })
+        .draw();
+      });
+
+      let extent = JSON.parse('{{ object.imagesetspatial.bounds_json|escapejs }}');
+      setBounds(extent)
+
+    </script>
+  {% endif %}
+{% endblock %}
+
+{% block detail %}
+
+  <div id="imageViewer" style="width: 100%; height: calc(100vh - 140px);"></div>
+
+  <script>
+    var containerRef = document.getElementById('imageViewer')
+    var imageSelector = document.getElementById('image-selector')
+    var bandSelector = document.getElementById('band-selector')
+
+    {% comment %} Save available bands for each image into a JSON object keyed by the image id {% endcomment %}
+    const bands = {
+      {% for image in object.all_images.all %}
+        "{{image.id}}": [
+          {% for bmeta in image.bandmeta_set.all %}
+            {
+              "interpretation": "{{bmeta.interpretation}}",
+              "band_number": "{{bmeta.band_number}}",
+              "description": "{{bmeta.description}}",
+            },
+          {% endfor %}
+        ],
+      {% endfor %}
+    };
+
+    function updateBandOptions(image_id) {
+      while (bandSelector.firstChild) {
+        bandSelector.removeChild(bandSelector.firstChild);
+      }
+      var imageSelector_value = Number(imageSelector.value);
+      var image_id = imageSelector_value.toString();
+
+      var opt = document.createElement('option');
+      opt.value = 0;
+      opt.innerHTML = 'Default';
+      bandSelector.appendChild(opt);
+
+      bands[image_id].forEach((band) => {
+        var opt = document.createElement('option');
+        opt.value = band.band_number;
+        opt.innerHTML = `${band.band_number}: ${band.interpretation}`;
+        bandSelector.appendChild(opt);
+      });
+    }
+
+    let imageLayer = null;
+
+    async function updateTiles() {
+      const image_id = Number(imageSelector.value).toString();
+      const band = Number(bandSelector.value).toString();
+
+      const tileinfo = await fetch(
+        `${host}/api/rgd_imagery/tiles/${image_id}/metadata`
+      ).then(response => response.json());
+
+      const params = geo.util.pixelCoordinateParams(
+        '#imageViewer', tileinfo.sizeX, tileinfo.sizeY, tileinfo.tileWidth, tileinfo.tileHeight);
+      params.layer.url = `${host}/api/rgd_imagery/tiles/${image_id}/tiles/{z}/{x}/{y}.png?band=${band}`;
+
+      const imageViewer = geo.map(params.map);
+
+      imageViewer.zoomRange({
+          // do not set a min limit so that bounds clamping determines min
+          min: -Infinity,
+          max: 12,
+        });
+
+      // remove old layer if it exists
+      if (imageLayer) {
+        imageViewer.deleteLayer(imageLayer);
+      }
+      imageLayer = imageViewer.createLayer('osm', params.layer);
+    }
+
+    function updateImage() {
+      updateBandOptions()
+      updateTiles();
+    }
+
+    updateImage();
+  </script>
+
+{% endblock %}
