@@ -1,0 +1,65 @@
+<section class="rounded-lg"
+		 data-ams-modules="form plugins"
+		 i18n:domain="pyams_zmi">
+	<h2 class="bg-secondary-modal d-flex flex-wrap pl-3 py-2-modal"
+		tal:define="title view.title"
+		tal:condition="title">
+		<a tal:define="back_url view.back_url | nothing"
+		   tal:condition="back_url"
+		   class="mr-1"
+		   href="${back_url}" data-ams-target="${getattr(view, 'back_url_target', '#content')}">
+			<i class="fas fa-fw fa-backward hint"
+			   data-original-title="Back to previous page"
+			   i18n:attributes="data-original-title"></i>
+		</a>
+		<span tal:condition="title.startswith('<')"
+			  class="flex-grow-1">${structure:title}</span>
+		<span tal:condition="not:title.startswith('<')"
+			  class="flex-grow-1" i18n:translate="">${title}</span>
+		<i tal:omit-tag="">${structure:provider:pyams.toolbar}</i>
+	</h2>
+	<div class="ams-form ${view.css_class | ''}"
+		 data-ams-data='${tales:object_data(view)}'>
+		<fieldset tal:define="help provider:pyams.help;
+						 	  prefix provider:pyams.prefix;
+							  suffix provider:pyams.suffix;"
+				  tal:omit-tag="not:help or prefix or view.widgets or suffix"
+				  class="${'border' if view.legend else ''}">
+			<legend tal:condition="view.legend and (help or prefix or view.widgets or suffix)"
+					i18n:translate="">${view.legend}</legend>
+			<i tal:omit-tag="">${structure:help}</i>
+			<i tal:omit-tag="">${structure:prefix}</i>
+			<tal:loop repeat="widget view.widgets.values()">
+				<i tal:omit-tag="">${structure:provider:pyams.widget(view=widget)}</i>
+			</tal:loop>
+			<i tal:omit-tag="">${structure:suffix}</i>
+		</fieldset>
+		<tal:loop condition="view.groups | nothing"
+				  repeat="group view.groups">
+			<i tal:omit-tag="">${structure:group.render()}</i>
+		</tal:loop>
+		<tal:loop repeat="subform view.subforms">
+			<i tal:omit-tag="">${structure:subform.render()}</i>
+		</tal:loop>
+		<div class="form-tabs"
+			 tal:condition="view.tabforms">
+			<ul class="nav nav-tabs">
+				<li tal:repeat="tabform view.tabforms"
+					class="nav-item" role="presentation">
+					<a class="nav-link ${'active' if repeat['tabform'].start() else ''}"
+					   role="tab" data-toggle="tab"
+					   href="#tab_${tales:cache_key(tabform)}">
+						<i tal:omit-tag="" i18n:translate="">${tabform.title}</i>
+					</a>
+				</li>
+			</ul>
+			<div class="tab-content p-2">
+				<div tal:repeat="tabform view.tabforms"
+					 id="tab_${tales:cache_key(tabform)}"
+					 class="tab-pane fade show ${'active' if repeat['tabform'].start() else ''}">
+					<i tal:omit-tag="">${structure:tabform.render()}</i>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
