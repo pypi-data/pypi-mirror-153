@@ -1,0 +1,55 @@
+Metadata-Version: 2.1
+Name: nitor-devel-backend
+Version: 0.1.17
+Summary: Tool for running a local proxy in docker to unify a local development backend and live Nitor API sources from dev or prod
+Home-page: http://github.com/NitorCreations/nitor-devel-backend
+Author: Pasi Niemi
+Author-email: pasi.niemi@nitor.com
+License: Apache 2.0
+Download-URL: https://github.com/NitorCreations/nitor-devel-backend
+Platform: UNKNOWN
+Description-Content-Type: text/markdown
+Requires-Dist: nameless-deploy-tools (>=1.268)
+
+# nitor-devel-backend
+
+Utility to easily run a proxy to unite local development and dev/prod nitor apis
+
+# Overview
+
+![Architecture overview](nitor-devel-backend.png)
+
+# Installation
+
+`pip install nitor-devel-backend`
+
+# Usage
+
+```bash
+usage: nitor-devel-backend [-h] (--port PORT | --directory DIRECTORY | --service SERVICE | --file FILE) [--impersonate IMPERSONATE] {dev,prod}
+
+Run a nitor backend locally to enable serving nitor data backends and your development server resources from the same port. Proxy is available on https://localhost:8443 and can not
+be changed because it is configured as a redirect url for the authentication provider.
+
+positional arguments:
+  {dev,prod}            Run agains dev or prod data resources
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --port PORT, -p PORT  The port your local dev server is listening to
+  --directory DIRECTORY, -d DIRECTORY
+                        The directory holding your created site static artifacts
+  --service SERVICE, -s SERVICE
+                        Give dev service backend configuration as json on the command line in case you want to for example mix a local dynamic server with local static resources.
+                        Needs to be an array of service configraion elements. See https://github.com/NitorCreations/nitor-backend for available services.
+  --file FILE, -f FILE  Give dev service backend configuration as json in a file. See above.
+  --impersonate IMPERSONATE, -i IMPERSONATE
+                        Impersonate a virtualhost service in the existing configuration by forwarding any proxy subservices with the target in the internal ALB to the ssh tunnel and
+                        forwarding s3 traffic to the local development backend.
+```
+
+Typical use would be to start a local development server on say `localhost:3000` and then put nitor-devel-backend in front of that to provide production apis thusly:
+`nitor-devel-backend -p 3000 prod`
+
+
+
