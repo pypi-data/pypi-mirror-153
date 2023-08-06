@@ -1,0 +1,71 @@
+
+<div class="container-fluid dashboard-content">
+    <!-- Header -->
+    {% set title = "Grids Storage" %}
+    {% include 'include_header.html' %}
+    {% set is_manager = current_user.is_manager %}
+    {% set is_admin = current_user.is_admin %}
+
+    <!-- table row -->
+    <div class="row">
+        <div class="col-2">
+            <div class="row">
+
+                {% for dewar in storage.dewars() %}
+                    {% set d = dewar['id'] %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Dewar {{ d }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for cane in dewar['canes'].values() %}
+                                    {% set c = cane['id'] %}
+                                    <div class="col-12 mb-2">
+{#                                    {% if i % 5 == 0 %}#}
+{#                                        {% set badge_type = 'light' %}#}
+{#                                        <label class="badge badge-{{ badge_type }} mr-1">cane {{ i }}</label>#}
+{#                                    {% else %}#}
+                                        {% set badge_type = 'dark' %}
+{#                                        <a href="{{ url_for_content('grids_storage', dewar=d, cane=i) }}" class="badge badge-{{ badge_type }} mr-1">cane {{ i }}</a>#}
+                                        <a href="javascript:loadCane({{ d }}, {{ c }})" class="badge badge-{{ badge_type }} mr-1" style="background-color: {{ cane['color'] }};">cane {{ c }}</a>
+{#                                    {% endif %}#}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+
+            </div>
+        </div>
+
+    <div id="cane-content" class="col-10 p-0 m-0">
+        {% include "grids_cane.html" %}
+    </div>
+
+    </div>
+    <!-- end table row -->
+
+</div>
+
+<script>
+    var range = {{ pucks_range|tojson }};
+
+    function loadCane(dewar, cane) {
+        load_html_from_ajax('cane-content',
+            get_ajax_content('grids_cane', {dewar: dewar, cane: cane, pucks_range: range})
+        );
+    }
+
+    function loadPuck(dewar, cane, puck) {
+        load_html_from_ajax('puck-content',
+            get_ajax_content('grids_puck', {dewar: dewar, cane: cane, puck: puck, pucks_range: range})
+        );
+        var title = document.getElementById('location-title');
+        title.innerText = "Dewar " + dewar + " - Cane " + cane + " - Puck " + puck;
+    }
+</script>

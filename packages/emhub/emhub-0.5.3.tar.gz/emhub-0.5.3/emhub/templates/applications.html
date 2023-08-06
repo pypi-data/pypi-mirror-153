@@ -1,0 +1,179 @@
+
+<div class="container-fluid dashboard-content">
+    <!-- Header -->
+    {% set title = "Applications" %}
+    {% set navigation = [('Admin', ''), ('Applications', '')] %}
+    {% include 'include_header.html' %}
+
+    <div class="row">
+    <!-- ============================================================== -->
+        <!-- Create new Applications  -->
+        <!-- ============================================================== -->
+    {%  if current_user.is_admin or current_user.is_head %}
+        <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 mb-5">
+            <div class="tab-regular">
+                <div class="row">
+                    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
+                        <div class="section-block" id="cards">
+                            <h3 class="section-title">Create a New Application</h3>
+                        </div>
+                    </div>
+                    {% for t in templates %}
+                        {% if t.status == 'active' %}
+                         <div class="col-xl-3 col-lg-3 col-md-3 col-sm-6 col-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h4 class="card-title border-bottom pb-2">{{ t.title }}</h4>
+                                    <p class="card-text"> {{ t.description }}</p>
+                                    <a href="javascript:createApplication('{{ t.id }}')" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Create Application</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {%  endif %}
+        <!-- ============================================================== -->
+        <!-- end - Create New Applications  -->
+        <!-- ============================================================== -->
+
+        <!-- ============================================================== -->
+        <!-- Application Tabs  -->
+        <!-- ============================================================== -->
+        <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 mb-5">
+            <div class="row">
+                <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3">
+                    <div class="section-block" id="applications">
+                        <h3 class="section-title">Applications</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-vertical">
+                <ul class="nav nav-tabs " id="applicationTabsNav" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link" id="preparation-tab" data-toggle="tab" href="#preparation" role="tab" aria-controls="preparation" aria-selected="false">Preparation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="submitted-tab" data-toggle="tab" href="#submitted" role="tab" aria-controls="submitted" aria-selected="false">Review</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" id="active-tab" data-toggle="tab" href="#active" role="tab" aria-controls="active" aria-selected="true">Active</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="closed-tab" data-toggle="tab" href="#closed" role="tab" aria-controls="closed" aria-selected="false">Closed</a>
+                    </li>
+                </ul>
+                <div class="tab-content" id="applicationTabsContent">
+                    <div class="tab-pane fade" id="preparation" role="tabpanel" aria-labelledby="preparation-tab">
+                        {% set status = ["preparation"] %}
+                        {%  include "applications_table.html" %}
+                    </div>
+                    <div class="tab-pane fade" id="submitted" role="tabpanel" aria-labelledby="submitted-tab">
+                        {% set status = ["review", "accepted", "rejected"] %}
+                        {%  include "applications_table.html" %}
+                    </div>
+                    <div class="tab-pane fade show active" id="active" role="tabpanel" aria-labelledby="active-tab">
+                        {% set status = ["active"] %}
+                        {%  include "applications_table.html" %}
+                    </div>
+                    <div class="tab-pane fade" id="closed" role="tabpanel" aria-labelledby="closed-tab">
+                        {% set status = ["closed"] %}
+                        {%  include "applications_table.html" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ============================================================== -->
+        <!-- end - Application Tabs  -->
+        <!-- ============================================================== -->
+
+
+    </div>  <!-- row -->
+
+    {% if current_user.is_manager %}
+    <div>
+        <!-- ============================================================== -->
+        <!-- Template Tabs  -->
+        <!-- ============================================================== -->
+        <div class="row">
+            <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3">
+                <div class="section-block" id="templates">
+                    <h3 class="section-title">Templates</h3>
+                </div>
+            </div>
+            <div class="col-xl-9 col-lg-9 col-md-9 col-sm-9 col-9  text-sm-right">
+                <a href="javascript:createTemplate()" class="btn btn-primary"><i class="fas fa-plus-circle"></i>  Create Template</a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 mb-5">
+                <div class="tab-vertical">
+                    <ul class="nav nav-tabs " id="templateTabsNav" role="tablist">
+                    {%  for status in template_statuses %}
+                        {% set active_str = "active" if status == template_selected_status else "" %}
+                        {% set active_selected = "true" if status == template_selected_status else "false" %}
+                        <li class="nav-item">
+                            <a class="nav-link {{ active_str }}" id="{{ status }}-t-tab" data-toggle="tab" href="#{{ status }}-t" role="tab" aria-controls="{{ status }}-t" aria-selected="{{ active_selected }}">{{ status }}</a>
+                        </li>
+                    {%  endfor %}
+                    </ul>
+                    <div class="tab-content" id="templateTabsContent">
+                    {%  for status in template_statuses %}
+                        {% set active_str = "show active" if status == template_selected_status else "" %}
+                        <div class="tab-pane fade {{ active_str }}" id="{{ status }}-t" role="tabpanel" aria-labelledby="{{ status }}-t-tab">
+                            {% include 'include_templates_table.html' %}
+                        </div>
+                    {%  endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ============================================================== -->
+        <!-- end - Template Tabs  -->
+        <!-- ============================================================== -->
+    </div>
+    {% endif %}
+
+
+</div>
+
+<!-- ============================================================== -->
+<!-- Template Modal -->
+<!-- ============================================================== -->
+{% include 'template_form.html' %}
+<!-- ============================================================== -->
+<!-- End of Template Modal -->
+<!-- ============================================================== -->
+
+
+<script>
+    var applications;
+    var applicationDict = {};
+    var templates;
+    var templateDict = {};
+    var template = null;
+
+
+(function(window, document, $, undefined) {
+    "use strict";
+
+    $('select').selectpicker();
+
+    templates = {{ templates|tojson }};
+    for (var t of templates)
+        templateDict[t.id] = t;
+
+    application_config.on_update = function () {
+            load_main_content("applications", {});
+        }
+
+})(window, document, window.jQuery);
+
+/* Show the Template Form, either for a new booking or an existing one */
+function showTemplateFromId(templateId) {
+    showTemplate(templateDict[templateId]);
+}
+
+</script>

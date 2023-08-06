@@ -1,0 +1,199 @@
+<!-- ============================================================== -->
+<!-- Application Modal Content -->
+<!-- ============================================================== -->
+{% set readonly = '' if current_user.is_manager else 'readonly' %}
+{% set disabled = '' if current_user.is_manager else 'disabled' %}
+{% set create = not application.id  %}
+
+  <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="application-modal-title"> Application: {{ application.code }}{{ '*' if create else '' }} </h3>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+            <!-- Application Form -->
+            <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
+                <form id="validationform" data-parsley-validate="" novalidate="">
+                    <input type="hidden" id="application-id" name="application-id" value="{{ application.id }}">
+                    <input type="hidden" id="application-template_id" name="application-template_id" value="{{ template_id }}">
+                    <input type="hidden" id="application-code" name="application-code" value="{{ application.code }}">
+
+                    <!-- Created Row -->
+                    <div class="form-group row">
+                        <label class="col-12 col-sm-3 col-form-label text-sm-right">Created</label>
+                        <label class="col-12 col-sm-8 col-form-label text-sm-left">{{ application.created|pretty_datetime }}</label>
+                    </div>
+
+                    <!-- Created Row -->
+                    <div class="form-group row">
+                        <label class="col-12 col-sm-3 col-form-label text-sm-right">Status ({{ application.status }})</label>
+                        <label class="col-12 col-sm-4 col-form-label text-sm-left">
+                            <select id="application-status-select" class="selectpicker">
+                                {% for s in application_statuses %}
+                                    <option value="{{ s }}">{{ s }} </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+
+                        <div class="col-12 col-sm-4 col-lg-4">
+
+                        </div>
+                    </div>
+
+                    <!-- Alias Row -->
+                    <div class="form-group row">
+                        <label class="col-12 col-sm-3 col-form-label text-sm-right">Alias</label>
+                        <div class="col-12 col-sm-8 col-lg-6">
+                            <input type="text" {{ readonly }} required="" placeholder="Enter Alias" id="application-alias" class="form-control" value="{{ application.alias }}">
+                        </div>
+
+                    </div>
+
+                    <!-- Title Row -->
+                    <div class="form-group row">
+                        <label class="col-12 col-sm-3 col-form-label text-sm-right">Title</label>
+                        <div class="col-12 col-sm-8 col-lg-6">
+                            <input type="text" {{ readonly }} required="" placeholder="Enter Title" id="application-title" class="form-control" value="{{ application.title }}">
+                        </div>
+                    </div>
+
+                    <!-- Description Row -->
+                    <div class="form-group row">
+                        <label class="col-12 col-sm-3 col-form-label text-sm-right">Description </label>
+                        <div class="col-12 col-sm-8 col-lg-6">
+                            <textarea {{ readonly }} required="" class="form-control" id="application-description">{{ application.description }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Resource allocation -->
+                   <div class="form-group row">
+                        <label class="col-sm-3 col-form-label text-sm-right">Resource allocation (days)</label>
+                        <div class="col-12 col-sm-8 col-lg-6">
+                            <div class="row" style="padding-left: 0; margin-left: 0; align-items: center">
+                                <label class="col-1" style="padding-left: 0;  margin-left: 0">Krios</label>
+                                <input {{ readonly }} type="text" required="" id="quota-krios" class="form-control col-3" value="{{ application.resource_allocation['quota']['krios'] }}">
+                            <label class="col-1" style="margin-right: 15px;">Talos</label>
+                                <input {{ readonly }} type="text" required="" id="quota-talos" class="form-control col-3" value="{{ application.resource_allocation['quota']['talos'] }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label text-sm-right">Allowed outside Slot</label>
+                        <div class="col-12 col-sm-8 col-lg-6">
+                            <div class="row" style="align-items: center">
+                                {% for m in microscopes %}
+                                    {% set checked = 'checked' if m['noslot'] else '' %}
+                                    <label class="custom-control custom-checkbox col-2">
+                                    <input type="checkbox" {{ disabled }} {{ checked }} class="custom-control-input noslot" value="{{ m['id'] }}"><span class="custom-control-label">{{ m['name'] }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PI list row -->
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label text-sm-right">PI List</label>
+
+                        <div class="col-9">
+
+                            <table class="table">
+                                {% set can_edit = current_user.is_manager %}
+                                <tbody id="application-pi-list-body" data-editable={{ can_edit|tojson }}>
+                                    {# Rows will be populated via javascript #}
+                                </tbody>
+                            </table>
+
+                            {% if current_user.is_manager %}
+
+                                <!-- Row select PI to add -->
+                                <div class="row col-12">
+                                    <label class="col-1 col-form-label text-sm-right">Select PI</label>
+                                    <div class="col-9">
+                                        <select id="application-pi-list-select" class="selectpicker show-tick" multiple data-selected-text-format="count > 3" data-width="100%" data-live-search="true">
+                                            {% for pi in pi_list %}
+                                                <option value="{{ pi['id'] }}">{{ pi['name'] }} </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-2 text-sm-left">
+                                        <a href="javascript:addPis()" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Add PI </a>
+                                    </div>
+                                </div>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div> <!-- End of PI list row -->
+
+                    <!-- Confidential row -->
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label text-sm-right">Confidentially and Access</label>
+
+                        <div class="col-9">
+                                <label class="custom-control custom-checkbox col-2">
+                                    {% set checked = 'checked' if application.confidential else '' %}
+                                    <input type="checkbox" {{ disabled }} {{ checked }} class="custom-control-input" id="application-confidential">
+                                        <span class="custom-control-label">Is confidential</span>
+                                </label>
+
+                                    <div class="row">
+                                        <span class="ml-3">Allowed access</span>
+                                        <select id="application-user-access" class="selectpicker show-tick col-8" data-width="100%" data-live-search="true" multiple>
+                                            {% for u in users %}
+                                                <option value="{{u['id']}}">{{u['name']}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                        </div>
+                    </div> <!-- End of Confidential row -->
+
+
+                </form>
+            </div>
+            <!-- end Application Form -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+          {% if current_user.is_manager %}
+            <button type="button" id="application-btn-cancel"  class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+              {% set okLabel = 'Create' if create else 'Update' %}
+            <button type="button" id="application-btn-ok" class="btn btn-outline-dark" onclick="javascript: onApplicationOkButtonClick()">{{ okLabel }}</button>
+          {% else %}
+              <button type="button" id="application-btn-ok"  class="btn btn-outline-secondary" data-dismiss="modal">OK</button>
+          {% endif %}
+      </div>
+    </div>
+  </div>
+<!-- ============================================================== -->
+<!-- End of Application Modal Content -->
+<!-- ============================================================== -->
+
+
+
+<script>
+
+    var pi_list = {{ pi_list|tojson }};
+    var access = {{ application.extra.get('access', [])|tojson }};
+    var access_list = [];
+    for (var a of access)
+        access_list.push(a.user_id);
+
+    var pi_dict = {};
+    for (var pi of pi_list)
+        pi_dict[pi.id] = pi;
+
+    $('select').selectpicker();
+    $('#application-status-select').selectpicker('val', '{{ application.status }}');
+    $('#application-user-access').selectpicker('val', access_list);
+
+    createPiRows();
+
+</script>

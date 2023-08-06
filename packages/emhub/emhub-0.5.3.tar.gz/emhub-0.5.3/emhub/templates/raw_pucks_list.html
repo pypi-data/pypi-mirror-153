@@ -1,0 +1,88 @@
+
+<div class="container-fluid dashboard-content">
+    <!-- Header -->
+    {% set title = "Raw Pucks List" %}
+    {% include 'include_header.html' %}
+    {% set is_manager = current_user.is_manager %}
+    {% set is_admin = current_user.is_admin %}
+
+    <div class="row">
+
+        <h3>Testing select puck id (range {{ pucks_range }}): </h3>
+            <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
+
+                {% include 'param_select_puck.html' %}
+            </div>
+    </div>
+
+    <!-- table row -->
+    <div class="row">
+        <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Puck List</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="sessions-table" class="table table-striped table-bordered" style="width:100%">
+                            <thead>
+                            <tr>
+                                <th>id</th>
+                                <th>code</th>
+                                <th>label</th>
+                                <th>color</th>
+
+                                <th>dewar</th>
+                                <th>cane</th>
+                                <th>position</th>
+                                <td>extra</td>
+
+                                {% if current_user.is_manager %}
+                                    <th>actions</th>
+                                {% endif %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for p in storage.pucks() %}
+                                {% set cane = storage.get_cane(p.dewar, p.cane) %}
+                                <tr>
+                                    <td>{{ p['id'] }}</td>
+                                    <td>{{ p.code }}</td>
+                                    <td style="background-color: {{ p.color }}; color: white;">{{ p.label }}</td>
+                                    <td>{{ p.color }}</td>
+                                    <td>{{ p.dewar }}</td>
+                                    <td style="background-color: {{ cane['color'] }}; color: white;">{{ cane['label'] }}</td>
+                                    <td>{{ p.position }}</td>
+                                    <td>{{ p.extra|tojson }}</td>
+
+                                    {% if is_manager %}
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-light" onclick="deleteSession({{ p.id }})">
+                                                <i class="far fa-trash-alt"></i></button>
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end table row -->
+
+</div>
+
+
+<script>
+
+(function(window, document, $, undefined) {
+"use strict";
+
+    $('.selectpicker').selectpicker();
+
+})(window, document, window.jQuery);
+
+</script>

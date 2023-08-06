@@ -1,0 +1,189 @@
+
+<div class="container-fluid dashboard-content">
+    <!-- Header -->
+    {% set title = "Invoice Periods List" %}
+    {% set navigation = [('Admin', ''), ('Invoices', '')] %}
+    {% include 'include_header.html' %}
+    {% set is_admin = current_user.is_manager %}
+    {% set period_url = 'invoice_period' if is_admin else 'reports_invoices_lab' %}
+
+    <!-- table row -->
+    <input type="hidden" value="09:00:00.000", id="hour_id">
+
+    <div class="row">
+        <div class="col-xl-6 col-lg-6 col-md-6 col-sm-6 col-6">
+            <div class="card">
+                <div class="card-body">
+                    {% if is_admin %}
+                        <div class="col-12 mb-3">
+                            <a href="javascript:showInvoicePeriodForm(null)" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Create Invoice Period</a>
+                        </div>
+                    {% endif %}
+                    <div class="table-responsive">
+                        <table id="invoice_periods-table" class="table">
+                            <thead>
+                            <tr>
+                                <th>order</th>
+                                <th>period</th>
+                                <th>status</th>
+                                {% if is_admin %}
+                                    <th>actions</th>
+                                {% endif %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for ip in invoice_periods %}
+                                {% set status = ip['status'] %}
+                                {% if is_admin or status != 'disabled' %}
+                                <tr>
+                                    <td>{{ ip['order'] }}</td>
+
+                                    <td>
+                                        {% set badge_type = 'success' if status == 'active' else ('light' if status == 'disabled' else 'info') %}
+{#                                        if status == 'disabled' else 'info') %}#}
+                                        <a href="{{ url_for_content(period_url, period=ip['id']) }}" class="badge badge-{{ badge_type }} mr-1">{{ ip['period'] }}</a>
+                                    </td>
+
+                                    <td>{{ ip['status'] }}</td>
+                                    {% if is_admin %}
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-light" onclick="showInvoicePeriodForm({{ ip['id'] }})">
+                                                <i class="far fa-edit"></i></button>
+                                            <button class="btn btn-sm btn-outline-light" onclick="deleteInvoicePeriod({{ ip['id'] }})">
+                                                <i class="far fa-trash-alt"></i></button>
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end table row -->
+
+    <!-- Button to show Invoices per PI -->
+        <div class="col-12 mb-3">
+            {% if is_admin %}
+                <a href="{{ url_for_content('invoices_per_pi') }}" class="btn btn-primary"><i class="fas fa-user-circle"></i> Show Invoices per PI</a>
+            {% else %}
+                <a href="{{ url_for_content('invoices_per_pi', pi_id=current_user.id) }}" class="btn btn-primary"><i class="fas fa-user-circle"></i> Show All Invoices</a>
+            {% endif %}
+        </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- Invoice Period Modal -->
+<!-- ============================================================== -->
+<div class="modal fade" id="invoice_period-modal" tabindex="-1" role="dialog" aria-labelledby="invoice_periodModal" aria-hidden="true" >
+</div>
+
+
+<script>
+
+$('#invoice_periods-table').DataTable({
+    sDom: 'lrtip',
+    paging: false,
+    info: false,
+    order: [[ 0, "desc" ]]
+    //ordering: false
+});
+
+/* Show the Application Form, either for a new booking or an existing one */
+function showInvoicePeriodForm(invoice_period_id) {
+    ajaxContent = get_ajax_content("invoice_period_form", {invoice_period_id: invoice_period_id});
+
+    ajaxContent.done(function(html) {
+        $("#invoice_period-modal").html(html);
+        // Show the form after setting html content
+        $('#invoice_period-modal').modal('show');
+    });
+
+    ajaxContent.fail(function(jqXHR, textStatus) {
+        alert( "Request failed: " + textStatus );
+    });
+
+}  // function showInvoicePeriodForm
+
+function deleteInvoicePeriod(invoice_period_id) {
+    confirm("Delete Invoice Period",
+            "Do you want to DELETE invoice period id=" + invoice_period_id + "?",
+             "Cancel", "Delete", function () {
+            sendAjax("{{ url_for('api.delete_invoice_period') }}",
+                     {id: invoice_period_id});
+        });
+} // function deleteInvoicePeriod
+
+    /** This function will be called when the OK button in the Application form
+ * is clicked. It can be either Create or Update action.
+ */
+function onInvoicePeriodOkButtonClick() {
+    // Update template values
+    var invoice_period = {
+        id: parseInt($('#invoice_period-id').val()),
+        status: $('#invoice_period-status').val(),
+        start: dateIsoFromValue('#invoice_period-start', '#hour_id'),
+        end: dateIsoFromValue('#invoice_period-end', '#hour_id')
+    };
+
+    var endpoint = null;
+
+    if (invoice_period.id != null && !Number.isNaN(invoice_period.id)) {
+        endpoint = "{{ url_for('api.update_invoice_period') }}";
+    }
+    else {
+        endpoint = "{{ url_for('api.create_invoice_period') }}";
+    }
+
+    sendAjax(endpoint, invoice_period);
+}  // function onTemplateOkButtonClick
+
+
+function sendAjax(endpoint, attrs) {
+    var ajaxContent = $.ajax({
+        url: endpoint,
+        type: "POST",
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({attrs: attrs}),
+        dataType: "json"
+    });
+
+    ajaxContent.done(handleAjaxDone);
+    ajaxContent.fail(handleAjaxFail);
+} // function sendAjax
+
+
+    /** Helper functions to handle Template AJAX response or failure */
+function handleAjaxDone(jsonResponse) {
+    var error = null;
+
+    if ('invoice_period' in jsonResponse) {
+    }
+    else if ('error' in jsonResponse) {
+        error = jsonResponse.error;
+    }
+    else {
+        error = 'Unexpected response from server.'
+    }
+
+    if (error)
+        showError(error);
+    else {
+        $('#invoice_period-modal').on('hidden.bs.modal', function () {
+            //location.reload();
+        });
+        $('#invoice_period-modal').modal('hide');
+        location.reload();
+    }
+}
+
+
+function handleAjaxFail(jqXHR, textStatus) {
+    showError("Request failed: " + textStatus );
+}
+
+</script>
