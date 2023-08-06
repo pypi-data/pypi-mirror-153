@@ -1,0 +1,99 @@
+{% extends "layout.html" %}
+{% block title %}- Admin Edit {{ action_form.name.data }}{% endblock %}
+{% block body %}
+    <form method="post">
+        {{ action_form.csrf_token }}
+
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field column">
+                    <div class="control is-expanded">
+                        <div class="select is-fullwidth">
+                            {{ action_form.folder }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field column is-6">
+                    <div class="control is-expanded">
+                        <div class="select is-fullwidth">
+                            {{ action_form.name(list='animes', class='input', placeholder='Name') }}
+                            <datalist id="animes">
+                                {% for folder in folders %}
+                                    {% for title in folder.titles %}
+                                        <option {{ 'selected' if title.name == action_form.name.data }}
+                                                data-folder="{{ title.folder.id }}" value="{{ title.name }}"
+                                                data-keyword="{{ title.keyword }}">
+                                    {% endfor %}
+                                {% endfor %}
+                            </datalist>
+
+                            <script>
+                                document.getElementById('name').oninput = function (choice) {
+                                    document.getElementById('animes').childNodes.forEach(function (option) {
+                                        if (option.value === choice.target.value) {
+                                            document.getElementById('folder').value = option.dataset.folder;
+                                            document.getElementById('keyword').value = option.dataset.keyword;
+                                        }
+                                    });
+                                };
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field column is-6">
+                    <div class="control is-expanded">
+                        {{ action_form.link(class='input', placeholder='Link') }}
+                    </div>
+                </div>
+
+                <div class="field column">
+                    <div class="control is-expanded">
+                        {{ action_form.season(class='input', placeholder='Season') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field column is-6">
+                    <div class="control is-expanded">
+                        {{ action_form.comment(class='input', placeholder='Comment') }}
+                    </div>
+                </div>
+
+                <div class="field column">
+                    <div class="control is-expanded">
+                        <div class="select is-fullwidth">
+                            {{ action_form.keyword(list='keywords', class='input', placeholder='Keyword') }}
+                            <datalist id="keywords">
+                                {% for folder in folders %}
+                                    {% for title in folder.titles %}
+                                        <option {{ 'selected' if title.keyword == action_form.keyword.data }}
+                                                value="{{ title.keyword }}">
+                                    {% endfor %}
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field column">
+                    <div class="control is-expanded">
+                        <input class="button is-info" type="submit">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}
