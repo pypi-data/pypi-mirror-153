@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+""" SelfPlay """
+import copy
+from tqdm import tqdm
+
+import importlib
+import config as CFG
+importlib.reload(CFG)
+
+# from util import pobability_distribution, one_hot_encording, indicator
+from Util import Util
+from MCTS import Node
+from agent import Agent
+
+util = Util(CFG)
+
+class SelfPlay():
+    """ 経験を収集する自己対局クラス """
+    def __init__(self, env, model):
+        self.model = model
+        self.env = env
+        self.dataset = []
+        self.player = Agent(env, model, train=True)
+
+    def __call__(self, num_game_count=1):
+        """ Self playのループ処理 """
+        for game_count in range(num_game_count): # AlphaGo Zero: 250,000
+            state = self.env.reset()
+            node = Node(state)
+            self.play(node)
+
+        """ 蓄積した経験データのセットを最大サイズで切り捨て """
+        self.dataset = self.dataset[-CFG.max_dataset_size:]
+
+        return self.dataset
+
+    def play(self, node, play_count=1):
+        """ 探索の実行 """
+        util.indicator(play_count)
+
+        """ AlphaZero player """
+        next_node = self.player.alpha_zero(node, play_count)
+
+        action = next_node.action
+
+        """ ゲームの実行 """
+        _next_state, reward, done = self.env.step(action)
+
+        if done:
+            # 引き分けなら  0
+            # 勝った時は +1 
+            v = -reward
+
+        else:
+            """ 再帰的に自己対局 """
+            v = self.play(next_node, play_count + 1)
+
+        """ 履歴データを追加 """
+        self.add_dataset(node, action, v)
+
+        """ 符号を反転させて返却 """
+        return -v
+
+    
+    def add_dataset(self, node, action, v):
+
+        """ 履歴データの設定 """
+        states = copy.deepcopy(node.states)
+        input_features = copy.deepcopy(node.input_features).tolist()[0]
+        
+        # pi = one_hot_encording(node)     # 0 0 0 1 
+        pi = util.pobability_distribution(node) # 0.1 0.2 0.3 0.4 
+
+        plain = { # for debug
+                 'state': states[0], 
+                 'pi': pi,
+                 'z': -v,        # 符号反転（相手にとっての価値となるため）
+                 'states': states,
+                 'player': node.player,
+                 'action': action,
+                 }
+
+        """ データセットに経験データを追加 """
+        data = []
+        data.append(input_features)
+        data.append(pi)
+        data.append([-v]) # 符号反転（相手にとっての価値となるため）
+        data.append(plain)
+
+        self.dataset.append(data)
