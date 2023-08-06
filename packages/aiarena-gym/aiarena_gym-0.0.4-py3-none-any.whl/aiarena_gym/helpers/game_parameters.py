@@ -1,0 +1,21 @@
+game_parameters = {
+    'character_width': 0.08,
+    'character_height': 0.02,
+    'punch_extension': 0.05,
+    'low_kick_extension': 0.025,
+    'shield_distance': 0.12,
+    'shield_health': 100,
+    'min_damage': 0.02,
+    'max_damage': 0.1,
+    'punch_power_multiple': 0.5,
+    'low_kick_power_multiple': 0.8,
+    'high_kick_power_multiple': 1,
+    'min_speed': 0.1,
+    'max_speed': 0.3,
+    'jump_multiple': 4,
+    'default_multiple': 2,
+    'char_fraction_denominator': 3,
+    'vertical_jump_clearance': 1,
+    'vertical_punch_hitbox': 0.02,
+    'vertical_low_kick_hitbox': 0.01
+}
