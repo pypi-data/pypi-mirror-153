@@ -1,0 +1,115 @@
+device_type: "fvp"
+
+job_name: "tuxrun@{{ device.name }}"
+priority: medium
+visibility: public
+
+{% block context %}{% endblock %}
+
+{%- set deploy_timeout = 5 %}
+{%- set boot_timeout = timeouts.boot|default(10) %}
+
+timeouts:
+  job:
+    minutes: {{ deploy_timeout + boot_timeout + tests_timeout }}
+  action:
+    minutes: 10
+  connection:
+    minutes: 10
+
+actions:
+- deploy:
+    to: fvp
+    timeout:
+      minutes: {{ deploy_timeout }}
+    images:
+      bl1:
+        url: "{{ bl1 }}"
+      dtb:
+        url: "{{ dtb }}"
+      kernel:
+        url: "{{ kernel }}"
+{% if compression(kernel)[1] %}
+        compression: {{ compression(kernel)[1] }}
+{% endif %}
+      rootfs:
+        url: "{{ rootfs }}"
+        compression: {{ compression(rootfs)[1] }}
+        format: ext4
+{% if overlays %}
+        overlays:
+{% if tests %}
+          lava: true
+{% endif %}
+{% for name, overlay, dst in overlays %}
+          {{ name }}:
+            url: "{{ overlay }}"
+            path: "{{ dst }}"
+            format: tar
+            compression: {{ compression(overlay)[1] }}
+{% endfor %}
+{% elif tests %}
+        overlays:
+          lava: true
+{% endif %}
+      fip:
+        url: "{{ fip }}"
+- boot:
+    method: fvp
+    docker:
+      name: "fvp:aemva-11.17.21"
+      local: true
+      container_name: "{{ tmpdir.name }}"
+    image: "/opt/model/FVP_AEMvA/models/Linux64_GCC-9.3/FVP_Base_RevC-2xAEMvA"
+    version_string: "Fast Models [^\\n]+"
+    timeout:
+      minutes: {{ boot_timeout }}
+    console_string: "terminal_0: Listening for serial connection on port (?P<PORT>\\d+)"
+    feedbacks:
+    - "(?P<NAME>terminal_1): Listening for serial connection on port (?P<PORT>\\d+)"
+    - "(?P<NAME>terminal_2): Listening for serial connection on port (?P<PORT>\\d+)"
+    - "(?P<NAME>terminal_3): Listening for serial connection on port (?P<PORT>\\d+)"
+    arguments:
+    - "--plugin /opt/model/FVP_AEMvA/plugins/Linux64_GCC-9.3/ScalableVectorExtension.so"
+    - "--data cluster0.cpu0={DTB}@0x86000000"
+    - "--data cluster0.cpu0={KERNEL}@0x80080000"
+    - "-C pctl.startup=0.0.0.0"
+    - "-C bp.secure_memory=0"
+    - "-C cluster0.NUM_CORES=4"
+    - "-C cluster1.NUM_CORES=4"
+    - "-C cache_state_modelled=0"
+    - "-C bp.smsc_91c111.enabled=true"
+    - "-C bp.pl011_uart0.untimed_fifos=1"
+    - "-C bp.pl011_uart0.unbuffered_output=1"
+    - "-C bp.secureflashloader.fname='{BL1}'"
+    - "-C bp.flashloader0.fname='{FIP}'"
+    - "-C bp.ve_sysregs.mmbSiteDefault=0"
+    - "-C bp.ve_sysregs.exit_on_shutdown=1"
+    - "-C bp.virtioblockdevice.image_path='{ROOTFS}'"
+    - "-C pci.pcidevice0.bus=0xFF"
+    - "-C pci.pcidevice1.bus=0xFF"
+    - "-C cluster0.has_large_system_ext=1"
+    - "-C cluster1.has_large_system_ext=1"
+    - "-C cluster0.has_16k_granule=1"
+    - "-C cluster1.has_16k_granule=1"
+    - "-C cluster0.has_branch_target_exception=1"
+    - "-C cluster1.has_branch_target_exception=1"
+    - "-C cluster0.has_rndr=1"
+    - "-C cluster1.has_rndr=1"
+    - "-C cluster0.has_arm_v8-1=1"
+    - "-C cluster1.has_arm_v8-1=1"
+    - "-C cluster0.has_arm_v8-2=1"
+    - "-C cluster1.has_arm_v8-2=1"
+    - "-C cluster0.has_arm_v8-3=1"
+    - "-C cluster1.has_arm_v8-3=1"
+    - "-C cluster0.has_arm_v8-4=1"
+    - "-C cluster1.has_arm_v8-4=1"
+    - "-C cluster0.has_arm_v8-5=1"
+    - "-C cluster1.has_arm_v8-5=1"
+    - "-C cluster0.has_arm_v8-6=1"
+    - "-C cluster1.has_arm_v8-6=1"
+    auto_login:
+      login_prompt: '(.*)login:'
+      username: root
+    prompts:
+    - 'root@(.*):[/~]#'
