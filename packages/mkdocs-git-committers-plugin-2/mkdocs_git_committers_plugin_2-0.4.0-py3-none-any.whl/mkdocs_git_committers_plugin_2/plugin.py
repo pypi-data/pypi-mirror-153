@@ -1,0 +1,153 @@
+import os
+import sys
+import logging
+from pprint import pprint
+from timeit import default_timer as timer
+from datetime import datetime, timedelta
+
+from mkdocs import utils as mkdocs_utils
+from mkdocs.config import config_options, Config
+from mkdocs.plugins import BasePlugin
+
+from git import Repo, Commit
+import requests, json
+import time
+import hashlib
+import re
+
+LOG = logging.getLogger("mkdocs.plugins." + __name__)
+
+class GitCommittersPlugin(BasePlugin):
+
+    config_scheme = (
+        ('enterprise_hostname', config_options.Type(str, default='')),
+        ('repository', config_options.Type(str, default='')),
+        ('branch', config_options.Type(str, default='master')),
+        ('docs_path', config_options.Type(str, default='docs/')),
+        ('token', config_options.Type(str, default='')),
+    )
+
+    def __init__(self):
+        self.total_time = 0
+        self.branch = 'master'
+        self.git_enabled = False
+        self.authors = dict()
+
+    def on_config(self, config):
+        if 'MKDOCS_GIT_COMMITTERS_APIKEY' in os.environ:
+            self.config['token'] = os.environ['MKDOCS_GIT_COMMITTERS_APIKEY']
+        if self.config['token'] and self.config['token'] != '':
+            self.git_enabled = True
+            LOG.info("git-committers plugin ENABLED")
+            self.auth_header = {'Authorization': 'token ' + self.config['token'] }
+            if self.config['enterprise_hostname'] and self.config['enterprise_hostname'] != '':
+                self.apiendpoint = "https://" + self.config['enterprise_hostname'] + "/api/graphql"
+            else:
+                self.apiendpoint = "https://api.github.com/graphql"
+            self.localrepo = Repo(".")
+            self.branch = self.config['branch']
+        else:
+            LOG.warning("git-committers plugin DISABLED: no git token provided")
+        return config
+
+    def get_gituser_info(self, email, query):
+        if not self.git_enabled:
+            return None
+        r = requests.post(url=self.apiendpoint, json=query, headers=self.auth_header)
+        res = r.json()
+        if r.status_code == 200:
+            if res.get('data'):
+                if res['data']['search']['edges']:
+                    info = res['data']['search']['edges'][0]['node']
+                    if info:
+                        return {'login':info['login'], \
+                                'name':info['name'], \
+                                'url':info['url'], \
+                                'avatar':info['url']+".png?size=24" }
+                    else:
+                        return None
+                else:
+                    return None
+            else:
+                LOG.warning("Error from GitHub GraphQL call: " + res['errors'][0]['message'])
+                return None
+        else:
+            return None
+
+    def get_git_info(self, path):
+        unique_authors = []
+        seen_authors = []
+        last_commit_date = ""
+        LOG.debug("get_git_info for " + path)
+        for c in Commit.iter_items(self.localrepo, self.localrepo.head, path):
+            author_id = ""
+            if not last_commit_date:
+                # Use the last commit and get the date
+                last_commit_date = time.strftime("%Y-%m-%d", time.gmtime(c.authored_date))
+            c.author.email = c.author.email.lower()
+            # Clean up the email address
+            c.author.email = re.sub('\d*\+', '', c.author.email.replace("@users.noreply.github.com", ""))
+            if not (c.author.email in self.authors) and not (c.author.name in self.authors):
+                # Not in cache: let's ask GitHub
+                #self.authors[c.author.email] = {}
+                # First, search by email
+                LOG.info("Get user info from GitHub for: " + c.author.email)
+                info = self.get_gituser_info( c.author.email, \
+                    { 'query': '{ search(type: USER, query: "in:email ' + c.author.email + '", first: 1) { edges { node { ... on User { login name url } } } } }' })
+                if info:
+                    LOG.debug("      Found!")
+                    author_id = c.author.email
+                else:
+                    # If not found, search by name
+                    LOG.debug("   User not found by email, search by name: " + c.author.name)
+                    info = self.get_gituser_info( c.author.name, \
+                        { 'query': '{ search(type: USER, query: "in:name ' + c.author.name + '", first: 1) { edges { node { ... on User { login name url } } } } }' })
+                    if info:
+                        LOG.debug("      Found!")
+                        author_id = c.author.name
+                    else:
+                        # If not found, search by name, expecting it to be GitHub user name
+                        LOG.debug("   User not found yet, trying with GitHub username: " + c.author.name)
+                        info = self.get_gituser_info( c.author.name, \
+                            { 'query': '{ search(type: USER, query: "in:user ' + c.author.name + '", first: 1) { edges { node { ... on User { login name url } } } } }' })
+                        if info:
+                            LOG.debug("      Found!")
+                            author_id = c.author.name
+                        else:
+                            # If not found, use local git info only and gravatar avatar
+                            LOG.debug("      User not found, using local git info only");
+                            info = { 'login':c.author.name if c.author.name else '', \
+                                'name':c.author.name if c.author.name else c.author.email, \
+                                'url':'#', \
+                                'avatar':'https://www.gravatar.com/avatar/' + hashlib.md5(c.author.email.encode('utf-8')).hexdigest() + '?d=identicon' }
+                            author_id = c.author.name
+            else:
+                # Already in cache
+                if c.author.email in self.authors:
+                    info = self.authors[c.author.email]
+                    author_id = c.author.email
+                else:
+                    info = self.authors[c.author.name]
+                    author_id = c.author.name
+            if (author_id not in seen_authors):
+                LOG.debug("Adding " + author_id + " to unique authors for this page")
+                self.authors[author_id] = info
+                seen_authors.append(author_id)
+                unique_authors.append(self.authors[author_id])
+
+        LOG.debug("Contributors for page " + path + ": " + str(unique_authors))
+        return unique_authors, last_commit_date
+
+    def on_page_context(self, context, page, config, nav):
+        context['committers'] = []
+        start = timer()
+        git_path = self.config['docs_path'] + page.file.src_path
+        authors, last_commit_date = self.get_git_info(git_path)
+        if authors:
+            context['committers'] = authors
+        if last_commit_date:
+            context['last_commit_date'] = last_commit_date
+        end = timer()
+        self.total_time += (end - start)
+
+        return context
