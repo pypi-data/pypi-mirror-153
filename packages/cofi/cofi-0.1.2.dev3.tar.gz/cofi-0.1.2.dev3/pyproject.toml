@@ -1,0 +1,70 @@
+# --------------------------- BEGIN NOTES ---------------------------
+
+####### TO BUILD #######
+# for users: python -m build
+# for developers: rm -rf _skbuild; pip uninstall -y cofi; pip install -e .
+
+####### TO TEST WHEELS ######
+# rm -rf wheelhouse
+# export CIBW_SKIP='pp*'; export CIBW_REPAIR_WHEEL_COMMAND_MACOS=''; export CIBW_ARCHS_MACOS='x86_64 arm64'; rm -rf _skbuild; find . -type f -name "*.so" -exec rm {} \; ; cibuildwheel --platform macos
+# export CIBW_SKIP='pp*'; export CIBW_ARCHS_LINUX='x86_64 aarch64'; rm -rf _skbuild; find . -type f -name "*.so" -exec rm {} \; ; cibuildwheel --platform linux
+# export CIBW_SKIP='pp*'; export CIBW_ARCHS_WINDOWS='AMD64 x86'; rm -rf _skbuild; find . -type f -name "*.so" -exec rm {} \; ; cibuildwheel --platform windows
+# python setup.py sdist
+# twine upload --repository testpypi wheelhouse/*macos*
+# twine upload --repository testpypi wheelhouse/*manylinux*
+# twine upload --repository testpypi dist/cofi*tar.gz
+
+####### TO FORMAT #######
+# black --check .
+# black .
+
+####### TO TEST #######
+# pytest
+
+####### COVERAGE #######
+# coverage run -m pytest; coverage report; coverage xml
+
+####### PYLINT #######
+# pylint cofi
+
+# --------------------------- END NOTES ---------------------------
+
+
+[build-system]
+requires = [
+  "setuptools>=42",
+  "wheel",
+  "scikit-build>=0.12",
+  "cmake>=3.18",
+  "ninja",
+  "cython>=0.29.27",
+  "numpy>=1.18",
+  "pybind11[global]>=2.9.1",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = "ignore:.*invalid escape sequence.*:DeprecationWarning"
+
+[tool.coverage.run]
+omit = ["*/lib*/*", "*/lib*"]
+
+[tool.black]
+line-length = 88
+target_version = ['py38']
+experimental_string_processing = true
+exclude = '''
+(
+  /(
+    \.git
+    | \.mypy_cache
+    | \.vscode
+    | build
+    | lib.*
+    | dist
+    | _skbuild
+  )/
+  | tests
+)
+'''
