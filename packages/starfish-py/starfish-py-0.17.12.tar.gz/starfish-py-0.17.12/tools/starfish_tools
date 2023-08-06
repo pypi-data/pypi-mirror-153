@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+
+"""
+
+    Script to provide starfish tools
+
+
+"""
+
+import argparse
+import logging
+
+
+from starfish.tool.command.account_command import AccountCommand
+from starfish.tool.command.agent_command import AgentCommand
+from starfish.tool.command.asset_command import AssetCommand
+from starfish.tool.output import Output
+
+
+def main():
+
+    parser = argparse.ArgumentParser(description='Starfish Tools')
+
+    parser.add_argument(
+        '-u',
+        '--url',
+        help=f'URL of the network node',
+    )
+
+    parser.add_argument(
+        '-d',
+        '--debug',
+        action='store_true',
+        help=f'Debug mode on or off. Default: False',
+    )
+
+    parser.add_argument(
+        '-j',
+        '--json',
+        action='store_true',
+        help='Output data as JSON values'
+    )
+
+    command_parser = parser.add_subparsers(
+        title='Starfish command',
+        description='Tool command',
+        help='Tool command',
+        dest='command'
+    )
+
+    command_list = [
+        AccountCommand(command_parser),
+        AgentCommand(command_parser),
+        AssetCommand(command_parser),
+    ]
+
+    args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+
+    output = Output()
+
+    is_found = False
+    for command_item in command_list:
+        if command_item.is_command(args.command):
+            command_item.execute(args, output)
+            is_found = True
+            break
+
+    if not is_found:
+        parser.print_help()
+
+    output.printout(args.json)
+
+
+if __name__ == "__main__":
+    main()
