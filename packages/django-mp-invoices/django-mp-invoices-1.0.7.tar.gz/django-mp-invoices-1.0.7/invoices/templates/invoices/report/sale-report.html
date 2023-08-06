@@ -1,0 +1,105 @@
+
+
+{% extends 'invoices/report/base.html' %}
+
+{% load i18n %}
+
+
+{% block report_name %}
+    {% trans 'Sale report' %}
+{% endblock %}
+
+
+{% block report_items %}
+    {{ block.super }}
+
+    {% if write_off_items %}
+        <tr>
+            <td colspan="9">
+                <h5>{% trans 'Write off' %}</h5>
+            </td>
+        </tr>
+
+        {% for item in write_off_items %}
+            {% include 'invoices/report/report-item.html' %}
+        {% endfor %}
+
+        <tr>
+            <td colspan="3" class="text-right">
+            </td>
+            <td><b>{{ write_off_totals.qty }}</b></td>
+            {% if is_wholesale_price_included %}
+                <td></td>
+                <td><b>{{ write_off_totals.wholesale_total|stringformat:".1f" }}</b></td>
+            {% endif %}
+            <td></td>
+            <td><b>{{ write_off_totals.retail_total|stringformat:".1f" }}</b></td>
+            {% if is_profit_included %}
+                <td><b>{{ write_off_totals.profit_total|stringformat:".1f" }}</b></td>
+            {% endif %}
+        </tr>
+
+        <tr>
+            <td colspan="9">
+                &nbsp;
+            </td>
+        </tr>
+    {% endif %}
+
+    {% if return_items %}
+        <tr>
+            <td colspan="9">
+                <h5>{% trans 'Returns' %}</h5>
+            </td>
+        </tr>
+
+        {% for item in return_items %}
+            {% include 'invoices/report/report-item.html' %}
+        {% endfor %}
+
+        <tr>
+            <td colspan="3" class="text-right">
+            </td>
+            <td><b>{{ return_totals.qty }}</b></td>
+            {% if is_wholesale_price_included %}
+                <td></td>
+                <td><b>{{ return_totals.wholesale_total|stringformat:".1f" }}</b></td>
+            {% endif %}
+            <td></td>
+            <td><b>{{ return_totals.retail_total|stringformat:".1f" }}</b></td>
+            {% if is_profit_included %}
+                <td><b>{{ return_totals.profit_total|stringformat:".1f" }}</b></td>
+            {% endif %}
+        </tr>
+
+        <tr>
+            <td colspan="9">
+                &nbsp;
+            </td>
+        </tr>
+    {% endif %}
+{% endblock %}
+
+
+{% block report_table %}
+    {{ block.super }}
+    {% if return_items %}
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right">
+                    <b>{% trans 'Total' %}:</b>
+                </td>
+                <td><b>{{ grand_totals.qty }}</b></td>
+                {% if is_wholesale_price_included %}
+                    <td></td>
+                    <td><b>{{ grand_totals.wholesale_total|stringformat:".1f" }}</b></td>
+                {% endif %}
+                <td></td>
+                <td><b>{{ grand_totals.retail_total|stringformat:".1f" }}</b></td>
+                {% if is_profit_included %}
+                    <td><b>{{ grand_totals.profit_total|stringformat:".1f" }}</b></td>
+                {% endif %}
+            </tr>
+        </tfoot>
+    {% endif %}
+{% endblock %}

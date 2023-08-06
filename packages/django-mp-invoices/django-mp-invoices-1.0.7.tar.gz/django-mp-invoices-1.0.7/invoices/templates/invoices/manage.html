@@ -1,0 +1,240 @@
+
+{% extends 'accounting.html' %}
+
+{% load i18n static notify categories widget_tweaks pipeline %}
+
+
+{% block bodyclass %}{{ block.super }} hidden-breadcrumbs{% endblock %}
+
+
+{% block title %}
+    {{ invoice.model_name }} #{{ invoice.id }}
+{% endblock %}
+
+
+{% block content %}
+    {{ block.super }}
+
+    <h4>
+        {{ invoice.model_name }} #{{ invoice.id }}
+        <small>({{ invoice.get_type_display }})</small>
+        <span class="pull-right">
+            <i class="fa fa-clock-o"></i> {{ invoice.created|date:'d.m.Y' }}
+        </span>
+    </h4>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="row">
+                <div class="col-2">
+                    <button class="btn btn-link btn-sm {% if is_product_select_collapsed %}collapsed{% endif %}"
+                            type="button" 
+                            data-toggle="collapse" 
+                            data-target="#select-product-collapse"
+                            aria-expanded="{{ is_product_select_collapsed|yesno:'false,true' }}"
+                            aria-controls="select-product-collapse">
+                        {% trans 'Products' %} <i class="fa fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="col-4">
+                    {% if form.supplier %}
+                        {{ form.supplier|add_class:'invoice-contact-select' }}
+                    {% endif %}
+                    {% if form.customer %}
+                        {{ form.customer|add_class:'invoice-contact-select' }}
+                    {% endif %}
+                </div>
+                <div class="col-4">
+                    {{ form.manager|add_class:'invoice-contact-select' }}
+                </div>
+                {% if form.currency %}
+                    <div class="col-2">
+                        {{ form.currency|add_class:'form-control form-control-sm' }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ invoice.print_url }}"
+               target="blank"
+               class="btn btn-primary btn-sm pull-right">
+                <i class="fa fa-print"></i> {% trans 'Print' %}
+            </a>
+            {% if invoice.invoice_type == 'sale' %}
+                <a href="javascript:void(0)"
+                   data-role="add-customer"
+                   class="btn btn-warning btn-sm pull-right"
+                   style="margin-right: 10px"
+                   data-url="{% url 'customers:add' %}">
+                    <i class="fa fa-user"></i>
+                    {% trans 'Add customer' %}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr />
+
+    <div data-role="products-section">
+        {% include 'invoices/product-select-list.html' %}
+
+        <table class="table table-bordered table-sm m-t-20" data-role="product-invoice-list">
+            <thead>
+                <tr>
+                    <th>
+                        {% trans 'Code' %}
+                    </th>
+                    <th>
+                        {% trans 'Product' %}
+                        [
+                            <a href="javascript:void(0)"
+                               data-role="add-product"
+                               data-url="{% url 'invoice-products:add' %}">
+                                {% trans 'Add' %}
+                            </a>
+                        ]
+                    </th>
+                    <th class="text-center" width="100">
+                        {% trans 'Quantity' %}
+                    </th>
+                    <th class="text-center" width="150">
+                        {% trans 'Price' %}
+                    </th>
+                    <th width="50"></th>
+                </tr>
+            </thead>
+            <tbody data-role="list-items">
+                {% for item in invoice.get_items %}
+                    {{ item.render }}
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                {% if form.discount %}
+                    <tr>
+                        <td colspan="2" class="text-right">
+                            <b>{% trans 'Total without discount' %}:</b>
+                        </td>
+                        <td colspan="2" data-role="grand_total" class="text-right">
+                            {{ invoice.total }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" class="text-right">
+                            <b>{% trans 'Discount' %}:</b>
+                        </td>
+                        <td>
+                            <span data-role="discount_percentage">
+                                {{ form.discount }}
+                            </span>%
+                        </td>
+                        <td class="text-right" data-role="discounted_total" >
+                            {{ invoice.discounted_total }}
+                        </td>
+                        <td></td>
+                    </tr>
+                {% endif %}
+                <tr>
+                    <td colspan="2" class="text-right">
+                        <b>{% trans 'Total' %}:</b>
+                    </td>
+                    <td colspan="2" data-role="total_with_discount" class="text-right">
+                        {{ invoice.total_with_discount }}
+                    </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    {% if invoice.invoice_type == 'sale' %}
+        {% include 'services/manage.html' %}
+    {% endif %}
+{% endblock %}
+
+
+{% block extrastyle %}
+    {{ block.super }}
+    {% stylesheet 'invoices' %}
+    {{ form.media.css }}
+{% endblock %}
+
+
+{% block js %}
+
+    {{ block.super }}
+
+    {% notify_js %}
+
+    {% javascript 'invoices' %}
+
+    {{ form.media.js }}
+
+    <script>
+        (function ($) {
+
+            {% get_categories as product_categories %}
+
+            var $productList = $('[data-role=product-list]');
+
+            new CurrencySelect({
+                $container: $('#{{ form.currency.auto_id }}'),
+                url: '{{ invoice.update_url }}'
+            });
+
+            new CategoryTree({
+                $container: $('[data-role=products-section]'),
+                data: [
+                    {% for c in product_categories %}
+                        {
+                            text: "{{ c.name|escapejs }}",
+                            id: {{ c.id }}
+                        },
+                    {% endfor %}
+                ]
+            });
+
+            new List({
+                $container: $productList,
+                url: '{% url 'invoice-products:list' %}'
+            });
+
+            new SelectProductList({
+                $container: $productList
+            });
+
+            new InvoiceList({
+                $container: $('[data-role=product-invoice-list]'),
+                addItemUrl: '{{ invoice.add_item_url }}',
+                target: 'product'
+            });
+
+            new Modal({
+                $target: $('[data-role=add-product]'),
+                focusOn: '[name=category]',
+                onSuccess: function (response) {
+                    $(window).trigger('product-selected', [
+                        response.product_id,
+                        {focus: true}
+                    ]);
+                }
+            });
+
+            new Modal({
+                $target: $('[data-role=add-customer]'),
+                focusOn: '[name=name]',
+                onSuccess: function (response) {
+                    $(window).trigger('customer-created', [response.customer]);
+                }
+            });
+
+            $('body').scannerDetection({
+                onComplete: function (code) {
+                    var data = {'bar_code': code};
+                    $.get('{% url 'invoice-products:bar-code-to-id' %}', data, function (response) {
+                        $(window).trigger('product-selected', [response]);
+                    });
+                }
+            });
+        })(jQuery);
+    </script>
+{% endblock %}

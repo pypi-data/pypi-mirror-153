@@ -1,0 +1,120 @@
+
+{% load i18n site_config %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block head %}
+        <meta charset="UTF-8">
+
+        <style>
+
+            .heading {
+                border-bottom: 2px solid;
+                margin: 5px 0;
+                text-align: center;
+            }
+
+            table {
+                width: 100%;
+                border: 1px solid #0a0a0a;
+                border-spacing: 0;
+            }
+
+            table td,
+            table th {
+                border: 1px solid #0a0a0a;
+                font-size: 13px;
+            }
+
+            table th {
+                background-color: #c0c0c0;
+            }
+
+            table td {
+                padding-left: 3px;
+            }
+
+            .cell-number {
+                width: 10%;
+                text-align: center;
+            }
+
+            .cell-total {
+                font-weight: bold;
+                text-align: right;
+                border: none;
+            }
+
+            .text-right {
+                text-align: right;
+            }
+
+        </style>
+    {% endblock %}
+</head>
+<body style="padding: 0; margin: 0;font-family: arial;">
+    {% block header %}
+        <h3 class="heading">
+            {{ invoice.model_name }} {% trans '#' %}{{ invoice.id }} <br />
+            <span style="font-size: 13px">
+                {% trans 'from' %}
+                {{ invoice.created|date:'d.m.Y' }}
+            </span>
+        </h3>
+
+        {% get_site_config as config %}
+        {{ config.invoice_print_text|default:'' }}
+    {% endblock %}
+
+    {% block table %}
+        <table>
+            <thead>
+                <tr>
+                    <th class="cell-number">{% trans '#' %}</th>
+                    <th>{% trans 'Product' %}</th>
+                    <th>{% trans 'Code' %}</th>
+                    <th>{% trans 'Qty' %}</th>
+                    <th>{% trans 'Price' %}</th>
+                    <th>{% trans 'Sum' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in invoice.get_items %}
+                    <tr>
+                        <td class="cell-number">{{ forloop.counter }}</td>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.product.code }}</td>
+                        <td>{{ item.printable_qty }}</td>
+                        <td class="text-right">{{ item.price }}</td>
+                        <td class="text-right">{{ item.subtotal }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                {% if invoice.discounted_total %}
+                    <tr>
+                        <td class="cell-total" colspan="6">
+                            {% trans 'Total without discount' %}: {{ invoice.total }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="cell-total" colspan="6">
+                            {% trans 'Discount' %}: {{ invoice.discounted_total }}
+                        </td>
+                    </tr>
+                {% endif %}
+                <tr>
+                    <td class="cell-total" colspan="6">
+                        {% trans 'Total' %}: {{ invoice.total_with_discount }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    {% endblock %}
+
+    <script>
+        window.print();
+    </script>
+</body>
+</html>
