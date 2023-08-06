@@ -1,0 +1,135 @@
+Metadata-Version: 2.1
+Name: backendpy
+Version: 0.1.7a1
+Summary: Async (ASGI) Python web framework
+Home-page: https://github.com/savangco/backendpy
+Author: Savang Co.
+Author-email: backendpy@savang.com
+License: BSD 3-Clause License
+Project-URL: Bug Tracker, https://github.com/savangco/backendpy/issues
+Project-URL: Documentation, https://backendpy.readthedocs.io
+Project-URL: Source Code, https://github.com/savangco/backendpy
+Keywords: Backendpy,Web,Framework,Python,Async,ASGI
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Libraries :: Application Frameworks
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiofiles (>=0.8.0)
+Provides-Extra: full
+Requires-Dist: ujson (>=5.1.0) ; extra == 'full'
+Requires-Dist: asyncpg (>=0.25.0) ; extra == 'full'
+Requires-Dist: SQLAlchemy (>=1.4.31) ; extra == 'full'
+Requires-Dist: jinja2 (>=3.0.3) ; extra == 'full'
+Requires-Dist: Pillow (>=9.0.0) ; extra == 'full'
+Requires-Dist: aiohttp (>=3.8.1) ; extra == 'full'
+Requires-Dist: requests (>=2.27.1) ; extra == 'full'
+
+![alt text](https://github.com/savangco/backendpy/blob/master/assets/backendpy_logo_small.png?raw=true)
+
+# Backendpy
+Python web framework for building the backend of your project!
+
+Some features:
+* Asynchronous programming (ASGI-based projects)
+* Application-based architecture and the ability to install third-party applications in a project
+* Support of middlewares for different layers such as Application, Handler, Request or Response
+* Supports events and hooks
+* Data handler classes, including validators and filters to automatically apply to request input data
+* Supports a variety of responses including JSON, HTML, file and… with various settings such as stream, gzip and…
+* Router with the ability to define urls as Python decorator or as separate files
+* Application-specific error codes
+* Optional default database layer by the Sqlalchemy async ORM with management of sessions for the scope of each request
+* Optional default templating layer by the Jinja template engine
+* …
+
+### Requirements
+Python 3.8+
+
+### Installation
+```shell
+$ pip3 install backendpy
+```
+Or use the following command to install optional additional libraries:
+```shell
+$ pip3 install backendpy[full]
+```
+You also need to install an ASGI server such as Uvicorn, Hypercorn or Daphne:
+```shell
+$ pip3 install uvicorn
+```
+### Quick Start
+#### Create Project
+
+*project/main.py*
+```python
+from backendpy import Backendpy
+
+bp = Backendpy()
+```
+
+#### Create Application
+
+*project/apps/hello/main.py*
+```python
+from backendpy.app import App
+from .handlers import routes
+
+app = App(
+    routes=[routes])
+```
+*project/apps/hello/handlers.py*
+```python
+from backendpy.router import Routes
+from backendpy.response import Text
+
+routes = Routes()
+
+@routes.get(r'^/hello-world$')
+async def hello(request):
+    return Text('Hello World!')
+```
+
+#### Activate Application
+
+*project/config.ini*
+```ini
+[apps]
+active =
+    project.apps.hello
+```
+
+#### Run Project
+
+Inside the project root path:
+```shell
+$ uvicorn main:bp
+```
+
+### Command line
+#### Project creation
+```shell
+$ backendpy create_project --name myproject
+```
+To create a project with more complete sample components:
+```shell
+$ backendpy create_project --name myproject --full
+```
+#### App creation
+```shell
+$ backendpy create_app --name myapp
+```
+```shell
+$ backendpy create_app --name myapp --full
+```
