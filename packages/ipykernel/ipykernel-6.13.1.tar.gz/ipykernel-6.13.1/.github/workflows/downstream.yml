@@ -1,0 +1,71 @@
+name: Test downstream projects
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+concurrency:
+  group: downstream-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nbclient:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Run Test
+        uses: jupyterlab/maintainer-tools/.github/actions/downstream-test@v1
+        with:
+          package_name: nbclient
+          env_values: IPYKERNEL_CELL_NAME=\<IPY-INPUT\>
+
+  jupyter_client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Run Test
+        uses: jupyterlab/maintainer-tools/.github/actions/downstream-test@v1
+        with:
+          package_name: jupyter_client
+
+  ipyparallel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Run Test
+        uses: jupyterlab/maintainer-tools/.github/actions/downstream-test@v1
+        with:
+          package_name: ipyparallel
+          package_spec: '-e ".[test]"'
+
+  jupyter_kernel_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Run Test
+        run: |
+          git clone https://github.com/jupyter/jupyter_kernel_test.git
+          cd jupyter_kernel_test
+          pip install -e ".[test]"
+          python test_ipykernel.py

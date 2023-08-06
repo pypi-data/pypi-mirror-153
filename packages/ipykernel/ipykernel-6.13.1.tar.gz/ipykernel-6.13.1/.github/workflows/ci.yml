@@ -1,0 +1,238 @@
+name: ipykernel tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.7", "3.10"]
+        include:
+          - os: windows-latest
+            python-version: "3.9"
+          - os: ubuntu-latest
+            python-version: "pypy-3.7"
+          - os: macos-latest
+            python-version: "3.8"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Install the Python dependencies
+        run: |
+          pip install .[test] codecov
+
+      - name: Install matplotlib
+        if: ${{ !startsWith(matrix.os, 'macos') && !startsWith(matrix.python-version, 'pypy') }}
+        run: |
+          pip install matplotlib || echo 'failed to install matplotlib'
+
+      - name: Install alternate event loops
+        if: ${{ !startsWith(matrix.os, 'windows') }}
+        run: |
+          pip install curio || echo 'ignoring curio install failure'
+          pip install trio || echo 'ignoring trio install failure'
+
+      - name: List installed packages
+        run: |
+          pip uninstall pipx -y
+          pip install pipdeptree
+          pipdeptree
+          pipdeptree --reverse
+          pip freeze
+          pip check
+
+      - name: Run the tests
+        timeout-minutes: 15
+        if: ${{ !startsWith( matrix.python-version, 'pypy' ) && !startsWith(matrix.os, 'windows') }}
+        run: |
+          cmd="python -m pytest -vv --cov ipykernel --cov-branch --cov-report term-missing:skip-covered"
+          $cmd || $cmd --lf
+
+      - name: Run the tests on pypy and windows
+        timeout-minutes: 15
+        if: ${{ startsWith( matrix.python-version, 'pypy' ) || startsWith(matrix.os, 'windows') }}
+        run: |
+          cmd="python -m pytest -vv"
+          $cmd || $cmd --lf
+
+      - name: Coverage
+        run: |
+          codecov
+
+  pre-commit:
+    name: pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: pre-commit/action@v2.0.0
+        with:
+          extra_args: --all-files --hook-stage=manual
+      - name: Help message if pre-commit fail
+        if: ${{ failure() }}
+        run: |
+          echo "You can install pre-commit hooks to automatically run formatting"
+          echo "on each commit with:"
+          echo "    pre-commit install"
+          echo "or you can run by hand on staged files with"
+          echo "    pre-commit run"
+          echo "or after-the-fact on already committed files with"
+          echo "    pre-commit run --all-files --hook-stage=manual"
+
+  test_docs:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9"]
+        exclude:
+          - os: windows-latest
+            python-version: pypy-3.7
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Build the docs
+        run: |
+          cd docs
+          pip install -r requirements.txt
+          make html SPHINXOPTS="-W"
+
+      - name: Install the Python dependencies
+        run: |
+          pip install  .
+          pip install velin
+
+      - name: Check Docstrings
+        run: |
+          velin . --check --compact
+
+  test_without_debugpy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Install the Python dependencies without debugpy
+        run: |
+          pip install .[test]
+          pip uninstall --yes debugpy
+
+      - name: List installed packages
+        run: |
+          pip freeze
+
+      - name: Run the tests
+        timeout-minutes: 10
+        run: |
+          cmd="python -m pytest -vv"
+          $cmd || $cmd --lf
+
+  test_miniumum_versions:
+    name: Test Minimum Versions
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+        with:
+          python_version: "3.7"
+      - name: Install miniumum versions
+        uses: jupyterlab/maintainer-tools/.github/actions/install-minimums@v1
+      - name: Run the unit tests
+        run: |
+          cmd="python -m pytest -vv -W default"
+          $cmd || $cmd --lf
+
+  test_prereleases:
+    name: Test Prereleases
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - name: Install the Python dependencies
+        run: |
+          pip install --pre -e ".[test]"
+      - name: List installed packages
+        run: |
+          pip freeze
+          pip check
+      - name: Run the tests
+        run: |
+          cmd="python -m pytest -vv"
+          $cmd || $cmd --lf
+
+  make_sdist:
+    name: Make SDist
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v2
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - name: Build SDist
+        run: |
+          pip install build
+          python -m build --sdist
+      - uses: actions/upload-artifact@v2
+        with:
+          name: "sdist"
+          path: dist/*.tar.gz
+
+  test_sdist:
+    runs-on: ubuntu-latest
+    needs: [make_sdist]
+    name: Install from SDist and Test
+    timeout-minutes: 20
+    steps:
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - name: Download sdist
+        uses: actions/download-artifact@v2
+      - name: Install From SDist
+        run: |
+          set -ex
+          cd sdist
+          mkdir test
+          tar --strip-components=1 -zxvf *.tar.gz -C ./test
+          cd test
+          pip install .[test]
+      - name: Run Test
+        run: |
+          cd sdist/test
+          cmd="python -m pytest -vv"
+          $cmd || $cmd --lf
