@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "decoy"
+version = "1.11.0"
+description = "Opinionated mocking library for Python"
+authors = ["Mike Cousins <mike@cousins.io>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/mcous/decoy"
+homepage = "https://mike.cousins.io/decoy/"
+documentation = "https://mike.cousins.io/decoy/"
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Testing :: Mocking",
+    "Typing :: Typed",
+]
+
+[tool.poetry.urls]
+"Changelog" = "https://github.com/mcous/decoy/releases"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+[tool.poetry.dev-dependencies]
+black = { version = "^22.3", python = "^3.6.2" }
+flake8 = "^4.0.1"
+flake8-annotations = { version = "^2.7.0", python = "^3.6.2" }
+flake8-docstrings = "^1.5.0"
+mkdocs = "^1.2.4"
+mkdocs-material = "^8.2.7"
+mkdocstrings = "^0.16.2"
+mypy = "^0.941"
+pytest = "^7.0.1"
+pytest-asyncio = "^0.16.0"
+pytest-mypy-plugins = "^1.9.3"
+pytest-xdist = "^2.5.0"
+coverage = { extras = ["toml"], version = "^6.2" }
+
+[tool.poetry.plugins."pytest11"]
+"decoy" = "decoy.pytest_plugin"
+
+[tool.pytest.ini_options]
+addopts = "--color=yes --mypy-ini-file=tests/typing/mypy.ini"
+
+[tool.mypy]
+files = ["decoy", "tests"]
+plugins = ["decoy/mypy/plugin.py"]
+strict = true
+show_error_codes = true
+
+# TODO(mc, 2022-03-14): drop support for Python 3.6 in Decoy v2
+# Python 3.6 does not have async generator context managers
+[[tool.mypy.overrides]]
+module = "decoy.context_managers"
+warn_unused_ignores = false
+
+[tool.coverage.report]
+exclude_lines = ["@overload", "if TYPE_CHECKING:"]
+
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
