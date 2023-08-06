@@ -1,0 +1,522 @@
+#-------------------------------------------------------------------------------------------------------------------
+# DO NOT EDIT:
+#   - a new version of this file is released with each XTLib version; it will overwrite this file without warning.
+#   - to change a subset of these properties, use the "xt config" to create a LOCAL (current directory) config file.
+#-------------------------------------------------------------------------------------------------------------------
+# factory_config.yaml: configuration file for "factory settings" of XT.  (READONLY)
+#    The contents of this file contain the default settings that define how XT operates.  Many of the settings can be 
+#    overridden by the various XT command  options (see "xt help commands" for more details). Detailed instructions 
+#    for getting started with your own config file are available in the "XT Config File" help topic.
+#-------------------------------------------------------------------------------------------------------------------
+
+external-services:
+    # compute services
+    philly: {type: "philly"}
+    xtsandboxbatch: {type: "batch", key: "$vault", url: "https://xtsandboxbatch.eastus.batch.azure.com"}
+
+    # AML platform
+    aml-sandbox-ws: {type: "aml", subscription-id: "41c6e824-0f66-4076-81dd-f751c70a140b", resource-group: "xt-sandbox"}
+    canadav100ws: {type: "aml", subscription-id: "db9fc1d1-b44e-45a8-902d-8c766c255568", resource-group: "canadav100"}
+    usscv100ws: {type: "aml", subscription-id: "d4c59fc3-1b01-4872-8981-3ee8cbd79d68", resource-group: "usscv100"}
+
+    # ITP platform  (name on left is k8s VC)
+    resrchvc: {type: "itp", subscription-id: "46da6261-2167-4e71-8b0d-f4a45215ce61", resource-group: "researchvc"}
+    resrchvc-sea: {type: "itp", subscription-id: "46da6261-2167-4e71-8b0d-f4a45215ce61", resource-group: "researchvc-sea"}
+    resrchvc-sc: {type: "itp", subscription-id: "46da6261-2167-4e71-8b0d-f4a45215ce61", resource-group: "researchvc-sc"}
+    resrchvc-eus: {type: "itp", subscription-id: "46da6261-2167-4e71-8b0d-f4a45215ce61", resource-group: "researchvc-eus"}
+    platform-aml: {type: "itp", subscription-id: "20d3c9e4-625d-45e1-ac8a-def90d3c4a88", resource-group: "RSTrainEastUS_32GB-2-aml"}
+    msrhyper: {type: "itp", subscription-id: "46da6261-2167-4e71-8b0d-f4a45215ce61", resource-group: "msrhyperVC"}
+
+    # Singularity platform
+    msrresrchws: {type: "singularity", subscription-id: "22da88f6-1210-4de2-a5a3-da4c7c2a1213", resource-group: "gcr-singularity-resrch"}
+    msroctows: {type: "singularity", subscription-id: "d4404794-ab5b-48de-b7c7-ec1fefb0a04e", resource-group: "gcr-singularity-octo"}
+
+    # storage services
+    xtsandboxstorage: {type: "storage", provider: "azure-blob-21", key: "$vault"}
+    sandboxstorage4atlas: {type: "storage", provider: "azure-blob-21", key: "$vault"}
+    sandboxstorage4agent2: {type: "storage", provider: "azure-blob-21", key: "$vault"}
+    storage4mongovm: {type: "storage", provider: "azure-blob-21", key: "$vault"}
+    sandboxstoragev2: {type: "storage", provider: "azure-blob-21", key: "$vault", "pool_connections": 25}
+    sandboxstoragev2s: {type: "storage", provider: "azure-blob-21", key: "$vault", "pool_connections": 25}
+
+    # local storage
+    filestorage: {type: "storage", provider: "store-file", path: "~/.xt/file_store"}
+    filestorage2: {type: "storage", provider: "store-file", path: "~/.xt/file_store2"}
+
+    # database services
+    xt-sandbox-cosmos: {type: "mongo", connection-string: "$vault"}
+    atlasmongo: {type: "mongo", connection-string: "$vault"}
+    mongoagent2: {type: "mongo", connection-string: "$vault"}
+    mongovm: {type: "mongo", connection-string: "$vault"}
+    xtsandboxmongov2: {type: "mongo", connection-string: "$vault"}
+    xtsandboxsql2: {type: "odbc", connection-string: "$vault"}
+    xtsandboxsql3: {type: "odbc", connection-string: "$vault"}
+
+    # vault services
+    sandbox-vault: {type: "vault", secret-name: "xt-keys", url: "https://xtsandboxvault.vault.azure.net/"}
+    sandbox-vault-v2: {type: "vault", secret-name: "xt-keys", url: "https://xtsandboxkeyvaultv2.vault.azure.net/"}
+
+    # registry services
+    xtsandboxregistry: {type: "registry", login-server: "xtsandboxregistry.azurecr.io", username: "xtsandboxregistry", password: "$vault", login: "true"}
+    xtcontainerregistry: {type: "registry", login-server: "xtcontainerregistry.azurecr.io", username: "xtcontainerregistry", password: "$vault", login: "true"}
+    philly-registry: {type: "registry", login-server: "phillyregistry.azurecr.io", login: "false"}
+    docker-hub: {type: "registry", login-server: "docker.io", login: "true"}
+    dockerhub-login: {type: "registry", login-server: "registry.hub.docker.com", login: "true", username: "rfernand", password: "$vault"}
+
+store: "sandbox_v1"
+
+stores:
+    sandbox_v1: {storage: "xtsandboxstorage", database: "xt-sandbox-cosmos", vault: sandbox-vault, target: "local"}
+    sandbox_v2: {storage: "sandboxstoragev2", database: "xtsandboxmongov2", vault: sandbox-vault-v2, target: "local"}
+    sandbox_v3: {storage: "sandboxstoragev2s", database: "xtsandboxsql2",  vault: sandbox-vault-v2, target: "local"}
+    #sandbox_sql: {storage: "sandboxstoragev2s", database: "xtsandboxsql3",  vault: sandbox-vault-v2, target: "local"}
+
+compute-targets:
+
+    # Batch sizes for GPU VMs: 
+    #   Standard_NC6s_v2:     1xP100  (16GB) ($2/hr)
+    #   Standard_NC6s_v3:     1xV100  (16GB) ($3/hr)
+    #   Standard_ND40rs_v2    8xv100  (32GB) ($22/hr)
+    #   Standard_ND96asr_v4   8xa100  (40GB) ($27/hr)
+    #   Standard_ND96amsr_v4  8xa100  (80GB) ($27/hr)
+    #
+    #   Standard_NC6:         1xK80   (12GB) (1$/hr)        (incompatible with Azure Batch Images unless nvidia 470 driver manually installed)
+    #   Standard_NC4as_T4_v3  1xT4    (16GB) ($.5/hr)
+    #   Standard_NV6          1xM60   (8GB)  ($1/hr)
+    #   Standard_NV12s_v3     1xM60   (16GB?)($1/hr)
+    #   Standard_ND6s         1xP40   (24GB) ($2/hr)
+    
+    # BATCH targets
+    # NOTE: the K80 GPUs require older NVIDIA drivers (nvida 470 or earlier) and so they are incompatible with dsvm18 images (and dsvm16 is no longer available)
+    # for "batch" services, we now default to V100 (16GB) nodes
+
+    batch: {service: "xtsandboxbatch", vm-size: "Standard_NC6s_v3", azure-image: "dsvm18", nodes: 1, low-pri: true,  
+        docker: "pytorch-xtlib", setup: "batchd"}
+
+    batch-t4: {service: "xtsandboxbatch", vm-size: "Standard_NC4as_T4_v3", azure-image: "dsvm18", nodes: 1, low-pri: true,  
+        docker: "pytorch-xtlib", setup: "batchd"}
+
+    batch-v100: {service: "xtsandboxbatch", vm-size: "Standard_NC6s_v3", azure-image: "dsvm18", nodes: 1, low-pri: true,  
+        docker: "pytorch-xtlib", setup: "batchd"}
+
+    batch-p100: {service: "xtsandboxbatch", vm-size: "Standard_NC6s_v2", azure-image: "dsvm18", nodes: 1, low-pri: true,  
+        docker: "pytorch-xtlib", setup: "batchd"}
+    
+    batch-p40: {service: "xtsandboxbatch", vm-size: "Standard_ND6s", azure-image: "dsvm18", nodes: 1, low-pri: true,  
+        docker: "pytorch-xtlib", setup: "batchd"}
+
+    batch-m60: {service: "xtsandboxbatch", vm-size: "Standard_NV12s_v3", azure-image: "dsvm18", nodes: 1, low-pri: true,  
+        docker: "pytorch-xtlib", setup: "batchd"}
+
+    batch-k80: {service: "xtsandboxbatch", vm-size: "Standard_NC6", azure-image: "dsvm18-k80", nodes: 1, low-pri: true,  
+        docker: "pytorch-xtlib", setup: "batchd"}
+
+    batch-native: {service: "xtsandboxbatch", vm-size: "Standard_NC6s_v3", azure-image: "dsvm18", nodes: 1, low-pri: true,  
+        setup: "batchnative"}
+
+    # Singularity targets
+    singularity: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "NC6_v3", location: "eastus",           # confirmed working: 3/17/2022
+        nodes: 1, sla: basic, setup: "singd", docker: "pytorch-xtlib"}
+
+    eus-v100: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "NC6_v3", location: "eastus",           # confirmed working: 3/17/2022
+        nodes: 1, sla: basic, setup: "singd", docker: "pytorch-xtlib"}
+
+    wus-v100: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "NC6_v3", location: "westus3",          # confirmed working: 3/17/2022
+        nodes: 1, sla: basic, setup: "singd", docker: "pytorch-xtlib"}
+
+    eus-v100x1: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "ND5_v2g1", location: "eastus",
+        nodes: 1, sla: standard, setup: "singd", docker: "pytorch-xtlib"}
+
+    eus-v100x2: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "ND10_v2g2", location: "eastus",
+        nodes: 1, sla: standard, setup: "singd", docker: "pytorch-xtlib"}
+
+    eus-v100x4: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "ND10_v2g4", location: "eastus",
+        nodes: 1, sla: standard, setup: "singd", docker: "pytorch-xtlib"}
+
+    eus-v100x8: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "ND40s_v2g1", location: "eastus",     # confirmed working: 3/17/2022
+        nodes: 1, sla: basic, setup: "singd", docker: "pytorch-xtlib"}
+
+    wus-v100x8: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "ND40s_v2g1", location: "westus3",
+        nodes: 1, sla: basic, setup: "singd", docker: "pytorch-xtlib"}
+
+    eus-a100x8: {service: "msrresrchws", compute: "msrresrchvc", vm-size: "ND96amr_A100_v4", location: "eastus",
+        nodes: 1, sla: basic, setup: "singd", docker: "pytorch-xtlib"}
+
+    octo-v100: {service: "msroctows", compute: "msroctovc", vm-size: "ND5_v2g1", location: "eastus",           # confirmed working: 3/17/2022
+        nodes: 1, sla: basic, setup: "singd", docker: "pytorch-xtlib"}
+
+
+    # Tesla K80 (12 GB)
+    aml: {service: "aml-sandbox-ws", compute: "sandbox-compute", nodes: 1, low-pri: false, docker: "pytorch-xtlib", setup: "amld"} 
+    aml4x: {service: "aml-sandbox-ws", compute: "compute4x", nodes: 1, low-pri: false, docker: "pytorch-xtlib", setup: "amld"} 
+
+    # V100, 16GB (?)
+    canada: {service: "canadav100ws", compute: "canada1GPUcl", nodes: 1, low-pri: false, docker: "pytorch-xtlib", setup: "amld"}
+    canada4x: {service: "canadav100ws", compute: "canadav100cl", nodes: 1, low-pri: false, docker: "pytorch-xtlib", setup: "amld"}
+    aml-us8x: {service: "usscv100ws", compute: "usscv100cl", nodes: 1, low-pri: false, docker: "pytorch-xtlib", setup: "amld"}
+
+    #---- ITP targets ----
+
+    # P40, 24 GB (low-pri)
+    itp-eus-p40-24gb: {service: "resrchvc-eus", compute: "itpeusp40cl", sku: "g1", nodes: 1, low-pri: true, setup: "itpd", docker: "pytorch-xtlib"}  # MSR-Azure-EastUS-P40
+    itp-eus-p40: {service: "platform-aml", compute: "eus-p40", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+
+    # P100, 16 GB (low-pri)
+    itp-eus-p100-16gb: {service: "resrchvc-eus", compute: "itpeusp100cl", sku: "g1", nodes: 1, low-pri: true, setup: "itpd", docker: "pytorch-xtlib"}  # MSR-Azure-EastUS-P100
+    itp-rl1-p100-16gb:  {service: "resrchvc-sea", compute: "itplabrl1cl1", sku: "g1", nodes: 1, low-pri: true, setup: "itpd", docker: "pytorch-xtlib"}  # MSR-Lab-RL1
+
+    # P100, 16 GB (dedicated)
+    itp-eus-p100: {service: "resrchvc-eus", compute: "itpeusp100cl", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}  # MSR-Azure-EastUS-P100
+    itp-rl1-p100:  {service: "resrchvc-sea", compute: "itplabrl1cl1", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}  # MSR-Lab-RL1
+    
+    # V100, 16GB (dedicated)
+    itp: {service: "resrchvc", compute: "itpeastusv100cl", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+    itp-us: {service: "resrchvc", compute: "itpeastusv100cl", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+    itp-asia: {service: "resrchvc-sea", compute: "itpseasiav100cl", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+    itp-eus1: {service: "platform-aml", compute: "v100-8x-eus-1", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+    itp-eus2: {service: "platform-aml", compute: "v100-8x-eus", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+    itp-scu-v100-16gb: {service: "resrchvc-sc", compute: "itpscusv100cl", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+    itp-native: {service: "resrchvc-sea", compute: "itpseasiav100cl", sku: "g1", nodes: 1, low-pri: false, setup: "itpnative"}
+    
+    # V100, 32GB (dedicated)
+    itp-rr1: {service: "resrchvc", compute: "itplabrr1cl1", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+    itp-hyper: {service: "msrhyper", compute: "itphyperdgxcl1", sku: "g1", nodes: 1, low-pri: false, setup: "itpd", docker: "pytorch-xtlib"}
+
+    #----  POOL targets ----
+    local-docker: {service: "pool", boxes: ["localhost"], setup: "local", docker: "pytorch-xtlib-local"}
+
+user-filters: 
+    dead: {prop: "status", type: "str", op: "=", value: "killed"}
+
+dockers:
+    pytorch-xtlib: {registry: "xtsandboxregistry", image: "rfernand/pytorch-xtlib-cuda_11:u18.04_torch_1.11_cuda_11.3_odbc17_sing_xtlib_265_push3"}
+    #pytorch-xtlib: {registry: "dockerhub-login", image: "rfernand/pytorch-xtlib-cuda11:u18.04_torch_1.10_cuda_11.3_sing_xtlib_263_odbc17"}
+    #pytorch-xtlib: {registry: "dockerhub-login", image: "rfernand/pytorch-xtlib-cuda11:u18.04_torch_1.10_cuda_11.3_sing_xtlib_264_odbc17"}
+
+    pytorch-xtlib-prev:
+        registry:   "dockerhub-login"
+        image:      "rfernand/pytorch-xtlib-cuda11:u18.04_torch_1.10_cuda_11.3_xtlib_255_odbc17"
+        sha256:     "da59735e5bbc8cc5ed1ee3d6cf3eb997626ae54eaea43a31f74c1c9d77eec0a0"
+        sing-wrap:  true
+        post-sing-steps:
+            - "RUN apt-get update"
+            - "RUN apt-get install -y unixodbc-dev"
+            - "RUN conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch"
+            - "RUN pip install 'ruamel.yaml==0.17.4' 'cryptography==3.3.1' 'cloudpickle==1.6.0'"
+            - "RUN pip install xtlib==0.0.263"    
+            - "RUN xt --version"    
+
+    # legacy docker images    
+    pytorch-xtlib-local: {registry: "", image: "pytorch-xtlib:latest"}
+    philly-pytorch: {registry: "philly-registry", image: "microsoft_pytorch:v1.2.0_gpu_cuda9.0_py36_release_gpuenv_hvd0.16.2"}
+    pytorch-xtlib-reg: {registry: "xtsandboxregistry", image: "pytorch-xtlib:latest"}
+    pytorch-xtlib-cuda10_2: {image: "nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04"}
+    pytorch-xtlib-cuda9:    {image: "rfernand/pytorch-xtlib-cuda9:torch_1.6_cuda_9.2_xtlib_230_odbc17"}
+
+azure-batch-images:
+    # these are Microsoft-provided VM images that you specify with your azure batch compute targets (see [compute-targets] section above)
+    # to generate a list of these, see the script "tools/list_batch_images.py" (there about 76 of these available; 4 included here)
+    #
+    # NOTE: the K80 GPUs require older NVIDIA drivers and so are incompatible with dsvm18 images (and dsvm16 is no longer available)
+    #dsvm16: {offer: "linux-data-science-vm-ubuntu", publisher: "microsoft-dsvm", sku: "linuxdsvmubuntu", node-agent-sku-id: "batch.node.ubuntu 16.04", version: "latest"}
+
+    # special custom image created for XT to support k80's
+    dsvm18-k80: {custom-image-id: "/subscriptions/41c6e824-0f66-4076-81dd-f751c70a140b/resourceGroups/labcoat-vmx/providers/Microsoft.Compute/galleries/xt_gallery/images/dsvm1804-k80", 
+      node-agent-sku-id: "batch.node.ubuntu 18.04"}
+
+    dsvm18: {offer: "ubuntu-1804", publisher: "microsoft-dsvm", sku: "1804", node-agent-sku-id: "batch.node.ubuntu 18.04", version: "latest"}
+    ubuntu16: {publisher: "Canonical", offer: "UbuntuServer", sku: "16.04-LTS", node-agent-sku-id: "batch.node.ubuntu 16.04", version: "latest"}
+    ubuntu18: {publisher: "Canonical", offer: "UbuntuServer", sku: "18.04-LTS", node-agent-sku-id: "batch.node.ubuntu 18.04", version: "latest"}
+    ubuntu-container: {publisher: "microsoft-azure-batch", offer: "ubuntu-server-container", sku: 16-04-lts", node-agent-sku-id: "batch.node.ubuntu 16.04", version: "latest"}
+    
+setups:
+    # NOTE: for pip install, if you use package>=x.y.z make sure you surround it with quotes (or Linux will interpret the ">" as a file redirection symbol)
+    batchd: {pre-cmds: ["pip uninstall -y ruamel.yaml"], pip-packages: ["xtlib==*"], use-sudo: true, install-blobfuse: false}    
+    batchnative: {pip-packages: ["xtlib==*", "torchvison==0.9.1"], use-sudo: true, install-blobfuse: true}
+
+    amld: {pip-packages: ["xtlib==*"], use-sudo: true, install-blobfuse: false}
+
+    singd: {pip-packages: ["xtlib==*"], use-sudo: true, install-blobfuse: false}
+
+    itpd: {pip-packages: ["xtlib==*"], use-sudo: true, install-blobfuse: false}
+    itpnative: {pip-packages: ["xtlib==*"], use-sudo: true, install-blobfuse: true}
+
+    # local machine is assumed to be self-managed (user configured for xtlib and ML app requirements)
+    local: {activate: "$call conda activate $current_conda_env", conda-packages: [], pip-packages: []}
+
+    # legacy setups (without docker images)
+    batch_native: {activate: "conda activate py36", conda-packages: [], pip-packages: ["xtlib==*"], use-sudo: true}
+    aml_native: {activate: null, conda-packages: [], pip-packages: ["xtlib==*"]}
+
+general:
+    advanced-mode: false                   # XT now defaults to basic mode
+    username: "$username"                  # used to log the user associated with runs created by the current user
+    workspace: "ws1"                       # name of current workspace 
+    experiment: "exper1"                   # default name of experiment associated with each run
+    feedback: true                         # when true, we display progress feedback for file uploads and downloads
+    run-cache-dir: "~/.xt/runs-cache"      # where we cache run information (SUMMARY and ALLRUNS)
+    distributed: false                     # when true, runs with multiple boxes/nodes are performed in distributed training mode
+    direct-run: false                      # when true, the target is run without using the XT controller (Philly, Batch, Azure ML)
+    quick-start: false                     # when true, XT start-up time will be reduced (experimental feature)
+    env-vars: {}                           # list of name=value pairs, separated by commas that the target app can read at start of run
+    authentication: "auto"                 # one of: auto, browser, device-code
+    remote-control: false                  # when true, XT client can send query/request commands to the XT controller
+    monitor: "bg"                          # should new run be monitored in console?  one of: bg, new, same, none
+    max-run-workers: 15                    # max number of bg workers to use for run command
+    storage-cert-days: 7                   # number of days that storage certificate will be valid for (Azure Batch)
+
+    # TODO: move to a new metrics section
+    primary-metric: "test-acc"             # name of metric to optimize in roll-ups, hyperparameter search, and early stopping
+    maximize-metric: true                  # how primary metric is aggregated for hp search, hp explorer, early stopping 
+    step-name: "step"                      # usually "step" or "epoch"; the name of your app's logged metrics index value
+    docker-pull-timeout: ""                # duration to wait for docker image to be pulled (retrying on error); "300s" or "45m"
+    docker-other-options: ""               # options added to the docker run command     
+    mount-retry-count: 0                   # number of times retury the mount command
+    mount-retry-interval: "15s"            # time to wait between mount retries
+    node-delay: ""                         # maximum time for random delay to start of node execution
+
+code:
+    code-dirs: ["$scriptdir/**"]           # path to the code directories needed for the run (code snapshot)
+    code-upload: true                      # upload code to job store before run, for use by ML script
+    code-zip: "fast"                       # none/fast/compress ("fast" means zip w/o compression)
+    code-omit: [".git", "__pycache__"]     # directories and files to omit when capturing code files
+    xtlib-upload: false                    # upload XTLIB sources files for each run and use for controller and ML app
+    working-dir: "."                       # specifies the working directory for the run, relative to the code directory
+    node-script-path: null                 # used to find script on node (null means default to relative path from run command)
+
+after-files:
+    after-dirs: ["output/**"]              # specifies output files (for capture from compute node to STORE)
+    after-upload: true                     # should after files be uploaded at end of run?
+    after-omit: [".git", "__pycache__"]    # directories and files to omit when capturing after files
+
+data:
+    data-local: ""                         # local directory of data for app
+    data-upload: false                     # should data automatically be uploaded
+    data-share-path: ""                    # path in data share for current app's data
+    data-action: "none"                    # data action at start of run: none, download, mount
+    data-omit: []                          # directories and files to omit when capturing before/after files
+    data-writable: false                   # when true, mounted data is writable
+
+model:
+    model-local: ""                        # local directory of model for app
+    model-share-path: ""                   # path in model share for current app's model
+    model-action: "none"                   # model action at start of run: none, download, mount
+    model-writable: false                  # when true, mounted model is writable
+
+database:
+    update-job-stats: true                 # when true, job stats are updated as each run begins/ends
+    update-run-stats: true                 # when true, run stats are updated as each run begins/ends
+    update-node-stats: true                # when true, node stats are updated as each run begins/ends
+    
+    add-log-records: false                 # the new default: don't write log_records to mongo
+    buffer-metrics: 0                      # limit write of flattened metrics to database to every N mins
+    max-log-workers: 50                    # max number of background workers to use when reading log records from storage
+    max-run-delay: 0                       # max secs each run will be delayed on start (smooth out database usage on large jobs)
+    fake-error-percent: 0                  # set to .15, for example, to fail 15% of all dbx calls (for stress testing)
+    chunk-size: 50                         # number of rows per chunk, when splitting large query results among bg workers    
+
+    max-retries: 25                        # max number of times to retry errors (like "request rate too large")
+    max-backoff: 30                        # max number of seconds to wait between error retries
+    reset-connection: false                # when true, new connection is attempted before any error is retried
+    extended-logging: false                # when true, all ODBC calls and errors are logged to console
+
+logging:
+    mirror-files: "logs/**"                # default wildcard path for log files to mirror
+    mirror-dest: "storage"                 # one of: none, storage
+    mirror-delay-mins: 0                   # number of minutes to wait to accumulate mirrored updates 
+    show-mirror-calls: false               # when true, log (to console) mirror update calls to console
+    show-missing-jobid-calls: false        # when true, log (to console) calls to run_files() that are missing the job_id
+    log: true                              # specifies if experiments are logged to STORE
+    notes: "none"                          # control when user is prompted for notes (none, before, after, all)
+    capture-setup-cmds: true               # during node setup, selected commands will have their output sent to a log file
+    pip-freeze: true                       # should 'pip freeze' be run during node setup process (logging before/after pip packages)
+    log-reports: true                      # should GPU, CPU, and MEMORY reports be logged during setup
+    merge-batch-logs: false                # when true, STDOUT.txt and STDERR.txt are merged into a STDBOTH.txt file
+
+internal:
+    console: "normal"                      # controls the level of console output (none, normal, diagnostics, detail)
+    stack-trace: false                     # show stack trace for errors  
+    auto-start: false                      # when true, the XT controller is automatically started on 'status' cmd
+
+aml-options:
+    use-gpu: true                          # use GPU(s) 
+    framework: "none"                      # we support pytorch, tensorflow, chainer, or none (ignored if using custom docker image)
+    fw-version: ""                         # version of framework (string) (ignored if using custom docker image)
+    # user-managed: false                  # when true, AML assumes we have correct prepared environment (for local runs)
+    distributed-training: "mpi"            # one of: mpi, gloo, or nccl
+    max-seconds: null                      # max secs for run before timeout 
+
+early-stopping:
+    early-policy: "none"           # bandit, median, truncation, none
+    delay-evaluation: 10           # number of evals (metric loggings) to delay before the first policy application
+    evaluation-interval: 1         # the frequencency (# of metric logs) for testing the policy
+    slack-factor: 0                # (bandit only) specified as a ratio, the delta between this eval and the best performing eval
+    slack-amount: 0                # (bandit only) specified as an amount, the delta between this eval and the best performing eval
+    truncation-percentage: 5       # (truncation only) percent of runs to cancel at each eval interval
+
+hyperparameter-search:
+    option-prefix: "--"                 # prefix used by ML app for options specified on the cmd line (set to "$none" to disable parsing/generation of options for hp search)
+    aggregate-dest: "job"               # set to "job", "experiment", or "none"
+    search-type: "random"               # random, grid, bayesian, or dgd
+    static-search: true                 # perform hparameter searches at job submit time, when possible
+    max-minutes: null                   # max minutes before terminating search
+    hp-config: ""                       # the name of the text file containing the hyperparameter ranges to be searched
+    fn-generated-config: "config.yaml"  # name of runset file generated by dynamic hyperparameter search
+    concurrent: 1                       # max number of concurrent runs per node
+    max-runs: null                      # used to limit total search runs in a full/grid search 
+    goal-metric: null                   # goal for primary metrics (stops CCD hp search when reached)
+    runs-per-set: 1                     # how many runs to do for each CCD hp set explored
+    max-passes: null                    # used to limit number of passes over hyperparameters in hp search
+
+hyperparameter-explorer:
+    hx-cache-dir: "c:/hx_cache"        # directory hx uses for caching experiment runs 
+    steps-name: "steps"                # usually "epochs" or "steps" (hyperparameter - total # of steps to be run)
+    log-interval-name: "LOG_INTERVAL"  # name of hyperparameter that specifies how often to log metrics
+    time-name: "sec"                   # usually "epoch" or "sec
+    sample-efficiency-name: "SE"       # sample efficiency name 
+    success-rate-name: "RSR"           # success rate name 
+
+plots:
+    highlight: ""                  # set to "$alive" to highlight alive runs/jobs/experiments/nodes
+    color-highlight: ""            # set to bold, italic, or a matplotlib color
+
+compare-reports:
+    omit-columns: []               # list columns that should be omitted from "xt compare" reports 
+
+run-reports:
+    sort: "name"                   # default column sort for run reports (e.g., name, value, status, duration, etc.)
+    group: ""                      # column used to group the run reports
+    number-groups: false           # if true, group names will be preceeded by a group number (based on sorting order)
+    reverse: false                 # if experiment sort should be reversed in order    
+    max-width: 30                  # max width of any column
+    precision: 3                   # number of fractional digits to display for float values
+    significance: 2                # number of significant digits to display (by increasing precision, when needed)
+    max-fixed-length: 7            # maximum # of fractional digits to display before using scientific notation
+    count: false                   # returns # of records being retrieved at top of report (slows down start of report)
+    common: false                  # when true, prints common hyperparameters at top of run reports involving hp_set's
+
+    # report colors:
+    #    underline, negative, black, red, green, yellow, blue, magenta, cyan, gray, 
+    #    lightred, lightgreen, lightyellow, lightblue, lightmagenta, lightcyan, darkgray, white
+
+    color-hdr: ""                  # color to use when printing header rows
+    color-highlight: negative      # color to use when printing highlighted rows
+    highlight: ""                  # use "$alive" to highlight alive runs
+
+    uppercase-hdr: true            # show column names in uppercase letters
+    right-align-numeric: true      # right align columns that contain int/float values
+    truncate-with-ellipses: true   # if true, "..." added at end of truncated column headers/values
+    status: ""                     # the status values to match for 'list runs' cmd
+    report-rollup: false           # if primary metric is used to select run metrics to report (vs. last set of metrics)
+    last: 10                       # default number of runs to show
+
+    # "columns" defines the columns to show (and their order) for the "list runs" cmd.  The columns listed 
+    # should be a standard column, or a user-logged hyperparameter or metric.  use "list runs --available" to find available columns.
+    columns: ["run", "created:$do", "experiment", "queued", "job", "target", "repeat", "search", "status", 
+        "tags.priority", "tags.description", 
+        "hparams.lr", "hparams.momentum", "hparams.optimizer", "hparams.steps", "hparams.epochs",
+        "metrics.step", "metrics.epoch", "metrics.train-loss", "metrics.train-acc", 
+        "metrics.dev-loss", "metrics.dev-acc", "metrics.dev-em", "metrics.dev-f1", "metrics.test-loss", "metrics.test-acc", 
+        "duration", 
+        # following is for mean reports
+        "column", "mean:.4f", "stderr:.4f", "hp_set:s", "item_count=count"
+        ]
+
+named-columns:
+    # these names can be used in the "--columns=" option of various commands
+    report1: ["run", "created:$do", "experiment", "queued", "job", "target", "repeat", "search", "status", 
+              "tags.priority", "tags.description"]
+
+commands: []                       # array of run commands
+    
+job-reports:
+    sort: "name"                   # default column sort for experiment list (name, value, status, duration)
+    reverse: false                 # if experiment sort should be reversed in order    
+    max-width: 30                  # max width of any column
+    precision: 3                   # number of fractional digits to display for float values
+    significance: 2                # number of significant digits to display (by increasing precision, when needed)
+    max-fixed-length: 7            # maximum # of fractional digits to display before using scientific notation
+    uppercase-hdr  : true          # show column names in uppercase letters
+    right-align-numeric: true      # right align columns that contain int/float values
+    truncate-with-ellipses: true   # if true, "..." added at end of truncated column headers/values
+    last: 10                       # default number of jobs to show
+
+    # "columns" defines the columns to show (and their order) for the "list jobs" cmd.  The columns listed 
+    # should be a standard column.  use "list jobs --available" to find available columns.
+    columns: ["job", "created", "started", "workspace", "experiment", "target", "nodes", "repeat", "tags.description", "tags.urgent", "tags.sad=SADD", "tags.funny", "low_pri", 
+        "vm_size", "azure_image", "service", "vc", "cluster", "queue", "service_type", "search", 
+        "job_status:$bz", "running_nodes:$bz", "running_runs:$bz", "error_runs:$bz", "completed_runs:$bz"]
+
+node-reports:
+    sort: "name"                   # default column sort for experiment list (name, value, status, duration)
+    reverse: false                 # if experiment sort should be reversed in order    
+    max-width: 30                  # max width of any column
+    precision: 3                   # number of fractional digits to display for float values
+    significance: 2                # number of significant digits to display (by increasing precision, when needed)
+    max-fixed-length: 7            # maximum # of fractional digits to display before using scientific notation
+    uppercase-hdr  : true          # show column names in uppercase letters
+    right-align-numeric: true      # right align columns that contain int/float values
+    truncate-with-ellipses: true   # if true, "..." added at end of truncated column headers/values
+    last: 10                       # default number of jobs to show
+
+    # "columns" defines the columns to show (and their order) for the "list nodes" cmd.  The columns listed 
+    # should be a standard column.  use "list nodes --available" to find available columns.
+    columns: ["job_id=job", "node_id=node", "target", "queued", "workspace", "status", "restarts:$bz", 
+              "running_nodes:$bz", "running_runs:$bz", "error_runs:$bz", "completed_runs:$bz", "total_runs",
+              "duration"]
+
+tensorboard:
+    template: "{workspace}_{run}_{logdir}"
+
+script-launch-prefix:
+    # list cmds used to launch scripts (controller, run, parent), by box-class
+    windows: ""
+    linux: "bash --login"
+    dsvm: "bash --login"
+    dsvm18: "bash --login"
+    ubuntu16: "bash --login"
+    ubuntu18: "bash --login"
+    azureml: "bash"
+    itp: "bash"
+    singularity: "bash"
+    philly: "bash --login"  
+
+boxes:
+    # This section lets you define remote computers for running your experiments (samples listed below).
+    # REQUIREMENTS: each box needs to have ports 22 and 18861 open for incoming messages.
+    # The "actions" property is a list of store names ("data", "model") whose download or mount actions should be performed on the box.
+    local: {address: "localhost", max-runs: 1, actions: [], setup: "local"}
+
+providers:
+    # this is an user-extensible set of providers for XT commands, the backend compute services,
+    # the hyperparameter search services, and storage services.
+
+    command: {
+        "compute": "xtlib.impl_compute.ImplCompute", 
+        "storage": "xtlib.impl_storage.ImplStorage", 
+        "help": "xtlib.impl_help.ImplHelp", 
+        "utility": "xtlib.impl_utilities.ImplUtilities"
+    }
+
+    compute: {
+        "pool": "xtlib.backends.backend_pool.PoolBackend", 
+        "philly": "xtlib.backends.backend_philly.Philly",
+        "batch": "xtlib.backends.backend_batch.AzureBatch",
+        "aml": "xtlib.backends.backend_aml.AzureML",
+        "itp": "xtlib.backends.backend_itp.ITP",
+        "singularity": "xtlib.backends.backend_singularity.Singularity"
+    }
+
+    hp-search: {
+        "dgd": "xtlib.hparams.hp_search_dgd.DGDSearch",
+        "bayesian": "xtlib.hparams.hp_search_bayesian.BayesianSearch",
+        "random": "xtlib.hparams.hp_search_random.RandomSearch",
+        "ccd": "xtlib.hparams.hp_search_ccd.CyclicCoordinateDescent",
+    }
+
+    storage: {
+        "azure-blob-1212": "xtlib.storage.store_azure_blob1212.AzureBlobStore1212",
+        "azure-blob-21": "xtlib.storage.store_azure_blob21.AzureBlobStore21",
+        "azure-blob-210": "xtlib.storage.store_azure_blob210.AzureBlobStore210",
+        "store-file": "xtlib.storage.store_file.FileStore",
+    }
