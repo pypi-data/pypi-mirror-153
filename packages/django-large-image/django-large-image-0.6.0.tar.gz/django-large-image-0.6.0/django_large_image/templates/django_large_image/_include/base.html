@@ -1,0 +1,32 @@
+{% load static %}
+{% block dli_base %}
+<link rel="stylesheet" type="text/css" href="{% static 'django_large_image/styles/style.css' %}">
+<script>
+  var host = undefined;
+  var thumbnailUrl = undefined;
+  var tileUrl = undefined;
+  var baseApi = 'api';
+
+  function updateTileUrlOption(option, value) {
+    if (thumbnailUrl === undefined) {
+      thumbnailUrl = `${host}/${baseEndpoint}/${imageId}/thumbnail.png`;
+    }
+    if (option === undefined) {
+      return;
+    }
+    const url = new URL(tileUrl);
+    const urlThumb = new URL(thumbnailUrl);
+    if (value === undefined) {
+      url.searchParams.delete(option);
+      urlThumb.searchParams.delete(option);
+    } else {
+      url.searchParams.set(option, value);
+      urlThumb.searchParams.set(option, value);
+    }
+    const tileFormatEncoded = '/%7Bz%7D/%7Bx%7D/%7By%7D.';
+    const tileFormat = '/{z}/{x}/{y}.';
+    tileUrl = url.toString().replace(tileFormatEncoded, tileFormat);
+    thumbnailUrl = urlThumb.toString();
+  }
+</script>
+{% endblock %}
