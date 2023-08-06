@@ -1,0 +1,69 @@
+# This workflow runs tests and reports code coverage.
+
+# We need a workflow name to be able to schedule it from Github UI
+name: TestCoverage
+
+on:
+  # Triggers the workflow on push to main
+  push:
+    branches:
+      - main
+  # Triggers the workflow on any PR
+  pull_request:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  # The job ID has to match repo settings for PR required checks
+  TestCoverage:
+    runs-on: ubuntu-latest
+
+    # Run jobs for a couple of Python versions.
+    strategy:
+      matrix:
+        python: ["3.8", "3.9", "3.10"]
+
+    name: TestCoverage - Python ${{ matrix.python }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get orquestra-quantum
+        uses: actions/checkout@v2
+        with:
+          repository: zapatacomputing/orquestra-quantum
+          path: orquestra-quantum
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Get orquestra-opt
+        uses: actions/checkout@v2
+        with:
+          repository: zapatacomputing/orquestra-opt
+          path: orquestra-opt
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Get orquestra-vqa
+        uses: actions/checkout@v2
+        with:
+          repository: zapatacomputing/orquestra-vqa
+          path: orquestra-vqa
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Get orquestra-cirq
+        uses: actions/checkout@v2
+        with:
+          repository: zapatacomputing/orquestra-cirq
+          path: orquestra-cirq
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Get orquestra-qiskit
+        uses: actions/checkout@v2
+        with:
+          repository: zapatacomputing/orquestra-qiskit
+          path: orquestra-qiskit
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - uses: ./subtrees/z_quantum_actions/actions/coverage
+        with:
+          codecov_secret: ${{ secrets.CODECOV_TOKEN }}
