@@ -1,0 +1,256 @@
+Metadata-Version: 1.1
+Name: AsyncOpenStackClient
+Version: 0.9.0
+Summary: Basic OpenStack async client library using asyncio
+Home-page: https://github.com/DreamLab/AsyncOpenStackClient
+Author: Dreamlab - PaaS KRK
+Author-email: paas-support@dreamlab.pl
+License: UNKNOWN
+Description: AsyncOpenStackClient
+        ====================
+        
+        |image0|_ |image1|_
+        
+        .. |image0| image:: https://api.travis-ci.org/DreamLab/AsyncOpenStackClient.png?branch=master
+        .. _image0: https://travis-ci.org/DreamLab/AsyncOpenStackClient
+        
+        .. |image1| image:: https://badge.fury.io/py/AsyncOpenStackClient.svg
+        .. _image1: https://badge.fury.io/py/AsyncOpenStackClient
+        
+        
+        
+        Introduction
+        ============
+        
+        The `AsyncOpenStackClient` is a asynchronous rest wrapper for the OpenStack API. It provides a nice abstraction for authentication. For method specification, see the official OpenStack documentation: https://docs.openstack.org/queens/api/.
+        
+        
+        Installation
+        ============
+        
+        Use pip:
+        
+        ::
+        
+            pip install AsyncOpenStackClient
+        
+        
+        Usage
+        =====
+        
+        .. code-block:: python
+        
+            from asyncopenstackclient import NovaClient, GlanceClient, CinderClient, AuthPassword
+        
+            # you can either pass credentials explicitly (as shown below)
+            # or use environmental variables from OpenStack RC file
+            # https://docs.openstack.org/mitaka/cli-reference/common/cli_set_environment_variables_using_openstack_rc.html
+            auth = AuthPassword(
+                auth_url='https://keystone:5999/v3'
+                username='USER', password='PASS',
+                project_name='my-project',
+                user_domain_name='default',
+                project_domain_name='foo.bar'
+            )
+        
+            # alternatively you can also use application_credentials to authenticate with the OpenStack Keystone API
+            # https://docs.openstack.org/keystone/queens/user/application_credentials.html
+            alternative_auth = AuthPassword(
+                auth_url='https://keystone:5999/v3'
+                application_credential_id="ID",
+                application_credential_secret="SECRET"
+            )
+        
+            nova = NovaClient(session=auth)
+            glance = GlanceClient(session=auth)
+            cinder = CinderClient(session=auth)
+        
+            # api url for each service will be taken from catalog,
+            # but you may pass `api_url` param to force custom url eg.
+            # nova = NovaClient(session=auth, api_url='http://my-local-nova:9876/v2/')
+        
+            await nova.init_api()
+            await glance.init_api()
+            await cinder.init_api()
+        
+        
+            servers = await nova.servers.list(name='testvm')
+            vm = await nova.servers.get(server_id)
+        
+            action_spec = {'os-stop': None}
+            await nova.servers.run_action(server_id, **action_spec)
+        
+        
+            specs = {
+                "name": 'some_name',
+                "flavorRef": 'flavor_id',
+                "imageRef": 'image_id',
+                "security_groups": [{'name': 'group1'}, {'name': 'group2'}]
+                "user_data": base64.b64encode(userdata).decode('utf-8')
+            }
+            response = await nova.servers.create(server=specs)
+            print(response)
+        
+            volume = {"size": 200,
+                      "imageRef": "image_id",
+                      "name": "some_name"}
+        
+            response = await cinder.volumes.create(volume=volume)
+            print(response)
+        
+        Available functions
+        -------------------
+        
+        - Nova (https://developer.openstack.org/api-ref/compute)
+        
+          - servers.list(optional=filter)  # params optional
+          - servers.get(id)
+          - servers.create(server=server_spec)
+          - servers.force_delete(id)
+          - servers.run_action(id, action=action_spec)
+          - flavors.list()
+          - metadata.get(server_id)
+          - metadata.set(server_id, meta=meta_spec)
+          - metadata.get_item(server_id, item_name)
+          - metadata.set_item(server_id, item_name, meta=meta_spec)
+        
+        - Glance (https://developer.openstack.org/api-ref/image/v2/index.html)
+        
+          - images.list()
+        
+        - Cinder (https://developer.openstack.org/api-ref/block-storage/v3/index.html)
+        
+          - volumes.list(optional=filter)  # params optional
+          - volumes.get(id)
+          - volumes.create(volume=volume_spec)
+          - volumes.force_delete(id)
+        
+        
+        License
+        =======
+        
+        `Apache License 2.0 <LICENSE>`_
+        
+        Changelog
+        =========
+        
+        
+        0.9.0 (2022-06-06)
+        ------------------
+        
+        * Fixed: upgrade urllib3
+        * Feature: support for application credentials
+          
+        0.8.2 (2021-03-28)
+        ------------------
+        
+        * Fixed: upgrade dependencies (aiohttp)
+        
+        0.8.1 (2019-04-03)
+        ------------------
+        
+        * Fixed: upgrade dependencies (urllib3: CVE-2018-20060)
+        
+        0.8.0 (2018-08-19)
+        ------------------
+        
+        * Feature: another part of compute API - run an action on server
+        * Feature: CD configuration
+        
+        0.7.0 (2018-06-15)
+        ------------------
+        
+        * Feature: Cinder implementation
+        * Bugfix: typo fixes
+        
+        0.6.3 (2018-06-13)
+        ------------------
+        
+        * Feature: adjustable request timeout, default is 60s now
+        
+        
+        0.6.2 (2018-05-18)
+        ------------------
+        
+        * Bugfix: initialize property (api) in Client to get some meaningful error instead of "recursion limit reached".
+        
+        
+        0.6.0 (2018-05-12)
+        ------------------
+        
+        * Feature: wrap requests with Resource/Method proxy
+        
+        
+        0.5.2 (2018-05-10)
+        ------------------
+        
+        * Bugfix: adding slash at the end of api_root_url
+        
+        
+        0.5.1 (2018-04-29)
+        ------------------
+        
+        * Bugfix: update README with metadata entry and envs notice
+        
+        
+        0.5.0 (2018-04-25)
+        ------------------
+        
+        * Feature: partial support for server metadata usage
+        
+        
+        0.4.1 (2018-04-25)
+        ------------------
+        
+        * Bugifx: invalid concat auth_url with urljoin
+        
+        
+        0.4.0 (2018-04-16)
+        ------------------
+        
+        * Feature: use `OS_` variables if present
+        
+        
+        0.3.0 (2018-04-13)
+        ------------------
+        
+        * Feature: accept to pass api_url
+        * Feature: determine api url if catalog provide incomplete one (eg. without version)
+        
+        
+        0.2.3 (2018-04-05)
+        ------------------
+        
+        * Bugfix: do_not_await_sync_method
+        
+        
+        0.2.2 (2018-04-02)
+        ------------------
+        
+        * Update simple-rest-client (fixed logging)
+        
+        
+        0.2.1 (2018-03-28)
+        ------------------
+        
+        * fix tests, cov report,  MANIFEST.in
+        
+        
+        0.1.1 (2018-03-02)
+        ------------------
+        
+        * Update MANIFEST.in
+        
+        0.1.0 (2018-02-15)
+        ------------------
+        
+        * First approach to build async openstack client library for Python3
+        
+        
+Keywords: iaas,cloud,openstack,nova,glance,async
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Operating System :: POSIX
+Classifier: Development Status :: 4 - Beta
