@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}
+	&raquo; DNOs &raquo; {{dno.dno_code}}
+{% endblock %}
+
+{% block nav %}
+	<a href="/e/dnos">DNOs</a> &raquo; {{dno.dno_code}}
+{% endblock %}
+
+{% block content %}
+	<table>
+		<tbody>
+			<tr>
+				<td>Code</td>
+				<td>{{dno.dno_code}}</td>
+			</tr>
+			<tr>
+				<td>Name</td>
+				<td>{{dno.name}}</td>
+			</tr>
+			<tr>
+				<td>Market Participant</td>
+				<td>
+					<a
+						href="/e/participants/{{dno.participant.id}}"
+						title="{{dno.participant.name}}">{{dno.participant.code}}</a>
+				</td>
+			</tr>
+			<tr>
+				<td>Start Date</td>
+				<td>{{dno_contract.start_rate_script.start_date|hh_format }}</td>
+			</tr>
+			<tr>
+				<td>Finish Date</td>
+				<td>{{dno_contract.finish_rate_script.finish_date|hh_format }}</td>
+			</tr>
+			<tr>
+				<td>Custom Reports</td>
+				<td>
+					<ul>
+						{% for report in custom_reports %}
+							<li>
+								<a
+										href="/local_reports/{{report.id}}/output/?dno_id={{contract.id}}"
+										>{{report.name}}</a>
+							</li>
+						{% endfor %}
+					</ul>
+				</td>
+			</tr>
+			<tr>
+				<td>Line Loss Factor Classes</td>
+				<td>
+					<a href="/e/llfcs?dno_id={{dno.id}}">LLFCs</a>
+				</td>
+			</tr>
+			<tr>
+				<td>Meter Timeswitch Classes</td>
+				<td>
+					<a href="/e/mtc_participants?participant_id={{dno.participant.id}}">MTCs</a>
+				</td>
+			</tr>
+			<tr>
+				<td>Valid combinations of MTC and SSC</td>
+				<td>
+					<a href="/e/mtc_sscs?participant_id={{dno.participant.id}}">MTC SSCs </a>
+				</td>
+			</tr>
+			<tr>
+				<td>Valid combinations of MTC and LLFC</td>
+				<td>
+					<a href="/e/mtc_llfcs?participant_id={{dno.participant.id}}">MTC LLFCs</a>
+				</td>
+			</tr>
+			<tr>
+				<td>Valid combinations of MTC, LLFC and SSC</td>
+				<td>
+					<a href="/e/mtc_llfc_sscs?participant_id={{dno.participant.id}}"
+						>MTC LLFC SSCs</a>
+				</td>
+			</tr>
+			<tr>
+				<td>Valid combinations of PC, LLFC, SSC and MTC for NHH supplies</td>
+				<td>
+					<a href="/e/mtc_llfc_ssc_pcs?dno_id={{dno.id}}"
+						>MTC LLFC SSC PCs</a>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<br>
+	<table>
+		<caption>
+			Rate Scripts [<a href="/e/dnos/{{dno.id}}/add_rate_script">add</a>]
+		</caption>
+		<thead>
+			<tr>
+				<th></th>
+				<th>From</th>
+				<th>To</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for rs in rate_scripts %}
+				<tr>
+					<td><a href="/e/dno_rate_scripts/{{rs.id}}">View</a></td>
+					<td>{{rs.start_date|hh_format}}</td>
+					<td>{{rs.finish_date|hh_format}}</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+	<br>
+	<form
+			enctype="multipart/form-data" method="post"
+			action="/reports/dno_vl_parser">
+		<fieldset>
+			<legend>Voltage Level Parser</legend>	
+			<input type="hidden" name="dno_id" value="{{dno.id}}">
+			<input
+					type="file" name="dno_file" size="45"
+					value="{{request.values.import_file}}">
+			<input type="submit" value="Parse">
+		</fieldset>
+	</form>
+	<p>
+		This gadget takes a DNO rate spreadsheet for the current financial
+		year and outputs a general import file that updates the LLFC
+		voltage levels and substation flag to make Chellow match the DNO
+		spreadsheet.
+	</p>
+{% endblock %}
