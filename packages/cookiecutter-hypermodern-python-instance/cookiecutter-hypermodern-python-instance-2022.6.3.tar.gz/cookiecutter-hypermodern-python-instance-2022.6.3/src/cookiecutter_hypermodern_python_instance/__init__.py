@@ -1,0 +1,1 @@
+"""Cookiecutter Hypermodern Python Instance."""
