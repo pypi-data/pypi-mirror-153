@@ -1,0 +1,128 @@
+[tool.poetry]
+name = "munet"
+version = "0.8.22"
+description = "A package to facilitate network simulations"
+authors = ["Christian Hopps <chopps@labn.net>"]
+license = "GPL-2.0-or-later"
+readme = "README.org"
+repository = "https://github.com/LabNConsulting/munet"
+
+include = ["logconf.yaml", "munet-schema.yaml"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+toml = {version = "^0.10.2", optional = true}
+PyYAML = "^5.4.1"
+Pygments = {version = "^2.10.0", optional = true}
+autoflake = {version = "^1.4", optional = true}
+flake8 = {version = "^3.9.2", optional = true}
+importmagic = {version = "^0.1.7", optional = true}
+jedi = {version = "^0.18.0", optional = true}
+json-rpc = {version = "^1.13.0", optional = true}
+jsonschema = {version = "^4.3.1", optional = true}
+pexpect = {version = "^4.8.0", optional = true}
+
+[tool.poetry.dev-dependencies]
+pylint = "^2.11.1"
+pytest = "^6.2.5"
+pytest-asyncio = "^0.18.3"
+pytest-cov = "^3.0.0"
+black = "^22.3.0"
+pytest-xdist = "^2.4.0"
+
+[tool.poetry.extras]
+ci = ["jsonschema", "pexpect", "pylint"]
+dev = ["jsonschema", "pexpect", "pylint"]
+ide = ["Pygments", "autoflake", "flake8", "importmagic", "jedi", "json-rpc"]
+validate = ["jsonschema"]
+
+[tool.poetry.scripts]
+munet = "munet.__main__:main"
+mucmd = "munet.mucmd:main"
+
+[tool.isort]
+profile = "black"
+force_single_line = true
+atomic = true
+include_trailing_comma = true
+lines_after_imports = 2
+lines_between_types = 1
+use_parentheses = true
+src_paths = ["munet", "tests"]
+skip_glob = ["*/setup.py"]
+filter_files = true
+known_first_party = "munet"
+
+[tool.black]
+line-length = 88
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | tests/.*/setup.py
+)/
+'''
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.flake8]
+max-line-length = 88
+ignore = "E203,E741,W504"
+
+[tool.pylint.messages_control]
+disable = [
+  "broad-except",
+  "consider-using-f-string",    # this would also be nice, but too much
+  "consider-using-with",        # this would be nice if it wasn't so simple
+  "duplicate-code",
+  "invalid-name",               # sometimes 1 char variable names are fine
+  "missing-function-docstring", # would be nice, a pipe-dream really
+  "too-few-public-methods",
+  "too-many-arguments",
+  "too-many-branches",
+  "too-many-instance-attributes",
+  "too-many-lines",
+  "too-many-locals",
+  "too-many-return-statements",
+  "too-many-statements",
+]
+max-line-length = 88
+
+[tool.pylint.design]
+# limiting the number of returns might discourage
+# the use of guard clauses. So we increase the
+# allowed number of returns from 6 to 8
+max-returns = 8
+
+[tool.pytest.ini_options]
+
+testpaths = [
+        "tests",
+]
+
+log_level = "INFO"
+log_format = "%(asctime)s,%(msecs)03d %(levelname)s: %(name)s: %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
+
+# If verbose is specifyied log_cli will be set to 1, it can also be specified
+# here or on the CLI.
+# log_cli = 1
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s,%(msecs)03d %(levelname)s: %(name)s: %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+log_file = "exec-pytest.log"
+log_file_level = "DEBUG"
+log_file_format = "%(asctime)s,%(msecs)03d %(levelname)s: %(name)s: %(message)s"
+log_file_date_format = "%Y-%m-%d %H:%M:%S"
