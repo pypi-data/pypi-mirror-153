@@ -1,0 +1,84 @@
+Metadata-Version: 2.1
+Name: zdatasets
+Version: 0.1.1
+Summary: Dataset SDK for consistent read/write [batch, online, streaming] data.
+Author: Taleb Zeghmi
+Requires-Python: >=3.9.0,<3.11
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.9
+Provides-Extra: dask
+Provides-Extra: doc
+Provides-Extra: metaflow
+Provides-Extra: spark
+Requires-Dist: awswrangler (>=2.12.0)
+Requires-Dist: click (>=7.0,<8.1)
+Requires-Dist: dask (>=2021.9.1); extra == "dask"
+Requires-Dist: importlib-metadata (>=4.8.1)
+Requires-Dist: pandas (>=1.4.0)
+Requires-Dist: pyarrow (>=6.0.0)
+Requires-Dist: pyspark (>=3.2.0,<4.0.0); extra == "spark"
+Requires-Dist: s3fs (>=2022.1.0)
+Description-Content-Type: text/markdown
+
+![Tests](https://github.com/zillow/datasets/actions/workflows/test.yml/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/zillow/datasets/badge.svg)](https://coveralls.io/github/zillow/datasets)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zillow/datasets/tz/strong-typed-factory?urlpath=lab/tree/datasets/tutorials)
+
+
+Welcome to @datasets
+==================================================
+
+TODO
+
+```python
+import pandas as pd
+from metaflow import FlowSpec, step
+
+from datasets import Dataset, Mode
+from datasets.metaflow import DatasetParameter
+from datasets.plugins import BatchOptions
+
+
+# Can also invoke from CLI:
+#  > python datasets/tutorials/0_hello_dataset_flow.py run \
+#    --hello_dataset '{"name": "HelloDataset", "mode": "READ_WRITE", \
+#    "options": {"type": "BatchOptions", "partition_by": "region"}}'
+class HelloDatasetFlow(FlowSpec):
+    hello_dataset = DatasetParameter(
+        "hello_dataset",
+        default=Dataset("HelloDataset", mode=Mode.READ_WRITE, options=BatchOptions(partition_by="region")),
+    )
+
+    @step
+    def start(self):
+        df = pd.DataFrame({"region": ["A", "A", "A", "B", "B", "B"], "zpid": [1, 2, 3, 4, 5, 6]})
+        print("saving data_frame: \n", df.to_string(index=False))
+
+        # Example of writing to a dataset
+        self.hello_dataset.write(df)
+
+        # save this as an output dataset
+        self.output_dataset = self.hello_dataset
+
+        self.next(self.end)
+
+    @step
+    def end(self):
+        print(f"I have dataset \n{self.output_dataset=}")
+
+        # output_dataset to_pandas(partitions=dict(region="A")) only
+        df: pd.DataFrame = self.output_dataset.to_pandas(partitions=dict(region="A"))
+        print('self.output_dataset.to_pandas(partitions=dict(region="A")):')
+        print(df.to_string(index=False))
+
+
+if __name__ == "__main__":
+    HelloDatasetFlow()
+
+```
+
