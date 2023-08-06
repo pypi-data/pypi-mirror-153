@@ -1,0 +1,115 @@
+name: build
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: "0 2 * * *"
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - uses: pre-commit/action@v2.0.0
+        with:
+          extra_args: --all-files
+
+  compatibility-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - 3.6
+          - 3.7
+          - 3.8
+          - 3.9
+    steps:
+      - uses: actions/checkout@v2
+      - name: Mongo Service
+        id: mongo-service
+        uses: ./.github/actions/mongo-service
+        with:
+          version: "4.4"
+          mode: standalone
+      - name: "Set up Python ${{ matrix.python-version }}"
+        uses: actions/setup-python@v2
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Cache environment
+        uses: actions/cache@v2
+        with:
+          path: |
+            .venv
+            .tox
+          key: env-compatibility-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+      - name: Install tox
+        run: pip install tox flit
+      - name: Run compatibility checks.
+        run: |
+          export VERSION_STR=$(echo ${{ matrix.python-version }} | sed -e "s/\.//g")
+          export TOX_SKIP_ENV=$(printf '^(?!py%s-)' $VERSION_STR)
+          tox --parallel auto
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - 3.6
+          - 3.7
+          - 3.8
+          - 3.9
+        mongo-version:
+          - 4.0
+          - 4.2
+          - 4.4
+        mongo-mode:
+          - standalone
+        include:
+          - python-version: 3.8
+            mongo-version: 4.0
+            mongo-mode: replicaSet
+          - python-version: 3.8
+            mongo-version: 4.2
+            mongo-mode: sharded
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: "pyproject.toml"
+      - name: Mongo Service
+        id: mongo-service
+        uses: ./.github/actions/mongo-service
+        with:
+          version: ${{ matrix.mongo-version }}
+          mode: ${{ matrix.mongo-mode }}
+      - name: Install dependencies
+        run: |
+          pip install flit
+          pip install ".[test]"
+      - name: Run all tests
+        run: |
+          set -e
+          coverage run -m pytest -v
+          coverage report -m
+          coverage xml
+        env:
+          TEST_MONGO_URI: ${{ steps.mongo-service.outputs.connection-string }}
+          TEST_MONGO_MODE: ${{ matrix.mongo-mode }}
+
+      - uses: codecov/codecov-action@v1
+        if: github.event_name != 'schedule' # Don't report coverage for nightly builds
+        with:
+          file: ./coverage.xml
+          flags: tests-${{ matrix.python-version }}-${{ matrix.mongo-version }}-${{ matrix.mongo-mode }}
+          fail_ci_if_error: true

@@ -1,0 +1,87 @@
+# https://taskfile.dev
+
+version: "3"
+
+silent: true
+
+includes:
+  release: ./.github
+  mongodb: ./.github/actions/mongo-service/Taskfile.yml
+
+tasks:
+  full-test:
+    desc: Run the tests against all supported versions.
+    deps:
+      - task: "mongodb:check"
+    cmds:
+      - tox --parallel auto
+
+  test:
+    desc: |
+      Run the tests with the current version.
+    deps:
+      - task: "mongodb:check"
+    cmds:
+      - pytest -rs
+
+  default:
+    desc: |
+      Run the tests related to changes with the current version.
+    deps:
+      - task: mongodb
+    cmds:
+      - pytest -rs --testmon
+
+  coverage:
+    desc: Get the test coverage (xml and html) with the current version.
+    deps:
+      - task: "mongodb:check"
+    cmds:
+      - coverage run -m pytest -rs
+      - coverage report -m
+      - coverage xml
+      - 'echo "Generated XML report: ./coverage.xml"'
+      - coverage html
+      - 'echo "Generated HTML report: ./htmlcov/index.html"'
+
+  docs:
+    desc: Start the local documentation server.
+    cmds:
+      - mkdocs serve -f ./docs/mkdocs.yml
+
+  lint:
+    desc: Run the linting checks.
+    cmds:
+      - pre-commit run --all-files
+
+  format:
+    desc: Format the code (and imports).
+    cmds:
+      - isort odmantic tests
+      - black odmantic tests
+
+  setup:
+    desc: Configure the development environment.
+    cmds:
+      - task: setup:git-lfs
+      - task: setup:pre-commit-hook
+      - task: setup:deps-setup
+
+  setup:git-lfs:
+    cmds:
+      - git lfs install
+      - git lfs pull
+    status:
+      - test -d .git/lfs/
+
+  setup:pre-commit-hook:
+    cmds:
+      - pre-commit install
+    status:
+      - test -f .git/hooks/pre-commit
+
+  setup:deps-setup:
+    cmds:
+      - flit install --deps=all
+    sources:
+      - pyproject.toml
