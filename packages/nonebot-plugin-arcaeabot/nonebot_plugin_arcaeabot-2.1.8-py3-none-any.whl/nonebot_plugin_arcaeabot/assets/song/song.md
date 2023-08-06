@@ -1,0 +1,1 @@
+use /arc assets_update to update assets
