@@ -1,0 +1,161 @@
+Metadata-Version: 2.1
+Name: cs.pop3
+Version: 20220606
+Summary: POP3 stuff, particularly a streaming downloader and a simple command line which runs it.
+Home-page: https://bitbucket.org/cameron_simpson/css/commits/all
+Author: Cameron Simpson
+Author-email: Cameron Simpson <cs@cskk.id.au>
+License: GNU General Public License v3 or later (GPLv3+)
+Project-URL: URL, https://bitbucket.org/cameron_simpson/css/commits/all
+Keywords: python3
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Environment :: Console
+Classifier: Topic :: Communications :: Email :: Post-Office :: POP3
+Classifier: Topic :: Internet
+Classifier: Topic :: Utilities
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Description-Content-Type: text/markdown
+Requires-Dist: cs.cmdutils (>=20210407.1)
+Requires-Dist: cs.lex (>=20220227)
+Requires-Dist: cs.logutils (>=20220531)
+Requires-Dist: cs.pfx (>=20220523)
+Requires-Dist: cs.queues (>=20220605)
+Requires-Dist: cs.resources (>=20220429)
+Requires-Dist: cs.result (>=20210407)
+Requires-Dist: cs.threads (>=20211208)
+Requires-Dist: cs.upd (>=20220606)
+
+POP3 stuff, particularly a streaming downloader and a simple command line which runs it.
+
+*Latest release 20220606*:
+Minor updates.
+
+I spend some time on a geostationary satellite connection,
+where round trip ping times are over 600ms when things are good.
+
+My mail setup involves fetching messages from my inbox
+for local storage in my laptop, usually using POP3.
+The common standalone tools for this are `fetchmail` and `getmail`.
+However, both are very subject to the link latency,
+in that they request a message, collect it, issue a delete, then repeat.
+On a satellite link that incurs a cost of over a second per message,
+making catch up after a period offline a many minutes long exercise in tedium.
+
+This module does something I've been meaning to do for literally years:
+a bulk fetch. It issues `RETR`ieves for every message up front as fast as possible.
+A separate thread collects the messages as they are delivered
+and issues `DELE`tes for the saved messages as soon as each is saved.
+
+This results in a fetch process which is orders of magnitude faster.
+Even on a low latency link the throughput is much faster;
+on the satellite it is gobsmackingly faster.
+
+## Class `ConnectionSpec(ConnectionSpec, builtins.tuple)`
+
+A specification for a POP3 connection.
+
+## Function `main(argv=None)`
+
+The `pop3` command line mode.
+
+## Class `NetrcEntry(NetrcEntry, builtins.tuple)`
+
+A `namedtuple` representation of a `netrc` entry.
+
+## Class `POP3(cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin)`
+
+Simple POP3 class with support for streaming use.
+
+## Class `POP3Command(cs.cmdutils.BaseCommand)`
+
+Command line implementation for POP3 operations.
+
+Credentials are obtained via the `.netrc` file presently.
+
+Connection specifications consist of an optional leading mode prefix
+followed by a netrc(5) account name
+or an explicit connection specification
+from which to derive:
+* `user`: the user name to log in as
+* `tcp_host`: the hostname to which to establish a TCP connection
+* `port`: the TCP port to connect on, default 995 for TLS/SSL or 110 for cleartext
+* `sni_host`: the TLS/SSL SNI server name, which may be different from the `tcp_host`
+
+The optional mode prefix is one of:
+* `ssl:`: use TLS/SSL - this is the default
+* `tcp:`: use cleartext - this is useful for ssh port forwards
+  to some not-publicly-exposed clear text POP service;
+  in particular streaming performs better this way,
+  I think because the Python SSL layer does not buffer writes
+
+Example connection specifications:
+* `username@mail.example.com`:
+  use TLS/SSL to connect to the POP3S service at `mail.example.com`,
+  logging in as `username`
+* `mail.example.com`:
+  use TLS/SSL to connect to the POP3S service at `mail.example.com`,
+  logging in with the same login as the local effective user
+* `tcp:username@localhost:1110`:
+  use cleartext to connect to `localhost:1110`,
+  typically an ssh port forward to a remote private cleartext POP service,
+  logging in as `username`
+* `username@localhost!mail.example.com:1995`:
+  use TLS/SSL to connect to `localhost:1995`,
+  usually an ssh port forward to a remote private TLS/SSL POP service,
+  logging in as `username` and passing `mail.exampl.com`
+  as the TLS/SSL server name indication
+  (which allows certificate verification to proceed correctly)
+
+Note that the specification may also be a `netrc` account name.
+If the specification matches such an account name
+then values are derived from the `netrc` entry.
+The entry's `machine` name becomes the TCP connection specification,
+the entry's `login` provides a default for the username,
+the entry's `account` host part provides the `sni_host`.
+
+Example `netrc` entry:
+
+    machine username@localhost:1110
+      account username@mail.example.com
+      password ************
+
+Such an entry allows you to use the specification `tcp:username@mail.example.com`
+and obtain the remaining detail via the `netrc` entry.
+
+Command line usage:
+
+    Usage: pop3 subcommand [...]
+      Subcommands:
+        dl [{ssl,tcp}:]{netrc_account|[user@]host[!sni_name][:port]} maildir
+        help [-l] [subcommand-names...]
+          Print the full help for the named subcommands,
+          or for all subcommands if no names are specified.
+          -l  Long help even if no subcommand-names provided.
+
+# Release Log
+
+
+
+*Release 20220606*:
+Minor updates.
+
+*Release 20220312*:
+Make POP3Command.cmd_dl an instance method (static methods broke with the latest cs.cmdutils release).
+
+*Release 20211208*:
+* POP3.startup: do not start the worker queue until authenticated.
+* POP3.get_response: return (None,None,None) at EOF.
+* POP3.shutdown: catch exceptions from client QUIT.
+
+*Release 20210407.2*:
+Provide "pop3" console_script.
+
+*Release 20210407.1*:
+Bump for cs.cmdutils minor bugfix, also fix a few docstring typos.
+
+*Release 20210407*:
+Initial PyPI release.
