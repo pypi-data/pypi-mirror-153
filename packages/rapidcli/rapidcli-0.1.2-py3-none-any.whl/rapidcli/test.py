@@ -1,0 +1,3 @@
+from extension_registrar import extension_registry
+
+print(extension_registry)
