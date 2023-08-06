@@ -1,0 +1,44 @@
+{% load widget_tweaks %}
+
+{% if request.user.is_authenticated %}
+<form action="" method="post" id="satellite_create-form" enctype="multipart/form-data" >
+    {% csrf_token %}
+    <div class="modal-header">
+        <h3 class="modal-title">Create Satellite</h3>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div class="{% if form.non_field_errors %}invalid{% endif %} mb-2">
+            {% for error in form.non_field_errors %}
+            {{ error }}
+            {% endfor %}
+        </div>
+
+        {% for field in form %}
+        <div class="input-group my-1">
+            <label class="input-group-prepend input-group-text" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% render_field field class="form-control" placeholder=field.label %}
+            <div class="{% if field.errors %} invalid{% endif %}">
+                {% for error in field.errors %}
+                <p class="help-block">{{ error }}</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="modal-footer">
+        <button type="submit" class="btn btn-satnogs-primary">Create</button>
+    </div>
+</form>
+{% else %}
+<div class="modal-body">
+    <div class="text-danger">You need to login first to add a new satellite suggestion.</div>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+    <a href="{% url 'account_login' %}" class="btn btn-satnogs-primary">Log In</a>
+</div>
+{% endif %}

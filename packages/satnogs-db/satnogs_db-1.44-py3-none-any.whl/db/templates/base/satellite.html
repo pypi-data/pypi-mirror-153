@@ -1,0 +1,646 @@
+{% extends "base.html" %}
+
+{% load tags %}
+{% load static %}
+
+{% block title %} - {{ satellite.satellite_entry.name }}{% endblock %}
+
+{% block css %}
+{% if showmap %}
+<link rel="stylesheet" href="{% static 'lib/mapbox-gl/dist/mapbox-gl.css' %}">
+{% endif %}
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/flag-icon-css/css/flag-icon.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/chart.js/Chart.min.css' %}">
+{% endblock %}
+
+{% block top-menu-left %}
+<span class="h4 mb-0 mr-3 text-truncate d-none d-md-block">{{ satellite.satellite_entry.name }}</span>
+{% endblock %}
+
+{% block top-menu-right %}
+
+<ul class="navbar-nav nav nav-pills" data-widget="treeview" role="menu" data-accordion="false" id="tabs" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="profile-tab" data-toggle="tab" href="#profile" role="tab" aria-controls="profile"
+      aria-selected="true" aria-label="Information"><i class="nav-icon fas fa-satellite"></i>
+      <p class="d-none d-lg-inline-block text-sm">Info</p>
+    </a>
+  </li>
+  <li class="nav-item{% if satellite.satellite_entry.status == 're-entered' or satellite.satellite_entry.status == 'future' %} disabled{% endif %}">
+    {% if showmap %}
+    <a class="nav-link" id="mapcontent-tab" data-toggle="tab" href="#mapcontent" role="tab" aria-controls="mapcontent"
+      aria-selected="false" aria-label="Map">
+      <i class="nav-icon fas fa-map-marked-alt"></i>
+      <p class="d-none d-lg-inline-block text-sm">Map</p>
+    </a>
+    {% else %}
+    <span data-toggle="tooltip" title="No map available for this satellite" data-placement="bottom">
+      <a class="nav-link disabled" aria-label="Map not available">
+        <i class="nav-icon fas fa-map-marked-alt"></i>
+        <p class="d-none d-lg-inline-block text-sm">Map</p>
+      </a>
+    </span>
+    {% endif %}
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="transmitters-tab" data-toggle="tab" href="#transmitters" role="tab"
+      aria-controls="transmitters" aria-selected="false" aria-label="Transmitters">
+      <i class="nav-icon fas fa-satellite-dish"></i>
+      {% if perms.base.approve_transmittersuggestion and satellite.transmitter_suggestion_count %}
+        <span class="badge badge-warning navbar-badge">{{ satellite.transmitter_suggestion_count }}</span>
+      {% elif satellite.transmitters %}
+        <span class="badge badge-satnogs-primary navbar-badge">{{ satellite.transmitters.count }}</span>
+      {% endif %}
+      <p class="d-none d-lg-inline-block text-sm">Transmitters</p>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="data-tab" data-toggle="tab" href="#data" role="tab" aria-controls="data"
+      aria-selected="false" aria-label="Data">
+      <i class="nav-icon fas fa-chart-bar"></i>
+      {% if satellite.telemetry_data_count %}
+      <span class="badge badge-satnogs-primary navbar-badge">{{ badge_telemetry_count }}</span>
+      {% endif %}
+      <p class="d-none d-lg-inline-block text-sm">Data</p>
+    </a>
+  </li>
+
+  {% if request.user.is_authenticated %}
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
+      aria-haspopup="true" aria-expanded="false" aria-label="Edit Menu">
+      <i class="nav-icon fas fa-edit"></i>
+      <p class="d-none d-lg-inline-block text-sm">Edit</p>
+    </a>
+    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+      <a class="dropdown-item d-flex align-items-center update-satellite-link" href="#" id="satellite-update" 
+        data-form-url="{% url 'update_satellite' satellite.satellite_entry.pk %}" aria-label="Edit this satellite">
+        <i class="nav-icon mr-2 fas fa-edit"></i>
+        <p class="mb-0">Edit {{ satellite.satellite_entry.name }}</p>
+      </a>
+      <a class="dropdown-item d-flex align-items-center create-transmitter-link" href="#" id="create-transmitter-side"
+        data-form-url="{% url 'create_transmitter' satellite_pk=satellite.id %}" aria-label="Submit new transmitter">
+        <i class="nav-icon mr-2 fas fa-plus-square"></i>
+        <p class="mb-0">Submit New Transmitter</p>
+      </a>
+    </div>
+  </li>
+  {% if satellite_suggestions %}
+    <li class="nav-item">
+      <a class="nav-link" id="suggestions-tab" data-toggle="tab" href="#suggestions" role="tab" aria-controls="suggestions"
+        aria-selected="false" aria-label="Suggestions">
+        <i class="nav-icon fas fa-lightbulb"></i>
+        {% if perms.base.approve_satellitesuggestion %}
+          <span class="badge badge-warning navbar-badge">{{ satellite_suggestions.count }}</span>
+        {% endif %}
+        <p class="d-none d-lg-inline-block text-sm">Suggestions</p>
+      </a>
+    </li>
+  {% endif %}
+  {% endif %}
+</ul>
+{% endblock %}
+
+{% block top %}
+<span class="h4 mb-0">{{ satellite.satellite_entry.name }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="row h-100 pl-2 pr-3">
+  <!-- The following div is managed by the tab menus -->
+  <div class="col-12 tab-content mx-2 pt-3" id="myTabContent">
+
+    <!-- Profile panel -->
+    <div class="tab-pane fade show active mx-1" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+      <div class="card-columns">
+        <!-- Satellite Mission Information -->
+        <div class="card card-info">
+          <div class="card-header card-satnogs-header">
+            Mission information
+          </div>
+          <div class="card-body">
+            <dl class="row">
+              <dt class="col-sm-4" data-needshelp="{{ satellite.needs_help }}">Name</dt>
+              <dd class="col-sm-8">{{ satellite.satellite_entry.name }}</dd>
+              {% if satellite.satellite_entry.names %}
+              <dt class="col-sm-4">Alternate Names</dt>
+              <dd class="col-sm-8">{{ satellite.satellite_entry.names }}</dd>
+              {% endif %}
+              <dt class="col-sm-4">Satellite ID</dt>
+              <dd class="col-sm-8">{{ satellite.satellite_entry.satellite_identifier }}</dd>
+              <dt class="col-sm-4">NORAD ID</dt>
+              <dd class="col-sm-8">{{ satellite.satellite_entry.norad_cat_id }}</dd>
+              {% if satellite.satellite_entry.website %}
+              <dt class="col-sm-4">Website</dt>
+              <dd class="col-sm-8 text-truncate">
+                <a href="{{ satellite.satellite_entry.website }}" target="_blank">{{ satellite.satellite_entry.website }}</a>
+              </dd>
+              {% endif %}
+              {% if satellite.satellite_entry.operator %}
+              <dt class="col-sm-4">Operator</dt>
+              <dd class="col-sm-8">
+                {% if satellite.satellite_entry.operator.website %}
+                <a href="{{ satellite.satellite_entry.operator.website }}" target="_blank">
+                  {{ satellite.satellite_entry.operator.name }} - {{ satellite.satellite_entry.operator.names }}
+                </a>
+                {% else %}
+                {{ satellite.satellite_entry.operator.name }} - {{ satellite.satellite_entry.operator.names }}
+                {% endif %}
+              </dd>
+              {% endif %}
+              {% if satellite.satellite_entry.countries %}
+              {% if satellite.satellite_entry.countries|length > 1 %}
+              <dt class="col-sm-4">Countries of Origin</dt>
+              {% else %}
+              <dt class="col-sm-4">Country of Origin</dt>
+              {% endif %}
+              <dd class="col-sm-8">
+                {% for country in satellite.satellite_entry.countries %}<p>
+                  <span class="flag-icon flag-icon-{{ country.code|lower }}"></span>
+                  <span class="mb-0">{{ country.name }}</span></p>
+                {% endfor %}
+              </dd>
+              {% endif %}
+            </dl>
+          </div>
+        </div>
+        <!-- Satellite Status -->
+        <div class="card card-info">
+          <div class="card-header card-satnogs-header">
+            Status
+          </div>
+          <div class="card-body col p-1">
+          <div class="row">
+            <div class="satellite-status-icon d-flex">
+              <img
+                {% if satellite.satellite_entry.status == 'alive' %}
+                  src="{% static 'img/status_alive.png' %}"
+                  alt="Satellite alive"
+                {% elif satellite.satellite_entry.status == 're-entered' %}
+                  src="{% static 'img/status_decayed.png' %}"
+                  alt="Satellite re-entered"
+                {% elif satellite.satellite_entry.status == 'dead' %}
+                  src="{% static 'img/status_dead.png' %}"
+                  alt="Satellite dead"
+                {% elif satellite.satellite_entry.status == 'future' %}
+                  src="{% static 'img/status_future.png' %}"
+                  alt="Satellite future"
+                {% else %}
+                  src="{% static 'img/status_unknown.png' %}"
+                  alt="Status unknown"
+                {% endif %}
+                height="30" class="m-auto align-self-center">
+            </div>
+            <div class="
+                {% if satellite.satellite_entry.status == 'alive' %}
+                  satellite-grad-success
+                {% elif satellite.satellite_entry.status == 're-entered' %}
+                  satellite-grad-danger
+                {% elif satellite.satellite_entry.status == 'dead' %}
+                  satellite-grad-warning
+                {% elif satellite.satellite_entry.status == 'future' %}
+                  satellite-grad-info
+                {% else %}
+                  satellite-grad-info
+                {% endif %}
+              ">
+            </div>
+            <div class="col py-1">
+              <span class="h6">
+                {% if satellite.satellite_entry.status == 'alive' %}
+                Operational
+                {% elif satellite.satellite_entry.status == 're-entered' %}
+                Decayed
+                {% elif satellite.satellite_entry.status == 'dead' %}
+                Malfunctioning
+                {% elif satellite.satellite_entry.status == 'future' %}
+                Future
+                {% else %}
+                Unknown
+                {% endif %}
+              </span>
+              <p class="mb-0">
+                {% if satellite.satellite_entry.status == 'alive' %}
+                Satellite is in orbit and operational
+                {% elif satellite.satellite_entry.status == 're-entered' %}
+                Satellite has re-entered
+                {% elif satellite.satellite_entry.status == 'dead' %}
+                Satellite appears to be malfunctioning
+                {% elif satellite.satellite_entry.status == 'future' %}
+                Satellite is not yet in orbit
+                {% else %}
+                Status of the satellite is unknown
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          {% if satellite.has_bad_transmitter %}
+          <hr class="my-1">
+          <div class="row">
+            <div class="satellite-status-icon d-flex">
+              <i class="fa fas fa-exclamation-triangle m-auto align-self-center fa-lg text-danger"></i>
+            </div>
+            <div class="satellite-grad-warning">
+            </div>
+            <div class="col py-1">
+              <span class="h6">
+                <span class="text-danger">Frequency Misuse</span>
+              </span>
+              <p class="mb-0">
+                Satellite is reported to be transmitting at
+                an uncoordinated or denied frequency. <a class="outside-tab-link" href="#transmitters">Details</a>
+              </p>
+            </div>
+          </div>
+          {% endif %}
+          </div>
+          {% if satellite.has_bad_transmitter %}
+          <div class="card-footer">
+            <span>Spectrum management is important! Visit our <a href="https://wiki.satnogs.org/Spectrum_Management" target="_blank">wiki</a> to learn why.</span>
+          </div>
+          {% endif %}
+        </div>
+        <!-- Satellite Image -->
+        <div class="card card-info">
+          <div class="card-header card-satnogs-header">
+            Image
+          </div>
+          <div class="card-body">
+            <img src="{{ satellite.satellite_entry.get_image }}" alt="{{ satellite.satellite_entry.name }}" class="satellite-img-full mb-3">
+          </div>
+        </div>
+        <!-- Mission timeline -->
+        {% if satellite.satellite_entry.launched or satellite.satellite_entry.deployed or satellite.satellite_entry.decayed %}
+        <div class="card card-info">
+          <div class="card-header card-satnogs-header">
+            Mission timeline
+          </div>
+          <div class="card-body">
+            <dl class="row">
+              {% if satellite.satellite_entry.launched %}
+              <dt class="col-sm-4">Launch Date</dt>
+              <dd class="col-sm-8" data-toggle="tooltip" data-placement="bottom" title="{{ satellite.satellite_entry.launched }}">
+                {{ satellite.satellite_entry.launched|date:"c" }}
+              </dd>
+              {% endif %}
+              {% if satellite.satellite_entry.deployed %}
+              <dt class="col-sm-4">Deploy Date</dt>
+              <dd class="col-sm-8" data-toggle="tooltip" data-placement="bottom" title="{{ satellite.satellite_entry.deployed }}">
+                {{ satellite.satellite_entry.deployed|date:"c" }}
+              </dd>
+              {% endif %}
+              {% if satellite.satellite_entry.decayed %}
+              <dt class="col-sm-4">Decay Date</dt>
+              <dd class="col-sm-8" data-toggle="tooltip" data-placement="bottom" title="{{ satellite.satellite_entry.decayed }}">
+                {{ satellite.satellite_entry.decayed|date:"c" }}
+              </dd>
+              {% endif %}
+            </dl>
+          </div>
+        </div>
+        {% endif %}
+        <!-- Satellite Description -->
+        {% if satellite.satellite_entry.get_description %}
+        <div class="card card-info">
+          <div class="card-header card-satnogs-header">
+            Description
+          </div>
+          <div class="card-body">
+            {{ satellite.satellite_entry.get_description|safe }}
+          </div>
+        </div>
+        {% endif %}
+        <!-- SatNOGS Links -->
+        <div class="card card-info">
+          <div class="card-header card-satnogs-header">
+            SatNOGS Links
+          </div>
+          <div class="card-body text-center">
+            <a class="btn btn-info m-1 satnogs-link-btn"
+              href="https://network.satnogs.org/observations/?norad={{ satellite.satellite_entry.norad_cat_id }}" target="_blank"
+              aria-label="Network Observations"
+              role="button">
+              Network Observations
+              <i class="mr-2 fas fa-external-link-alt"></i>
+            </a>
+            {% if satellite.satellite_entry.dashboard_url %}
+            <a class="btn btn-info m-1 satnogs-link-btn" href="{{ satellite.satellite_entry.dashboard_url }}" target="_blank"
+              role="button"
+              aria-label="Telemetry Dashboard">
+              Telemetry Dashboard
+              <i class="mr-2 fas fa-external-link-alt"></i>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Section -->
+    <div class="tab-pane fade flex-stretch" id="mapcontent" role="tabpanel" aria-labelledby="mapcontent-tab">
+      <div class="w-100 h-100">
+        {% if showmap %}
+        <div id="map" data-name="{{ satellite.satellite_entry.name }}" data-tle1="{{ latest_tle.tle1 }}"
+          data-tle2="{{ latest_tle.tle2 }}" data-mapboxtoken="{{ mapbox_token }}"></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Transmitters Section -->
+    <div class="tab-pane fade" id="transmitters" role="tabpanel" aria-labelledby="transmitters-tab">
+      <div class="card-deck">
+        <!-- show all transmitters for this satellite in their card format -->
+        {% for transmitter in satellite.transmitters.all %}
+        <div class="col-sm-12 col-md-6 col-xl-4 my-2">
+          {% include 'includes/cards/transmitter_card.html' with satellite_entry=satellite.satellite_entry transmitter=transmitter %}
+        </div>
+        {% empty %}
+        <div class="w-100">
+          <div class="card shadow card-accent-primary">
+            <div class="card-body transmitter-card-body">
+              <div class="row align-items-center no-gutters">
+                <div class="col mr-2">
+                  <div class="text-uppercase text-satnogs-primary font-weight-bold h6 mb-1"><span>No Transmitters
+                      Found</span></div>
+                </div>
+                <div class="col-auto"><i class="fas fa-exclamation-circle fa-2x text-satnogs-inactive"></i></div>
+              </div>
+              <div class="col-12">
+                <span>No approved transmitters yet for this Satellite. Help us improve our database, you can find
+                  instructions at this <a href="https://wiki.satnogs.org/SatNOGS_DB" target="_blank">wiki
+                    link</a></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% for transmitter in transmitter_suggestions %}
+          <div class="col-sm-12 col-md-6 col-xl-4 my-2">
+            {% include 'includes/cards/transmitter_card.html' with satellite_entry=satellite.satellite_entry transmitter=transmitter suggestion_card=True %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Data panel -->
+    <div class="tab-pane fade" id="data" role="tabpanel" aria-labelledby="data-tab">
+      <script id="telemetryDescriptorsTemplate" type="text/template">
+        <li class="list-group-item telemetry-key" data-key="<%- key %>" data-unit="<%- unit %>"><%- description %></li>
+      </script>
+
+      <div class="container-fluid card-deck">
+        <!-- Satellite Data Leaderboard -->
+        <div class="col-12 col-md-6 my-2">
+          <div class="card card-info">
+            <div class="card-header card-satnogs-header">
+              <i class="fas fa-user-alt"></i>
+              Most Recent Observers
+            </div>
+            <div class="card-body text-sm">
+              {% if recent_observers|length > 0 %}
+              <table class="table table-sm table-borderless">
+                <thead>
+                  <tr>
+                    <th>Observer</th>
+                    <th>Latest Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for obs in recent_observers %}
+                  <tr>
+                    <td>{{obs.observer}}</td>
+                    <td>{{obs.latest_payload|date:"Y-m-d H:i:s"}} UTC</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% else %}
+              <p>No observations recorded for {{ satellite.satellite_entry.name }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- 30 day Decoded Data Frames -->
+        <div class="col-12 col-md-6 my-2">
+          <div class="card card-info">
+            <div class="card-header card-satnogs-header">
+              <i class="fas fa-chart-line"></i>
+              Data Frames Decoded - 30 Days
+              <div class="card-tools d-none d-md-inline">
+                <!-- Maximize Button -->
+                <button type="button" class="btn btn-tool" data-card-widget="maximize"><i
+                    class="fas fa-expand"></i></button>
+              </div>
+            </div>
+            <div id="dataChartDiv" class="card-body text-sm">
+              <span id="dataChartError" class="d-none">There is no decoded data for this satellite in the last 30
+                days.</span>
+              <canvas id="dataChart" class="d-none" data-satid="{{ satellite.satellite_entry.norad_cat_id }}"></canvas>
+            </div>
+            {% if satellite.satellite_entry.dashboard_url %}
+            <div class="card-footer text-sm text-truncate">
+              <a href="{{ satellite.satellite_entry.dashboard_url }}" target="_blank">Click here to see the full dashboard for
+                {{ satellite.satellite_entry.name }}</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% for telemetry in satellite.telemetries.all %}
+        <div class="col-12 col-md-6 my-2">
+          <div class="card card-info">
+            <div class="card-header card-satnogs-header">
+              <i class="fas fa-code"></i>
+              Decoder: {{ telemetry.name }}
+            </div>
+            <div class="card-body">
+              <div class="col-12">
+                <dl class="row mb-0">
+                  <dt class="col-sm-4">Script Name</dt>
+                  <dd class="col-sm-8">{{ telemetry.decoder }}</dd>
+                </dl>
+                <dl class="row mb-0">
+                  <dt class="col-sm-4">
+                    Decoder Fields
+                  </dt>
+                  <dd class="col-sm-8">
+                    <a href="#" data-toggle="modal" data-target="#StructModal-{{ telemetry.id }}">
+                      Click here
+                    </a>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Struct Modal -->
+        <div class="modal fade" id="StructModal-{{ telemetry.id }}" tabindex="-1" role="dialog"
+          aria-labelledby="StructModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title" id="StructModalLabel">Kaitai decoder fields for {{ telemetry.name }}</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                    aria-hidden="true">×</span></button>
+              </div>
+              <div class="modal-body">
+                {% if not telemetry.schema == '' %}
+                <div class="kaitai-header">
+                  See <a href="http://kaitai.io" target="_blank">kaitai.io <i
+                      class="fas fa-external-link-alt fa-xs"></i></a> for more information on the format
+                  and <a href="https://gitlab.com/librespacefoundation/satnogs/satnogs-decoders" target="_blank">
+                    the satnogs-decoders repository <i class="fas fa-external-link-alt fa-xs"></i></a> for the most
+                  recent decoders.
+                </div>
+                <div class="kaitai-struct m-2">
+                  {% for field in telemetry.get_kaitai_fields %}
+                  <code>{{ field }}</code><br />
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div>
+                  Struct fields appear to be missing.
+                </div>
+                {% endif %}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-dismiss="?odal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="col-12 col-md-6 my-2">
+          <div class="card card-info">
+            <div class="card-header card-satnogs-header">
+              <i class="fas fa-code"></i>
+              No Decoders Found
+            </div>
+            <div class="card-body text-sm">
+              <div class="col-12">
+                <span>Help us develop a decoder, you can find instructions at this <a
+                    href="https://wiki.satnogs.org/Adding_a_new_data_decoder" target="_blank">wiki link</a></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Telemetry Frames Section -->
+        {% if satellite.telemetry_data_count > 0 and request.user.is_authenticated %}
+        <div class="col-12 col-md-6 my-2">
+          <div class="card card-info">
+            <div class="card-header card-satnogs-header" id="telemetry-block" data-satid="{{ satellite.satellite_identifier.sat_id }}">
+              <i class="fas fa-download"></i>
+              Data Export (frames)
+            </div>
+            <div class="card-body text-sm">
+              <div class="col">
+                <p>You can request an export of data for {{ satellite.satellite_entry.name }}.
+                  Please note that this export process happens in the background, and you
+                  will be notified by email when your download is ready. You can request
+                  from the following options:</p>
+                <div><a href="{% url 'request_export_all' sat_pk=satellite.pk %}">Everything</a></div>
+                <div><a href="{% url 'request_export' sat_pk=satellite.pk period=1 %}">Last week</a></div>
+                <div><a href="{% url 'request_export' sat_pk=satellite.pk period=2 %}">Last month</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+
+        <!-- Orbital Elements Section -->
+        {% if latest_tle %}
+        <div class="col-12 my-2">
+          <div class="card card-info">
+            <div class="card-header card-satnogs-header">
+              Orbital Elements
+            </div>
+            <div class="card-body text-sm">
+              <div class="font-weight-bolder pb-2 px-2">Latest Two-Line Element (TLE)</div>
+              <dl class="row mb-0">
+                <dt class="col-sm-2">TLE Source</dt>
+                <dd class="col-sm-10">
+                  {{ latest_tle.tle_source }}
+                </dd>
+              </dl>
+              <dl class="row mb-0">
+                <dt class="col-sm-2">
+                  TLE Set
+                </dt>
+                <dd class="col-sm-10 tle-set-container">
+                  <pre class="tle-set">{{ latest_tle.tle1 }}<br>{{ latest_tle.tle2 }}</pre>
+                </dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Suggestions Section -->
+    <div class="tab-pane fade" id="suggestions" role="tabpanel" aria-labelledby="suggestions-tab">
+      <div class="card-deck">
+        <!-- show all suggestions for this satellite in their card format -->
+        {% for suggestion in satellite_suggestions %}
+        <div class="col-sm-12 col-md-6 col-xl-4 my-2">
+          {% include 'includes/cards/satellite_suggestion_card.html' with satellite_entry=suggestion satellite=satellite %}
+        </div>
+        {% empty %}
+        <div class="w-100">
+          <div class="card shadow card-accent-primary">
+            <div class="card-body satellite-card-body">
+              <div class="row align-items-center no-gutters">
+                <div class="col mr-2">
+                  <div class="text-uppercase text-satnogs-primary font-weight-bold h6 mb-1">
+                    <span>No Satellite Suggestions Found</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- django-bootstrap-modal-forms modals -->
+  {% if request.user.is_authenticated %}
+  <div class="modal fade" id="create-transmitter-modal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="update-transmitter-modal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="update-satellite-modal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content"></div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block javascript %}
+<script src="{% static 'js/jquery.bootstrap.modal.forms.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/moment/moment.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/chart.js/Chart.bundle.min.js' %}"></script>
+<script src="{% static 'js/satellite.js' %}"></script>
+{% if showmap %}
+<script src="{% static 'lib/mapbox-gl/dist/mapbox-gl.js' %}"></script>
+<script src="{% static 'lib/mathjs/lib/browser/math.js' %}"></script>
+<script src="{% static 'lib/satellite.js/dist/satellite.min.js' %}"></script>
+<script src="{% static 'js/map.js' %}"></script>
+{% endif %}
+{% endblock %}

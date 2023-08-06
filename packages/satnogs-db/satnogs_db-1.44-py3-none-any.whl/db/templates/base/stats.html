@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% load tags %}
+{% load static %}
+
+{% block title %} - Stats{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/datatables-buttons/css/buttons.bootstrap4.min.css' %}">
+{% endblock %}
+
+{% block top-menu-left %}
+<span class="h4 mb-0 mr-3 text-truncate d-none d-md-block">Statistics</span>
+{% endblock %}
+
+{% block top %}
+<span class="h4 mb-0">Statistics</span>
+{% endblock %}
+
+{% block top-menu-right %}
+
+<ul class="navbar-nav nav nav-pills" data-widget="treeview" role="menu" data-accordion="false" id="tabs" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="dashboard-tab" data-toggle="tab" href="#dashboard" role="tab"
+      aria-controls="dashboard" aria-selected="true" aria-label="Dashboard"><i class="nav-icon fas fa-chart-line"></i>
+      <p class="d-none d-lg-inline-block">Dashboard</p>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="sat-leaderboard-tab" data-toggle="tab" href="#sat-leaderboard" role="tab"
+      aria-controls="sat-leaderboard" aria-selected="false" aria-label="Satellite statistics">
+      <i class="nav-icon fas fa-satellite"></i>
+      <p class="d-none d-lg-inline-block">Satellites</p>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="user-leaderboard-tab" data-toggle="tab" href="#user-leaderboard" role="tab"
+      aria-controls="user-leaderboard" aria-selected="false" aria-label="Ground station statistics">
+      <i class="nav-icon fas fa-broadcast-tower"></i>
+      <p class="d-none d-lg-inline-block">Ground Stations</p>
+    </a>
+  </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<!-- SatNOGS DB Stats -->
+<!-- The following div is managed by the tab menus -->
+<div class="col-12 tab-content pt-3" id="myTabContent">
+
+  <!-- Dashboard panel -->
+  <div class="tab-pane fade show active" id="dashboard" role="tabpanel" aria-labelledby="dashboard-tab">
+    <div class="container-fluid">
+      <div class="row px-2 pb-2 text-sm">Please note that for performance reasons, some statistics may not be real time.</div>
+      <div class="row">
+        <div class="col-xs-12 col-md-4">
+          <div class="small-box small-box-satnogs">
+            <div class="inner">
+              <h3 id="stats-satellites">#</h3>
+              <p>Total Satellites</p>
+            </div>
+            <div class="icon">
+              <i class="fas fa-satellite"></i>
+            </div>
+            <a href="{% url 'satellites' %}" class="small-box-footer" aria-label="Link to all satellites">
+              Satellites <i class="fas fa-arrow-circle-right"></i>
+            </a>
+          </div>
+          <div class="small-box small-box-satnogs">
+            <div class="inner">
+              <h3 id="stats-transmitters">#</h3>
+              <p>Total Transmitters</p>
+            </div>
+            <div class="icon">
+              <i class="fas fa-satellite-dish"></i>
+            </div>
+            <a href="{% url 'transmitters_list' %}" class="small-box-footer" aria-label="Link to all transmitters">
+              Transmitters <i class="fas fa-arrow-circle-right"></i>
+            </a>
+          </div>
+          <div class="small-box small-box-satnogs">
+            <div class="inner">
+              <h3 id="stats-alive">#</h3>
+              <p>Alive Transmitters</p>
+            </div>
+            <div class="icon">
+              <i class="fas fa-satellite-dish"></i>
+            </div>
+            <a href="{% url 'transmitters_list' %}" class="small-box-footer" aria-label="Link to all transmitters">
+              Transmitters <i class="fas fa-arrow-circle-right"></i>
+            </a>
+          </div>
+          <div class="small-box small-box-satnogs">
+            <div class="inner">
+              <h3 id="stats-data">#</h3>
+              <p>Total Data</p>
+            </div>
+            <div class="icon">
+              <i class="fas fa-database"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-xs-12 col-md-4">
+          <div class="card satnogs-card mb-4">
+            <div class="card-header background-satnogs-header d-flex justify-content-between align-items-center">
+              <h6 class="text-satnogs-header font-weight-bold m-0">Transmitter Modes</h6>
+            </div>
+            <div class="card-body">
+              <canvas id="modes" width="300" height="300"></canvas>
+            </div>
+            <div class="card-footer text-sm" id="modes-footer"></div>
+          </div>
+        </div>
+        <div class="col-xs-12 col-md-4">
+          <div class="card satnogs-card mb-4">
+            <div class="card-header background-satnogs-header d-flex justify-content-between align-items-center">
+              <h6 class="text-satnogs-header font-weight-bold m-0">Transmitter Bands</h6>
+            </div>
+            <div class="card-body">
+              <canvas id="bands" width="300" height="300"></canvas>
+            </div>
+            <div class="card-footer text-sm" id="bands-footer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if satellites and observers %}
+  <!-- Data paylod stats -->
+  <div class="tab-pane fade" id="sat-leaderboard" role="tabpanel"
+    aria-labelledby="sat-leaderboard-tab">
+      <table id="sats" class="table table-sm display w-100 px-2 responsive table-striped">
+        <thead>
+          <tr>
+            <th>Norad ID</th>
+            <th>Name</th>
+            <th>Data</th>
+            <th>Decoded</th>
+            <th>Latest</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sat in satellites %}
+          {% if sat.count != 0 %}
+          <tr>
+            <td>{{sat.satellite_entry__norad_cat_id}}</td>
+            {% if sat.satellite_identifier__sat_id %}
+            <td><a href="{% url 'satellite' sat_id=sat.satellite_identifier__sat_id %}">{{sat.satellite_entry__name}}</a></td>
+            {% else %}
+            <td>{{sat.satellite_entry__name}}</td>
+            {% endif %}
+            <td>{{sat.count}}</td>
+            <td>{{sat.decoded}}</td>
+            <td>{{sat.latest_payload|date:"Y-m-d H:i:s"}}</td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+  </div>
+  <div class="tab-pane fade" id="user-leaderboard" role="tabpanel"
+    aria-labelledby="user-leaderboard-tab">
+
+      <table id="stations" class="table table-sm display w-100 px-2 responsive table-striped">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Data</th>
+            <th>Latest</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for obs in observers %}
+          <tr>
+            <td>{{obs.observer}}</td>
+            <td>{{obs.count}}</td>
+            <td>{{obs.latest_payload|date:"Y-m-d H:i:s"}}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{% static 'lib/admin-lte/plugins/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-buttons/js/dataTables.buttons.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-responsive/js/dataTables.responsive.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-buttons/js/buttons.bootstrap4.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/chart.js/Chart.min.js' %}"></script>
+<script src="{% static 'js/stats.js' %}"></script>
+{% endblock %}

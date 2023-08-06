@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %} - Satellite List{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/datatables-buttons/css/buttons.bootstrap4.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/flag-icon-css/css/flag-icon.min.css' %}">
+<link rel="stylesheet" href="{% static 'lib/admin-lte/plugins/select2/css/select2.min.css' %}">
+{% endblock %}
+
+{% block top-menu-left %}
+<span class="h4 mb-0 mr-3 text-truncate d-none d-md-block">Satellites</span>
+{% endblock %}
+
+{% block top-menu-right %}
+{% if request.user.is_authenticated %}
+<ul class="navbar-nav nav nav-pills" data-widget="treeview" role="menu" data-accordion="false" id="tabs" role="tablist">
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
+      aria-haspopup="true" aria-expanded="false" aria-label="Edit Menu">
+      <i class="nav-icon fas fa-edit"></i>
+      <p class="d-none d-lg-inline-block text-sm">Edit</p>
+    </a>
+    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+      <a class="dropdown-item d-flex align-items-center create-satellite-link" href="#" id="create-satellite-side"
+        data-form-url="{% url 'create_satellite' %}" aria-label="Suggest new satellite">
+        <i class="nav-icon mr-2 fas fa-plus-square"></i>
+        <p class="mb-0">Suggest New Satellite</p>
+      </a>
+      {% if perms.base.merge_satellites %}
+      <a class="dropdown-item d-flex align-items-center merge-satellites-link" href="#" id="merge-satellites-side"
+         data-form-url="{% url 'merge_satellites' %}" aria-label="Merge satellites">
+        <i class="nav-icon mr-2 fas fa-compress-arrows-alt"></i>
+        <p class="mb-0">Merge Satellites</p>
+      </a>
+      {% endif %}
+    </div>
+  </li>
+</ul>
+{% endif %}
+{% endblock %}
+
+{% block top %}
+<span class="h4 mb-0">Satellites</span>
+{% endblock %}
+
+{% block content %}
+<div class="p-3">
+
+  <table id="sats" class="table table-sm display responsive table-striped" width="100%">
+    <thead>
+      <tr>
+        <th data-priority="1"></th>
+        <th data-priority="2">Satellite Identifier</th>
+        <th data-priority="3">Name</th>
+        <th data-priority="4">NORAD</th>
+        <th data-priority="5">Status</th>
+        <th data-priority="6">Alt. Names</th>
+        <th data-priority="7">Transmitters</th>
+        <th data-priority="10" data-sortable="true" data-visible="false">Followed NORAD</th>
+        <th data-priority="10" data-sortable="true" data-visible="false">Operator</th>
+        <th data-priority="10" data-sortable="true" data-visible="false">Launched</th>
+        <th data-priority="10" data-sortable="true" data-visible="false">Website</th>
+        <th data-priority="10" data-sortable="true" data-visible="false">Dashboard</th>
+
+        <th data-priority="6" data-sortable="false"><i class="fa fa-flag px-0"></i></th>
+        {% if request.user.is_authenticated %}
+        <th data-priority="2" data-sortable="false">Suggestions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for sat in satellites %}
+      <tr>
+        <td class='details-control'>
+          <i class="fa fa-plus-square" aria-hidden="true"></i>
+        </td>
+        <td><a href="{% url 'satellite' sat_id=sat.satellite_identifier.sat_id %}">{{ sat.satellite_identifier.sat_id }}</a></td>
+        <td><a href="{% url 'satellite' sat_id=sat.satellite_identifier.sat_id %}">{{ sat.satellite_entry.name|upper }}</a></td>
+        <td><a href="{% url 'satellite' sat_id=sat.satellite_identifier.sat_id %}">{{ sat.satellite_entry.norad_cat_id }}</a></td>
+        <td class="d-flex justify-content-center" data-order="{{ sat.satellite_entry.status }}">
+          {% if sat.satellite_entry.status == 'alive' %}
+          <img height="32" src="{% static 'img/status_alive.png' %}" alt="Operational">
+          {% elif sat.satellite_entry.status == 're-entered' %}
+          <img height="32" src="{% static 'img/status_decayed.png' %}" alt="Decayed">
+          {% elif sat.satellite_entry.status == 'dead' %}
+          <img height="32" src="{% static 'img/status_dead.png' %}" alt="Malfunctioning">
+          {% elif sat.satellite_entry.status == 'future' %}
+          <img height="32" src="{% static 'img/status_future.png' %}" alt="Future">
+          {% else %}
+          <img height="32" src="{% static 'img/status_unknown.png' %}" alt="Unknown">
+          {% endif %}
+        </td>
+        <td>{{ sat.satellite_entry.names|upper }}</td>
+        <td>{{ sat.approved_transmitters|length }}</td>
+        <td>{{ sat.satellite_entry.norad_follow_id }}</td>
+        <td>{{ sat.satellite_entry.operator }}</td>
+        <td>{{ sat.satellite_entry.launched }}</td>
+        <td>{{ sat.satellite_entry.website }}</td>
+        <td>{{ sat.satellite_entry.dashboard_url }}</td>
+        <td>
+          {% for country in sat.satellite_entry.countries %}
+            <span class="align-middle flag-icon flag-icon-{{ country.code|lower }}"></span>
+          {% endfor %}
+        </td>
+        {% if request.user.is_authenticated %}
+        <td>
+            <button type="button" class="update-satellite-link btn btn-sm btn-satnogs-primary"
+                data-form-url="{% url 'update_satellite' sat.satellite_entry.id %}">
+                <span class="fa fa-edit"></span>
+            </button>
+            {% if sat.satellite_suggestions_count %}
+            <a class="btn btn-sm btn-warning" href="{% url 'satellite' sat_id=sat.satellite_identifier.sat_id %}#suggestions">
+                {{ sat.satellite_suggestions_count }}
+            </a>
+            {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- django-bootstrap-modal-forms modals -->
+  {% if request.user.is_authenticated %}
+  <div class="modal fade" id="create-satellite-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="update-satellite-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content"></div>
+    </div>
+  </div>
+
+  {% if perms.base.merge_satellites %}
+  <div class="modal fade" id="merge-satellites-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{% static 'lib/admin-lte/plugins/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-buttons/js/dataTables.buttons.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-responsive/js/dataTables.responsive.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-buttons/js/buttons.colVis.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/datatables-buttons/js/buttons.bootstrap4.min.js' %}"></script>
+<script src="{% static 'lib/admin-lte/plugins/select2/js/select2.min.js' %}"></script>
+<script src="{% static 'js/jquery.bootstrap.modal.forms.min.js' %}"></script>
+<script src="{% static 'js/satellites.js' %}"></script>
+{% endblock %}

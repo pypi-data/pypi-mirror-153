@@ -1,0 +1,107 @@
+<div class="card card-outline card-satnogs shadow my-3">
+  <a href="{% url 'satellite' sat_id=satellite.satellite_identifier.sat_id %}">
+
+    <!-- Card header (Satellite name etc) -->
+    <div class="card-header py-1">
+      <div class="row">
+        <div class="pl-1">
+          <span class="card-title mr-1">{{ satellite.satellite_entry.name }} <span class="text-sm text-truncate ml-1">{{ satellite.satellite_entry.names }}</span></span>
+        </div>
+        
+        <div class="d-flex ml-auto">
+          {% if perms.base.approve_transmittersuggestion and satellite.suggested_transmitters|length > 0 %}
+          <div class="mx-1">
+            <span class="badge badge-warning" data-toggle="tooltip"
+            title="Transmitter Suggestions">{{ satellite.suggested_transmitters|length }}</span>
+          </div>
+          {% endif %}
+          {% if satellite.satellite_entry.countries %}
+          <div>
+            {% for country in satellite.satellite_entry.countries %}
+            <i class="align-middle flag-icon flag-icon-{{ country.code|lower }}" data-toggle="tooltip" data-placement="bottom" title="{{ country.name }}"></i>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <!-- /.card-header -->
+
+    <!-- Satellite card body -->
+    <div class="card-body satellite-card-body py-2 px-2">
+      <div class="d-flex flex-row no-gutters text-nowrap align-items-center justify-content-between">
+        <div class="d-flex flex-column float-left w-75 align-self-center">
+          <div class="d-flex flex-row">
+            <div class="d-flex satellite-card-body-row align-self-center justify-content-center" data-toggle="tooltip"
+              title="Satellite ID">
+              <i class="fas fa-hashtag"></i>
+            </div>
+            <div class="d-inline-flex">
+              {{ satellite.satellite_identifier }}
+            </div>
+          </div>
+
+          <div class="d-flex flex-row">
+            <div class="d-flex satellite-card-body-row align-self-center justify-content-center" data-toggle="tooltip"
+              title="Transmitters">
+              <i class="fas fa-wifi"></i>
+            </div>
+            <div class="d-inline-flex">
+              {{ satellite.approved_transmitters|length }}
+            </div>
+          </div>
+
+          {% with data_count=satellite.telemetry_data_count %}
+            {% if data_count %}
+            <div class="d-flex flex-row">
+              <div class="d-flex satellite-card-body-row align-self-center justify-content-center" data-toggle="tooltip"
+                title="Data frames">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="d-inline-flex">
+                {{ data_count }}
+              </div>
+            </div>
+            {% with latest_data=satellite.latest_data %}
+              {% if latest_data %}
+              <div class="d-flex flex-row">
+                <div class="d-flex satellite-card-body-row align-self-center justify-content-center" data-toggle="tooltip"
+                  title="Latest data timestamp">
+                  <i class="fas fa-clock"></i>
+                </div>
+                <div class="d-inline-flex text-truncate">
+                  {{ latest_data.timestamp|date:"Y-m-d H:i:s" }}
+                </div>
+              </div>
+              <div class="d-flex flex-row">
+                <div class="d-flex satellite-card-body-row align-self-center justify-content-center" data-toggle="tooltip"
+                  title="Latest data submitter">
+                  <i class="fas fa-user"></i>
+                </div>
+                <div class="d-inline-flex text-truncate">
+                  {{ latest_data.station }}
+                </div>
+              </div>
+              {% endif %}
+            {% endwith %}
+            {% else %}
+            <div class="d-flex flex-row">
+              <div class="d-flex satellite-card-body-row align-self-center justify-content-center" data-toggle="tooltip"
+                title="Data frames">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="d-inline-flex">
+                No Data
+              </div>
+            </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+        <div class="float-right d-flex flex-column align-content-center">
+          <img class="rounded img-fluid" src="{{ satellite.satellite_entry.get_image }}" style="max-height: 82.5px;" alt="Satellite image" />
+        </div>
+      </div>
+    </div>
+    <!-- /.card-body -->
+  </a>
+</div>
