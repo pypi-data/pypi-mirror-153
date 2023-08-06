@@ -1,0 +1,51 @@
+{% extends "vendor/base.html" %}
+{% load i18n %}
+
+{% block vendor_content %}
+<div class='row mx-md-5 px-md-3'>
+    <div class='col-12 my-4'>
+        <h1>{% trans 'Purchase Confirmation' %}</h1>
+    </div>
+    <div class='col-md-12 mb-3'>
+        <span>{% trans 'Thank you for the order. You can view this invoice in "My Account" under the Billing section.' %}</span>
+    </div>
+    <div class='col-md-12'>
+        <span>{% trans 'The order number is' %}: {{ object.pk }}</span>
+    </div>
+    <div class='col-md-12 mb-4'>
+        <span>{% trans 'Ordered on' %} {{ object.ordered_date|date }}</span>
+    </div>
+    <div class='col-md-12'>
+        {% for order_item in object.order_items.all %}
+        <div class='col-md-4 px-0 mb-3'>
+            <h5>{{ order_item.name }}</h5>
+            <p class="my-1">{% trans 'Type' %}: {{ order_item.offer.get_terms_display }}</p>
+            <p class="my-1">{% trans 'Quantity' %}: {{ order_item.quantity }}</p>
+            </span>
+            <span>${{ order_item.total|default_if_none:"0.00"|floatformat:2 }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div class='col-md-12 mb-3'>
+        <h3 class="d-flex w-100 justify-content-start">{% trans 'Summary' %}</h3>
+        <ul class="list-group mb-3 border-0 col-6">
+        {% include "./includes/cost_overview.html" with invoice=invoice %}
+        </ul>
+
+    </div>
+    <div class='col-md-12'>
+        <h3>{% trans 'Billing Address' %}</h3>
+        <p>{{ object.get_payment_billing_address }}</p>
+    </div>
+    <div class='col-md-12'>
+        <h3>{% trans 'Payment Method' %}</h3>
+        <p>
+        {% trans 'Credit Card' as card %}
+        {% firstof payment.result.account_type card as account_type %}
+        {% blocktrans with account_number=payment.result.account_number %}
+            {{ account_type }} ending in {{ account_number }} 
+        {% endblocktrans %}
+        </p>
+    </div>
+</div>
+{% endblock %}

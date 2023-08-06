@@ -1,0 +1,41 @@
+{% extends "vendor/base.html" %}
+{% load i18n %}
+
+{% block vendor_content %}
+<div class="container-fluid">
+        <nav aria-label="breadcrumb">
+            <!-- <ol class="breadcrumb"> -->
+            <h1>{% trans 'Order Summary' %}</h1>
+            <!-- </ol> -->
+        </nav>
+        <table class="table", border = "1">
+            <tr>
+                <th>{% trans 'Product' %}</th>
+                <th>{% trans 'Quantity' %}</th>
+                <th>{% trans 'Per Item Cost' %}</th>
+                <th>{% trans 'Cost' %}</th>
+            </tr>
+            {% for items in object_list %}
+            <tr>
+                <td>{{ items.offer.product.name }}</td>
+                <td>{{ items.quantity }}</td>
+                <td>{{ items.price }}</td>
+                <td>{{ items.total }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <h2>{% blocktrans with item_count=item_count %}Total number of items: {{item_count}} {% endblocktrans %}</h2>
+        <h2>{% trans 'Order Total' %}: {{order_total}}</h2>
+        <form action="{% url 'vendor-payment-processing' %}" method="post">
+                {% csrf_token %}
+                <script src="https://checkout.stripe.com/checkout.js" class="stripe-button"
+                        data-key="{{ key }}"
+                        data-description="A Django Charge"
+                        data-amount={{amount}}
+                        data-locale="auto"></script>
+              </form>
+       <br>
+        <a class="text-danger" href="{% url 'vendor-user-cart-retrieve' %}">{% trans 'Back To Cart' %}</a>
+    </div>
+{% endblock %}
+    
