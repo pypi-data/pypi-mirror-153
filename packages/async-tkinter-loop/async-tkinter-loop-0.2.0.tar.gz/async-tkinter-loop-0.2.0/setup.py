@@ -1,0 +1,34 @@
+# -*- coding: utf-8 -*-
+from setuptools import setup
+
+packages = \
+['async_tkinter_loop']
+
+package_data = \
+{'': ['*']}
+
+install_requires = \
+['asyncio>=3.4.3,<4.0.0']
+
+extras_require = \
+{'examples': ['aiohttp>=3.8.0,<4.0.0', 'Pillow>=8.4.0,<9.0.0']}
+
+setup_kwargs = {
+    'name': 'async-tkinter-loop',
+    'version': '0.2.0',
+    'description': 'Asynchronous mainloop implementation for tkinter',
+    'long_description': '# Asynchronous Tkinter Mainloop\n\n[![Python package](https://github.com/insolor/asynctk/actions/workflows/python-package.yml/badge.svg)](https://github.com/insolor/asynctk/actions/workflows/python-package.yml)\n[![Coverage Status](https://coveralls.io/repos/github/insolor/async-tkinter-loop/badge.svg?branch=main)](https://coveralls.io/github/insolor/async-tkinter-loop?branch=main)\n[![PyPI](https://img.shields.io/pypi/v/async-tkinter-loop)](https://pypi.org/project/async-tkinter-loop/)\n![Supported Python versions](https://img.shields.io/pypi/pyversions/async-tkinter-loop)\n<!--![PyPI - Downloads](https://img.shields.io/pypi/dm/async-tkinter-loop)-->\n\nImplementation of asynchronous `mainloop` for tkinter, the use of which allows using `async` handler functions.\nIt is intended to be as simple to use as possible. No fancy unusual syntax or constructions - just use an alternative\nfunction instead of `root.mainloop()` and wrap asynchronous handlers into a helper function.\n\nBased on ideas from:\n\n* my answer on ru.stackoverflow.com: <https://ru.stackoverflow.com/a/1043146>\n* answer of [Terry Jan Reedy](https://stackoverflow.com/users/722804) on stackoverflow.com:\n  <https://stackoverflow.com/a/47896365>\n* answer of [jfs](https://ru.stackoverflow.com/users/23044) on ru.stackoverflow.com:\n  <https://ru.stackoverflow.com/a/804609>\n\n## Installation\n\n### Release version\n\nInstall the package with the following command:\n\n```\npip install async-tkinter-loop\n```\nor\n```\npip install async-tkinter-loop[examples]\n```\n\n- `[examples]` part is needed to install optional dependencies (such as `aiohttp` and `pillow`) to run some of the\n  examples. If you\'re not going to run examples, remove the `[examples]` part from the command\n- Use `pip3` instead of `pip` on Linux systems to install the package for python3 (not python2)\n- Probably you\'ll want to create a virtual environment for experiments with this library, but this is optional.\n- If you want to try examples, download the entire repository as an archive (green "code" button on\n  [the github page](https://github.com/insolor/async-tkinter-loop) →\n  "Download ZIP"), unpack, run any example (of course, you need to install optional dependencies)\n\n### Development version\n\n1. Install [Poetry](https://python-poetry.org), e.g., with `pip install poetry` (`pip3 install poetry`) command\n   (other possible ways of installation see [here](https://python-poetry.org/docs/#installation))\n2. Download and unpack or clone [the repository](https://github.com/insolor/async-tkinter-loop).\n3. Run the command `poetry install` or `poetry install -E examples` (the later command installs optional dependencies\n   needed to run some of the examples). This command will create `.venv` directory with a virtual environment and\n   install dependencies into it.\n   - Run any example with `poetry run python examples/sparks.py` (insert a file name of an example).\n   - Or activate the virtual environment and run an example with `python examples/sparks.py` command. You can also open\n     the directory with the project in some IDE (e.g., PyCharm or VS Code) and select Python interpreter from the\n     virtual environment as a project interpreter, then run examples directly from the IDE.\n\n## Some examples\n\nBasic example:\n```python\nimport asyncio\nimport tkinter as tk\n\nfrom async_tkinter_loop import async_mainloop, async_handler\n\n\nasync def counter():\n    i = 0\n    while True:\n        i += 1\n        label[\'text\'] = str(i)\n        await asyncio.sleep(1.0)\n\n\nroot = tk.Tk()\n\nlabel = tk.Label(root)\nlabel.pack()\n\ntk.Button(root, text="Start", command=async_handler(counter)).pack()\n\nasync_mainloop(root)\n```\n\nAlso, `async_handler` function can be used as a decorator (but it makes a decorated function syncroneous):\n\n```python\nimport asyncio\nimport tkinter as tk\n\nfrom async_tkinter_loop import async_mainloop, async_handler\n\n\n@async_handler\nasync def counter():\n    i = 0\n    while True:\n        i += 1\n        label[\'text\'] = str(i)\n        await asyncio.sleep(1.0)\n\n\nroot = tk.Tk()\n\nlabel = tk.Label(root)\nlabel.pack()\n\ntk.Button(root, text="Start", command=counter).pack()\n\nasync_mainloop(root)\n```\n\nA more practical example, downloading an image from the Internet with [aiohttp](https://github.com/aio-libs/aiohttp)\nand displaying it in the Tkinter window:\n\n```python\nimport tkinter as tk\nfrom io import BytesIO\n\nimport aiohttp\nfrom PIL import Image, ImageTk\n\nfrom async_tkinter_loop import async_mainloop, async_handler\n\n\nasync def load_image(url):\n    button[\'state\'] = \'disabled\'\n    label[\'image\'] = \'\'\n    label[\'text\'] = \'Loading...\'\n\n    async with aiohttp.ClientSession() as session:\n        response = await session.get(url)\n        if response.status != 200:\n            label[\'text\'] = f\'HTTP error {response.status}\'\n        else:\n            content = await response.content.read()\n            pil_image = Image.open(BytesIO(content))\n            image = ImageTk.PhotoImage(pil_image)\n            label.config(image=image, text=\'\')\n            label.image = image\n            button[\'state\'] = \'normal\'\n\n\nurl = "https://picsum.photos/800/640"\n\nroot = tk.Tk()\nroot.geometry("800x640")\n\nbutton = tk.Button(root, text=\'Load an image\', command=async_handler(load_image, url))\nbutton.pack()\n\nlabel = tk.Label(root)\nlabel.pack(expand=1, fill=tk.BOTH)\n\nif __name__ == "__main__":\n    async_mainloop(root)\n```\n\n\nMore examples see in the [`examples`](https://github.com/insolor/async-tkinter-loop/tree/main/examples) directory.\n\n\n## Similar projects\n\n* [Starwort/asynctk](https://github.com/Starwort/asynctk) ([on PyPi](https://pypi.org/project/asynctk/))\n* [gottadiveintopython/asynctkinter](https://github.com/gottadiveintopython/asynctkinter) ([on PyPi](https://pypi.org/project/asynctkinter/))\n* [Lucretiel/tkinter-async](https://github.com/Lucretiel/tkinter-async)\n* [fluentpython/asyncio-tkinter](https://github.com/fluentpython/asyncio-tkinter)\n',
+    'author': 'insolor',
+    'author_email': 'insolor@gmail.com',
+    'maintainer': None,
+    'maintainer_email': None,
+    'url': 'https://github.com/insolor/async-tkinter-loop',
+    'packages': packages,
+    'package_data': package_data,
+    'install_requires': install_requires,
+    'extras_require': extras_require,
+    'python_requires': '>=3.6,<4.0',
+}
+
+
+setup(**setup_kwargs)
