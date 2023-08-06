@@ -1,0 +1,52 @@
+cli:
+  features:
+    dev_tools: bool()
+    exec: bool()
+    remote: bool()
+proxy:
+  data: map(include('data_rules'), key=include('project_id'))
+  firewall: map(list(include('firewall_rule')), key=include('project_id'))
+  filter: map(list(include('filter_rule')), key=include('project_id'))
+  intercept:
+    active: bool()
+    mode: include('mode')
+    project_key: str()
+    upstream_url: str(required=False)
+  url: str()
+remote: 
+  api_url: str()
+  api_key: str()
+ui:
+  active: bool()
+  url: str()
+---
+firewall_action: str(matches='exclude'|'include')
+method: str(matches='DELETE|GET|OPTIONS|POST|PUT')
+mock_policy: str(matches='all'|'found'|'none')
+mode: str(matches='mock'|'record'|'test')
+project_id: str()
+record_policy: str(matches='all'|'found'|'not_found'|'none')
+replay_policy: str(matches='all'|'none')
+test_policy: str(matches='all'|'found'|'none')
+test_strategy: str(matches='custom'|'diff'|'fuzzy')
+
+data_rules:
+  mock_policy: include('mock_policy')
+  record_policy: include('record_policy')
+  replay_policy: include('replay_policy')
+  scenario_key: str(required=False)
+  test_policy: include('test_policy')
+  test_strategy: include('test_strategy')
+parameter_rule:
+  modes: list(include('mode'), min=1, max=3)
+  name: str()
+  type: str()
+  value: str(required=False)
+filter_rule:
+  methods: list(include('method'))
+  pattern: str()
+  parameter_rules: list(include('parameter_rule'))
+firewall_rule:
+  action: include('firewall_action')
+  modes: list(include('mode'), min=1, max=3)
+  pattern: str()
