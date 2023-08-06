@@ -1,0 +1,111 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  test:
+    name: Python
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9, "3.10" ]
+        os:  [ macos-latest, ubuntu-latest ]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Cache conda and dependancies
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            /usr/share/miniconda/envs/anaconda-client-env
+            ~/osx-conda
+            ~/.bashrc
+          key: ${{ runner.os }}-${{ matrix.python }}-conda-v1-${{ hashFiles('requirements/conda_minimal_deps.txt') }}
+
+      - name: Install Conda
+        uses: conda-incubator/setup-miniconda@v2
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          activate-environment: anaconda-client-env
+          python-version: ${{ matrix.python }}
+          channels: conda-forge
+          channel-priority: strict
+          auto-update-conda: true
+          use-only-tar-bz2: true
+
+      - name: Install conda deps
+        if: steps.cache.outputs.cache-hit != 'true'
+        shell: bash -l {0} #We need a login shell to get conda
+        run: |
+            conda install --yes --file=requirements/conda_minimal_deps_${{ runner.os }}.txt
+            conda install --yes --file=requirements/conda_minimal_deps.txt
+
+      - name: Fix OSX Cache Write #OSX Won't let the cache restore due to file perms
+        if: steps.cache.outputs.cache-hit != 'true' && matrix.os == 'macos-latest'
+        run: |
+          cp -r /usr/local/miniconda/envs/anaconda-client-env ~/osx-conda
+
+      - name: Fix OSX Cache Restore
+        if: steps.cache.outputs.cache-hit == 'true' && matrix.os == 'macos-latest'
+        run: |
+          mkdir -p /usr/local/miniconda/envs
+          sudo cp -r ~/osx-conda /usr/local/miniconda/envs/anaconda-client-env
+
+      - name: Init conda
+        shell: bash -l {0}
+        run: |
+          conda init bash
+
+      - name: Fix OSX profile
+        if: steps.cache.outputs.cache-hit != 'true' && matrix.os == 'macos-latest'
+        run: |
+          cp ~/.bash_profile ~/.bashrc
+
+      - name: Build module
+        # shell: bash -l {0}
+        run: |
+          # conda init bash
+          source ~/.bashrc
+          conda activate anaconda-client-env
+          # NOTE: python -m pip install -e . 
+          # fails in GitHub actions on conda/macOS
+          python setup.py build_ext -i
+
+      - name: Build and run C++ tests
+        run: |
+          source ~/.bashrc
+          conda activate anaconda-client-env
+          cd cpptests && autoreconf --install && ./configure && cd ..
+          make check -C cpptests
+
+      - name: Run Python tests
+        # shell: bash -l {0}
+        run: |
+          # conda init bash
+          source ~/.bashrc
+          conda activate anaconda-client-env
+          python -m pytest -n 4 tests
+
+      - name: Build and run examples/plugin
+        run: |
+          source ~/.bashrc
+          conda activate anaconda-client-env
+          PYTHONPATH=. cmake examples/plugin
+          make
+          PYTHONPATH=. python examples/plugin/test_plugin.py
+

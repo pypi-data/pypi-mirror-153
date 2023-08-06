@@ -1,0 +1,146 @@
+name: UbuntuStressTest
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  test:
+    name: Ubuntu
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9, "3.10" ]
+        os:  [ ubuntu-20.04 ]
+        compiler: [gcc, clang10]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Install apt dependencies
+        run: |
+            sudo apt install --fix-missing -y libgsl-dev cmake autoconf libboost-test-dev libboost-program-options-dev
+
+      - name: Edit PATH
+        run: |
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Discover llvm-config
+        run: |
+          dpkg -S llvm-config
+
+      - name: Set LLVM_CONFIG on 20.04
+        if: matrix.os == 'ubuntu-20.04'
+        run: |
+            echo "LLVM_CONFIG=/usr/bin/llvm-config-10" >> $GITHUB_ENV
+
+      - name: Set LLVM_CONFIG on 18.04
+        if: matrix.os == 'ubuntu-18.04'
+        run: |
+            echo "LLVM_CONFIG=/usr/lib/llvm-9/bin/llvm-config" >> $GITHUB_ENV
+
+      - name: Python version
+        run: |
+          python --version
+
+      - name: Cache pip dependancies
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.local
+          key: ${{ runner.os }}-${{ matrix.python }}-ubuntu-V3-${{ hashFiles('requirements.txt') }}
+
+      - name: Install pip dependencies
+        # if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+            python -m pip install --user --upgrade pip
+            # These are needed to install black:
+            python -m pip install --user --upgrade setuptools wheel 
+            python -m pip install --user -r requirements/development.txt
+            # For sdist validation
+            python -m pip install --user --upgrade twine
+
+      - name: Set GCC as compiler
+        if: matrix.compiler == 'gcc'
+        run: |
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+          echo "CPPFLAGS=-Wextra -Weffc++ -Woverloaded-virtual -Wold-style-cast -Werror=effc++ -Werror=old-style-cast -Werror=overloaded-virtual -Werror=unused-parameter" >> $GITHUB_ENV
+
+      - name: Install clang-10
+        if: matrix.compiler == 'clang10'
+        run: |
+          sudo apt-get install clang-10 clang++-10
+          echo "CC=clang-10" >> $GITHUB_ENV
+          echo "CXX=clang++-10" >> $GITHUB_ENV
+
+
+      - name: Compile extension module
+        run: |
+            CXX=$CXX CC=$CC python -m pip install -e .
+
+      - name: Build C++ tests
+        working-directory: cpptests
+        run: |
+          autoreconf --install
+          CPPFLAGS=$CPPFLAGS CC=$CC CXX=$CXX ./configure
+          make -j 3
+
+      - name: Run C++ tests
+        working-directory: cpptests
+        run: |
+          make check
+          # Clean up so that the next step can work...
+          make clean
+
+      - name: Build and run standalone C++ program
+        working-directory: cpp_neutral_benchmark
+        run: |
+          autoreconf --install
+          CXXFLAGS="-O3 -g" CC=$CC CXX=$CXX ./configure
+          make -j 3
+          ./cpp_neutral_benchmark
+
+      - name: Run Python tests
+        run: |
+            python -m pytest -n 2 tests
+
+      - name: Build and run examples/plugin
+        run: |
+          CPPFLAGS=$CPPFLAGS CC=$CC CXX=$CXX PYTHONPATH=. cmake examples/plugin
+          make
+          PYTHONPATH=. python examples/plugin/test_plugin.py
+
+      - name: Validate the sdist
+        run: |
+            python setup.py sdist
+            python setup.py check
+            python -m twine check dist/*.tar.gz
+            rm -rf dist/*.tar.gz
+
+      - name: Test pip install from dist in fresh venv
+        run: |
+            python -m venv venv
+            source venv/bin/activate
+            pip install --upgrade setuptools pip wheel
+            python setup.py bdist_wheel
+            python -m pip install --no-cache-dir dist/fwdpy11*-linux*.whl
+            python -m fwdpy11 --includes
+            python -c "import fwdpy11;print(fwdpy11.__version__)"
+            python -c "import fwdpy11;print(fwdpy11.__file__)"
+
