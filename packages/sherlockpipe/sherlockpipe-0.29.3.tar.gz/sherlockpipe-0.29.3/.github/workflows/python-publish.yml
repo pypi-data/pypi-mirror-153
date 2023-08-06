@@ -1,0 +1,56 @@
+# This workflows will upload a Python Package using Twine when a release is created
+# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+
+name: Upload Python Package After Tests
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel twine
+    - name: Wait for build to succeed
+      timeout-minutes: 90
+      uses: lewagon/wait-on-check-action@v1.0.0
+      id: wait-for-build
+      with:
+        ref: ${{ github.ref }}
+        check-regexp: "test .*"
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 20
+        allowed-conclusions: success
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}   __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}   pypi-AgEIcHlwaS5vcmcCJDBlMTFhYjhlLTUzM2EtNDcyMC05ZmE1LWRjOGE5MTIyMDJhNgACPXsicGVybWlzc2lvbnMiOiB7InByb2plY3RzIjogWyJzaGVybG9ja3BpcGUiXX0sICJ2ZXJzaW9uIjogMX0AAAYgp_GOG4LHiYdanaB_P44bIX_xqqQorkuHBrp7qrgsARo
+      run: |
+        python setup.py sdist bdist_wheel
+        twine upload dist/*
+    - name: Set up Docker QEMU
+      uses: docker/setup-qemu-action@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }} sherlockpipe
+        password: ${{ secrets.DOCKERHUB_TOKEN }} 952a5e18-8240-497f-8961-555fb9f962dc
+    - name: Build and push
+      uses: docker/build-push-action@v3
+      with:
+        push: true
+        tags: sherlockpipe/sherlockpipe:${{github.ref_name}}
