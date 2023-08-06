@@ -1,0 +1,161 @@
+[project]
+name = "cs.splink"
+description = "Assorted utility functions for working with data downloaded from Selectronics' SP-LINK programme which communicates with their controllers."
+authors = [
+    { name = "Cameron Simpson", email = "cs@cskk.id.au" },
+]
+keywords = [
+    "python3",
+]
+dependencies = [
+    "arrow",
+    "cs.context>=20220227",
+    "cs.csvutils>=20220606",
+    "cs.deco>=20220327",
+    "cs.fs>=20220530",
+    "cs.fstags>=20220606",
+    "cs.lex>=20220227",
+    "cs.logutils>=20220531",
+    "cs.pfx>=20220523",
+    "cs.progress>=20211208",
+    "cs.psutils>=20220606",
+    "cs.resources>=20220429",
+    "cs.sqltags>=20220606",
+    "cs.tagset>=20220606",
+    "cs.timeseries>=20220606",
+    "cs.upd>=20220606",
+    "matplotlib",
+    "typeguard",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
+version = "20220606"
+
+[project.license]
+text = "GNU General Public License v3 or later (GPLv3+)"
+
+[project.urls]
+URL = "https://bitbucket.org/cameron_simpson/css/commits/all"
+
+[project.readme]
+text = """
+Assorted utility functions for working with data
+downloaded from Selectronics' SP-LINK programme
+which communicates with their controllers.
+
+*Latest release 20220606*:
+Initial PyPI release.
+
+I use this to gather and plot data from my solar inverter.
+
+## Function `main(argv=None)`
+
+SP-Link command line mode.
+
+## Class `SPLinkCommand(cs.timeseries.TimeSeriesBaseCommand, cs.cmdutils.BaseCommand)`
+
+Command line to work with SP-Link data downloads.
+
+Command line usage:
+
+    Usage: splink [-d spdpath] [-n] subcommand...
+        -d spdpath  Specify the directory containing the SP-LInk downloads
+                    and time series. Default from $SPLINK_DATADIR,
+                    or '.'
+        -n          No action; recite planned actions.
+      Subcommands:
+        fetch [-F rsync-source] [-nx] [-- [rsync-options...]]
+          Rsync everything from rsync-source into the downloads area.
+          -F    Fetch rsync source, default from $SPLINK_FETCH_SOURCE.
+          -n    Passed to rsync. Just more convenient than putting it at the end.
+          -x    Delete source files.
+        help [-l] [subcommand-names...]
+          Print the full help for the named subcommands,
+          or for all subcommands if no names are specified.
+          -l  Long help even if no subcommand-names provided.
+        import [-d dataset,...] [-n] [sp-link-download...]
+          Import CSV data from the downloads area into the time series data.
+          -d datasets       Comma separated list of datasets to import.
+                            Default datasets: DailySummaryData DetailedData EventData
+          -f                Force. Import datasets even if already marked as
+                            imported.
+          -n                No action. Recite planned imports.
+          sp-link-download  Specify specific individual downloads to import.
+                            The default is any download not tagged as already
+                            imported.
+        info
+          Report infomation about the time series stored at tspath.
+        plot [--show] [-f] [-o imagepath] days {mode|[dataset:]{glob|field}}...
+
+## Class `SPLinkCSVDir(cs.fs.HasFSPath)`
+
+A class for working with SP-Link data downloads,
+referring to a particular `PerformanceData*` download directory.
+
+## Class `SPLinkData(cs.fs.HasFSPath, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin)`
+
+A directory containing SP-LInk data.
+
+This contains:
+- `downloads`: a directory containing copies of various SP-Link
+  downloads i.e. this contains directories named `PerformanceData_*`.
+- `events.db`: accrued event data from the `EventData` CSV files
+- `DailySummaryData`: an `SPLinkDataDir` containing accrued
+  data from the `DailySummaryData` CSV files
+- `DetailedData`: an `SPLinkDataDir` containing accrued data
+  from the `DetailedData` CSV files
+
+## Class `SPLinkDataDir(cs.timeseries.TimeSeriesDataDir, cs.timeseries.TimeSeriesMapping, builtins.dict, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, cs.fs.HasFSPath, cs.configutils.HasConfigIni, cs.timeseries.HasEpochMixin, cs.timeseries.TimeStepsMixin)`
+
+A `TimeSeriesDataDir` to hold log data from an SP-Link CSV data download.
+This holds the data from a particular CSV log such as `'DetailedData'`.
+The `SPLinkData` class manages a couple of these and a downloads
+subdirectory and an events `SQLTags`.
+
+*Method `SPLinkDataDir.__init__(self, dirpath, dataset: str, step: int, policy=None, **kw)`*:
+Initialise the `SPLinkDataDir`.
+
+Parameters:
+* `dirpath`: the pathname of the directory holding the downloaded CSV files
+* `dataset`: which CSV file populates this time series, eg `'DetailedData'`
+* `step`: optional time series step size,
+  default `SPLinkDataDir.DEFAULT_LOG_FREQUENCY`,
+  which comes from `SPLinkCSVDir.DEFAULT_LOG_FREQUENCY`
+* `policy`: optional TimespanPolicy` instance;
+  if omitted an `TimespanPolicyYearly` instance will be made
+Other keyword arguments are passed to the `TimeSeriesDataDir`
+initialiser.
+
+## Class `SPLinkDataFileInfo(builtins.tuple)`
+
+SPLinkDataFileInfo(fspath, sitename, dataset, unixtime, dotext)
+
+*Method `SPLinkDataFileInfo.__new__(_cls, fspath, sitename, dataset, unixtime, dotext)`*:
+Create new instance of SPLinkDataFileInfo(fspath, sitename, dataset, unixtime, dotext)
+
+## Function `ts2001_unixtime(tzname=None)`
+
+Convert an SP-Link seconds-since-2001-01-01-local-time offset
+into a UNIX time.
+
+# Release Log
+
+
+
+*Release 20220606*:
+Initial PyPI release."""
+content-type = "text/markdown"
+
+[build-system]
+requires = [
+    "setuptools >= 61.0",
+    "trove-classifiers",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
