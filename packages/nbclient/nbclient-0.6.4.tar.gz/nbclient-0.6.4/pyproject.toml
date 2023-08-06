@@ -1,0 +1,84 @@
+# Example configuration for Black.
+
+# NOTE: you have to use single-quoted strings in TOML for regular expressions.
+# It's the equivalent of r-strings in Python.  Multiline strings are treated as
+# verbose regular expressions by Black.  Use [ ] to denote a significant space
+# character.
+
+[tool.black]
+line-length = 100
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+  | profiling
+)/
+'''
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+known_first_party = ["nbclient"]
+
+[tool.mypy]
+python_version = 3.9
+check_untyped_defs = true
+disallow_any_generics = false  # todo
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+no_implicit_reexport = false  # todo
+pretty = true
+show_error_context = true
+show_error_codes = true
+strict_equality = true
+strict_optional = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "async_generator.*",
+    "jupyter_core.*",
+    "nbformat.*",
+    "nbconvert.*",
+    "nest_asyncio.*",
+    "testpath",
+    "traitlets.*",
+    "xmltodict"
+]
+ignore_missing_imports = true
+
+[tool.jupyter-releaser]
+skip = ["check-links"]
+
+[tool.check-manifest]
+ignore = [".mailmap", "*.yml", "*.yaml"]
+
+[tool.tbump.version]
+current = "0.6.4"
+regex = '''
+  (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)
+  ((?P<channel>a|b|rc|.dev)(?P<release>\d+))?
+'''
+
+[tool.tbump.git]
+message_template = "Bump to {new_version}"
+tag_template = "v{new_version}"
+
+[[tool.tbump.file]]
+src = "nbclient/_version.py"
