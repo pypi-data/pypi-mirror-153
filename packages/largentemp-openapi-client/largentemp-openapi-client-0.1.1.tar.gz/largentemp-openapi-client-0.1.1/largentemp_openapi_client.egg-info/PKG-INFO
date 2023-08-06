@@ -1,0 +1,64 @@
+Metadata-Version: 2.1
+Name: largentemp-openapi-client
+Version: 0.1.1
+Summary: API-klient för LargenTemps öppna API
+Home-page: https://largentemp.pythonanywhere.com/static/templates/apiinfo.html
+Author: LargenTemp
+Author-email: largentemp@gmail.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# LargenTemp Python-bibliotek
+
+Detta Python-bibliotek gör det möjligt att hämta temperaturdata från [LargenTemps API](https://largentemp.pythonanywhere.com).
+
+### Installation
+
+Biblioteket finns tillgängligt via PyPi: `pip install largentemp-api-client`
+
+### Användning
+
+**Hämta senaste temperaturdatan**
+
+```python
+from largentemp_api_client_code.largentemp_api_client import Client
+
+client = Client()  # Skapa en ny instans av en API-klient
+data = client.get_data()
+```
+Data-variabeln kan sedan användas. Här är ett exempel för aktuellt värde:
+```python
+>>> data.temperaturedata.reading
+20.4
+>>> data.temperaturedata.reading_rounded
+20.4
+>>>  data.temperaturedata.timestamp.local_timestamp
+datetime.datetime(2022, 6, 4, 18, 21, 56, 93239, tzinfo=<DstTzInfo 'Europe/Stockholm' CEST+2:00:00 DST>)
+>>> data.temperaturedata.timestamp.string_timestamp
+'Senast uppdaterad för 1 minuter sedan'
+```
+Även daglig statistik är tillgänglig. Här är ett exempel:
+```python
+>>> data.statistics.today_high.reading
+22.875
+>>> data.statistics.today_high.reading_rounded
+22.9
+>>> data.statistics.today_high.timestamp.local_timestamp
+datetime.datetime(2022, 6, 4, 17, 32)
+>>> data.statistics.today_mean
+21.03125
+>>> data.statistics.value_count_today
+10.0
+```
+
+### Förfrågningslimiterat
+LargenTemps API är förfrågningslimitierat - se [här]().
+Om dessa förfrågningslimitationer skulle drabba dig så kommer du att få ett felmeddelande:
+```python
+largentemp_api_client.exceptions.RateLimitedException: Ett fel inträffade: du har blivit förfrågningslimiterad (rate-limited) från API:et.
+```
+Alla felmeddelanden finns i `largentemp_api_client.exceptions`.
