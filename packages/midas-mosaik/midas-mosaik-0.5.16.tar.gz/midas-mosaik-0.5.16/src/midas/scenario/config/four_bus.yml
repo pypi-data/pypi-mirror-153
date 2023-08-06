@@ -1,0 +1,66 @@
+#######################################################################
+# Four Bus System Base
+#######################################################################
+four_bus:
+  name: four_bus
+  parent:
+  modules:
+    - powergrid
+    - sndata
+  step_size: 15*60
+  start_date: 2009-01-01 00:00:00+0100
+  end: 1*24*60*60
+  mosaikdb_params:
+    filename: fourbus.hdf5
+    overwrite: true
+  powergrid_params:
+    four_bus:
+      gridfile: simple_four_bus_system
+  sndata_params:
+    four_bus:
+      land_mapping:
+        2: [[0, 0.75]]
+        3: [[3, 0.425]]
+      house_mapping: {}
+#######################################################################
+# Four Bus System with DER
+#######################################################################
+four_bus_der:
+  name: four_bus_der
+  parent: four_bus
+  modules:
+    - weather
+    - der
+  weather_params:
+    bremen:
+      weather_mapping:
+        WeatherCurrent:
+          - interpolate: True
+            randomize: True
+  der_params:
+    four_bus_pv:
+      grid_name: four_bus
+      mapping:
+        2: [[PV, 0.00725], [CHP, 0.014]]
+        3: [[PV, 0.00103], [CHP, 0.014]]
+      weather_provider_mapping:
+        PV: [bremen, 0]
+        CHP: [bremen, 0]
+#######################################################################
+# Four Bus System with GOA and DER
+#######################################################################
+four_bus_goa:
+  name: four_bus_goa
+  modules:
+    - goa
+  parent: four_bus_der
+  goa_params:
+    four_bus:
+      gridfile: simple_four_bus_system
+      grid_load_sensor: True
+      grid_sgen_sensor: False
+      grid_busvm_sensor: False
+      grid_busload_sensor: True
+      der_sgen_sensor: True
+      undervoltage: 0.96
+      overvoltage: 1.04
