@@ -1,0 +1,91 @@
+version: '3.4'
+
+services:
+  webserver:
+    image: 1.10.15
+    ports:
+      - "8090:8080"
+    command: webserver
+    environment:
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__LINEAGE__BACKEND: 'alvin_integration.producers.airflow.lineage.backend.AlvinAirflowLineageBackend'
+      OPENLINEAGE_URL: 'http://alvin_backend:9000'
+      ALVIN_URL: 'http://alvin_backend:9000'
+      ALVIN_API_KEY: '12345235ASDFSASG'
+      ALVIN_PLATFORM_ID: 'AIRFLOW-DEV'
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./logs:/opt/airflow/logs
+      - ./../../alvin_integration:/opt/airflow/alvin_integration/alvin_integration
+      - ./../../tests/resources/airflow/dags/legacy:/opt/airflow/dags
+
+  scheduler:
+    image: 1.10.15
+    command: scheduler
+    environment:
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__LINEAGE__BACKEND: 'alvin_integration.producers.airflow.lineage.backend.AlvinAirflowLineageBackend'
+      ALVIN_URL: 'http://alvin_backend:9000'
+      ALVIN_API_KEY: '12345235ASDFSASG'
+      ALVIN_PLATFORM_ID: 'AIRFLOW-DEV'
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./logs:/opt/airflow/logs
+      - ./../../alvin_integration:/opt/airflow/alvin_integration/alvin_integration
+      - ./../../tests/resources/airflow/dags/legacy:/opt/airflow/dags
+
+  airflow-init:
+    image: 1.10.15
+    command: db upgrade
+    environment:
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__LINEAGE__BACKEND: 'alvin_airflow.lineage.backend.AlvinLineageBackend'
+    volumes:
+      - ./logs:/opt/airflow/logs
+      - ./../../tests/resources/airflow/dags/legacy:/opt/airflow/dags
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - ./postgres-db-volume-legacy-v1:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "airflow" ]
+      interval: 5s
+      retries: 5
+    restart: always
+
+  alvin_backend:
+    build:
+      context: ./../../tests/http_server
+      dockerfile: Dockerfile
+    ports:
+      - 9000:9000
+    volumes:
+      - ./data:/code/data
+
+volumes:
+  postgres-db-volume-legacy:
+  data:
