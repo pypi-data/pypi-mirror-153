@@ -1,0 +1,39 @@
+pipeline {
+    agent any
+    stages {
+        stage('Test') { 
+            steps {
+                sh "docker build -t test_shell ."
+                sh "docker run test_shell"
+            }
+        }
+        stage('Push'){
+            agent {
+                dockerfile {
+                    filename 'Dockerfile'
+                    args "--entrypoint=''"
+                }
+            }
+            environment {
+                jobName = "${env.JOB_NAME}"
+                TWINE_USERNAME = credentials('fa95a7c6-be89-42a4-961b-b799b7d91831')
+                TWINE_PASSWORD = credentials('6316bb89-dd87-4051-8c9b-1f0b9cbddb28')
+            }
+            steps {
+                script {
+                    if (jobName == "cognicept_shell/prod") {
+                        sh """
+                            python3 setup.py sdist bdist_wheel
+                            python3 -m twine upload dist/*
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            slackSend(message:"Job ${env.JOB_NAME} ${env.BUILD_NUMBER} has completed with status: ${currentBuild.currentResult} \n (<${env.BUILD_URL}|Open>)")
+        }
+    }
+}
