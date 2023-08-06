@@ -1,0 +1,2 @@
+def bob(x):
+	pass
