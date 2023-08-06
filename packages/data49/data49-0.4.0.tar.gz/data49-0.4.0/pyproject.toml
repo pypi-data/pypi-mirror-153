@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "data49"
+version = "0.4.0"
+description = "A gold rush-themed data mining library"
+authors = ["Bryan Hu <bryan.hu.2020@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+thefuzz = { extras = ["speedup"], version = "^0.19.0" }
+selenium = "^3.141.0"
+beautifulsoup4 = "^4.10.0"
+requests = "^2.27.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+pylint = "^2.11.1"
+mypy = "^0.910"
+shed = "^0.4.2"
+pytest-cov = "^2.12.1"
+ipython = "^7.28.0"
+pdbpp = "^0.10.3"
+
+[tool.poe.tasks]
+format = "shed **/**.py"
+pytype = "pytype data49"
+test = "pytest -vvv --cov=data49 --cov-report=html"
+codecov = "pytest -vvv --cov=data49 --cov-report=xml"
+lazy_type = ["pytype", "merge_pyi"]
+
+[tool.poe.tasks.merge_pyi]
+shell = """
+for x in data49/**/**.py
+    do poetry run merge-pyi -i ${x} .pytype/pyi/${x:r}.pyi;
+done
+"""
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
