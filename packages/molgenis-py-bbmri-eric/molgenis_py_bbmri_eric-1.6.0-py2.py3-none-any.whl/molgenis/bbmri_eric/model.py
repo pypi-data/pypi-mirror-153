@@ -1,0 +1,273 @@
+import typing
+from abc import ABC
+from collections import OrderedDict
+from copy import deepcopy
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional
+
+
+class TableType(Enum):
+    """Enum representing the four tables each national node has."""
+
+    PERSONS = "persons"
+    NETWORKS = "networks"
+    BIOBANKS = "biobanks"
+    COLLECTIONS = "collections"
+
+    @classmethod
+    def get_import_order(cls) -> List["TableType"]:
+        return [type_ for type_ in cls]
+
+    @property
+    def base_id(self) -> str:
+        return f"eu_bbmri_eric_{self.value}"
+
+
+@dataclass(frozen=True)
+class TableMeta:
+    """Convenient wrapper for the output of the metadata API."""
+
+    meta: dict
+
+    @property
+    def id(self):
+        return self.meta["data"]["id"]
+
+    @property
+    def attributes(self):
+        return [
+            attr["data"]["name"] for attr in self.meta["data"]["attributes"]["items"]
+        ]
+
+    @property
+    def id_attribute(self):
+        for attribute in self.meta["data"]["attributes"]["items"]:
+            if attribute["data"]["idAttribute"] is True:
+                return attribute["data"]["name"]
+
+    @property
+    def one_to_manys(self) -> List[str]:
+        one_to_manys = []
+        for attribute in self.meta["data"]["attributes"]["items"]:
+            if attribute["data"]["type"] == "onetomany":
+                one_to_manys.append(attribute["data"]["name"])
+        return one_to_manys
+
+
+@dataclass(frozen=True)
+class Table:
+    """
+    Simple representation of a BBMRI ERIC node table. The rows should be in the
+    uploadable format. (See _utils.py)
+    """
+
+    type: TableType
+    rows_by_id: "typing.OrderedDict[str, dict]"
+    meta: TableMeta
+
+    @property
+    def rows(self) -> List[dict]:
+        return list(self.rows_by_id.values())
+
+    @property
+    def full_name(self) -> str:
+        return self.meta.id
+
+    @staticmethod
+    def of(table_type: TableType, meta: TableMeta, rows: List[dict]) -> "Table":
+        """Factory method that takes a list of rows instead of an OrderedDict of
+        ids/rows."""
+        rows_by_id = OrderedDict()
+        for row in rows:
+            rows_by_id[row["id"]] = row
+        return Table(
+            type=table_type,
+            meta=meta,
+            rows_by_id=rows_by_id,
+        )
+
+    @staticmethod
+    def of_empty(table_type: TableType, meta: TableMeta):
+        return Table(table_type, OrderedDict(), meta)
+
+
+@dataclass(frozen=True)
+class Node:
+    """Represents a single national node in the BBMRI ERIC directory."""
+
+    code: str
+    description: Optional[str]
+
+    _classifiers = {
+        TableType.PERSONS: "contactID",
+        TableType.NETWORKS: "networkID",
+        TableType.BIOBANKS: "ID",
+        TableType.COLLECTIONS: "ID",
+    }
+
+    def get_staging_id(self, table_type: TableType) -> str:
+        """
+        Returns the identifier of a node's staging table.
+
+        :param TableType table_type: the table to get the staging id of
+        :return: the id of the staging table
+        """
+        return f"eu_bbmri_eric_{self.code}_{table_type.value}"
+
+    def get_id_prefix(self, table_type: TableType) -> str:
+        """
+        Each table has a specific prefix for the identifiers of its rows. This prefix is
+        based on the node's code and the classifier of the table.
+
+        :param TableType table_type: the table to get the id prefix for
+        :return: the id prefix
+        """
+        classifier = self._classifiers[table_type]
+        return f"bbmri-eric:{classifier}:{self.code}_"
+
+    @classmethod
+    def get_eu_id_prefix(cls, table_type: TableType) -> str:
+        """
+        Some nodes can refer to rows in the EU node. These rows have an EU prefix and
+        it's based on the classifier of the table.
+
+        :param TableType table_type: the table to get the EU id prefix for
+        :return: the EU id prefix
+        """
+
+        classifier = cls._classifiers[table_type]
+        return f"bbmri-eric:{classifier}:EU_"
+
+    @staticmethod
+    def of(code: str):
+        return Node(code, None)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Node):
+            return self.code == other.code
+        return False
+
+    def __hash__(self):
+        return hash(self.code)
+
+
+@dataclass(frozen=True)
+class ExternalServerNode(Node):
+    """Represents a node that has an external server on which its data is hosted."""
+
+    url: str
+
+
+class Source(Enum):
+    EXTERNAL_SERVER = "external_server"
+    STAGING = "staging"
+    PUBLISHED = "published"
+    TRANSFORMED = "transformed"
+
+
+@dataclass
+class EricData(ABC):
+    """Abstract base class for containers storing rows from the four ERIC tables:
+    persons, networks, biobanks and collections."""
+
+    source: Source
+    persons: Table
+    networks: Table
+    biobanks: Table
+    collections: Table
+    table_by_type: Dict[TableType, Table] = field(init=False)
+
+    def __post_init__(self):
+        self.table_by_type = {
+            TableType.PERSONS: self.persons,
+            TableType.NETWORKS: self.networks,
+            TableType.BIOBANKS: self.biobanks,
+            TableType.COLLECTIONS: self.collections,
+        }
+
+    @property
+    def import_order(self) -> List[Table]:
+        return [self.persons, self.networks, self.biobanks, self.collections]
+
+
+@dataclass
+class NodeData(EricData):
+    """Container object storing the four tables of a single node."""
+
+    node: Node
+
+    @staticmethod
+    def from_dict(node: Node, source: Source, tables: Dict[str, Table]) -> "NodeData":
+        return NodeData(node=node, source=source, **tables)
+
+    def convert_to_staging(self) -> "NodeData":
+        """
+        The metadata of an external node is the same as the metadata of its staging
+        area. This method copies an external server's NodeData and changes only the
+        table identifiers to point to the staging area's identifiers.
+        """
+        if self.source != Source.EXTERNAL_SERVER:
+            raise ValueError("data isn't from an external server")
+
+        tables = dict()
+        for table in self.import_order:
+            metadata = deepcopy(table.meta.meta)
+            metadata["data"]["id"] = self.node.get_staging_id(table.type)
+            tables[table.type.value] = Table(
+                table.type, table.rows_by_id, TableMeta(metadata)
+            )
+
+        return NodeData(node=self.node, source=Source.STAGING, **tables)
+
+
+class MixedData(EricData):
+    """Container object storing the four tables with mixed origins, for example from
+    the combined tables or from multiple staging areas."""
+
+    @staticmethod
+    def from_mixed_dict(source: Source, tables: Dict[str, Table]) -> "MixedData":
+        return MixedData(source=source, **tables)
+
+    def merge(self, other_data: EricData):
+        self.persons.rows_by_id.update(other_data.persons.rows_by_id)
+        self.networks.rows_by_id.update(other_data.networks.rows_by_id)
+        self.biobanks.rows_by_id.update(other_data.biobanks.rows_by_id)
+        self.collections.rows_by_id.update(other_data.collections.rows_by_id)
+
+    def remove_node_rows(self, node: Node):
+        for table in self.import_order:
+            ids_to_remove = [
+                row["id"] for row in table.rows if row["national_node"] == node.code
+            ]
+            all(table.rows_by_id.pop(id_) for id_ in ids_to_remove)
+
+    def copy_empty(self) -> "MixedData":
+        return MixedData(
+            source=self.source,
+            persons=Table.of_empty(TableType.PERSONS, self.persons.meta),
+            networks=Table.of_empty(TableType.NETWORKS, self.networks.meta),
+            biobanks=Table.of_empty(TableType.BIOBANKS, self.biobanks.meta),
+            collections=Table.of_empty(TableType.COLLECTIONS, self.collections.meta),
+        )
+
+
+@dataclass(frozen=True)
+class QualityInfo:
+    """
+    Stores the quality information for biobanks and collections.
+    """
+
+    biobanks: Dict[str, List[str]]
+    """Dictionary of biobank ids and their quality ids"""
+
+    collections: Dict[str, List[str]]
+    """Dictionary of collection ids and their quality ids"""
+
+    def get_qualities(self, table_type: TableType) -> Dict[str, List[str]]:
+        if table_type == TableType.BIOBANKS:
+            return self.biobanks
+        elif table_type == TableType.COLLECTIONS:
+            return self.collections
+        else:
+            return dict()
