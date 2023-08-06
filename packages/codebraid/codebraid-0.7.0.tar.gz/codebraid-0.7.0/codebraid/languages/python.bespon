@@ -1,0 +1,85 @@
+|=== python
+extension = 'py'
+
+run_encoding = 'utf8'
+
+run_template =
+    |```
+    # -*- coding: utf-8 -*-
+
+    import codecs
+    import sys
+    sys.stdout = codecs.getwriter('utf8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf8')(sys.stderr.buffer, 'strict')
+
+    {code}
+    |```/
+
+chunk_wrapper =
+    |```
+    print('\n{stdout_start_delim}', flush=True)
+    print('\n{stderr_start_delim}', file=sys.stderr, flush=True)
+    {code}
+    print('\n{stdout_end_delim}', flush=True)
+    print('\n{stderr_end_delim}', file=sys.stderr, flush=True)
+    |```/
+
+inline_expression_formatter =
+    |```
+    _codebraid_temp_{temp_suffix} = str({code})
+    print('\n{expr_start_delim}')
+    sys.stderr.write('\n{expr_start_delim}\n')
+    print(_codebraid_temp_{temp_suffix})
+    print('\n{expr_end_delim}')
+    sys.stderr.write('\n{expr_end_delim}\n')
+    |```/
+
+error_patterns = 'Error:'
+warning_patterns = 'Warning:'
+line_number_patterns = ['line {number}', ':{number}:']
+
+
+|=== python_repl
+extension = 'py'
+
+run_encoding = 'utf8'
+
+run_script = 'python_repl.py'
+
+error_patterns = $~.python.error_patterns
+warning_patterns = $~.python.warning_patterns
+line_number_patterns = $~.python.line_number_patterns
+
+
+|=== sage
+(dict, default=$~.python)>
+extension = 'sage'
+
+executable = 'sage'
+
+source_template =
+    |```
+    # -*- coding: utf-8 -*-
+
+    import sys
+    import codecs
+    if sys.version_info[0] == 2:
+        sys.stdout = codecs.getwriter('utf8')(sys.stdout, 'strict')
+        sys.stderr = codecs.getwriter('utf8')(sys.stderr, 'strict')
+    else:
+        sys.stdout = codecs.getwriter('utf8')(sys.stdout.buffer, 'strict')
+        sys.stderr = codecs.getwriter('utf8')(sys.stderr.buffer, 'strict')
+
+    {code}
+    |```/
+
+chunk_wrapper =
+    |```
+    sys.stdout.write('\n{stdout_start_delim}\n')
+    sys.stdout.flush()
+    sys.stderr.write('\n{stderr_start_delim}\n')
+    {code}
+    sys.stdout.write('\n{stdout_end_delim}\n')
+    sys.stdout.flush()
+    sys.stderr.write('\n{stderr_end_delim}\n')
+    |```/
