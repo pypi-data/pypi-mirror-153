@@ -1,0 +1,4 @@
+from .blood_culture import BloodCultureModelAdminMixin
+from .histopathology import HistopathologyModelAdminMixin
+from .microbiology import MicrobiologyModelAdminMixin
+from .urine_culture import UrineCultureModelAdminMixin
