@@ -1,0 +1,52 @@
+{% cache cache_duration, 'dataset-search-result', dataset.id|string, g.lang_code %}
+{% from theme('macros/certified.html') import badge_if_certified with context %}
+<article class="dataset-card dataset-search-result fr-py-1w">
+    {% if dataset.organization %}
+    <div class="card-logo">
+        <img
+            alt="{{ dataset.organization.name|placeholder_alt(dataset.organization.logo) }}"
+            src="{{ dataset.organization.logo(80)|placeholder('organization') }}"
+            loading="lazy"
+        />
+        <div class="logo-badge">
+            {% if dataset.private %}
+            {% include theme('svg/private.svg') %}
+            {% else %}
+            {{ badge_if_certified(dataset.organization) }}
+            {% endif %}
+        </div>
+    </div>
+    {% elif dataset.owner %}
+    <div class="card-logo">
+        <img
+            alt="{{ dataset.owner.fullname }}"
+            src="{{ dataset.owner|avatar_url(70) }}"
+            width="70"
+            height="70"
+            loading="lazy"
+        />
+    </div>
+    {% else %}
+    <div class="card-logo">
+        <img src="{{ ''|placeholder('organization') }}" alt="" loading="lazy" />
+    </div>
+    {% endif %}
+    <div class="card-data">
+        <h4 class="card-title">{{ dataset.full_title }}
+            {% if dataset.private %}<span class="badge grey-300 fr-ml-1w">{{ _('Private') }}</span>{% endif %}</h4>
+        <div class="card-description text-grey-380 fr-mt-1w">
+            {{ dataset.description|mdstrip(300) }}
+        </div>
+    </div>
+    <ul class="card-footer">
+        <li>
+            <strong>{{ dataset.resources|length or 0 }}</strong> {{ _('resources') }}</li>
+        <li>
+            <strong>{{ dataset.metrics.reuses or 0 }}</strong> {{ _('reuses') }}
+        </li>
+        <li>
+            <strong>{{ dataset.metrics.followers or 0 }}</strong> {{ _('favourites') }}
+        </li>
+    </ul>
+</article>
+{% endcache %}
