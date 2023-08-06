@@ -1,0 +1,73 @@
+"""{{class_name}} Bridge."""
+
+from __future__ import annotations
+
+import asyncio
+from asyncio import Queue
+
+import structlog
+
+from kelvin.sdk.app.bridge import Bridge, BridgeConfiguration, Configuration, MetricConfiguration
+from kelvin.sdk.datatype import Message
+
+logger = structlog.get_logger(__name__)
+
+
+class {{ class_name }}BridgeConfiguration(BridgeConfiguration):
+    """
+    {{ class_name }} Bridge configuration.
+    Bridge-specific configuration under "app -> configuration"
+    """
+
+
+class {{ class_name }}MetricConfiguration(MetricConfiguration):
+    """
+    {{ class_name }} metric configuration.
+    Bridge-specific configuration for the metrics specified under "app -> metrics_map -> configuration"
+    """
+
+
+class {{ class_name }}Configuration(Configuration[{{ class_name }}BridgeConfiguration, {{ class_name }}MetricConfiguration]):
+    """{{ class_name }} global configuration."""
+
+
+class {{ class_name }}Bridge(Bridge[{{ class_name }}Configuration]):
+    """{{ class_name }} bridge."""
+
+    async def init(self) -> None:
+        """Initialise bridge resources prior to running."""
+
+    async def stop(self) -> None:
+        """Stop bridge."""
+
+    async def writer(self, messages: Queue[Message]) -> None:
+        """Process outbound messages."""
+
+    async def reader(self, messages: Queue[Message]) -> None:
+        """Process inbound messages."""
+
+        # Access the configuration
+        configuration = self.config.configuration
+
+        # Access the metrics map
+        metrics_map = self.config.metrics_map
+
+        then = 0.0
+        period = 10.0  # establish a default period for the loop
+
+        loop = asyncio.get_event_loop()
+
+        while True:
+            now = loop.time()
+            delay = max(period - (now - then), 0.0)
+            await asyncio.sleep(delay)
+
+            then = loop.time()
+            for metric in metrics_map:
+                logger.info("processing", metric=metric)
+
+                # message = Message.parse_obj(...)
+                # await messages.put(message)
+{#
+  vim:ft=python.jinja2:sw=4
+#}

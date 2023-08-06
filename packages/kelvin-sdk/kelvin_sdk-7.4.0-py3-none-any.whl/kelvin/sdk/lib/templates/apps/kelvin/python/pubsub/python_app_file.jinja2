@@ -1,0 +1,50 @@
+#! /usr/bin/env python
+
+import asyncio
+from random import randrange
+from typing import Sequence
+
+import structlog
+
+from kelvin.sdk.datatype import make_message
+from kelvin.sdk.pubsub import PubSubClient
+
+logger = structlog.get_logger()
+
+client = PubSubClient(app_config="app.yaml")
+
+
+async def loop(args: Sequence[str]) -> None:
+    """Main loop."""
+
+    async with client.connection(sync=False) as connection:
+        while True:
+            try:
+                message = make_message(
+                    "raw.float32",
+                    "bar",
+                    _asset_name="some-asset",
+                    value=randrange(0, 100),
+                )
+                connection.send(message)
+            except Exception:
+                logger.exception("Failed", message=message)
+
+            await asyncio.sleep(1)
+
+
+def run(args: Sequence[str]) -> int:
+    """Run application."""
+
+    try:
+        asyncio.run(loop(args))
+    except KeyboardInterrupt:
+        logger.info("Finished")
+    except Exception:
+        logger.exception("Failed")
+        return 1
+
+    return 0
+{#
+  vim:ft=python.jinja2:sw=4
+#}
