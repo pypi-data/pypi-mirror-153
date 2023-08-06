@@ -1,0 +1,44 @@
+#!/bin/bash
+# Source this to collect the correct daq libs for pydaq, pycdb, and pyami
+# export HUTCH=<hutchname-lowercase> before sourcing
+# This is not guaranteed to be conflict-free with your python env
+# This works by expanding your PYTHONPATH and LD_LIBRARY_PATH
+
+if [ -z "${HUTCH}" ]; then
+  # Default to daq latest
+  DAQREL="/reg/g/pcds/dist/pds/current/build"
+  AMIREL="/reg/g/pcds/dist/pds/ami-current/build"
+  HUTCH="current"
+else
+  DAQREL="/reg/g/pcds/dist/pds/${HUTCH}/current/build"
+  AMIREL="/reg/g/pcds/dist/pds/${HUTCH}/ami-current/build"
+fi
+
+OS_VER="$(uname -r | rev | cut -d . -f 2 | rev)"
+if [ "${OS_VER}" = el6 ]; then
+  OS_DIR=x86_64-linux-opt
+elif [ "${OS_VER}" = el7 ]; then
+  OS_DIR=x86_64-rhel7-opt
+fi
+
+if [ -z "${OS_DIR}" ]; then
+  echo "OS must be rhel6 or rhel7"
+else
+  # Add pydaq, pydcb, pyami to the python path
+  export PYTHONPATH="${PYTHONPATH}:${DAQREL}/pdsapp/lib/${OS_DIR}"
+
+  # Add pyami to the python path
+  export PYTHONPATH="${PYTHONPATH}:${AMIREL}/ami/lib/${OS_DIR}"
+
+  # Add ami libraries
+  for dir in ami gsl qt
+  do
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${AMIREL}/${dir}/lib/${OS_DIR}"
+  done
+
+  # Add daq libraries
+  for dir in pdsapp psalg pds pdsdata offlinedb
+  do
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DAQREL}/${dir}/lib/${OS_DIR}"
+  done
+fi
