@@ -1,0 +1,320 @@
+@<EmacsMode "-*- preserves -*-">
+@<Documentation [
+  "Individual test cases may be any of the following record types:"
+  <TestCaseTypes {
+    Test:                 {fields: [binary annotatedValue] expectations: #{1 2 3 4 5 6 7 8 9    11}}
+    NondeterministicTest: {fields: [binary annotatedValue] expectations: #{1 2 3 4 5 6 7 8   10 11}}
+    DecodeTest:           {fields: [binary annotatedValue] expectations: #{1 2 3 4 5 6 7 8}}
+    ParseError:           {fields: [text]                  expectations: #{12}}
+    ParseShort:           {fields: [text]                  expectations: #{13}}
+    ParseEOF:             {fields: [text]                  expectations: #{14}}
+    DecodeError:          {fields: [bytes]                 expectations: #{15}}
+    DecodeShort:          {fields: [bytes]                 expectations: #{16}}
+    DecodeEOF:            {fields: [bytes]                 expectations: #{17}}
+  }>
+  "In each test, let value = strip(annotatedValue),",
+  "                  forward = value,",
+  "                  back = value,"
+  "except where test-case-specific values of `forward` and/or `back`",
+  "are provided by the executing harness, and check the following"
+  "numbered expectations according to the table above:"
+  <TestCaseExpectations {
+     1: "value = back"
+     2: "strip(decodeBinary(encodeBinary(value))) = back"
+     3: "strip(decodeBinary(encodeBinary(forward))) = back"
+     4: "strip(decodeBinary(binary)) = back"
+     5: "decodeBinary(binary) = annotatedValue"
+     6: "decodeBinary(encodeBinary(annotatedValue)) = annotatedValue"
+     7: "decodeText(encodeText(value)) = back"
+     8: "decodeText(encodeText(forward)) = back"
+     9: "encodeBinary(forward) = binary"
+    10: "canonicallyOrderedEncodedBinaryWithAnnotations(forward) = binary"
+    11: "encodeBinary(annotatedValue) = binary"
+
+    12: "decodeText(text) fails with a syntax error (NB. never with EOF)"
+    13: "decodeText(text) fails signalling premature EOF after partial parse (NB. never with a syntax error)"
+    14: "decodeText(text) fails signalling immediate EOF (NB. never with a syntax error)"
+
+    15: "decodeBinary(bytes) fails with a syntax error (NB. never with EOF)"
+    16: "decodeBinary(bytes) fails signalling premature EOF after partial parse (NB. never with a syntax error)"
+    17: "decodeBinary(bytes) fails signalling immediate EOF (NB. never with a syntax error)"
+  }>
+  "Implementations may vary in their treatment of the difference between expectations"
+  "13/14 and 16/17, depending on how they wish to treat end-of-stream conditions."
+]>
+<TestCases {
+  annotation1: <Test #x"85B10361626399" @"abc" 9>
+  annotation2: <Test #x"85B10361626385B103646566B5B58485B10178B58484" @"abc" @"def" [[] @"x" []]>
+  annotation3: <Test #x"858591928585939495" @@1 2 @@3 4 5>
+  annotation4: <NondeterministicTest #x"B7 85 B302616b B30161 85 B3026176 91 85 B302626b B30162 85 B3026276 92 84"
+                {@ak a: @av 1 @bk b: @bv 2}>
+  annotation5: <Test #x"85B3026172B4B3015285B3026166B3016684" @ar <R @af f>>
+  annotation6: <Test #x"B485B3026172B3015285B3026166B3016684" <@ar R @af f>>
+  annotation7:
+  ;Stop reading symbols at @ -- this test has three separate annotations
+  <Test #x"85B3016185B3016285B30163B584" @a@b@c[]>
+  bytes2: <Test #x"B20568656c6c6f" #"hello">
+  bytes2a: <Test @"Internal whitespace is allowed, including commas!" #x"B2, 05, 68, 65, 6c, 6c, 6f" #"hello">
+  bytes3: <Test #x"B203414243" #"ABC">
+  bytes4: <Test #x"B203414243" #x"414243">
+  bytes5: <Test #x"B203414a4e" #x" 41 4A 4e ">
+  bytes6: @"Bytes must be 2-digits entire" <ParseError "#x\"414 243\"">
+  bytes7: <Test #"\xB2\x06corymb" #[Y29yeW1i]>
+  bytes8: <Test #"\xB2\x06corymb" #[Y29 yeW 1i]>
+  bytes9: <Test #"\xB2\x02Hi" #[SGk=]>
+  bytes10: <Test #"\xB2\x02Hi" #[SGk]>
+  bytes11: <Test #"\xB2\x02Hi" #[S G k]>
+  bytes12: @"Bytes syntax only supports \\x, not \\u" <ParseError "#\"\\u6c34\"">
+  bytes13: <Test #x"B2 11 61 62 63 6c 34 f0 5c 2f 22 08 0c 0a 0d 09 78 79 7a" #"abc\x6c\x34\xf0\\/\"\b\f\n\r\txyz">
+
+  dict0: <Test #x"B784" {}>
+  dict1: <NondeterministicTest #x"b7 b10162 81 b30161 91 b591929384 b20163 b7 b30a66697273742d6e616d65 b109456c697a6162657468 84 b7 b3077375726e616d65 b109426c61636b77656c6c 84 84" { a: 1 "b": #t [1 2 3]: #"c" { first-name: "Elizabeth" }: { surname: "Blackwell" } }>
+  dict2: @"Missing close brace" <ParseShort "{ a: b, c: d ">
+  dict2a: @"Missing close brace" <ParseShort "{">
+  dict3: @"Duplicate key" <ParseError "{ a: 1, a: 2 }">
+  dict4: @"Unexpected close brace" <ParseError "}">
+  dict5: @"Missing value" <DecodeError #x"b7 91 92 93 84">
+  double1: <Test #x"833ff0000000000000" 1.0>
+  double2: <Test #x"83fe3cb7b759bf0426" -1.202e300>
+  float1: <Test #x"823f800000" 1.0f>
+  int-257: <Test #x"a1feff" -257>
+  int-256: <Test #x"a1ff00" -256>
+  int-255: <Test #x"a1ff01" -255>
+  int-254: <Test #x"a1ff02" -254>
+  int-129: <Test #x"a1ff7f" -129>
+  int-128: <Test #x"a080" -128>
+  int-127: <Test #x"a081" -127>
+  int-4: <Test #x"a0fc" -4>
+  int-3: <Test #x"9d" -3>
+  int-2: <Test #x"9e" -2>
+  int-1: <Test #x"9f" -1>
+  int0: <Test #x"90" 0>
+  int1: <Test #x"91" 1>
+  int12: <Test #x"9c" 12>
+  int13: <Test #x"a00d" 13>
+  int127: <Test #x"a07f" 127>
+  int128: <Test #x"a10080" 128>
+  int255: <Test #x"a100ff" 255>
+  int256: <Test #x"a10100" 256>
+  int32767: <Test #x"a17fff" 32767>
+  int32768: <Test #x"a2008000" 32768>
+  int65535: <Test #x"a200ffff" 65535>
+  int65536: <Test #x"a2010000" 65536>
+  int131072: <Test #x"a2020000" 131072>
+  int2500000000: <Test #x"a4009502f900" 2500000000>
+  int87112285931760246646623899502532662132736: <Test #x"b012010000000000000000000000000000000000" 87112285931760246646623899502532662132736>
+  list0: <Test #x"b584" []>
+  list4: <Test #x"b59192939484" [1 2 3 4]>
+  list4a: <Test #x"b59192939484" [1, 2, 3, 4]>
+  list5: <Test #x"b59e9f909184" [-2 -1 0 1]>
+  list6: <Test #x"b5 b10568656c6c6f b3057468657265 b205776f726c64 b584 b684 81 80 84" ["hello" there #"world" [] #{} #t #f]>
+  list7: <Test #x"b5 b303616263 b3032e2e2e b303646566 84" [abc ... def]>
+  list8: @"Missing close bracket" <ParseShort "[">
+  list9: @"Unexpected close bracket" <ParseError "]">
+  list10: @"Missing end byte" <DecodeShort #x"b58080">
+  noinput0: @"No input at all" <DecodeEOF #x"">
+  embed0: <Test #x"8690" #!0>
+  embed1: <Test #x"868690" #!#!0>
+  embed2: <Test #x"b5869086b10568656c6c6f84" [#!0 #!"hello"]>
+  record1: <Test #x"b4 b30763617074757265 b4 b30764697363617264 84 84" <capture <discard>>>
+  record2: <Test #x"b4 b3076f627365727665 b4 b305737065616b b4 b30764697363617264 84 b4 b30763617074757265 b4 b30764697363617264 84 84 84 84" <observe <speak <discard>, <capture <discard>>>>>
+  record3: <Test #x"b4 b5 b3067469746c6564 b306706572736f6e 92 b3057468696e67 91 84 a065 b109426c61636b77656c6c b4 b30464617465 a1071d 92 93 84 b1024472 84" <[titled person 2 thing 1] 101 "Blackwell" <date 1821 2 3> "Dr">>
+  record4: <Test #x"b4 b30764697363617264 84" <discard>>
+  record5: <Test #x"b497b58484" <7[]>>
+  record6: <Test #x"b4b30764697363617264b308737572707269736584" <discard surprise>>
+  record7: <Test #x"b4b10761537472696e67939484" <"aString" 3 4>>
+  record8: <Test #x"b4b4b3076469736361726484939484" <<discard> 3 4>>
+  record9: @"Missing record label" <ParseError "<>">
+  record10: @"Missing close-angle-bracket" <ParseShort "<">
+  record11: @"Unexpected close-angle-bracket" <ParseError ">">
+  set0: <Test #x"b684" #{}>
+  set1: <NondeterministicTest #x"b691929384" #{1 2 3}>
+  set2: @"Missing close brace" <ParseShort "#{ 1 2 3 ">
+  set2a: @"Missing close brace" <ParseShort "#{">
+  set3: @"Duplicate value" <ParseError "#{a a}">
+  string0: <Test #x"b100" "">
+  string3: <Test #x"b10568656c6c6f" "hello">
+  string4: <Test #x"b1 14 616263e6b0b4e6b0b45c2f22080c0a0d0978797a" "abc\u6c34\u6C34\\/\"\b\f\n\r\txyz">
+  string5: <Test #x"b104f09d849e" "\uD834\uDD1E">
+  symbol0: <Test #x"b300" ||>
+  symbol2: <Test #x"b30568656c6c6f" hello>
+  tag0: @"Unexpected end tag" <DecodeError #x"84">
+  tag1: @"Invalid tag" <DecodeError #x"10">
+  tag2: @"Invalid tag" <DecodeError #x"61b10110">
+  whitespace0: @"Leading spaces have to eventually yield something" <ParseShort "   ">
+  whitespace1: @"No input at all" <ParseEOF "">
+  value1: <Test #"\xB2\x06corymb" #=#"\xB2\x06corymb">
+  value2: <Test #"\x81" #=#"\x81">
+  value3: <Test #"\x81" #=#[gQ]>
+  value4: <Test #"\x81" #=#[gQ==]>
+  value5: <Test #"\x81" #=   #[gQ==]>
+  value6: <Test #x"b591929384" #=#x"b591929384">
+
+  longlist14: <Test #x"b5808080808080808080808080808084"
+               [#f #f #f #f #f
+                #f #f #f #f #f
+                #f #f #f #f]>
+  longlist15: <Test #x"b580808080808080808080808080808084"
+               [#f #f #f #f #f
+                #f #f #f #f #f
+                #f #f #f #f #f]>
+  longlist100:
+  <Test #x"b5
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           84"
+   [#f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f]>
+  longlist200:
+  <Test #x"b5
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           80808080808080808080
+           84"
+   [#f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f
+    #f #f #f #f #f #f #f #f #f #f]>
+
+  rfc8259-example1: <NondeterministicTest
+                     #x"B7
+                          B1 05 496d616765
+                          B7
+                            B1 03 494473
+                              B5
+                                A0 74
+                                A1 03 AF
+                                A1 00 EA
+                                A2 00 97 89
+                              84
+                            B1 05 5469746c65
+                              B1 14 566965772066726f6d203135746820466c6f6f72
+                            B1 05 5769647468
+                              A1 03 20
+                            B1 06 486569676874
+                              A1 02 58
+                            B1 08 416e696d61746564
+                              B3 05 66616c7365
+                            B1 09 5468756d626e61696c
+                              B7
+                                B1 03 55726c
+                                  B1 26 687474703a2f2f7777772e6578616d706c652e636f6d2f696d6167652f343831393839393433
+                                B1 05 5769647468
+                                  A0 64
+                                B1 06 486569676874
+                                  A0 7D
+                              84
+                          84
+                        84"
+                     {
+                       "Image": {
+                         "Width":  800,
+                         "Height": 600,
+                         "Title":  "View from 15th Floor",
+                         "Thumbnail": {
+                           "Url":    "http://www.example.com/image/481989943",
+                           "Height": 125,
+                           "Width":  100
+                         },
+                         "Animated" : false,
+                         "IDs": [116, 943, 234, 38793]
+                       }
+                     }>
+
+  rfc8259-example2: <NondeterministicTest
+                     #x"b5
+                          b7
+                            b1 03 5a6970               b1 05 3934313037
+                            b1 04 43697479             b1 0d 53414e204652414e434953434f
+                            b1 05 5374617465           b1 02 4341
+                            b1 07 41646472657373       b1 00
+                            b1 07 436f756e747279       b1 02 5553
+                            b1 08 4c61746974756465     83 4042e226809d4952
+                            b1 09 4c6f6e676974756465   83 c05e99566cf41f21
+                            b1 09 707265636973696f6e   b1 03 7a6970
+                          84
+                          b7
+                            b1 03 5a6970               b1 05 3934303835
+                            b1 04 43697479             b1 09 53554e4e5956414c45
+                            b1 05 5374617465           b1 02 4341
+                            b1 07 41646472657373       b1 00
+                            b1 07 436f756e747279       b1 02 5553
+                            b1 08 4c61746974756465     83 4042af9d66adb403
+                            b1 09 4c6f6e676974756465   83 c05e81aa4fca42af
+                            b1 09 707265636973696f6e   b1 03 7a6970
+                          84
+                        84"
+                     [
+                       {
+                         "precision": "zip",
+                         "Latitude":  37.7668,
+                         "Longitude": -122.3959,
+                         "Address":   "",
+                         "City":      "SAN FRANCISCO",
+                         "State":     "CA",
+                         "Zip":       "94107",
+                         "Country":   "US"
+                       },
+                       {
+                         "precision": "zip",
+                         "Latitude":  37.371991,
+                         "Longitude": -122.026020,
+                         "Address":   "",
+                         "City":      "SUNNYVALE",
+                         "State":     "CA",
+                         "Zip":       "94085",
+                         "Country":   "US"
+                       }
+                     ]>
+
+}
+>
