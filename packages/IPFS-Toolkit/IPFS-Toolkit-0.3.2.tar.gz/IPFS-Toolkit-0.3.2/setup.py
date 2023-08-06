@@ -1,0 +1,27 @@
+import setuptools
+
+with open("/mnt/Uverlin/Programming/IPFS-Toolkit/ReadMe.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name="IPFS-Toolkit",
+    version="0.3.2",
+    author="emendir",
+    description="A set of tools  for working with IPFS in Python: a programmer-friendly API wrapper, P2P data-transmission machinery, and accelerated connections to known peers",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://ipfs.io/ipns/k2k4r8m2dzqi5s8jm3shm77sr1728ex7bsds0fk6e9gkf2ld2f3mnhcy",
+
+    project_urls={
+        "Source Code on IPNS": "https://ipfs.io/ipns/k2k4r8k7h909zdodsvbxe32sahpfdkqcqqn1npblummw4df6iv7dj5xh",
+        "Github": "https://github.com/emendir/IPFS-Toolkit-Python",
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+    ],
+    py_modules=['IPFS_API', 'IPFS_DataTransmission', 'IPFS_LNS', 'IPFS_CLI'],
+    packages=setuptools.find_packages(),
+    python_requires=">=3.6",
+    install_requires=['multiaddr', 'appdirs', 'idna', 'httpcore', 'httpx', 'requests', 'varint'],
+)
