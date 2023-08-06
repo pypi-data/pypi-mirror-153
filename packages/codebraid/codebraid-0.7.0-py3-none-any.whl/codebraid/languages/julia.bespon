@@ -1,0 +1,31 @@
+|=== julia
+extension = 'jl'
+
+executable_opts = '--project=@.'
+
+run_encoding = 'utf8'
+
+chunk_wrapper =
+    |```
+    println("\n{stdout_start_delim}")
+    flush(stdout)
+    write(stderr, "\n{stderr_start_delim}\n")
+    {code}
+    println("\n{stdout_end_delim}")
+    flush(stdout)
+    write(stderr, "\n{stderr_end_delim}\n")
+    |```/
+
+inline_expression_formatter =
+    |```
+    _codebraid_temp_{temp_suffix} = string({code})
+    println("\n{expr_start_delim}")
+    write(stderr, "\n{expr_start_delim}\n")
+    println(_codebraid_temp_{temp_suffix})
+    println("\n{expr_end_delim}")
+    write(stderr, "\n{expr_end_delim}\n")
+    |```/
+
+error_patterns = 'ERROR:'
+warning_patterns = 'WARNING:'
+line_number_patterns = ':{number}'
