@@ -1,0 +1,65 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# vim: set ts=4
+#
+# Copyright 2021-present Linaro Limited
+#
+# SPDX-License-Identifier: MIT
+
+from pathlib import Path
+import os
+import sys
+
+
+VOLUME = "{{ volume }}".rstrip("/")
+
+
+def main():
+    assert Path(sys.argv[0]).name == "docker"
+
+{% if runtime == "docker" %}
+    args = ["docker"]
+    runtime = "/usr/bin/docker"
+{% elif runtime == "podman" %}
+    args = ["podman", "--remote", "--url", "unix://run/podman/podman.sock"]
+    runtime = "/usr/bin/podman"
+{% endif %}
+
+    if not Path(runtime).exists():
+        sys.stderr.write(f"Missing runtime '{runtime}'\n")
+        return 1
+    if sys.argv[1] == "run":
+        args.append("run")
+        skip = False
+        for index in range(2, len(sys.argv)):
+            if skip:
+                skip = False
+                continue
+            if sys.argv[index] in ["-v", "--volume"] and sys.argv[index + 1].startswith(
+                "/var/lib/lava/dispatcher/tmp/"
+            ):
+                skip = True
+                path = sys.argv[index + 1].replace(
+                    "/var/lib/lava/dispatcher/tmp/", VOLUME + "/"
+                )
+                args.extend(["--volume", path])
+            elif sys.argv[index].startswith(
+                "--mount=type=bind,source=/var/lib/lava/dispatcher/tmp"
+            ):
+                args.append(
+                    sys.argv[index].replace(
+                        "--mount=type=bind,source=/var/lib/lava/dispatcher/tmp",
+                        f"--mount=type=bind,source={VOLUME}",
+                    )
+                )
+            else:
+                args.append(sys.argv[index])
+    else:
+        args.extend(sys.argv[1:])
+    print(f"SRC: '{' '.join(sys.argv)}'")
+    print(f"DST: '{runtime} {' '.join(args[1:])}'")
+    os.execv(runtime, args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

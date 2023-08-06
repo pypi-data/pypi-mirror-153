@@ -1,0 +1,117 @@
+include:
+  - https://gitlab.com/Linaro/tuxpkg/-/raw/main/gitlab-ci-pipeline.yml
+
+variables:
+  TUXPKG_PROJECT: tuxrun
+
+#############
+# templates #
+#############
+.job:
+  script:
+  - make $CI_JOB_NAME
+
+######
+# CI #
+######
+ci-image-integration:
+  stage: .pre
+  image: docker:20.10-dind
+  services:
+  - name: docker:20.10-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+  - 'docker build -t $CI_REGISTRY_IMAGE/ci-integration -f Dockerfile.ci-integration .'
+  - 'docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY'
+  - 'docker push $CI_REGISTRY_IMAGE/ci-integration'
+  only:
+    refs:
+    - master
+    changes:
+    - Dockerfile.ci-integration
+
+########
+# test #
+########
+stylecheck:
+  extends: .job
+  stage: test
+
+typecheck:
+  extends: .job
+  stage: test
+
+spellcheck:
+  extends: .job
+  stage: test
+
+###############
+# integration #
+###############
+integration:
+  extends: .job
+  image: $CI_REGISTRY_IMAGE/ci-integration
+  stage: test
+  cache:
+    paths: [/root/.cache/tuxrun]
+  script:
+  - PYTHONPATH=. python3 test/integration.py --device $DEVICE --tests $TEST
+  parallel:
+    matrix:
+    - DEVICE:
+      - qemu-arm64
+      - qemu-arm64be
+      - qemu-mips64
+      - qemu-mips64el
+      - qemu-ppc32
+      - qemu-ppc64
+      - qemu-ppc64le
+      - qemu-s390
+      - qemu-sparc64
+      - qemu-x86_64
+      TEST:
+      - ltp-fcntl-locktests ltp-fsx ltp-fs_perms_simple ltp-smoke
+      - ltp-fs_bind
+      - ltp-nptl
+    # FIXME ltp-nptl takes forever on some qemus; ignore that jobs for now
+    - DEVICE:
+      - qemu-armv5
+      - qemu-armv7
+      - qemu-armv7be
+      - qemu-i386
+      - qemu-mips32
+      - qemu-mips32el
+      - qemu-riscv64
+      TEST:
+      - ltp-fcntl-locktests ltp-fsx ltp-fs_perms_simple ltp-smoke
+      - ltp-fs_bind
+
+#########
+# Build #
+#########
+doc:
+  extends: .job
+  stage: build
+  artifacts:
+    paths:
+      - public
+  before_script:
+    - python3 -m pip install mkdocs-material  # FIXME not in Debian
+
+###########
+# deploy  #
+###########
+pages:
+  extends: .job
+  stage: deploy
+  needs:
+    - doc
+    - repository
+  artifacts:
+    paths:
+      - public
+  only:
+    - tags
+  script:
+    - cp -r dist/repo public/packages/
