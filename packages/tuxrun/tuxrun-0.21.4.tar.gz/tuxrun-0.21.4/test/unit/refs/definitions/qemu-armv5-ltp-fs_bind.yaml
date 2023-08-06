@@ -1,0 +1,69 @@
+device_type: "qemu"
+
+job_name: "tuxrun@qemu-armv5: ltp-fs_bind"
+priority: "medium"
+visibility: "public"
+
+context:
+    arch: "arm"
+    machine: "versatilepb"
+    cpu: "arm926"
+    memory: "256M"
+    extra_options: ["-no-reboot", ""]
+    no_kvm: true
+    no_network: true
+timeouts:
+  job:
+    minutes: 45
+  action:
+   minutes: 5
+  actions:
+    power-off:
+      seconds: 30
+
+actions:
+- deploy:
+    to: tmpfs
+    timeout:
+      minutes: 5
+    os: oe
+    images:
+      kernel:
+        image_arg: '-kernel {kernel} -append "console=ttyAMA0,115200 rootwait root=/dev/vda debug verbose console_msg_format=syslog"'
+        url: "https://storage.tuxboot.com/armv5/zImage"
+      dtb:
+        image_arg: "-dtb {dtb}"
+        url: "https://storage.tuxboot.com/armv5/versatile-pb.dtb"
+      rootfs:
+        image_arg: "-drive file={rootfs},if=none,format=raw,id=hd0 -device virtio-blk-pci,drive=hd0"
+        url: "https://storage.tuxboot.com/armv5/rootfs.ext4.zst"
+        compression: zstd
+        format: ext4
+        overlays:
+          lava: true
+- boot:
+    method: qemu
+    timeout:
+      minutes: 15
+    auto_login:
+      login_prompt: '(.*)login:'
+      username: root
+    prompts:
+    - 'root@(.*):[/~]#'
+- test:
+    timeout:
+      minutes: 25
+    definitions:
+    - repository: file://testdef.tar.zst
+      from: url
+      compression: zstd
+      path: automated/linux/ltp/ltp.yaml
+      parameters:
+        SKIP_INSTALL: 'true'
+        TST_CMDFILES: 'fs_bind'
+        SKIPFILE: '/tuxtest/skipfiles/armv5/ltp-fs_bind'
+        ENVIRONMENT: 'production'
+        TIMEOUT_MULTIPLIER: '3'
+        LTP_TMPDIR: '/scratch'
+        LTP_INSTALL_PATH: '/opt/ltp/'
+      name: ltp-fs_bind
