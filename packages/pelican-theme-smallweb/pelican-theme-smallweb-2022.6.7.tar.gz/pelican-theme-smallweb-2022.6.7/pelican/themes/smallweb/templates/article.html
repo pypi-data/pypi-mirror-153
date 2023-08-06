@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block lang %}{{ article.lang }}{% endblock %}
+{% block canonical_url_suffix %}{{ article.url }}{% endblock %}
+
+{% block title %}{{ article.title|striptags }}{% endblock %}
+{% block subtitle %}
+<a href="{{ SITEURL }}/">{{ SITENAME }}</a> |
+{% if article.category %}<a href="{{ SITEURL }}/{{ article.category.url }}">{{ article.category|title }}</a> | {% endif %}
+{% if article.authors %}
+{% for author in article.authors %}
+  <a href="{{ SITEURL }}/{{ author.url }}">{{ author.name }}</a>
+  {% if loop.revindex != 1 %}, {% endif %}
+{% endfor %}
+| {% endif %}
+{{ article.locale_date }}
+{% endblock subtitle %}
+
+{% block content %}
+<article class="full">{{ article.content }}</article>
+{% if article.tags %}
+<nav class="article-tags">
+  {% for tag in article.tags %}
+  <a href="{{ macros.url(tag.url) }}">{{ tag|escape }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+{% if article.prev_article or article.next_article %}
+<nav class="neighbors">
+  {% if article.prev_article %}
+  <a class="neighbor neighbor-prev" href="{{ SITEURL }}/{{ article.prev_article.url }}">
+    <h1>{{ article.prev_article.title }}</h1>
+    <p>{{ article.prev_article.summary|striptags|truncate(90) }}</p>
+  </a>
+  {% else %}
+  <span class="neighbor"></span>
+  {% endif %}
+  {% if article.next_article %}
+  <a class="neighbor neighbor-next" href="{{ SITEURL }}/{{ article.next_article.url }}">
+    <h1>{{ article.next_article.title }}</h1>
+    <p>{{ article.next_article.summary|striptags|truncate(90) }}</p>
+  </a>
+  {% else %}
+  <span class="neighbor"></span>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock content %}
