@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+# executing script for IDR predictor in command line.
+
+# import stuff for making CLI
+import os
+import sys
+import argparse
+
+#import csv
+import csv
+#import protfasta
+import protfasta
+
+from PredictDSSP.dssp_exceptions import DsspError
+import PredictDSSP as dssp
+
+if __name__ == "__main__":
+
+    # Parse command line arguments.
+    parser = argparse.ArgumentParser(description='Predict dssp scores from a UniProt accession number.')
+
+    parser.add_argument('uniprot', help='The uniprot accession.')
+
+    parser.add_argument('-D', '--dpi', default=150, type=int, metavar='DPI',
+                        help='Optional. Set DPI to change resolution of output graphs. Default is 150.')
+
+    parser.add_argument('-c', '--cutoff', default=0.3, type=float,
+                        help='Optional. Set disorder cutoff value.')
+
+    parser.add_argument('-e', '--exclude_disorder', action='store_true', help='Optional. Use this flag to exclude disordered regions.')                        
+
+    parser.add_argument('-o', '--output-file', const='USE_DEFAULT', help='Filename for where to save the returned graph. \
+    The can included file extension, which in turn defines the filetype (pdf, png, jpg etc.) Note if no filename is included then \
+    the -o acts as a flag and the file will be saved as the Uniprot ID', nargs='?')
+    
+    parser.add_argument('-t', '--title', help='Title to put on graph')
+
+    args = parser.parse_args()
+
+    if args.exclude_disorder == True:
+        exclude_disorder=True
+    else:
+        exclude_disorder=False
+
+    # set title
+    if args.title:
+        graph_title = args.title
+    else:
+        graph_title = 'DSSP scores for %s'%(args.uniprot)
+
+    # if we don't want to save...
+    if args.output_file is None:
+        try:
+            dssp.graph_dssp_uniprot(args.uniprot, title=graph_title, dis_threshhold = args.cutoff, exclude_disorder=exclude_disorder, DPI=args.dpi)
+        except DsspError as e:
+            print(e)
+            exit(1)
+
+    # if we do wan tto save
+    else:
+
+        if args.output_file == 'USE_DEFAULT':
+            outname = '%s.png'%(args.uniprot)
+        else:
+            outname = args.output_file
+
+        dssp.graph_dssp_uniprot(args.uniprot, title=graph_title, dis_threshhold = args.cutoff, exclude_disorder=exclude_disorder, DPI=args.dpi, output_file=outname)
+
+
+
+
