@@ -1,0 +1,125 @@
+---
+# Required, used for storing data
+work_dir:
+# Required, needed to correctly upload
+ptp:
+  username:
+  password:
+  announce_url:  # Can be found on the upload form
+web:
+  # This is used for various scripts to send jobs to PtpUploader remotely
+  api_key:
+  # Allows controlling the pop-up on the upload page
+  file_selector_root:
+  address:
+  ssl:
+    enabled: false
+    key:
+    cert:
+# Settings for the upload forms and workers
+uploader:
+  # Files that are explicitly video
+  video_files: [avi, divx, mkv, mp4, vob, m2ts]
+  # Additional files wanted but not technically videos
+  additional_files: [bup, idx, ifo, srt, sub, bdmv, mpls, clpi]
+  ignore_files: ['.*sample.*', '.*d-z0n3\.assistant\.rar']
+  # Controls the default settings for checkboxes on the upload form. Able to be overridden on a per-job basis.
+  override_screenshots: false
+  force_directoryless_single_file: false
+  is_personal: false
+  skip_duplicate_checking: false
+  release_notes: ''
+  # Maximum number of screenshots to take per file
+  max_screenshots: 5
+workers:
+  threads: 1 # With more than 1 thread, you may encounter database locks in sqlite
+  # Switching to mysql or postgres will fix those issues.
+# Stores cookies to avoid multiple logins, safe to delete if you're having login issues
+# It can be set to `/dev/null`  to avoid saving cookies
+cookie_file: ~/.config/ptpuploader/cookies.pickle
+# rTorrent is preferred, although transmission is also supported
+client:
+  use: rtorrent
+  rtorrent:
+    address: # If running next to rtorrent, PtpUploader will attempt to automatically determine the SCGI port.
+  transmission:
+    address:
+# Optional, can be used to set settings for specific programs
+tools:
+  # Only one of mpv, ffmpeg or mplayer is required. mpv is preferred, but PtpUploader will attempt to auto-detect
+  # whichever one is available.
+  screenshot_tool: auto
+  mpv:
+    path: mpv
+  ffmpeg:
+    path: ffmpeg
+  mplayer:
+    path: mplayer
+  mediainfo:
+    path: mediainfo
+    timeout: 60
+  bdinfo:
+    path: # Needs to be set for Bluray support
+  # Entirely optional, but useful for losslessly compressing screenshots
+  imagemagick:
+    path: convert
+  unrar:
+    path:
+image_host:
+  use: ptpimg
+  ptpimg:
+    # If you want to use PtpImg, the API key needs to be set
+    # It can be found by first logging into https://ptpimg.me/. Then in the browser bar type 'javascript:', and then paste the following line:
+    # (function()%7Balert(document.getElementById('api_key').value)%7D)()
+    api_key:
+  imgbb:
+    api_key:
+  catbox: # Needs no configuration
+source:
+  # Anything set in _default is applied to all sources (including file) unless overridden in the source-specific section.
+  _default:
+    # Set to zero (the default) to disable
+    job_start_delay: 0
+    max_size: 0
+    min_size: 0
+    min_imdb_rating: 0
+    min_imdb_votes: 0
+    max_active_downloads: 0
+
+    # Possible values: default (no effect), only, ignore
+    scene: default
+
+    # The 'stop' group of settings only effect automatically created jobs
+    # Possible values: false (don't stop), before_downloading, before_extracting, before_uploading
+    always_stop_before: before_downloading
+
+    # Possible values: false (don't stop), before_downloading, before_extracting
+    stop_if_multiple_videos: false
+
+    # Possible values: false (don't stop, but it will stil throw an error before uploading due to PTP's rules), before_downloading
+    stop_if_art_missing: false
+
+    # Possible values: false (don't stop), before_downloading
+    stop_if_synopsis_missing: false
+
+    # FiCO is here because they release a quite a few adult(ish) movies that are miscategorized on IMDb.
+    ignore_release_group: [aXXo, BRrip, CM8, CrEwSaDe, CTFOH, DNL, FaNGDiNG0, HD2DVD, HDTime, ION10, iPlanet, KiNGDOM, mHD, mSD, nHD, nikt0, nSD, NhaNc3, OFT, PRODJi, SANTi, STUTTERSHIT, ViSION, VXT, WAF, x0r, YIFY]
+    allow_tags: ''
+    ignore_tags: ''
+  ## Example of site-specific configurations
+  # karagarga:
+  #   job_start_delay: 120
+  #   username: user
+  #   password: password
+  # cinemageddon:
+  #   username: user
+  #   password: password
+  # prowlarr:
+  #   url: https://prowlarr.example.com
+  #   api_key: apikey-apikey-apikey
+  # file:
+# Allows running arbitrary  commands after a successful run
+# See ReleaseInfo.py for a full list of available fields
+hook:
+  # As an example, write to a log file after an upload completes successfully
+  on_upload:  # "echo '{{ReleaseName}}: {{UploadedTorrentUrl}}' >> ~/.config/ptpuploader/finished.log"
