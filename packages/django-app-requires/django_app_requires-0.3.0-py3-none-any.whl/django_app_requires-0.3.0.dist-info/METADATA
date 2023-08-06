@@ -1,0 +1,154 @@
+Metadata-Version: 2.1
+Name: django-app-requires
+Version: 0.3.0
+Summary: A simple tool that allows you to specify app dependencies and middleware dependencies in your application, and also allow you to add default values for your additional configurations, after then load all your application settings into your project's settings.
+Author: zencore
+Author-email: dobetter@zencore.cn
+License: MIT
+Keywords: django utils
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django
+Requires-Dist: fastutils
+Requires-Dist: magic-import (>=0.1.3)
+
+# django-app-requires
+
+A simple tool that allows you to specify app dependencies and middleware dependencies in your application, and also allow you to add default values for your additional configurations, after then load all your application settings into your project's settings.
+
+
+## Install
+
+```
+pip install django-app-requires
+```
+
+## Usage
+
+**your_app/\_\_init\_\_.py**
+
+```
+app_requires = [
+    "your",
+    "required",
+    "apps",
+]
+
+app_middleware_requires = [
+    "your",
+    "required",
+    "middlewares",
+]
+
+# Django's setting key must be in upper case.
+# default values will be overrided by items in pro/settings.py.
+
+app_setting_defaults = {
+    "HELLO": "WORLD",
+}
+
+app_setting_callbacks = {
+    "your_app.setting_callbacks.callback1",
+}
+```
+
+**your_app/setting_callbacks.py**
+
+```
+def callback1(globals):
+    globals["EXTRA_ITEM"] = "EXTRA_VALUE"
+```
+
+**pro/settings**
+
+```
+INSTALLED_APPS = [
+    ...
+    'your_app',
+    ...
+]
+
+#
+# at the bottom of settings.py
+#
+from django_app_requires import patch_all
+patch_all()
+
+# so the final INSTALLED_APPS = [
+#     "your",
+#     "required",
+#     "apps",
+#     "your_app",
+#     "django_app_requires",
+# ]
+
+# so the final MIDDLEWARE = [
+#    ...
+#    "your",
+#    "required",
+#    "middlewares",
+#    ...
+# ]
+
+# so the final you got a new setting item:
+# HELLO = "WORLD"
+
+## so the final you got a new setting item which provided by callback1:
+# EXTRA_ITEM = "EXTRA_VALUE"
+```
+
+
+## Releases
+
+### v0.1.0
+
+1. First release.
+
+### v0.1.1
+
+1. Add fastutils & magic-import in requirements.txt.
+1. Fix problems of recursive required.
+
+### v0.2.0
+
+1. Add collect_requirements function. **Removed**
+
+### v0.2.1
+
+1. Don't scan all app, exclude third-part apps.
+2. Suggest to use collect_requirements command before doing project package.
+
+### v0.2.2
+
+1. Output sorting.
+
+### v0.2.3
+
+1. Remove collect_requirements command.
+2. Test with Django 3.2.
+
+### v0.2.4
+
+1. We are not care about Django's version and fastutils' version, so let the end user to choose the version.
+
+### v0.2.5
+
+1. Fix bdist_wheel problem that including useless files.
+
+
+### v0.3.0
+
+1. Rename add_app_requires to load_app_requires.
+1. Add load_app_middleware_requires.
+1. Add load_app_setting_defaults.
+1. Add load_app_setting_callbacks.
+1. Add patch_all to load_app_requires, load_app_middleware_requires, load_app_setting_defaults and load_app_setting_callbacks.
+
+
