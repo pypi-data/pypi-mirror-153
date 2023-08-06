@@ -1,0 +1,302 @@
+/**
+ * Discord API service
+ *
+ * This file contains all messages and services currently supported by Discord Proxy
+ */
+syntax = "proto3";
+
+package discord_api;
+
+///////////////////////////////////
+// Objects
+
+// Source: https://discord.com/developers/docs/resources/channel#channel-object
+message Channel {
+  uint64 id = 1;
+  enum Type {
+    reserved 7;
+    UNDEFINED = 0;
+    GUILD_TEXT = 1;
+    DM = 2;
+    GUILD_VOICE = 3;
+    GROUP_DM = 4;
+    GUILD_CATEGORY = 5;
+    GUILD_NEWS = 6;
+    // GUILD_STORE = 7; NO LONGER SUPORTED IN API
+  }
+  Type type = 2;
+  uint64 guild_id = 3;
+  int32 position = 4;
+  // tbd //
+  string name = 6;
+  string topic = 7;
+  bool nsfw = 8;
+  uint64 last_message_id = 9;
+  uint64 parent_id = 10;
+}
+
+// Source: https://discord.com/developers/docs/resources/channel#embed-object-embed-structure
+message Embed {
+  string title = 1;
+  string type = 2;
+  string description = 3;
+  string url = 4;
+  string timestamp = 5;
+  int32 color = 6;
+  message Footer {
+    string text = 1;
+    string icon_url = 2;
+    string proxy_icon_url = 3;
+  }
+  Footer footer = 7;
+  message Image {
+    string url = 1;
+    string proxy_icon_url = 2;
+    int32 height = 3;
+    int32 width = 4;
+  }
+  Image image = 8;
+  message Thumbnail {
+    string url = 1;
+    string proxy_url = 2;
+    int32 height = 3;
+    int32 width = 4;
+  }
+  Thumbnail thumbnail = 9;
+  message Video {
+    string url = 1;
+    string proxy_icon_url = 2;
+    int32 height = 3;
+    int32 width = 4;
+  }
+  Video video = 10;
+  message Provider {
+    string name = 1;
+    string url = 2;
+  }
+  Provider provider = 11;
+  message Author {
+    string name = 1;
+    string url = 2;
+    string icon_url = 3;
+    string proxy_icon_url = 4;
+  }
+  Author author = 12;
+  message Field {
+    string name = 1;
+    string value = 2;
+    bool inline = 3;
+  }
+  repeated Field fields = 13;
+}
+
+// Source: https://discord.com/developers/docs/resources/emoji#emoji-object
+message Emoji {
+  uint64 id = 1;
+  string name = 2;
+  repeated uint64 roles = 3;
+  User user = 4;
+  bool required_colons = 5;
+  bool managed = 6;
+  bool animated = 7;
+  bool available = 8;
+}
+
+// Source: https://discord.com/developers/docs/resources/guild#guild-member-object
+message GuildMember {
+  User user = 1;
+  string nick = 2;
+  repeated uint64 roles = 3;
+  string joined_at = 4;
+  string premium_since = 5;
+  bool deaf = 6;
+  bool mute = 7;
+  bool pending = 8;
+  string permissions = 9;
+}
+
+// Source: https://discord.com/developers/docs/resources/channel#message-object
+message Message {
+  uint64 id = 1;
+  uint64 channel_id = 2;
+  uint64 guild_id = 3;
+  User author = 4;
+  GuildMember member = 5;
+  string content = 6;
+  string timestamp = 7;
+  string  edited_timestamp = 8;
+  bool tts = 9;
+  bool mention_everyone = 10;
+  repeated User mentions = 11;
+  repeated uint64 mention_roles = 12;
+  message ChannelMention {
+    uint64 id = 1;
+    uint64 guild_id = 2;
+    Channel.Type type = 3;
+    string name = 4;
+  }
+  repeated uint64 mention_channels = 13;
+  message Attachment {
+    uint64 id = 1;
+    string filename = 2;
+    int32 size = 3;
+    string url = 4;
+    string proxy_url = 5;
+    int32 height = 6;
+    int32 width = 7;
+  }
+  repeated Attachment attachments = 14;
+  repeated Embed embeds = 15;
+  message Reaction {
+    int32 count = 1;
+    bool me = 2;
+    Emoji emoji = 3;
+  }
+  repeated Reaction reactions = 16;
+  string nonce = 17;
+  bool pinned = 18;
+  uint64 webhook_id = 19;
+  enum Type {
+    DEFAULT = 0;
+    RECIPIENT_ADD = 1;
+    RECIPIENT_REMOVE = 2;
+    CALL = 3;
+    CHANNEL_NAME_CHANGE = 4;
+    CHANNEL_ICON_CHANGE = 5;
+    CHANNEL_PINNED_MESSAGE = 6;
+    GUILD_MEMBER_JOIN = 7;
+    USER_PREMIUM_GUILD_SUBSCRIPTION = 8;
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_1 = 9;
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_2 = 10;
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_3 = 11;
+    CHANNEL_FOLLOW_ADD = 12;
+    GUILD_DISCOVERY_DISQUALIFIED = 14;
+    GUILD_DISCOVERY_REQUALIFIED = 15;
+    REPLY = 19;
+    APPLICATION_COMMAND = 20;
+  }
+  Type type = 20;
+  message Activity {
+    enum Type {
+      UNDEFINED = 0;
+      JOIN = 1;
+      SPECTATE = 2;
+      LISTEN = 3;
+      JOIN_REQUESTS = 4;
+    }
+    Type type = 1;
+    string party_id = 2;
+  }
+  Activity activity = 21;
+  message Application {
+    uint64 id = 1;
+    string cover_image = 2;
+    string description = 3;
+    string icon = 4;
+    string name = 5;
+  }
+  Application application = 22;
+  message Reference {
+    uint64 message_id = 1;
+    uint64 channel_id = 2;
+    uint64 guild_id = 3;
+    bool fail_if_not_exists = 4;
+  }
+  Reference message_reference = 23;
+  int32 flags = 24;
+  message Sticker {
+    uint64 id = 1;
+    uint64 pack_id = 2;
+    string name = 3;
+    string description = 4;
+    string tags = 5;
+    string asset = 6;
+    string preview_asset = 7;
+    enum Type {
+      UNDEFINED = 0;
+      PNG = 1;
+      APNG = 2;
+      LOTTIE = 3;
+    }
+    Type format_type = 8;
+  }
+  repeated Sticker stickers = 25;
+  Message referenced_message = 26;
+  // interaction: not implemented
+}
+
+// Source: https://discord.com/developers/docs/topics/permissions#role-object
+message Role {
+  uint64 id = 1;
+  string name = 2;
+  int32 color = 3;
+  bool hoist = 4;
+  int32 position = 5;
+  string permissions = 6;
+  bool managed = 7;
+  bool mentionable = 8;
+  message Tag {
+    uint64 id = 1;
+    uint64 integration_id = 2;
+    bool premium_subscriber = 3;
+  }
+  repeated Tag tags = 9;
+}
+
+// Source: https://discord.com/developers/docs/resources/user#user-object
+message User {
+  uint64 id = 1;
+  string username = 2;
+  string discriminator = 3;
+  string avatar = 4;
+  bool bot = 5;
+  bool system = 6;
+  bool mfa_enabled = 7;
+  string locale = 8;
+  bool verified = 9;
+  string email = 10;
+  int32 flags = 11;
+  int32 premium_type = 12;
+  int32 public_flags = 13;
+  }
+
+///////////////////////////////////
+// Service messages
+
+message SendChannelMessageRequest {
+  uint64 channel_id = 1;
+  string content = 2;
+  Embed embed = 3;
+}
+
+message SendChannelMessageResponse {
+  Message message = 1;
+}
+
+message SendDirectMessageRequest {
+  uint64 user_id = 1;
+  string content = 2;
+  Embed embed = 3;
+}
+
+message SendDirectMessageResponse {
+  Message message = 1;
+}
+
+message GetGuildChannelsRequest {
+  uint64 guild_id = 1;
+}
+
+message GetGuildChannelsResponse {
+  repeated Channel channels = 1;
+}
+
+// Provides access to the Discord API
+service DiscordApi {
+  // Send a message to a guild channel
+  rpc SendChannelMessage (SendChannelMessageRequest) returns (SendChannelMessageResponse) {}
+  // Send a direct message to a user
+  rpc SendDirectMessage (SendDirectMessageRequest) returns (SendDirectMessageResponse) {}
+  // Get the list of channel for a guild
+  rpc GetGuildChannels (GetGuildChannelsRequest) returns (GetGuildChannelsResponse) {}
+}
