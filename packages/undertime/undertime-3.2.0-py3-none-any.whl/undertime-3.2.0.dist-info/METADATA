@@ -1,0 +1,212 @@
+Metadata-Version: 2.1
+Name: undertime
+Version: 3.2.0
+Summary: pick a meeting time
+Home-page: https://gitlab.com/anarcat/undertime
+Author: Antoine Beaupré
+Author-email: anarcat@debian.org
+License: AGPLv3
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
+Classifier: Natural Language :: English
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Office/Business :: Scheduling
+Requires-Dist: dateparser
+Requires-Dist: ephem
+Requires-Dist: pytz
+Requires-Dist: pyyaml
+Requires-Dist: tabulate
+Requires-Dist: termcolor
+Requires-Dist: importlib-metadata ; python_version < "3.8"
+Provides-Extra: test
+Requires-Dist: pytest ; extra == 'test'
+Requires-Dist: pytest-cov ; extra == 'test'
+
+Undertime - pick a meeting time
+===============================
+
+This program allows you to quickly pick a meeting time across multiple
+timezones for conference calls or other coordinated events. It shows
+all times of a given day for all the timezones selected, in a table
+that aligns the time so a line shows simultaneous times across all
+timezones. This takes into account daylight savings and other
+peculiarities (provided that the local timezone database is up to
+date) so you can also schedule meetings in the future as well.
+
+.. image:: https://gitlab.com/anarcat/undertime/-/raw/main/undertime.png
+   :alt: screenshot of undertime computing possible meeting time for
+         multiple timezones on a daylight savings switch in the
+         US/Pacific, US/Eastern, UTC and Europe/Paris timezones
+
+.. image:: https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg 
+   :alt: Say thanks to the author
+   :target: https://saythanks.io/to/anarcat
+
+Usage
+=====
+
+Timezones should be passed on the commandline and are matched against
+the `list of known timezones`_, as defined by the `pytz`_
+package. Exact matches are attempted at first, but if that fails,
+substring matches are allowed, which makes it possible to do this::
+
+  undertime --timezones New_York Los_Angeles
+
+The complete list of timezones is also shown when the
+``--list-zones`` commandline option is provided.
+
+Because daylight savings may actually change time, you can also
+specify the time to pick an arbitrary time for the meeting, using
+natural language (as parsed by the `dateparser`_ or `parsedatetime`_
+modules, if available). The current time is also shown, in bold. This,
+for example, will show the time "tomorrow" at the same time as today:
+
+    undertime tomorrow
+
+Or the next September 21st at 19:00 local time:
+
+    undertime September 21 19:00
+
+Colors are used to highlight the "work hours" where possible meeting
+times could overlap. You can change those work hours with the
+``--start`` and ``--end`` flags. The number of zones matching those
+hours is listed in the last column.
+
+The output format is controled by the `tabulate`_ program. See the
+`tabulate documentation <tabulate>`_ for more information about the
+possible outputs.
+
+A configuration file can be used to set defaults, see the
+``undertime.yml`` file for an example.
+
+Summary usage is available with the ``--help`` flag and full help in
+the manpage. Instructions for how to contribute to the project are in
+``CONTRIBUTING.rst`` and there is a ``CODE_OF_CONDUCT.rst``.
+
+.. _list of known timezones: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+.. _pytz: https://pypi.python.org/pypi/pytz
+.. _dateparser: https://dateparser.readthedocs.io/
+.. _parsedatetime: https://pypi.python.org/pypi/parsedatetime/
+.. _overtime-cli: https://github.com/diit/overtime-cli
+.. _tabulate: https://github.com/cmck/python-tabulate
+
+Known issues and limitations
+============================
+
+Undertime was written using Python 3.5 and 3.7 and there is no
+guarantee it will work in older (or newer) Python releases.
+
+Timezones -- and time in general -- are hard problems: the math is
+hard, and the zones constantly. What may be applicable to your
+location at the current time may not be reflected by your operating
+system or the chain of software used by this program to determine
+time. `According to this video <timezone-video>`_ from `Tom Scott
+<tomscott>`_, "*you really should never, ever deal with timezones if
+you can help it*". This sounds a lot like what this program does, but
+do note that:
+
+    "What you learn, after dealing with timezones, is that what you
+    do, is you put away your code, you don't try and write anything to
+    deal with this. You look at the people who have been there before
+    you. You look at the first people, the people who've done this
+    before, the people who've built the spaghetti code, and you go to
+    them, and you thank them very much for making it open source, and
+    you give them credit, and you take what they've made, you put it
+    in your program. and you never ever look at it again. because that
+    way lies madness."
+
+    -- Tom Scott
+
+That is what this program does. It reuses the `pytz`_ library based on
+the `Olson tz database`_. See the Credits section for more information.
+
+.. _timezone-video: https://www.youtube.com/watch?v=-5wpm-gesOY
+.. _tomscott: https://twitter.com/tomscott
+.. _Olson tz database: https://en.wikipedia.org/wiki/Tz_database
+
+Time is an illusion we created to rationalize our unbearable
+ephemerality and is bound to be imprecise, confusing and flawed. It's
+neither your fault or your computer's: accept and embrace its
+humanity.
+
+.. _issue #3: https://gitlab.com/anarcat/undertime/issues/3
+.. _issue #4: https://gitlab.com/anarcat/undertime/issues/4
+
+Installing
+==========
+
+This program can be installed using ``pip`` from the `PyPI
+repository`_, like so::
+
+  pip3 install undertime
+
+The above assumes you're running a distribution that installs the
+Python 3 version of ``pip`` as ``pip3``, you might need to replace
+that with just ``pip`` on some setups.
+
+This program is also packaged in Debian (since Debian 10 "buster"), so
+you can also install it with::
+
+  apt install undertime
+
+If you downloaded this source code and want to install *that*
+directly, you can simply run::
+
+  pip3 install .
+
+.. _PyPI repository: https://pypi.org/project/undertime/
+
+Credits
+=======
+
+This program was written by Antoine Beaupré and is licensed under the
+AGPLv3+. I rewrote `overtime-cli`_ in Python because I felt we
+shouldn't need a Javascript virtual machine to pick a time. I was also
+curious to see how such a rewrite would look like and was tired of
+loading a web browser every time I needed to figure out what time it
+was elsewhere in the world or when I needed to coordinate
+international meetings.
+
+All of this wouldn't have been possible without the `pytz`_ library
+written by Stuart Bishop, itself based on the `Olson tz database`_
+founded by Arthur David Olson and currently maintained by Paul
+Eggert. Those packages are shipped to your favorite Debian
+distribution by package maintainers who struggle to keep up with those
+constant changes so credits should also go to the `tzdata package
+maintainers`_ (currently Adam Conrad, Aurelien Jarno, and Clint Adams)
+along with everyone in the Debian project keeping all those packages
+up to date. Thank you for dealing with humanity's confusing,
+beautiful and complex quirks for all of us.
+
+.. _timeanddate.com: https://www.timeanddate.com/
+.. _worldchatclock.com: http://worldchatclock.com/
+.. _tzdiff: https://github.com/belgianbeer/tzdiff
+.. _tzdata package maintainers: https://tracker.debian.org/pkg/tzdata
+
+Similar projects
+=====================
+
+ * `overtime-cli`_: primary inspiration for undertime
+ * `timeanddate.com`_: what I was using before
+ * `worldchatclock.com`_: beautiful round, web interface
+ * `tzdiff`_: strickingly similar, but discovered a few months after
+   writing undertime
+ * `when`_: shows time as blocks, interesting syntax (e.g. ``now in
+   yyz -> sfo -> vie -> lhr``)
+
+.. _when: https://github.com/mitsuhiko/when
+
+

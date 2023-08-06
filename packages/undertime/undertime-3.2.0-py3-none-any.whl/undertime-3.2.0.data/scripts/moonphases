@@ -1,0 +1,145 @@
+#!python
+
+# XXX: can be written in 5 lines of Python with Skyfield:
+#
+# https://rhodesmill.org/skyfield/almanac.html#phases-of-the-moon
+#
+# RFP filed in Debian:
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=911646
+
+"""
+Show moon phases for a given year.
+
+All times returned are local. Use the TZ variable to change.
+"""
+
+import argparse
+from collections import namedtuple
+from itertools import cycle
+
+import ephem
+
+MoonPhase = namedtuple("MoonPhase", "name motion target")
+
+# logic extracted from ephem.next_new_moon() and following next*
+# functions
+moon_phases = (
+    MoonPhase("new", ephem.twopi, 0),
+    MoonPhase("first", ephem.twopi, ephem.halfpi),
+    MoonPhase("full", ephem.twopi, ephem.pi),
+    MoonPhase("third", ephem.twopi, ephem.pi + ephem.halfpi),
+)
+
+
+def find_sequence(date):
+    """find the first moon after the given date
+
+    PyEphem only gives us mechanisms to find the next X type of moon,
+    not *any* moon. So we need to know the *first* kind of moon we
+    will get (regardless of type).
+
+    Then range_phases can iterate over those in the proper order
+    starting from the date.
+
+    >>> [ phase.name for phase in find_sequence('2018') ]
+    ['full', 'third', 'new', 'first']
+    >>> [ phase.name for phase in find_sequence('2019') ]
+    ['new', 'first', 'full', 'third']
+    >>> [ phase.name for phase in find_sequence('2020') ]
+    ['first', 'full', 'third', 'new']
+    >>> [ phase.name for phase in find_sequence('2021') ]
+    ['third', 'new', 'first', 'full']
+    """
+    dates = [
+        (ephem._find_moon_phase(date, phase.motion, phase.target), phase)
+        for phase in moon_phases
+    ]
+    return [phase for date, phase in sorted(dates)]
+
+
+def range_phases(start, end, sequence):
+    """generate the moon phases in the given range"""
+    p = start
+    for phase in cycle(sequence):
+        p = ephem._find_moon_phase(p, phase.motion, phase.target)
+        if p > end:
+            break
+        yield p, phase
+
+
+def main(start, end=None):
+    """Test data was checked against:
+
+    https://www.timeanddate.com/moon/phases/canada/montreal?year=...
+
+    Current year, starts with a full moon:
+
+    >>> main('2018') # doctest: +ELLIPSIS
+    2018-01-01 21:24:05 full
+    2018-01-08 17:25:16 third
+    2018-01-16 21:17:14 new
+    2018-01-24 17:20:23 first
+    2018-01-31 08:26:44 full
+    2018-02-07 10:53:56 third
+    ...
+    2018-11-29 19:18:49 third
+    2018-12-07 02:20:21 new
+    2018-12-15 06:49:15 first
+    2018-12-22 12:48:35 full
+    2018-12-29 04:34:18 third
+
+    Test year, does not:
+
+    >>> main('2009') # doctest: +ELLIPSIS
+    2009-01-04 06:56:15 first
+    2009-01-10 22:26:46 full
+    2009-01-17 21:45:45 third
+    2009-01-26 02:55:18 new
+    2009-02-02 18:13:08 first
+    ...
+    2009-11-24 16:39:14 first
+    2009-12-02 02:30:27 full
+    2009-12-08 19:13:20 third
+    2009-12-16 07:02:06 new
+    2009-12-24 12:35:58 first
+    2009-12-31 14:12:45 full
+
+    Another test:
+
+    >>> main('2042') # doctest: +ELLIPSIS
+    2042-01-06 03:53:29 full
+    2042-01-14 06:24:00 third
+    2042-01-21 15:41:39 new
+    2042-01-28 07:48:09 first
+    2042-02-04 20:57:20 full
+    ...
+    2042-11-27 01:05:33 full
+    2042-12-04 04:18:21 third
+    2042-12-12 09:29:13 new
+    2042-12-19 19:27:06 first
+    2042-12-26 12:42:16 full
+
+    """
+    if start is None:
+        start = ephem.now()
+    else:
+        start = ephem.Date(start)
+    if end is None:
+        # dates are in days (float). this adds a year
+        end = start + 30.0
+    else:
+        end = ephem.Date(end)
+    sequence = find_sequence(start)
+    for date, phase in range_phases(start, end, sequence):
+        print("{:%Y-%m-%d %H:%M:%S} {.name}".format(ephem.localtime(date), phase))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=__doc__, epilog="Should be rewritten with Skyfield."
+    )
+    parser.add_argument("start", nargs="?", help="start date (default: now)")
+    parser.add_argument("end", nargs="?", help="end date (default: next 30 days)")
+    args = parser.parse_args()
+
+    main(args.start, args.end)
