@@ -1,0 +1,1 @@
+from .sql2sf import convert_to_snowflake_syntax
