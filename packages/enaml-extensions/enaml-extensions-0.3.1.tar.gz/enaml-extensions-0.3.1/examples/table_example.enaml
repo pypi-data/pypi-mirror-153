@@ -1,0 +1,82 @@
+from enaml.widgets.api import *
+from enaml.layout.api import *
+from enamlext.widgets import Table
+from enamlext.qt.table.column import Column
+
+from enamlext.qt.qt_table import QtTable
+
+from enaml.qt.qt_factories import QT_FACTORIES
+QT_FACTORIES["Table"] = lambda: QtTable
+
+from operator import itemgetter
+
+
+from enamlext.qt.table.summary import TableSelectionSummary
+
+enamldef TableSummary(Container):
+    attr table
+    padding = 0
+
+    Label: lbl_summary:
+        font = 'bold 9pt Consolas'
+        text << str(table.summary)
+
+
+def format_role(role):
+    return role.title()
+
+
+enamldef Main(MainWindow): window:
+
+    title = 'Table Example'
+
+    initial_size = (600, 400)
+
+    GroupBox:
+        title = 'The Beatles'
+
+        PushButton:
+            text = 'Click'
+            clicked ::
+                print(the_table.selected_items)
+
+        TableSummary:
+            table << the_table
+
+        Table: the_table:
+            show_summary = True
+
+            columns = [
+                Column(itemgetter("name"), 'Name'),
+                Column(itemgetter('surname'), 'Surname'),
+                Column(itemgetter('year'), 'Year Born'),
+                Column(itemgetter('role'), 'Role', fmt=format_role),
+            ]
+
+            items = [
+                {
+                    'name': 'John',
+                    'surname': 'Lennon',
+                    'role': 'vocals, guitar',
+                    'year': 1940,
+                },
+                {
+                    'name': 'Paul',
+                    'surname': 'McCartney',
+                    'role': 'vocals, bass guitar',
+                    'year': 1942,
+                },
+                {
+                    'name': 'George',
+                    'surname': 'Harrison',
+                    'role': 'guitar, sitar',
+                    'year': 1943,
+                },
+                {
+                    'name': 'Ringo',
+                    'surname': 'Starr',
+                    'role': 'drums, percussion',
+                    'year': 1940,
+                },
+
+            ]

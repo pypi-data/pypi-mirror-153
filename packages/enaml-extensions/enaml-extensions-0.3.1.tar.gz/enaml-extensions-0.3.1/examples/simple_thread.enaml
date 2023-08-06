@@ -1,0 +1,49 @@
+from enaml.widgets.api import *
+from enaml.layout.api import *
+from enaml.stdlib.fields import IntField
+from atom.api import *
+from enamlext.atom import Atom, on_thread
+import random
+import time
+
+class Model(Atom):
+    streaming = Bool()
+    value = Int()
+
+    @observe("streaming")
+    def on_streaming_changed(self, change=None):
+        if self.streaming:
+            worker(self)     # runs on a separate thread
+
+
+@on_thread
+def worker(model):
+    while model.streaming:
+        n = random.randint(100, 1000)
+        model.safe_set("value", n)    # deferred_call
+        time.sleep(1)
+
+
+
+enamldef Main(MainWindow):
+    title = "Simple Thread App"
+    initial_size = (400, 300)
+
+    attr model = Model()
+
+    Container:
+        IntField:
+            value << model.value
+
+        PushButton:
+            text << "Stop streaming" if model.streaming else "Start streaming"
+            clicked ::
+                model.streaming = not model.streaming
+
+        Field: fld:
+            pass
+
+        PushButton:
+            text << "Set"
+            clicked ::
+                model.safe_set("value", 9181)
