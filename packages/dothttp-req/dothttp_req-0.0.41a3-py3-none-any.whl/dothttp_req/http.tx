@@ -1,0 +1,226 @@
+//HTTP: ram=HTTP2
+MULTISET: allhttps=HTTP+;
+
+HTTP:
+    (
+        (namewrap=NAMEWRAP)?
+        (extra_args*=EXTRA_ARG)?
+        "curl"?
+        urlwrap=URL
+        (authwrap=AUTHWRAP)?
+        (certificate = CERTAUTH)?
+        (lines *= LINE)?
+        (payload=PAYLOAD)?
+        (output=TOFILE)?
+        (script_wrap=HTTP_TEST_SCRIPT)?
+    )
+;
+
+URL:
+    '-X'? method=METHODTYPE url=URLString SLASH?
+;
+
+NAMEWRAP:
+    // postman does it same like inherit auth
+    // here we extend both headers and auth
+    '@name' '(' name=DotString ')' (':' base=DotString)?
+;
+
+LINE: 
+    (query=QUERY) | (header=HEADER)
+;
+
+HEADER: 
+    'header' '(' key=DotString ',' value=DotString ')'
+    | key=DotString ':' value=DotString
+    | /-H|--header/  key=/'[\w-]+/ ':' value=/\S(.*\S)?'/ SLASH?
+    | /-H|--header/  key=/"[\w-]+/ ':' value=/\S(.*\S)?"/ SLASH?
+    | /-H|--header/  key=/[\w-]+/ ':' value=/\S(.*\S)?/ SLASH?
+    | key=/'[\w-]+/ ':' value=/\S(.*\S)?'/ SLASH?
+    | key=/"[\w-]+/ ':' value=/\S(.*\S)?"/ SLASH?
+    | key=/[\w-]+/ ':' value=/\S(.*\S)?/ SLASH?
+;
+
+AUTHWRAP:
+    digest_auth = DIGESTAUTH |  basic_auth = BASICAUTH | ntlm_auth = NTLMAUTH | aws_auth = AWSAUTH
+;
+
+CERTAUTH:
+    (
+        'certificate' '(' 'cert' '=' cert=DotString (',' 'key' '=' key=DotString ','?)? ')'
+    ) | (
+        'p12' '(' 'file' '=' p12_file=DotString ',' 'password' '=' password=DotString ','? ')'
+    )
+;
+
+
+NTLMAUTH:
+    'ntlmauth' '(' username=DotString ',' password= DotString ')'
+
+;
+
+
+DIGESTAUTH:
+    'digestauth' '(' username=DotString ',' password= DotString ')'
+
+;
+
+BASICAUTH:
+    'basicauth' '(' username=DotString ',' password= DotString ')'
+;
+
+AWSAUTH:
+    'awsauth' '(' ('access_id' '=' ) ? access_id=DotString ',' ('secret_key' '=')? secret_token=DotString   ( ',' ('service'  '=')? service=DotString )? ','? ')'
+    | 'awsauth' '(' ('access_id' '=' ) ? access_id=DotString ',' ('secret_key' '=')? secret_token=DotString ','  ('service'  '=')? service=DotString (',' ('region' '=')? region=DotString)? ')'
+;
+
+EXTRA_ARG:
+    // there can be more
+    clear=CLEAR_SESSION | insecure=INSECURE
+;
+
+CLEAR_SESSION:
+    '@clear'
+;
+
+INSECURE:
+    "@insecure"
+;
+
+METHODTYPE: 
+    "GET" | "POST" | "OPTIONS"
+    | "DELETE" | "CONNECT" | "PUT"
+    | "HEAD" | "TRACE" | "PATCH"
+    | "COPY" | "LINK" | "UNLINK"
+    | "PURGE" | "LOCK" | "UNLOCK"
+    | "PROPFIND" | "VIEW"
+;
+
+QUERY: 
+    'query' '(' key=DotString ',' value=DotString ')'
+    | '?' '(' key=DotString ',' value=DotString ')'
+    | '?' key=DotString ',' value=DotString
+    | '?' key=DotString ':' value=DotString
+    | '?' key=DotString '=' value=DotString
+;
+
+PAYLOAD: 
+    (
+          // reordered to provide max performance
+          // most http requests has json input,or urlencoded as input
+        ('json' '(' json=JSON  ')' )
+        | ('data' | 'urlencoded') '(' datajson=JSON (',' type=STRING)? ','? ')'
+        | ('data'| 'text') '(' data+=TRIPLE_OR_DOUBLE_STRING ((','|';') type=STRING)? ','?  ')'
+        | (fileswrap=FILES)
+        | '<' file=STRING (';' type=STRING)?
+        | 'fileinput' '(' file=STRING   (',' type=STRING)? ','?  ')'
+        | /-d|--data/ data+=TRIPLE_OR_DOUBLE_STRING
+    )
+;
+
+TRIPLE_OR_DOUBLE_STRING:
+    triple = TRIPLE_QUOTE_STRING | str = STRING
+;
+
+
+FILES:
+    ("files" | "form" | "multipart") "(" files*=FILETYPE[','] ','? ")"
+;
+
+FILETYPE:
+    (
+        '(' name=DotString ',' path=DotString  (',' (type=DotString)?)? ')'
+        | name=DotString ('<' | ':') path=DotString (';' (type=DotString)?)?
+    )
+;
+
+TOFILE:
+    (
+        'output' '('output=STRING ')'
+        | '>>' output=STRING
+    )
+;
+
+JSON:
+    array=Array | object=Object
+;
+
+Array:
+    "[" (values*=Value[','] ) ','? "]"
+;
+
+Value:
+    strs += TRIPLE_OR_DOUBLE_STRING | var=VarString |  flt=Float | int=Int | bl=Bool | object=Object | array=Array | null="null"
+;
+
+
+Bool:
+    value=BOOL
+;
+
+Int:
+    value=INT
+;
+
+Float:
+    value=STRICTFLOAT
+;
+
+String: 
+    value=STRING
+;
+
+Object:
+    "{" members*=Member[','] ","? "}"
+;
+
+Member:
+    (key+=TRIPLE_OR_DOUBLE_STRING ':' value=Value) |
+    (var=VarString ':' value=Value)
+;
+Comment:
+    UnixComment | CommentLine | CommentBlock
+;
+UnixComment:
+    /#.*$/
+;
+CommentLine:
+    /\/\/.*?$/
+;
+
+CommentBlock:
+    /\/\*(.|\n)*?\*\//
+;
+
+VarString:
+    "{{" /[\w,$,:]+/ ("="  (/\w+/ | STRING))? "}}"
+;
+
+DotString:
+    STRING | /\w+/
+;
+// allow only alphanumeric or string in double/single quotes
+
+TRIPLE_QUOTE_STRING:
+        /"""[\S\s]*?"""/ | /'''[\S\s]*?'''/
+
+;
+
+URLString:
+    STRING | /https\:\/\/(\S)+/
+    | /http\:\/\/(\S)+/
+    | /\/(\S)+/
+;
+// allows http or https till space otherwise go for
+
+HTTP_TEST_SCRIPT:
+    script=/> {%[\s\S]*?%}/ (lang=SCRIPT_LANGUAGE)?
+;
+
+SCRIPT_LANGUAGE:
+    'python' | 'javascript'
+;
+
+SLASH:
+    '\'
+;
