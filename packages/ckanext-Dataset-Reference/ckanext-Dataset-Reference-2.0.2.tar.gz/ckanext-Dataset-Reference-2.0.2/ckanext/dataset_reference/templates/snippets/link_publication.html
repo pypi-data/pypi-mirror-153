@@ -1,0 +1,53 @@
+{% import 'macros/form.html' as macro %}
+ {% set action = h.url_for('dataset_reference.save_doi', _external=True) %}
+ {% set action2 = h.url_for('dataset_reference.add_publication_manually', package_name=pkg_dict.name,  _external=True) %}
+ {% asset 'ckanext-dataset-reference/publication-add-reference-css' %}
+ {% asset 'ckanext-dataset-reference/publication-add-reference-js' %}
+
+<button type="button" class="btn btn-default" data-toggle="modal" data-target="#myModal">{{_('Add Reference')}}</button>
+<input type="hidden" id="doi-validity-url" value={{h.url_for('dataset_reference.doi_is_valid', _external=True)}}>
+<input type="hidden" id="bibtex-validity-url" value={{h.url_for('dataset_reference.bibtex_is_valid', _external=True)}}>
+
+<div id="myModal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">{{_('Add a reference to this dataset')}}</h4>
+      </div>
+      <div class="modal-body">  
+        <b><i>
+          <p>{{_('You can add a reference via one of these ways: <br> 1- the DOI ID/URL <br> 2- Bibtex data <br> 3- Manually.')}}</p>
+        </i></b>
+        <br>
+        <form id="ref-form" class="" method="post" action='{{action}}' data-module="basic-form" enctype="multipart/form-data">      
+          <div id="doi_validation_message"></div>
+          {{ macro.input('doi', 
+              id='doi', 
+              label=_('The doi ID/URL'),                          
+              classes=['control-medium'] ,
+              placeholder="https://doi.org/xxxxx")
+          }}
+          <div id="bibtex_validation_message"></div>
+          {{
+            macro.markdown('bibtex', 
+              id='bibtex', 
+              label=_('The BibTex data'),                          
+              classes=['control-medium'] ,
+              placeholder="Please enter here the Bibtex citation data...")
+          }}
+          <div id="add-manually-link-div">
+            <a href="{{action2}}"><i class="fa fa-plus"></i>{{_('Add Manually')}}</a>
+          </div>
+          <input type="hidden" name="package_id" value={{pkg_dict.id}}>
+          <input type="hidden" name="doi_or_bibtex" id="doi_or_bibtex">
+      </div>
+      <div class="modal-footer">
+      </form>
+        <button id="ref_submit_btn" class="btn btn-primary">{{_('Save')}}</button>
+        <button id="ref_add_close_btn" type="button" class="btn btn-default" data-dismiss="modal">{{_('Close')}}</button>
+      </div>
+    </div>
+
+  </div>
+</div>
