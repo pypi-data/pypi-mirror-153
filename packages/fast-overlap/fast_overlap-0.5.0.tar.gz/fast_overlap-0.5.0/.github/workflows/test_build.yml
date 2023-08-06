@@ -1,0 +1,96 @@
+name: Test
+
+# this is heavily based off the jupyterlab-git workflow file created by @fcollonval
+# https://github.com/jupyterlab/jupyterlab-git/blob/a046b66415c6afabcbdf6e624e2a367523ee2e80/.github/workflows/build.yml
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os}}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8.x"]
+        os: [ubuntu-20.04, windows-2019, macos-10.15]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: "x64"
+
+      - name: macos clang things
+        if: matrix.os == 'macos-10.15'
+        run: |
+          brew install llvm libomp
+
+      - name: install stuff
+        run: pip install scikit-image numpy build
+
+        # https://stackoverflow.com/a/39843038/835607
+        # https://stackoverflow.com/a/60564952/835607
+      - name: build - Mac
+        if: matrix.os == 'macos-10.15'
+        env:
+          CC: /usr/local/opt/llvm/bin/clang
+          CXX: /usr/local/opt/llvm/bin/clang
+          # CPPFLAGS: -I/usr/local/opt/llvm/include -fopenmp
+          LDFLAGS: -L/usr/local/opt/llvm/lib
+        run: |
+          python -m build .
+
+      - name: build - not mac
+        if: matrix.os != 'macos-10.15'
+        run: |
+          python -m build .
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{matrix.os}}-${{matrix.python-version}}-wheel
+          path: dist/*.whl
+
+  test:
+    name: Test on ${{ matrix.os}}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8.x"]
+        os: [ubuntu-20.04, macos-10.15]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: "x64"
+
+      - name: install stuff
+        run: pip install pytest numpy
+
+      - name: Download Wheels (Artifact)
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{matrix.os}}-${{matrix.python-version}}-wheel
+
+      - name: install
+        run: |
+          pip install *.whl
+
+      - name: Tests
+        run: |
+          cd tests
+          python test_overlap.py
+          pytest --color=yes
