@@ -1,0 +1,39 @@
+"""
+Type annotations for cloudcontrol service client waiters.
+
+[Open documentation](https://youtype.github.io/boto3_stubs_docs/mypy_boto3_cloudcontrol/waiters/)
+
+Usage::
+
+    ```python
+    from boto3.session import Session
+
+    from mypy_boto3_cloudcontrol.client import CloudControlApiClient
+    from mypy_boto3_cloudcontrol.waiter import (
+        ResourceRequestSuccessWaiter,
+    )
+
+    session = Session()
+    client: CloudControlApiClient = session.client("cloudcontrol")
+
+    resource_request_success_waiter: ResourceRequestSuccessWaiter = client.get_waiter("resource_request_success")
+    ```
+"""
+from botocore.waiter import Waiter as Boto3Waiter
+
+from .type_defs import WaiterConfigTypeDef
+
+__all__ = ("ResourceRequestSuccessWaiter",)
+
+
+class ResourceRequestSuccessWaiter(Boto3Waiter):
+    """
+    [Show boto3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudcontrol.html#CloudControlApi.Waiter.ResourceRequestSuccess)
+    [Show boto3-stubs documentation](https://youtype.github.io/boto3_stubs_docs/mypy_boto3_cloudcontrol/waiters/#resourcerequestsuccesswaiter)
+    """
+
+    def wait(self, *, RequestToken: str, WaiterConfig: WaiterConfigTypeDef = ...) -> None:
+        """
+        [Show boto3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudcontrol.html#CloudControlApi.Waiter.ResourceRequestSuccess.wait)
+        [Show boto3-stubs documentation](https://youtype.github.io/boto3_stubs_docs/mypy_boto3_cloudcontrol/waiters/#resourcerequestsuccesswaiter)
+        """
