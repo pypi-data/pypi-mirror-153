@@ -1,0 +1,106 @@
+{
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "definitions" : {
+    "types" : {
+      "string_number_boolean" : {
+        "oneOf" : [
+          {
+            "type" : "string"
+          },
+          {
+            "type" : "number"
+          },
+          {
+            "type" : "boolean"
+          }
+        ]
+      }
+    },
+    "action" : {
+      "type" : "string",
+      "enum" : [
+        "get",
+        "set",
+        "report"
+      ]
+    }
+  },
+  "type" : "object",
+  "properties" : {
+    "action" : {
+      "$ref" : "#/definitions/action"
+    },
+    "connector" : {
+      "type" : "string",
+      "description" : "Connector unique uuid v4 identifier"
+    },
+    "property" : {
+      "type" : "string",
+      "description" : "Connector property unique uuid v4 identifier"
+    }
+  },
+  "if" : {
+    "properties" : {
+      "action" : {
+        "const" : "get"
+      }
+    }
+  },
+  "then" : {
+    "required" : [
+      "action",
+      "connector",
+      "property"
+    ]
+  },
+  "else" : {
+    "if" : {
+      "properties" : {
+        "action" : {
+          "const" : "set"
+        }
+      }
+    },
+    "then" : {
+      "properties" : {
+        "expected_value" : {
+          "$ref" : "#/definitions/types/string_number_boolean",
+          "description" : "Property value to be written into property"
+        }
+      },
+      "required" : [
+        "action",
+        "connector",
+        "property",
+        "expected_value"
+      ]
+    },
+    "else" : {
+      "if" : {
+        "properties" : {
+          "action" : {
+            "const" : "report"
+          }
+        }
+      },
+      "then" : {
+        "properties" : {
+          "actual_value" : {
+            "$ref" : "#/definitions/types/string_number_boolean",
+            "description" : "Property value stored in property"
+          },
+          "pending" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [
+          "action",
+          "connector",
+          "property",
+          "actual_value",
+          "pending"
+        ]
+      }
+    }
+  }
+}
