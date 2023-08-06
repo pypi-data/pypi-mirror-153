@@ -1,0 +1,66 @@
+{%- extends "_layout.html" %}
+{%- import 'nerd/_macros.html' as macros_nerd with context -%}
+
+{%- block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+
+                    <div class="jumbotron" style="margin-top: 1em;">
+                        <h2>{{ vial_current_view.get_view_title() }}</h2>
+                        <form method="GET" class="form-inline" action="{{ url_for('nerd.search') }}">
+                            <div class="form-group{% if search_form.search.errors %}{{ ' has-error' }}{% endif %}">
+                                {{ search_form.search.label(class_='sr-only') }}
+                                <div class="input-group">
+                                    <div data-toggle="tooltip" class="input-group-addon" title="{{ _('Search NERD:') }}">{{ get_icon('action-search') }}</div>
+                                    {{ search_form.search(class_='form-control', placeholder=_('IPv4 address'), size='50') }}
+                                </div>
+
+                                <div class="btn-group" role="group">
+                                    {{ search_form.submit(class_='btn btn-primary') }}
+                                    <a role="button" class="btn btn-default" href="{{ url_for('nerd.search') }}">
+                                        {{ _('Clear') }}
+                                    </a>
+                                </div>
+                            </div>
+                            {{ macros_form.render_form_errors(search_form.search.errors) }}
+                        </form>
+                    </div> <!-- .jumbotron -->
+
+                </div> <!-- .col-lg-12 -->
+            </div>  <!-- .row -->
+
+    {%- if search_item %}
+            <div class="row">
+                <div class="col-lg-12">
+                    <p>
+                        <a href="{{ search_url }}" target="_blank">
+                            {{ get_icon('search') }} {{ _('Search externally in NERD service') }}
+                        </a>
+                    </p>
+        {%- if search_result %}
+
+                    {{ macros_nerd.render_result_reputation(search_result) }}
+
+        {%- else %}
+
+                    {%- call macros_site.render_alert('info', False) %}
+                    {{ _('There are no records for <strong>%(item_id)s</strong> in <em>NERD</em> service.', item_id = search_item) | safe }}
+                    {%- endcall %}
+
+        {%- endif %}
+
+                </div> <!-- .col-lg-12 -->
+            </div>  <!-- .row -->
+
+        {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('search_result', search_result) }}
+            {{ macros_site.render_raw_var('form_data', form_data) }}
+            {{ macros_site.render_raw_var('request_args', request_args) }}
+            {{ macros_site.render_raw_var('query_params', query_params) }}
+        {%- endif %}
+
+    {%- endif %}
+
+{%- endblock content %}

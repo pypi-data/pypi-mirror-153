@@ -1,0 +1,447 @@
+{%- extends "_layout.html" %}
+
+{%- block content %}
+{%- set ads_limits = get_limit_counter() %}
+            <div class="row">
+                <div class="col-lg-12">
+
+                    <ol class="breadcrumb">
+                        <li>
+                            <a href="{{ url_for('home.index') }}">{{ _('Home') }}</a>
+                        </li>
+                        <li>
+                            <a href="{{ url_for('events.search') }}">{{ _('Event database') }}</a>
+                        </li>
+                        <li class="active">
+                            {{ _('Event detail') }}
+                        </li>
+                    </ol>
+                    <h2>
+                        {{ vial_current_view.get_view_title() }}
+                    </h2>
+                    <hr>
+                    <h3>
+                        {% if item['Description'] %}{{ item['Description'] }} <small>{{ item.get_id() }}</small>{% else %}{{ item.get_id() }}{% endif %}
+                    </h3>
+                    <div class="pull-right">
+                        {{ macros_page.render_menu_actions(item) }}
+                    </div>
+                    {%- if item['Note'] %}
+                    <p>
+                        <small>
+                            {{ item['Note'] }}
+                        </small>
+                    </p>
+                    {%- endif %}
+                </div><!-- /.col-lg-12 -->
+            </div><!-- /.row -->
+
+
+            <div class="row">
+                <div class="col-lg-12">
+
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="active">
+                            <a href="#tab-event-properties" aria-controls="tab-event-properties" role="tab" data-toggle="tab">
+                                <strong>{{ _('Properties') }}</strong>
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab-event-data-yaml" aria-controls="tab-event-data-yaml" role="tab" data-toggle="tab">
+                                <strong>{{ _('YAML data') }}</strong>
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab-event-data-json" aria-controls="tab-event-data-json" role="tab" data-toggle="tab">
+                                <strong>{{ _('JSON data') }}</strong>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+
+                        <div role="tabpanel" class="tab-pane fade in active" id="tab-event-properties">
+                            <h4>{{ _('General properties') }}</h4>
+                            <table class="table table-condensed table-striped">
+                                <tr>
+                                    <th>
+                                        {{ _('ID') }}:
+                                    </th>
+                                    <td>
+                                        {{ _(item.get_id()) }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>
+                                        {{ _('Detection time') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_datetime(item.get_detect_time()) }} ({{ macros_site.render_info_timeinterval(item.get_detect_time(), current_datetime_utc) }})
+                                    </td>
+                                </tr>
+                                {%- set tmpval = item.get_jpath_value('CreateTime') %}
+                                {%- if tmpval %}
+                                <tr>
+                                    <th>
+                                        {{ _('Creation time') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_datetime(tmpval) }} ({{ macros_site.render_info_timeinterval(tmpval, current_datetime_utc) }})
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>
+                                        {{ _('Creation delay') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_timedelta(tmpval - item.get_detect_time()) }}
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                {%- set tmpval_a = item.get_jpath_value('EventTime') %}
+                                {%- if tmpval_a %}
+                                <tr>
+                                    <th>
+                                        {{ _('Event time') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_datetime(tmpval_a) }} ({{ macros_site.render_info_timeinterval(tmpval_a, current_datetime_utc) }})
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                {%- set tmpval_b = item.get_jpath_value('CeaseTime') %}
+                                {%- if tmpval_b %}
+                                <tr>
+                                    <th>
+                                        {{ _('Cease time') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_datetime(tmpval_b) }} ({{ macros_site.render_info_timeinterval(tmpval_b, current_datetime_utc) }})
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                {%- if tmpval_a and tmpval_b %}
+                                <tr>
+                                    <th>
+                                        {{ _('Event duration') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_timedelta(tmpval_b - tmpval_a) }} ({{ (tmpval_b - tmpval_a) }})
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                {%- set tmpval_a = item.get_jpath_value('WinStartTime') %}
+                                {%- if tmpval_a %}
+                                <tr>
+                                    <th>
+                                        {{ _('Aggregation window start time') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_datetime(tmpval_a) }} ({{ macros_site.render_info_timeinterval(tmpval_a, current_datetime_utc) }})
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                {%- set tmpval_b = item.get_jpath_value('WinEndTime') %}
+                                {%- if tmpval_b %}
+                                <tr>
+                                    <th>
+                                        {{ _('Aggregation window end time') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_datetime(tmpval_b) }} ({{ macros_site.render_info_timeinterval(tmpval_b, current_datetime_utc) }})
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                {%- if tmpval_a and tmpval_b %}
+                                <tr>
+                                    <th>
+                                        {{ _('Aggregation window size') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_timedelta(tmpval_b - tmpval_a) }} ({{ (tmpval_b - tmpval_a) }})
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                <tr>
+                                    <th>
+                                        {{ _('Storage time') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_datetime(item.get_storage_time()) }} ({{ macros_site.render_info_timeinterval(item.get_storage_time(), current_datetime_utc) }})
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>
+                                        {{ _('Storage delay') }}:
+                                    </th>
+                                    <td>
+                                        {{ babel_format_timedelta(item.get_storage_time() - item.get_detect_time()) }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>
+                                        {{ _('Categories') }}:
+                                    </th>
+                                    <td>
+                                        {{ macros_site.render_widget_csag_category(item.get_categories(), align_right = True, separate_dropdown = True) }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>
+                                        {{ _('Event severity') }}:
+                                    </th>
+                                    <td>
+                                        {%- if item.get_severity() %}
+                                        {{ macros_site.render_widget_csag_severity([item.get_severity()], align_right = True) }}
+                                        {%- else %}
+                                        {{ _('-- unassigned --') }}
+                                        {%- endif %}
+                                    </td>
+                                </tr>
+                                {%- if permission_can('power') %}
+                                <tr>
+                                    <th>
+                                       <span class="pull-right">{{ get_icon('role-admin') }}</span> {{ _('Event class') }}:
+                                    </th>
+                                    <td>
+                                        {%- if item.get_class() %}
+                                        {{ item.get_class() }}
+                                        {{ macros_site.render_widget_csag_class([item.get_class()], align_right = True, separate_dropdown = True, without_label = True) }}
+                                        {%- else %}
+                                        {{ _('-- unclassified --') }}
+                                        {%- endif %}
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                <tr>
+                                    <th>
+                                        {{ _('Abuse groups') }}:
+                                    </th>
+                                    <td>
+                                        {{ macros_site.render_widget_csag_abuse(item.get_abuses(), align_right = True, separate_dropdown = True) }}
+                                    </td>
+                                </tr>
+                                {%- if item.get_countries_src() %}
+                                <tr>
+                                    <th>
+                                        {{ _('Source countries') }}:
+                                    </th>
+                                    <td>
+                                        {%- for subitem in item.get_countries_src() %}
+                                        {{ subitem | upper }} {{ get_country_flag(subitem) }}{% if not loop.last %}&nbsp;|&nbsp;{% endif %}
+                                        {%- endfor %}
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                                {%- if item.get_asns_src() %}
+                                <tr>
+                                    <th>
+                                        {{ _('Source autonomous systems (ASNs)') }}:
+                                    </th>
+                                    <td>
+                                        {%- for subitem in item.get_asns_src() %}
+                                        {{ subitem | upper }} {% if not loop.last %}&nbsp;|&nbsp;{% endif %}
+                                        {%- endfor %}
+                                    </td>
+                                </tr>
+                                {%- endif %}
+                            </table>
+
+                            {%- for node_type in [['Source', _('Sources')], ['Target', _('Targets')]] %}
+                                {%- set tmpval = item.get_jpath_values(node_type[0]) %}
+                                {%- if tmpval %}
+                            <h4>{{ node_type[1] }}</h4>
+                            <ul class="list-group">
+                                    {%- for subitem in tmpval %}
+                                <li class="list-group-item">
+                                    <table class="table table-condensed table-event-detail-node">
+                                        {%- if 'IP4' in subitem %}
+                                        <tr style="border-top: 0">
+                                            <th>
+                                                {{ _('IP4') }}:
+                                            </th>
+                                            <td>
+                                            {%- for itemaddr in subitem['IP4'] %}
+                                                {%- if loop.index < search_widget_item_limit -%}
+                                                <div>
+                                                    {{ macros_site.render_widget_csag_address(
+                                                        [itemaddr],
+                                                        separate_dropdown = True
+                                                    ) }}
+                                                    {%- if ads_limits.count_and_check('{}.{}'.format(node_type[0], 'IP4')) %}
+                                                    <div class="popover-hover-container object-additional-data onload" data-object-type="ip4" data-object-name="{{ itemaddr }}" data-render-error="true" data-render-flash="false"></div>
+                                                    {%- else %}
+                                                    <div class="popover-hover-container object-additional-data ondemand" data-object-type="ip4" data-object-name="{{ itemaddr }}" data-render-error="true" data-render-flash="false">
+                                                        <span role="button" data-toggle="tooltip" title="{{ _('Additional data service load limit for objects of this type was reached, please click to load on demand.') }}">
+                                                            {{ get_icon('action-reload') }}
+                                                        </span>
+                                                    </div>
+                                                    {%- endif %}
+                                                </div>
+                                                {%- elif loop.index0 == search_widget_item_limit %}
+                                                <span class="underlined-tooltip" data-toggle="tooltip" title="{{ _('Please download raw message to view full list.') }}">
+                                                    ({{ _('%(count)s more', count = loop.length - loop.index0) }})
+                                                </span>
+                                                {%- endif %}
+                                            {%- endfor %}
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                        {%- if 'IP6' in subitem %}
+                                        <tr>
+                                            <th>
+                                                {{ _('IP6') }}:
+                                            </th>
+                                            <td>
+                                            {%- for itemaddr in subitem['IP6'] %}
+                                                {%- if loop.index < search_widget_item_limit -%}
+                                                <div>
+                                                    {{ macros_site.render_widget_csag_address(
+                                                        [itemaddr],
+                                                        separate_dropdown = True
+                                                    ) }}
+                                                    {%- if ads_limits.count_and_check('{}.{}'.format(node_type[0], 'IP6')) %}
+                                                    <div class="popover-hover-container object-additional-data onload" data-object-type="ip6" data-object-name="{{ itemaddr }}" data-render-error="true" data-render-flash="false"></div>
+                                                    {%- else %}
+                                                    <div class="popover-hover-container object-additional-data ondemand" data-object-type="ip6" data-object-name="{{ itemaddr }}" data-render-error="true" data-render-flash="false">
+                                                        <span role="button" data-toggle="tooltip" title="{{ _('Additional data service load limit for objects of this type was reached, please click to load on demand.') }}">
+                                                            {{ get_icon('action-reload') }}
+                                                        </span>
+                                                    </div>
+                                                    {%- endif %}
+                                                </div>
+                                                {%- elif loop.index0 == search_widget_item_limit %}
+                                                <span class="underlined-tooltip" data-toggle="tooltip" title="{{ _('Please download raw message to view full list.') }}">
+                                                    ({{ _('%(count)s more', count = loop.length - loop.index0) }})
+                                                </span>
+                                                {%- endif %}
+                                            {%- endfor %}
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                        {%- if 'Port' in subitem %}
+                                        <tr>
+                                            <th>
+                                                {{ _('Port') }}:
+                                            </th>
+                                            <td>
+                                                <div>
+                                                    {{ macros_site.render_widget_csag_port(subitem['Port'], separate_dropdown = True, item_limit = search_widget_item_limit) }}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                        {%- if 'Proto' in subitem %}
+                                        <tr>
+                                            <th>
+                                                {{ _('Proto') }}:
+                                            </th>
+                                            <td>
+                                                <div>
+                                                    {{ macros_site.render_widget_csag_protocol(subitem['Proto'], separate_dropdown = True, item_limit = search_widget_item_limit) }}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                        {%- if 'Type' in subitem %}
+                                        <tr>
+                                            <th>
+                                                {{ _('Type') }}:
+                                            </th>
+                                            <td>
+                                                <div>
+                                                    {{ macros_site.render_widget_csag_hosttype(subitem['Type'], separate_dropdown = True) }}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                    </table>
+                                </li>
+                                    {%- endfor %}
+                            </ul>
+                                {%- endif %}
+                            {%- endfor %}
+
+                            {%- set tmpval = item.get_jpath_values('Node') %}
+                            {%- if tmpval %}
+                            <h4>{{ _('Detectors') }}</h4>
+                            <ul class="list-group">
+                                {%- for subitem in tmpval | reverse %}
+                                <li class="list-group-item{% if loop.first %} list-group-item-info{% endif %}">
+                                    {%- if not loop.first %}<small>{%- endif %}
+                                    <table class="table table-condensed table-event-detail-node">
+                                        {%- if 'Name' in subitem %}
+                                        <tr style="border-top: 0">
+                                            <th>
+                                                {{ _('Name') }}:
+                                            </th>
+                                            <td>
+                                                {% if loop.first %}{{ macros_site.render_widget_csag_detector([subitem['Name']], separate_dropdown = True) }}{% else %}{{ subitem['Name'] }}{%- endif %}
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                        {%- if 'SW' in subitem %}
+                                        <tr>
+                                            <th>
+                                                {{ _('Software') }}:
+                                            </th>
+                                            <td>
+                                                {{ subitem['SW'] | join(', ') }}
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                        {%- if 'Type' in subitem %}
+                                        <tr>
+                                            <th>
+                                                {{ _('Type') }}:
+                                            </th>
+                                            <td>
+                                                {{ macros_site.render_widget_csag_detectortype(subitem['Type'], separate_dropdown = True) }}
+                                            </td>
+                                        </tr>
+                                        {%- endif %}
+                                    </table>
+                                    {%- if not loop.first %}</small>{%- endif %}
+                                </li>
+                                {%- endfor %}
+                            </ul>
+                            {%- endif %}
+
+                            {%- if permission_can('power') %}
+                                {%- set tmpval = item.get_inspection_errors() %}
+                                {%- if tmpval %}
+                            <hr>
+                            <h4>{{ _('Inspection errors') }} {{ get_icon('role-admin') }}</h4>
+                            <ul class="list-group">
+                                    {%- for subitem in tmpval %}
+                                <li class="list-group-item list-group-item-warning">
+                                        {{ get_icon('alert-warning') }} <strong>{{ subitem }}</strong>
+                                </li>
+                                    {%- endfor %}
+                            </ul>
+                                {%- endif %}
+
+                            {%- endif %}
+                        </div>
+
+                        <div role="tabpanel" class="tab-pane fade" id="tab-event-data-yaml">
+                            <br>
+<pre>
+{{ json_to_yaml(item.to_json(indent = 4, sort_keys = True)) }}
+</pre>
+                        </div>
+
+                        <div role="tabpanel" class="tab-pane fade" id="tab-event-data-json">
+                            <br>
+<pre>
+{{ item.to_json(indent = 4, sort_keys = True) }}
+</pre>
+                        </div>
+
+                </div><!-- /.col-lg-12 -->
+            </div><!-- /.row -->
+
+
+{%- endblock content %}

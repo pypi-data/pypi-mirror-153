@@ -1,0 +1,293 @@
+{%- import '_macros_site.html' as macros_site with context -%}
+{%- import '_macros_page.html' as macros_page with context -%}
+{%- import '_macros_form.html' as macros_form with context -%}
+{%- import '_macros_chart.html' as macros_chart with context -%}
+<!DOCTYPE html>
+<html lang="en">
+    <!--
+    ============================================================================
+        HEADER
+    ============================================================================
+    -->
+    <head>
+{%- block head %}
+
+        <!----------------------------------------------------------------------
+            Required meta tags
+        ----------------------------------------------------------------------->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    {%- block headcss %}
+
+        <!----------------------------------------------------------------------
+            Head CSS
+        ----------------------------------------------------------------------->
+
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/font-awesome/css/solid.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/font-awesome/css/regular.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/font-awesome/css/brands.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/font-awesome/css/fontawesome.css') }}">
+
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap-theme.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-select/css/bootstrap-select.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css') }}">
+
+        <!-- NVD3 CSS -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/nvd3/css/nv.d3.min.css') }}">
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/hawat.css') }}">
+    {%- endblock headcss %}
+
+    {%- block headjs %}
+
+        <!----------------------------------------------------------------------
+            Head JS
+        ----------------------------------------------------------------------->
+
+        <!-- Globalize's dependencies -->
+        <script src="{{ url_for('static', filename='vendor/cldrjs/cldr.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/cldrjs/cldr/event.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/cldrjs/cldr/supplemental.js') }}"></script>
+
+        <!-- Globalize -->
+        <script src="{{ url_for('static', filename='vendor/globalize/globalize.js') }}"></script>
+        <!-- <script src="{{ url_for('static', filename='vendor/globalize/globalize/message.js') }}"></script> -->
+        <script src="{{ url_for('static', filename='vendor/globalize/globalize/number.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/globalize/globalize/plural.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/globalize/globalize/date.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/globalize/globalize/relative-time.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/globalize/globalize/unit.js') }}"></script>
+
+        <!-- Flask JSGlue plugin -->
+        {{ JSGlue.include() }}
+
+        <!-- Moment.js -->
+        <script src="{{ url_for('static', filename='vendor/moment/js/moment-with-locales.min.js') }}"></script>
+
+        <!-- Popper.js -->
+        <script src="{{ url_for('static', filename='vendor/popper.js/js/popper.min.js') }}"></script>
+
+        <!-- jQuery -->
+        <script src="{{ url_for('static', filename='vendor/jquery/js/jquery.min.js') }}"></script>
+
+        <!-- D3 and NVD3 chart libraries -->
+        <script src="{{ url_for('static', filename='vendor/d3/js/d3.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/nvd3/js/nv.d3.min.js') }}"></script>
+
+        <!-- Localization initializations -->
+        <script>
+
+            // These global variables must be defined here to bypass browser caching,
+            // they might change with each request.
+            var GLOBAL_LOCALE   = "{{ babel_get_locale() }}"
+            var GLOBAL_TIMEZONE = "{{ babel_get_timezone() }}"
+
+            var GLOBAL_TABLE_COLS_STATS = [
+                {
+                    'ident': 'sum',
+                    'key': '<span data-toggle="tooltip" title="{{ _('Sum of all values') }}">{{ get_icon('sum') }} {{ _('Sum') }}</span>',
+                },
+                {
+                    'ident': 'min',
+                    'key': '<span data-toggle="tooltip" title="{{ _('Minimal value') }}">{{ get_icon('min') }} {{ _('Minimum') }}</span>',
+                },
+                {
+                    'ident': 'max',
+                    'key': '<span data-toggle="tooltip" title="{{ _('Maximal value') }}">{{ get_icon('max') }} {{ _('Maximum') }}</span>',
+                },
+                {
+                    'ident': 'avg',
+                    'key': '<span data-toggle="tooltip" title="{{ _('Average value') }}">{{ get_icon('avg') }} {{ _('Average') }}</span>',
+                },
+                {
+                    'ident': 'med',
+                    'key': '<span data-toggle="tooltip" title="{{ _('Median value') }}">{{ get_icon('med') }} {{ _('Median') }}</span>',
+                },
+                {
+                    'ident': 'cnt',
+                    'key': '<span data-toggle="tooltip" title="{{ _('Count of all values') }}">{{ get_icon('cnt') }} {{ _('Count') }}</span>',
+                }
+            ];
+
+            var GLOBALIZER;
+
+            // List of CLDRs required by Globalize. The appropriate list can
+            // be generated here:
+            //     http://johnnyreilly.github.io/globalize-so-what-cha-want/#/?currency=true&date=true&message=true&num
+            [
+                "{{ url_for('static', filename='vendor/cldr/supplemental/likelySubtags.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/main/' + babel_get_locale() + '/numbers.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/supplemental/numberingSystems.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/main/' + babel_get_locale() + '/ca-gregorian.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/main/' + babel_get_locale() + '/timeZoneNames.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/supplemental/timeData.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/supplemental/weekData.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/supplemental/plurals.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/supplemental/ordinals.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/main/' + babel_get_locale() + '/dateFields.json') }}",
+                "{{ url_for('static', filename='vendor/cldr/main/' + babel_get_locale() + '/units.json') }}"
+            ].forEach(function(resource_file) {
+                $.get({
+                    url: resource_file,
+                    success: function(data) {
+                        Globalize.load(data);
+                        console.log("Loaded CLDR resource file: " + resource_file);
+                    },
+                    error: function() {
+                        console.error("Unable to load CLDR resource file: " + resource_file);
+                    },
+                    async: false
+                });
+            });
+
+            // Load IANA timezone data specification.
+            $.get({
+                url: "{{ url_for('static', filename='vendor/iana-tz-data/iana-tz-data.json') }}",
+                success: function(data) {
+                    Globalize.loadTimeZone(data);
+                    console.log("Loaded IANA timezone data...");
+                },
+                error: function() {
+                    console.error("Unable to load IANA timezone data");
+                },
+                async: false
+            });
+            {#
+                // Alternative way of doing things - put the JSON files directly into the HTML source.
+                // Might be considered in the future
+                Globalize.loadTimeZone(
+                    {{ include_raw('iana-tz-data/iana-tz-data.min.json') }}
+                );
+                console.log("Loaded IANA timezone data...");
+            #}
+
+            // Initialize Globalizer instance for interface localization.
+            GLOBALIZER = Globalize("{{ babel_get_locale() }}");
+            console.log("Globalizer successfully loaded...")
+
+        </script>
+
+        <!-- Main application library -->
+        <script src="{{ url_for('mainjs') }}"></script>
+
+        <!-- Custom libraries -->
+        <script src="{{ url_for('static', filename='js/hawat-charts.js') }}"></script>
+    {%- endblock headjs %}
+
+        <!----------------------------------------------------------------------
+            Page metadata
+        ----------------------------------------------------------------------->
+        <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+        <title>{% block title %}{{ vial_current_view.get_view_title() }}{% endblock %} - Mentat</title>
+{%- endblock head %}
+    </head>
+
+    <!--
+    ============================================================================
+        BODY
+    ============================================================================
+    -->
+    <body>
+{%- block body %}
+
+        <div id="ajax-loader-overlay">
+            <div id="ajax-loader">
+                {{ get_icon('ajax-loader') }}
+                <hr>
+                <h3><strong>{{ _('... LOADING ...') }}</strong></h3>
+            </div>
+        </div>
+
+        <!-- Fixed header and navbar - BEGIN ---------------------------------->
+        <nav class="navbar navbar-default navbar-fixed-top">
+            <div class="container-fluid">
+                <div id="navbar-header" class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">{{ _('Toggle navigation') }}</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="{{ url_for(config['ENDPOINT_HOME']) }}">
+                        <img src="{{ url_for('static', filename='images/app-logo-mini.png') }}" class="mentat-logo-mini" alt="Mentat logo">
+                        {{ vial_appname }}
+                    </a>
+                </div> <!-- #navbar-header -->
+                <div id="navbar" class="navbar-collapse collapse">
+                    {{ macros_site.render_menu_main() }}
+                    <ul class="nav navbar-nav navbar-right">
+                        {{ macros_site.render_submenu_auth() }}
+                        {{ macros_site.render_locale_switcher() }}
+                        {%- if vial_current_view.has_help %}
+                        <li>
+                            {{ macros_page.render_help_link(icon = 'help', text = '') }}
+                        </li>
+                        {%- endif %}
+                    </ul>
+                </div> <!-- #navbar -->
+            </div> <!-- .container-fluid -->
+        </nav> <!-- .navbar -->
+        <!-- Fixed header and navbar - END ------------------------------------>
+
+        <!-- Content container - BEGIN ---------------------------------------->
+        <div class="container-fluid">
+
+            <!-- Flashed messages - BEGIN ------------------------------------->
+            <div class="container-flashed-messages">
+            {%- with messages = get_flashed_messages(with_categories=true) %}
+                {%- if messages %}
+                    {%- for category, message in messages %}
+                {%- call macros_site.render_alert(category) %}
+                    {{ message }}
+                {%- endcall %}
+                    {%- endfor %}
+                {%- endif %}
+            {%- endwith %}
+            </div>
+            <!-- Flashed messsages - END -------------------------------------->
+
+            <!-- Content - BEGIN ---------------------------------------------->
+            {%- block content %}{% endblock content %}
+            <!-- Content - END ------------------------------------------------>
+
+        </div> <!-- /container-fluid -->
+        <!-- Content container - END ------------------------------------------>
+
+        <!-- Footer container - BEGIN ----------------------------------------->
+        <div class="container-fluid" id="footer">
+            <hr>
+            <span data-toggle="tooltip" title="{{ _('Page generated at: ') }}">{{ get_icon('clock') }}</span><span class="hidden-sm"> <em>{{ _('Page generated at: ') }}</em></span> {{ babel_format_datetime(current_datetime_utc) }} &#124;
+            <span data-toggle="tooltip" title="{{ _('Page generated in: ') }}">{{ get_icon('stopwatch') }}</span><span class="hidden-sm"> <em>{{ _('Page generated in: ') }}</em></span> {{ get_timedelta(g.requeststart) }}
+            <br>
+            <span data-toggle="tooltip" title="{{ hawat_bversion_full }}">
+                {{ vial_appname }} {{ hawat_version }}
+            </span> &#124;
+            &copy; {{ _('since') }} 2011 &#124;
+            <a data-toggle="tooltip" title="Go to official web page of CESNET-CERTS, the CSIRT for CESNET2 network" href="http://csirt.cesnet.cz">
+                CESNET-CERTS
+            </a> &#124;
+            <a data-toggle="tooltip" title="Go to official web page of CESNET organization, the NREN for Czech republic" href="https://www.cesnet.cz">
+                {{ _('CESNET, a.l.e.') }}
+            </a>
+        </div>
+        <!-- Footer container - END ------------------------------------------->
+
+    {%- block bodyjs %}
+
+        <!-- Optional JavaScript ---------------------------------------------->
+        <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/bootstrap-select/js/bootstrap-select.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='vendor/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/hawat-jquery.js') }}"></script>
+    {%- endblock bodyjs %}
+
+{%- endblock body %}
+
+    </body>
+</html>

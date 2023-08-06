@@ -1,0 +1,400 @@
+{% extends "_layout.html" %}
+
+{% block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+
+                    {{ macros_page.render_breadcrumbs() }}
+
+                    <!-- Search form - BEGIN ---------------------------------->
+                    <div class="jumbotron" style="margin-top: 1em;">
+                        <h2>{{ vial_current_view.get_view_title() }}</h2>
+                        <hr>
+                        <form method="GET" class="form" action="{{ url_for(request.endpoint) }}">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    {{ macros_form.render_form_item_datetime(g.search_form.dt_from, 'datetimepicker-from') }}
+                                </div>
+                                <div class="col-sm-6">
+                                    {{ macros_form.render_form_item_datetime(g.search_form.dt_to, 'datetimepicker-to') }}
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="btn-toolbar" role="toolbar" aria-label="{{ _('Form submission buttons') }}">
+                                <div class="btn-group" role="group">
+                                    {{ g.search_form.submit(class_='btn btn-primary') }}
+                                    <a role="button" class="btn btn-default" href="{{ url_for('events.dashboard') }}">
+                                        {{ _('Clear') }}
+                                    </a>
+                                    {{  macros_site.render_quicksearch(quicksearch_list) }}
+                                </div>
+                            </div>
+                        </form>
+                    </div> <!-- /.jumbotron -->
+                    <!-- Search form - END ------------------------------------>
+
+                    <p>
+                        {{ _('This module displays various statistics for events. These statistics are calculated from in advance precalculated artefacts and can therefore provide quick overview of event processing.') | safe }}
+                    </p>
+
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+
+    {%- if searched %}
+        {%- if 'tiid' in request.args %}
+            {{ macros_site.render_timepager(query_params, form_data.dt_from, request.args.tiid) }}
+        {%- endif %}
+
+        {%- if items %}
+
+            <!-- Search result dump - BEGIN ----------------------------------->
+            <script>
+                var search_result_statistics = {{ statistics | tojson }};
+            </script>
+            <!-- Search result dump - END ------------------------------------->
+
+            <!-- Search result summary - BEGIN -------------------------------->
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">{{ _('Result summary') }}</h3>
+                </div>
+                <table class="table">
+                    <tr>
+                        <th>
+                            {{ _('Number of statistical records') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_decimal(items_count) }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            {{ _('Number of events') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_decimal(statistics['count']) }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            {{ _('Result time interval') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_datetime(statistics['dt_from']) }} - {{ babel_format_datetime(statistics['dt_to']) }}
+                            ({{ babel_format_timedelta(statistics['dt_to'] - statistics['dt_from']) }})
+                        </td>
+                    </tr>
+                    {%- if 'timeline_cfg' in statistics %}
+                    <tr>
+                        <th>
+                            {{ _('Timeline time interval') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_datetime(statistics['timeline_cfg']['dt_from']) }} - {{ babel_format_datetime(statistics['timeline_cfg']['dt_to']) }}
+                            ({{ babel_format_timedelta(statistics['timeline_cfg']['dt_to'] - statistics['timeline_cfg']['dt_from']) }})
+                        </td>
+                    </tr>
+                    {%- endif %}
+                    {%- if permission_can('admin') and 'timeline_cfg' in statistics %}
+                    <tr>
+                        <th><span class="pull-right">{{ get_icon('role-admin') }}</span>{{ _('Timeline steps') }}:</th>
+                        <td>{{ babel_format_decimal(statistics['timeline_cfg']['count']) }} x {{ statistics['timeline_cfg']['step'].__str__() }}</td>
+                    </tr>
+                    {%- endif %}
+                </table>
+            </div>
+
+            <p id="statusbar-chart-rendering"></p>
+
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <p>{{ _('Comparison of the event counts for <em>overall</em>, <em>internal</em> and <em>external</em> categories:') | safe }}</p>
+                    <table class="table table-condensed">
+                        <tr>
+                            <th>
+                                {{ _('Overall event counts') }}:
+                            </th>
+                            <td class="text-right">
+                                {{ babel_format_decimal(statistics['stats_overall']['cnt_alerts']) }}
+                            </td>
+                            <td class="text-right">
+                                {{ babel_format_percent(statistics['stats_overall']['cnt_alerts']/statistics['stats_overall']['cnt_alerts']) }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('Internal event counts') }}:</th>
+                            <td class="text-right">
+                                {{ babel_format_decimal(statistics['stats_internal']['cnt_alerts']) }}
+                            </td>
+                            <td class="text-right">
+                                {{ babel_format_percent(statistics['stats_internal']['cnt_alerts']/statistics['stats_overall']['cnt_alerts']) }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('External event counts') }}:
+                            </th>
+                            <td class="text-right">
+                                {{ babel_format_decimal(statistics['stats_external']['cnt_alerts']) }}
+                            </td>
+                            <td class="text-right">
+                                {{ babel_format_percent(statistics['stats_external']['cnt_alerts']/statistics['stats_overall']['cnt_alerts']) }}
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-danger progress-bar" style="width: {{ '{:3.0f}'.format(statistics['stats_internal']['cnt_alerts']/statistics['stats_overall']['cnt_alerts']*100) }}%" title="{{ babel_format_decimal(statistics['stats_internal']['cnt_alerts']) }} {{ _('internal events')}}" data-toggle="tooltip"></div>
+                        <div class="progress-bar progress-bar-warning" style="width: {{ '{:3.0f}'.format(statistics['stats_external']['cnt_alerts']/statistics['stats_overall']['cnt_alerts']*100) }}%" title="{{ babel_format_decimal(statistics['stats_external']['cnt_alerts']) }} {{ _('external events')}}" data-toggle="tooltip"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Search result summary - END ---------------------------------->
+
+            <!-- Tab navigation - BEGIN --------------------------------------->
+            <ul class="nav nav-tabs" role="tablist">
+                <li role="presentation" class="active">
+                    <a href="#tab-stats-overall" aria-controls="tab-stats-overall" role="tab" data-toggle="tab">
+                        <strong>{{ _('Overall statistics') }}</strong>
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-stats-internal" aria-controls="tab-stats-internal" role="tab" data-toggle="tab">
+                        <strong>{{ _('Internal statistics') }}</strong>
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-stats-external" aria-controls="tab-stats-external" role="tab" data-toggle="tab">
+                        <strong>{{ _('External statistics') }}</strong>
+                    </a>
+                </li>
+            </ul>
+            <!-- Tab navigation - END ----------------------------------------->
+
+            <!-- Tab panels - BEGIN ------------------------------------------->
+            <div class="tab-content">
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade in active" id="tab-stats-overall">
+                    <h3>{{ _('Overall processing statistics') }}</h4>
+                    <p>
+                        {{ _('This panel shows overall statistics calculated from all available data.') | safe }}
+                    </p>
+
+                    <!-- Inner tab navigation - BEGIN ------------------------->
+                    <ul class="nav nav-tabs nav-tabs-tooltipped nav-tabs-inner" role="tablist">
+                        <li role="presentation" class="text-center active">
+                            <a role="tab" data-toggle="tab" href="#tab-stats-overall-totals" class="chart-tab">
+                                {{ _('# events') }}
+                            </a>
+                        </li>
+                        {{
+                            macros_chart.render_dashboard_nav(
+                                statistics['stats_overall'],
+                                'stats-overall'
+                            )
+                        }}
+                    </ul>
+                    <!-- Inner tab navigation - END --------------------------->
+
+                    <!-- Inner tab panels - BEGIN ----------------------------->
+                    <div class="tab-content">
+
+                        <!-- Inner rab panel - BEGIN -------------------------->
+                        <div role="tabpanel" class="tab-pane fade in active" id="tab-stats-overall-totals">
+                            <h4>{{ _('Total events processed') }}</h4>
+                            <p>
+                                {{ _('This view shows total numbers of events processed by the Mentat system per day for <em>all</em> networks.') | safe }}
+                            </p>
+
+                            {%-
+                                set data_series = [
+                                    ['cnt_events', _('events')]
+                                ]
+                            %}
+                            {{
+                                macros_chart.render_chart_timeline_list(
+                                    statistics['stats_overall'],
+                                    'search_result_statistics.stats_overall',
+                                    'stats_overall_totals',
+                                    data_series
+                                )
+                            }}
+                        </div> <!-- /.tabpanel #tab-stats-overall-totals -->
+                        {{
+                            macros_chart.render_dashboard_panels(
+                                statistics['stats_overall'],
+                                'search_result_statistics.stats_overall',
+                                'stats-overall',
+                                cfg_params = {
+                                    'kwargs': {
+                                        'dt_from': statistics.get('dt_from', None),
+                                        'dt_to':   statistics.get('dt_to',   None)
+                                    }
+                                }
+                            )
+                        }}
+                    </div>
+                    <!-- Inner tab panels - END ------------------------------->
+
+                </div> <!-- /.tabpanel -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-stats-internal">
+                    <h3>{{ _('Internal processing statistics') }}</h4>
+                    <p>
+                        {{ _('This panel shows statistics calculated only for data regarding <em>internal</em> networks. The <em>internal</em> networks are those that are registered within the Mentat system, because they are important and interesting to the system users.') | safe }}
+                    </p>
+
+                    <!-- Inner tab navigation - BEGIN ------------------------->
+                    <ul class="nav nav-tabs nav-tabs-tooltipped nav-tabs-inner" role="tablist">
+                        <li role="presentation" class="text-center active">
+                            <a role="tab" data-toggle="tab" href="#tab-stats-internal-totals" class="chart-tab">
+                                {{ _('# events') }}
+                            </a>
+                        </li>
+                        {{
+                            macros_chart.render_dashboard_nav(
+                                statistics['stats_internal'],
+                                'stats-internal'
+                            )
+                        }}
+                    </ul>
+                    <!-- Inner tab navigation - END --------------------------->
+
+                    <!-- Inner tab panels - BEGIN ----------------------------->
+                    <div class="tab-content">
+
+                        <!-- Inner tab panel - BEGIN -------------------------->
+                        <div role="tabpanel" class="tab-pane fade in active" id="tab-stats-internal-totals">
+                            <h4>{{ _('Total events processed') }}</h4>
+                            <p>
+                                {{ _('This view shows total numbers of events processed by the Mentat system per day for <em>internal</em> networks.') | safe }}
+                            </p>
+
+                            {%-
+                                set data_series = [
+                                    ['cnt_events', _('events')]
+                                ]
+                            %}
+                            {{
+                                macros_chart.render_chart_timeline_list(
+                                    statistics['stats_internal'],
+                                    'search_result_statistics.stats_internal',
+                                    'stats_internal_totals',
+                                    data_series
+                                )
+                            }}
+                        </div> <!-- /.tabpanel #tab-stats-internal-totals -->
+                        {{
+                            macros_chart.render_dashboard_panels(
+                                statistics['stats_internal'],
+                                'search_result_statistics.stats_internal',
+                                'stats-internal',
+                                cfg_params = {
+                                    'kwargs': {
+                                        'dt_from': statistics.get('dt_from', None),
+                                        'dt_to':   statistics.get('dt_to',   None)
+                                    }
+                                }
+                            )
+                        }}
+                    </div>
+                    <!-- Inner tab panels - END ------------------------------->
+
+                </div> <!-- /.tabpanel -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-stats-external">
+                    <h3>{{ _('External processing statistics') }}</h4>
+                    <p>
+                        {{ _('This panel shows statistics calculated only for data regarding <em>external</em> networks. The <em>external</em> networks are those that are not registered within the Mentat system and are therefore not that important or interesting to the system users.') | safe }}
+                    </p>
+
+                    <!-- Inner tab navigation - BEGIN ------------------------->
+                    <ul class="nav nav-tabs nav-tabs-tooltipped nav-tabs-inner" role="tablist">
+                        <li role="presentation" class="text-center active">
+                            <a role="tab" data-toggle="tab" href="#tab-stats-external-totals" class="chart-tab">
+                                {{ _('# events') }}
+                            </a>
+                        </li>
+                        {{
+                            macros_chart.render_dashboard_nav(
+                                statistics['stats_external'],
+                                'stats-external',
+                                hide_sections = ['abuses']
+                            )
+                        }}
+                    </ul>
+                    <!-- Inner tab navigation - END --------------------------->
+
+                    <!-- Inner tab panels - BEGIN ----------------------------->
+                    <div class="tab-content">
+
+                        <!-- Inner tab panel - BEGIN -------------------------->
+                        <div role="tabpanel" class="tab-pane fade in active" id="tab-stats-external-totals">
+                            <h4>{{ _('Total events processed') }}</h4>
+                            <p>
+                                {{ _('This view shows total numbers of events processed by the Mentat system per day for <em>external</em> networks.') | safe }}
+                            </p>
+
+                            {%-
+                                set data_series = [
+                                    ['cnt_events', _('events')]
+                                ]
+                            %}
+                            {{
+                                macros_chart.render_chart_timeline_list(
+                                    statistics['stats_external'],
+                                    'search_result_statistics.stats_external',
+                                    'stats_external_totals',
+                                    data_series
+                                )
+                            }}
+                        </div> <!-- /.tabpanel #tab-stats-external-totals -->
+                        {{
+                            macros_chart.render_dashboard_panels(
+                                statistics['stats_external'],
+                                'search_result_statistics.stats_external',
+                                'stats-external',
+                                hide_sections = ['abuses'],
+                                cfg_params = {
+                                    'kwargs': {
+                                        'dt_from': statistics.get('dt_from', None),
+                                        'dt_to':   statistics.get('dt_to',   None)
+                                    }
+                                }
+                            )
+                        }}
+                    </div>
+                    <!-- Inner tab panels - END ------------------------------->
+
+                </div> <!-- /.tabpanel -->
+
+            </div>
+            <!-- Tab panels - END --------------------------------------------->
+
+            {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('statistics', statistics) }}
+            {%- endif %}
+
+        {%- else %}
+
+            {%- call macros_site.render_alert('warning', False) %}
+                {{ _('No data matches your search criteria.') }}
+            {%- endcall %}
+
+        {%- endif %}
+
+    {%- endif %}
+
+    {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('request_args', request.args) }}
+            {{ macros_site.render_raw_var('form_data', form_data) }}
+            {{ macros_site.render_raw_var('query_params', query_params) }}
+    {%- endif %}
+
+{%- endblock content %}

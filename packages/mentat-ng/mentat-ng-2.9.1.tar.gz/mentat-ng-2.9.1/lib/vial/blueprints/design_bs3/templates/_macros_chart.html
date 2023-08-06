@@ -1,0 +1,1013 @@
+{#- ############################################################################
+
+    MACROS FOR RENDERING CHARTS AND TABLES.
+
+    These macros encapsulate common functionality when generating various charts
+    and tables within the Mentat GUI. There are macros responsible for rendering
+    HTML as well as for rendering JavaScript, all with code reusability in mind.
+
+############################################################################ -#}
+
+
+{#- ============================================================================
+
+    Content rendering snippets.
+
+    Following snippets contain working pieces of HTML or JavaScript and are not
+    intended to be used separatelly. They should be considered internal for the
+    purposes of this library.
+
+============================================================================ -#}
+
+{#-
+
+    Render HTML columns that will contain chart and its related dataset table.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    bool scrollable_table: Make the viewport of the dataset table scrollable.
+    bool with_full: Include options for downloading full unabridged dataset.
+
+-#}
+{%- macro _snippet_columns(chart_id, scrollable_table = True, with_full = False) %}
+                    <div class="row row-chart-main" id="{{ chart_id }}_row">
+
+                        <div class="col-md-6">
+
+                            <div class="btn-toolbar" role="toolbar" aria-label="{{ _('Chart toolbar') }}">
+                                <div class="btn-group" role="group">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            {{ get_icon('action-download') }} Download <span class="caret"></span>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="export-dataset-svg" id="{{ chart_id }}_export_svg" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-svg') }} {{ _('Download chart as SVG') }}
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="export-dataset-csv" id="{{ chart_id }}_export_csv" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-csv') }} {{ _('Download dataset as CSV') }}
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="export-dataset-json" id="{{ chart_id }}_export_json" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-js') }} {{ _('Download dataset as JSON') }}
+                                                </a>
+                                            </li>
+    {%- if with_full %}
+                                            <li>
+                                                <a class="export-dataset-csv" id="{{ chart_id }}_export_csv_full" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-csv') }} {{ _('Download dataset as CSV') }} {{ _('(unabridged full data)') }}
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="export-dataset-json" id="{{ chart_id }}_export_json_full" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-js') }} {{ _('Download dataset as JSON') }} {{ _('(unabridged full data)') }}
+                                                </a>
+                                            </li>
+    {%- endif %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="{{ chart_id }}_chart" class="chart-container">
+                                <svg style='{{ hawat_chart_dimensions }}' class='center-block'></svg>
+                            </div>
+
+                        </div> <!-- /.col-md-6 -->
+
+                        <div class="col-md-6">
+                            <div id="{{ chart_id }}_table"{%- if scrollable_table %} class="scrollable-viewport"{%- endif %}>
+
+                            </div>
+                        </div> <!-- /.col-md-6 -->
+
+                    </div> <!-- /.row #{{ chart_id }} -->
+{%- endmacro %}
+
+{#-
+
+    Render HTML columns that will contain chart and its related dataset table,
+    but in this case make the column containing the table toggable and hidden
+    by default.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    bool scrollable_table: Make the viewport of the dataset table scrollable.
+    bool with_full: Include options for downloading full unabridged dataset.
+
+-#}
+{%- macro _snippet_columns_toggable(chart_id, scrollable_table = True, with_full = False) %}
+                    <div class="row row-chart-main" id="{{ chart_id }}_row">
+
+                        <div class="col-md-12 column-chart-content" id="{{ chart_id }}_content">
+
+                            <div class="btn-toolbar" role="toolbar" aria-label="{{ _('Chart toolbar') }}">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-default btn-sm toggle-sidebar" id="{{ chart_id }}_toggle" aria-pressed="false" autocomplete="off">
+                                        {{ get_icon('table') }} {{ _('Toggle table') }}
+                                    </button>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            {{ get_icon('action-download') }} {{ _('Download') }} <span class="caret"></span>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="export-dataset-svg" id="{{ chart_id }}_export_svg" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-svg') }} {{ _('Download chart as SVG') }}
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="export-dataset-csv" id="{{ chart_id }}_export_csv" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-csv') }} {{ _('Download dataset as CSV') }}
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="export-dataset-json" id="{{ chart_id }}_export_json" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-js') }} {{ _('Download dataset as JSON') }}
+                                                </a>
+                                            </li>
+    {%- if with_full %}
+                                            <li>
+                                                <a class="export-dataset-csv" id="{{ chart_id }}_export_csv_full" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-csv') }} {{ _('Download dataset as CSV') }} {{ _('(unabridged full data)') }}
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="export-dataset-json" id="{{ chart_id }}_export_json_full" aria-pressed="false" autocomplete="off">
+                                                {{ get_icon('action-download-js') }} {{ _('Download dataset as JSON') }} {{ _('(unabridged full data)') }}
+                                                </a>
+                                            </li>
+    {%- endif %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="{{ chart_id }}_chart" class="chart-container">
+                                <svg style="{{ hawat_chart_dimensions }}" class="center-block"></svg>
+                            </div>
+
+                        </div> <!-- /.col-md-12 -->
+
+                        <div class="col-md-6 column-chart-sidebar collapsed" id="{{ chart_id }}_sidebar">
+                            <div id="{{ chart_id }}_table"{%- if scrollable_table %} class="scrollable-viewport"{%- endif %}>
+
+                            </div>
+                        </div> <!-- /.col-md-6 -->
+
+                    </div> <!-- /.row #{{ chart_id }} -->
+{%- endmacro %}
+
+{#-
+
+    Render JavaScript code responsible for subsequent rendering of given timeline
+    chart.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro _snippet_chart_timeline(chart_id, cfg_params) %}
+                        // Render the timeline chart '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            render_chart_timeline_multi(
+                                '{{ chart_id }}_chart',
+                                dstl_to_chart(
+                                    {{ chart_id }}_dataset,
+                                    {{ chart_id }}_series,
+                                ),
+                                {
+                                    'xlabel': '{{ _("Date") }}',
+                                    'ylabel': '{{ _("Count [#]") }}'
+                                }
+                            );
+                        });
+{%- endmacro %}
+
+{#-
+
+    Render JavaScript code responsible for subsequent rendering of given pie
+    chart.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro _snippet_chart_pie(chart_id, cfg_params) %}
+                        // Render pie chart for dataset '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            render_chart_pie(
+                                '{{ chart_id }}_chart',
+                                {{ chart_id }}_dataset{%- if cfg_params and 'value_format' in cfg_params and cfg_params['value_format'] %},
+                                { 'value_formatter': {{ cfg_params['value_format'] }}() }{%- endif %}
+                            );
+                        });
+{%- endmacro %}
+
+{#-
+
+    Render JavaScript code responsible for subsequent rendering of given horizontal
+    bar chart.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro _snippet_chart_hbar(chart_id, cfg_params) %}
+                        // Render horizontal bar chart for dataset '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            render_chart_hbar(
+                                '{{ chart_id }}_chart',
+                                {{ chart_id }}_dataset{%- if cfg_params and 'value_format' in cfg_params and cfg_params['value_format'] %},
+                                { 'value_formatter': {{ cfg_params['value_format'] }}() }{%- endif %}
+                            );
+                        });
+{%- endmacro %}
+
+{#-
+
+    Render JavaScript code responsible for subsequent rendering of given timeline
+    dataset table.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro _snippet_table_timeline(chart_id, cfg_params) %}
+                        // Render the timeline table '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            render_table_timeline_multi(
+                                '{{ chart_id }}_table',
+                                [
+                                    {'ident': '_date', 'key': '{{ _("Date") }}'}
+                                ].concat(
+                                    {{ chart_id }}_series
+                                ).concat([
+                                    {'ident': '_sum', 'key': '{{ _("Sum") }}'}
+                                ]),
+                                {{ chart_id }}_dataset,
+                                GLOBAL_TABLE_COLS_STATS
+                            );
+                        });
+{%- endmacro %}
+
+{#-
+
+    Render JavaScript code responsible for subsequent rendering of given generic
+    dataset table.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro _snippet_table_dict(chart_id, cfg_params) %}
+{%- set tmplabel = cfg_params['value_label'] %}
+{%- if not tmplabel %}{%- set tmplabel = _('Count') %}{%- endif %}
+                        // Render table for dataset '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            render_table_dict(
+                                '{{ chart_id }}_table',
+                                [
+                                    {'ident': 'key',   'label': '{{ _('Name') }}'},
+                                    {'ident': 'value', 'label': '{{ tmplabel }}'},
+                                    {'ident': 'share', 'label': '{{ _('Share') }}'},
+                                ],
+                                {{ chart_id }}_dataset,
+                                GLOBAL_TABLE_COLS_STATS,
+                                {%- if cfg_params and 'csag_name' in cfg_params and cfg_params['csag_name'] %}
+                                Hawat.get_csag('{{ cfg_params['csag_name'] }}'),
+                                {%- else %}
+                                null,
+                                {%- endif %}
+                                {%- if cfg_params %}
+                                {
+                                    {%- if 'value_format' in cfg_params and cfg_params['value_format'] %}
+                                    'value_formatter': {{ cfg_params['value_format'] }}(),
+                                    {%- endif %}
+                                    {%- if 'kwargs' in cfg_params and cfg_params['kwargs'] %}
+                                    'kwargs': {{ cfg_params['kwargs'] | tojson | safe }},
+                                    {%- endif %}
+                                    {%- if 'with_table_stats' in cfg_params %}
+                                    'with_table_stats': {{ cfg_params['with_table_stats'] | tojson | safe }},
+                                    {%- endif %}
+                                }
+                                {%- endif %}
+                            );
+                        });
+{%- endmacro %}
+
+
+{#-
+
+    Render JavaScript code responsible for subsequent rendering of given generic
+    dataset table.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro _snippet_table_mdict(chart_id, cfg_params) %}
+{%- set tmplabel = cfg_params['value_label'] %}
+{%- if not tmplabel %}{%- set tmplabel = _('Count') %}{%- endif %}
+                        // Render table for dataset '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            render_table_mdict(
+                                '{{ chart_id }}_table',
+                                [
+                                    {'ident': 'label', 'label': '{{ _('Name') }}'},
+                                    {'ident': 'value', 'label': '{{ tmplabel }}'},
+                                    {'ident': 'share', 'label': '{{ _('Share') }}'},
+                                ],
+                                {{ chart_id }}_dataset[0].values,
+                                GLOBAL_TABLE_COLS_STATS,
+                                search_result_statistics.cnt_events,
+                                {%- if cfg_params and 'csag_name' in cfg_params and cfg_params['csag_name'] %}
+                                Hawat.get_csag('{{ cfg_params['csag_name'] }}'),
+                                {%- else %}
+                                null,
+                                {%- endif %}
+                                {%- if cfg_params %}
+                                {
+                                    {%- if 'value_format' in cfg_params and cfg_params['value_format'] %}
+                                    'value_formatter': {{ cfg_params['value_format'] }}(),
+                                    {%- endif %}
+                                    {%- if 'kwargs' in cfg_params and cfg_params['kwargs'] %}
+                                    'kwargs': {{ cfg_params['kwargs'] | tojson | safe }},
+                                    {%- endif %}
+                                    {%- if 'with_table_stats' in cfg_params %}
+                                    'with_table_stats': {{ cfg_params['with_table_stats'] | tojson | safe }},
+                                    {%- endif %}
+                                }
+                                {%- endif %}
+                            );
+                        });
+{%- endmacro %}
+
+
+{%- macro _subsnippet_ecbks_chart(chart_id) %}
+                            // Event handler for downloading chart as SVG.
+                            $("#{{ chart_id }}_export_svg").click(function () {
+                                chart = $("#{{ chart_id }}_chart svg").get(0);
+                                serializer = new XMLSerializer();
+                                data = serializer.serializeToString(chart);
+                                blob = new Blob([data], {type: "image/svg+xml"}),
+                                url = window.URL.createObjectURL(blob);
+
+                                this.href = url;
+                                this.target = '_blank';
+
+                                // target filename
+                                this.download = 'export_{{ chart_id }}.svg';
+                            });
+{%- endmacro %}
+
+{%- macro _subsnippet_ecbks_csv(chart_id, as_timeline = False, suffix = '', subvar = '') %}
+                            // Event handler for downloading chart dataset as CSV.
+                            $("#{{ chart_id }}_export_csv{{ suffix }}").click(function () {
+    {%- if as_timeline %}
+                                data = lols_to_csv(
+                                    loos_to_lols_kw(
+                                        [
+                                            { ident: '_date', key: '{{ _("Date") }}' }
+                                        ].concat(
+                                            {{ chart_id }}_series{{ suffix }}
+                                        ),
+                                        {{ chart_id }}_dataset{{ suffix }},
+                                    )
+                                );
+    {%- else %}
+                                data = lols_to_csv(
+                                    loos_to_lols(
+                                        [['{{ _("Name") }}', '{{ _("Count") }}']],
+                                        {{ chart_id }}_dataset{{ suffix }}{{ subvar }},
+                                        'label'
+                                    )
+                                );
+    {%- endif %}
+
+                                blob = new Blob([data], {type: "text/csv"}),
+                                url = window.URL.createObjectURL(blob);
+
+                                this.href = url;
+                                this.target = '_blank';
+
+                                // target filename
+                                this.download = 'export_{{ chart_id }}{{ suffix }}.csv';
+                            });
+{%- endmacro %}
+
+{%- macro _subsnippet_ecbks_json(chart_id, suffix = '', subvar = '') %}
+                            // Event handler for downloading chart dataset as JSON.
+                            $("#{{ chart_id }}_export_json{{ suffix }}").click(function () {
+                                data = JSON.stringify({{ chart_id }}_dataset{{ suffix }}{{ subvar }});
+                                blob = new Blob([data], {type: "application/json"}),
+                                url = window.URL.createObjectURL(blob);
+
+                                this.href = url;
+                                this.target = '_blank';
+
+                                // target filename
+                                this.download = 'export_{{ chart_id }}{{ suffix }}.json';
+                            });
+{%- endmacro %}
+
+{#-
+
+    Render JavaScript code responsible handling JavaScript events related to given
+    timeline chart.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+    bool with_full: Include options for downloading full unabridged dataset.
+
+-#}
+{%- macro _snippet_ecbks_timeline(chart_id, cfg_params, with_full = False) %}
+                        // Enable necessary event callbacks to appropriate DOM elements.
+                        $(document).ready(function () {
+                            // Event handler for toggling dataset table.
+                            $("#{{ chart_id }}_toggle").click(function () {
+                                $("#{{ chart_id }}_content").toggleClass("col-md-12 col-md-6");
+                                $("#{{ chart_id }}_sidebar").toggleClass("collapsed");
+                                $("#{{ chart_id }}_sidebar").trigger("resizeCharts");
+                                return false;
+                            });
+                            {{ _subsnippet_ecbks_chart(chart_id) }}
+                            {{ _subsnippet_ecbks_csv(chart_id, as_timeline = True) }}
+                            {{ _subsnippet_ecbks_json(chart_id) }}
+    {%- if with_full %}
+                            {{ _subsnippet_ecbks_csv(chart_id, as_timeline = True, suffix = '_full') }}
+                            {{ _subsnippet_ecbks_json(chart_id, suffix = '_full') }}
+    {%- endif %}
+                        });
+{%- endmacro %}
+
+{#-
+
+    Render JavaScript code responsible handling JavaScript events related to given
+    generic chart.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+    bool with_full: Include options for downloading full unabridged dataset.
+
+-#}
+{%- macro _snippet_ecbks_dict(chart_id, cfg_params, with_full = False) %}
+                        // Append necessary event handlers for dataset '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            {{ _subsnippet_ecbks_chart(chart_id) }}
+                            {{ _subsnippet_ecbks_csv(chart_id, as_timeline = False) }}
+                            {{ _subsnippet_ecbks_json(chart_id) }}
+    {%- if with_full %}
+                            {{ _subsnippet_ecbks_csv(chart_id, as_timeline = False, suffix = '_full') }}
+                            {{ _subsnippet_ecbks_json(chart_id, suffix = '_full') }}
+    {%- endif %}
+                        });
+{%- endmacro %}
+
+
+{#-
+
+    Render JavaScript code responsible handling JavaScript events related to given
+    generic chart.
+
+    string chart_id: Unique identifier of the chart. This will be used for
+        generating all other required unique identifiers.
+    dict cfg_params: Additional chart configuration and customization parameters.
+    bool with_full: Include options for downloading full unabridged dataset.
+
+-#}
+{%- macro _snippet_ecbks_mdict(chart_id, cfg_params, with_full = False) %}
+                        // Append necessary event handlers for dataset '{{ chart_id }}'.
+                        $(document).ready(function () {
+                            {{ _subsnippet_ecbks_chart(chart_id) }}
+                            {{ _subsnippet_ecbks_csv(chart_id, as_timeline = False, subvar = '[0].values') }}
+                            {{ _subsnippet_ecbks_json(chart_id, subvar = '[0].values') }}
+    {%- if with_full %}
+                            {{ _subsnippet_ecbks_csv(chart_id, as_timeline = False, suffix = '_full', subvar = '[0].values') }}
+                            {{ _subsnippet_ecbks_json(chart_id, suffix = '_full', subvar = '[0].values') }}
+    {%- endif %}
+                        });
+{%- endmacro %}
+
+
+{#- ============================================================================
+
+    Public chart and dataset table rendering macros.
+
+============================================================================ -#}
+
+{#-
+
+   Calculate dataset from given list of requested keys and render it as TIMELINE
+   chart with appropriate toggable data table.
+
+    dict full_data: Full statistical data as dictionary structure.
+    string data_var_name: Name of the JavaScript variable containing a dump of
+        full_data within the HTML page.
+    string id_prefix: Chart identifier prefix. Will be used as name prefix for
+        generating identifiers for all required HTML and JS elements.
+    string list_keys: List of requested subkeys from which the target dataset will
+        be constructed.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro render_chart_timeline_list(full_data, data_var_name, id_prefix, list_keys, cfg_params = {}) %}
+{%- set chart_id = 'chart_timeline_' + id_prefix %}
+                    <!------------------------------------------------------------------
+                        Dataset visualisation '{{ chart_id }}'
+                    ------------------------------------------------------------------->
+                    {{ _snippet_columns_toggable(chart_id) }}
+
+                    <script>
+                        // Define dataset series.
+                        var {{ chart_id }}_series = [
+    {%- for subkey in list_keys %}
+                            {
+                                ident: '{{ subkey[0] }}',
+                                key: '{{ subkey[1] }}'
+                            }{%- if not loop.last %},{%- endif %}
+    {%- endfor %}
+                        ];
+
+                        // Calculate dataset '{{ chart_id }}'.
+                        var {{ chart_id }}_dataset = get_dataset_timeline_list(
+                            {{ data_var_name }},
+                            {{ chart_id }}_series
+                        );
+
+                        {{ _snippet_chart_timeline(chart_id, cfg_params) }}
+                        {{ _snippet_table_timeline(chart_id, cfg_params) }}
+                        {{ _snippet_ecbks_timeline(chart_id, cfg_params) }}
+                    </script>
+
+{%- endmacro %}
+
+
+{#-
+
+    Render given dataset in single dictionary as TIMELINE chart with appropriate
+    data table.
+
+    dict full_data: Full statistical data as dictionary structure. This structure
+        will be checked whether it actually contains the requested dict_key subkey.
+    string data_var_name: Name of the JavaScript variable containing a dump of
+        full_data within the HTML page.
+    string id_prefix: Chart identifier prefix. Will be used as name prefix for
+        generating identifiers for all required HTML and JS elements.
+    string dict_key: Name of the subkey in given full_data dictionary structure
+        containing data from which to actually generate the TIMELINE chart.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+    This macro expects, that the data structure under dict_key within the full_data
+    is going to be a dictionary. In case it does not exist appropriate information
+    will be presented to the user instead of the chart.
+
+-#}
+{%- macro render_chart_timeline_dict(full_data, data_var_name, id_prefix, dict_key, cfg_params = {}) %}
+{%- set chart_id = 'chart_timeline_' + id_prefix + '_' + dict_key %}
+                    <!------------------------------------------------------------------
+                        Dataset visualisation '{{ chart_id }}'
+                    ------------------------------------------------------------------->
+    {%- if dict_key in full_data %}
+                    {{ _snippet_columns_toggable(chart_id, with_full = True) }}
+
+                    <script>
+                        // Define dataset series.
+                        var {{ chart_id }}_series_full = get_series_dict(
+                            {{ data_var_name }},
+                            '{{ dict_key }}'
+                        );
+
+                        // Calculate dataset '{{ chart_id }}'.
+                        var {{ chart_id }}_dataset_full = get_dataset_timeline_dict(
+                            {{ data_var_name }},
+                            {{ chart_id }}_series_full,
+                            '{{ dict_key }}'
+                        );
+
+                        var {{ chart_id }}_series = make_toplist(
+                            {{ chart_id }}_series_full,
+                            TOPLIST_THRESHOLD
+                        );
+                        var {{ chart_id }}_dataset = mask_toplist(
+                            {{ chart_id }}_dataset_full,
+                            {{ chart_id }}_series
+                        );
+
+
+                        {{ _snippet_chart_timeline(chart_id, cfg_params) }}
+                        {{ _snippet_table_timeline(chart_id, cfg_params) }}
+                        {{ _snippet_ecbks_timeline(chart_id, cfg_params, with_full = True) }}
+                    </script>
+
+    {%- else %}
+                {%- call macros_site.render_alert('warning', False) %}
+                    {{ _('No data available to render in this chart.') }}
+                {%- endcall %}
+    {%- endif %}
+
+{%- endmacro %}
+
+
+{#-
+
+    Render given dataset from given list of data series as PIE chart with appropriate
+    data table.
+
+    dict full_data: Full statistical data as dictionary structure.
+    string data_var_name: Name of the JavaScript variable containing a dump of
+        full_data within the HTML page.
+    string id_prefix: Chart identifier prefix. Will be used as name prefix for
+        generating identifiers for all required HTML and JS elements.
+    string list_keys: List of requested subkeys from which the target dataset will
+        be constructed.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro render_dataset_pie_list(full_data, data_var_name, id_prefix, list_keys, cfg_params = {}) %}
+{%- set chart_id = 'chart_pie_' + id_prefix %}
+                    <!------------------------------------------------------------------
+                        Dataset visualisation '{{ chart_id }}'
+                    ------------------------------------------------------------------->
+                    {{ _snippet_columns(chart_id, scrollable_table = False) }}
+
+                    <script>
+                        // Define dataset series.
+                        var {{ chart_id }}_series = [
+    {%- for subkey in list_keys %}
+                            {
+                                ident: '{{ subkey[0] }}',
+                                key: '{{ subkey[1] }}'
+                            }{%- if not loop.last %},{%- endif %}
+    {%- endfor %}
+                        ];
+
+                        // Calculate dataset '{{ chart_id }}'.
+                        var {{ chart_id }}_dataset = get_dataset_list(
+                            {{ data_var_name }},
+                            {{ chart_id }}_series
+                        );
+
+
+                        {{ _snippet_chart_pie(chart_id, cfg_params) }}
+                        {{ _snippet_table_dict(chart_id, cfg_params) }}
+                        {{ _snippet_ecbks_dict(chart_id, cfg_params) }}
+
+                    </script>
+
+{%- endmacro %}
+
+
+{#-
+
+    Render given dataset in single dictionary as PIE chart with appropriate data table.
+
+    dict full_data: Full statistical data as dictionary structure. This structure
+        will be checked whether it actually contains the requested dict_key subkey.
+    string data_var_name: Name of the JavaScript variable containing a dump of
+        full_data within the HTML page.
+    string id_prefix: Chart identifier prefix. Will be used as name prefix for
+        generating identifiers for all required HTML and JS elements.
+    string dict_key: Name of the subkey in given full_data dictionary structure
+        containing data from which to actually generate the PIE chart.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+    This macro expects, that the data structure under dict_key within the full_data
+    is going to be a dictionary. In case it does not exist appropriate information
+    will be presented to the user instead of the chart.
+
+-#}
+{%- macro render_dataset_pie_dict(full_data, data_var_name, id_prefix, dict_key, cfg_params = {}) %}
+{%- set chart_id = 'chart_pie_' + id_prefix + '_' + dict_key %}
+{%- set chart_data_var = data_var_name + '.' + dict_key %}
+                    <!------------------------------------------------------------------
+                        Dataset visualisation '{{ chart_id }}'
+                    ------------------------------------------------------------------->
+    {%- if dict_key in full_data %}
+                    {{ _snippet_columns(chart_id, scrollable_table = False, with_full = True) }}
+
+                    <script>
+                        // Calculate dataset '{{ chart_id }}'.
+                        var {{ chart_id }}_dataset_full = get_dataset_dict(
+                            {{ chart_data_var }}
+                        );
+
+                        var {{ chart_id }}_dataset = make_toplist(
+                            {{ chart_id }}_dataset_full,
+                            TOPLIST_THRESHOLD
+                        );
+
+
+                        {{ _snippet_chart_pie(chart_id, cfg_params) }}
+                        {{ _snippet_table_dict(chart_id, cfg_params) }}
+                        {{ _snippet_ecbks_dict(chart_id, cfg_params, with_full = True) }}
+
+                    </script>
+
+    {%- else %}
+                {%- call macros_site.render_alert('warning', False) %}
+                    {{ _('No data available to render in this chart.') }}
+                {%- endcall %}
+    {%- endif %}
+
+{%- endmacro %}
+
+
+{#-
+
+    Render given dataset in single dictionary as HORIZONTAL BAR chart with appropriate
+    data table.
+
+    dict full_data: Full statistical data as dictionary structure. This structure
+        will be checked whether it actually contains the requested dict_key subkey.
+    string data_var_name: Name of the JavaScript variable containing a dump of
+        full_data within the HTML page.
+    string id_prefix: Chart identifier prefix. Will be used as name prefix for
+        generating identifiers for all required HTML and JS elements.
+    string dict_key: Name of the subkey in given full_data dictionary structure
+        containing data from which to actually generate the PIE chart.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+    This macro expects, that the data structure under dict_key within the full_data
+    is going to be a dictionary. In case it does not exist appropriate information
+    will be presented to the user instead of the chart.
+
+-#}
+{%- macro render_dataset_hbar_dict(full_data, data_var_name, id_prefix, dict_key, cfg_params = {}) %}
+{%- set chart_id = 'chart_hbar_' + id_prefix + '_' + dict_key %}
+{%- set chart_data_var = data_var_name + '.' + dict_key %}
+                    <!------------------------------------------------------------------
+                        Dataset visualisation '{{ chart_id }}'
+                    ------------------------------------------------------------------->
+    {%- if dict_key in full_data %}
+                    {{ _snippet_columns(chart_id, scrollable_table = False, with_full = True) }}
+
+                    <script>
+                        // Calculate dataset '{{ chart_id }}'.
+                        var {{ chart_id }}_dataset_full = get_dataset_mdict(
+                            {{ chart_data_var }}
+                        );
+
+                        //var {{ chart_id }}_dataset = {{ chart_id }}_dataset_full;
+                        var {{ chart_id }}_dataset = make_mtoplist(
+                            {{ chart_id }}_dataset_full,
+                            TOPLIST_THRESHOLD
+                        );
+
+                        {{ _snippet_chart_hbar(chart_id, cfg_params) }}
+                        {{ _snippet_table_mdict(chart_id, cfg_params) }}
+                        {{ _snippet_ecbks_mdict(chart_id, cfg_params, with_full = True) }}
+
+                    </script>
+
+    {%- else %}
+                {%- call macros_site.render_alert('warning', False) %}
+                    {{ _('No data available to render in this chart.') }}
+                {%- endcall %}
+    {%- endif %}
+
+{%- endmacro %}
+
+
+{#- ============================================================================
+
+    High-level chart rendering macros.
+
+============================================================================ -#}
+
+
+{#-
+
+    Render tab panel navigation for common list of IDEA event charts.
+
+    dict statistics: Full statistical data as dictionary structure. This structure
+        will be inspected during rendering whether it contains required subkeys.
+    string id_prefix: Prefix for all subsequent unique identifiers.
+    list hide_sections: List of section names to hide.
+    bool render_empty: Render the section even in case the required key does not
+        exist in the data.
+    bool active_first: Highlight the first section as active.
+
+-#}
+{%- macro render_dashboard_nav(statistics, id_prefix, hide_sections = [], render_empty = False, active_first = False) %}
+{%- set tmp = {'cntr': 0} %}
+    {%- for chsection in (
+        ('abuses',         _('abuses')),
+        ('analyzers',      _('analyzers')),
+        ('asns',           _('ASNs')),
+        ('categories',     _('categories')),
+        ('category_sets',  _('category sets')),
+        ('countries',      _('countries')),
+        ('detectors',      _('detectors')),
+        ('detectorsws',    _('detector software')),
+        ('detector_types', _('detector tags')),
+        ('ips',            _('IPs')),
+        ('source_ports',   _('source ports')),
+        ('target_ports',   _('target ports')),
+        ('protocols',      _('protocols')),
+        ('source_types',   _('source types')),
+        ('target_types',   _('target types')),
+        ('classes',        _('classes')),
+        ('severities',     _('severities'))
+    ) -%}
+        {%- if chsection[0] not in hide_sections %}
+            {%- if chsection[0] in statistics or render_empty %}
+                <li role="presentation" class="text-center{% if active_first and not tmp['cntr'] %} active{% endif %}">
+                    <a role="tab" data-toggle="tab" href="#tab-{{ id_prefix.replace('_', '-') }}-{{ chsection[0] }}" class="chart-tab">
+                        # {{ chsection[1] }}
+                    </a>
+                </li>
+                {%- if tmp.update({'cntr': tmp['cntr'] + 1}) %}{%- endif %}
+            {%- endif %}
+        {%- endif %}
+    {%- endfor %}
+{%- endmacro %}
+
+
+{#-
+
+    Render tab panels for common list of IDEA event charts.
+
+    dict statistics: Full statistical data as dictionary structure. This structure
+        will be inspected during rendering whether it contains required subkeys.
+    string id_prefix: Prefix for all subsequent unique identifiers.
+    list hide_sections: List of section names to hide.
+    bool render_empty: Render the section even in case the required key does not
+        exist in the data.
+    bool active_first: Highlight the first section as active.
+    dict cfg_params: Additional chart configuration and customization parameters.
+
+-#}
+{%- macro render_dashboard_panels(statistics, statistics_var_name, id_prefix, hide_sections = [], render_empty = False, active_first = False, cfg_params = {}) %}
+{%- set tmp = {'cntr': 0} %}
+    {%- for chsection in (
+        (
+            'abuses',
+            _('Number of events per abuse'),
+            _('This view shows total numbers of IDEA events aggregated according to a source <em>abuse group</em>. The source <em>abuse group</em> is assigned according to all source addresses contained in the event, multiple source <em>abuse groups</em> can therefore be assigned to the event and the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'analyzers',
+            _('Number of events per analyzer'),
+            _('This view shows total numbers of IDEA events aggregated according to an <em>analyzer</em>. In the context of Mentat system and IDEA events the <em>analyzer</em> is a name of a software that detected or emited the IDEA event. Multiple <em>analyzers</em> can be assigned to the event and therefore the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'asns',
+            _('Number of events per ASN'),
+            _('This view shows total numbers of IDEA events aggregated according to a source <em>autonomous system number</em> (<abbr>ASN</abbr>). The source <em>ASN</em> is assigned according to all source addresses contained in the event, multiple source <em>ASNs</em> can therefore be assigned to the event and the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'categories',
+            _('Number of events per category'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>category</em>. Multiple <em>categories</em> can be assigned to the event and therefore the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'category_sets',
+            _('Number of events per category set'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>category set</em>. The <em>category set</em> is a string concatenation of alphabetically ordered unique set of all event categories and so it provides different grouped view of the event category statistics.'),
+            'single'
+        ),
+        (
+            'countries',
+            _('Number of events per country'),
+            _('This view shows total numbers of IDEA events aggregated according to a source <em>country</em>. The source <em>country</em> is assigned according to all source addresses contained in the event, multiple source <em>countries</em> can therefore be assigned to the event and the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'detectors',
+            _('Number of events per detector'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>detector</em>. In the context of Mentat system and IDEA events the <em>detector</em> is an unique name of the node on which the IDEA event was detected or emited.'),
+            'single'
+        ),
+        (
+            'detectorsws',
+            _('Number of events per detector software'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>detector software</em>. The <em>detector software</em> is a string concatenation of detector and analyzer names. Because an event may contain multiple analyzer names, multiple <em>detector software</em> strings can be produced for each event and the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'detector_types',
+            _('Number of events per detector type'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>detector type</em>. In the context of Mentat system and IDEA events each <em>detector</em> is an unique name of the node on which the IDEA event was detected or emited and each may be assigned one or more tags to describe its type. Because an event may contain multiple <em>detector type tags</em>, the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'ips',
+            _('Number of events per IP'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>source IP address</em>. Because an event may contain multiple <em>source IP addresses</em>, the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'source_ports',
+            _('Number of events per source port'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>source port</em>. Because an event may contain multiple <em>source ports</em>, the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'target_ports',
+            _('Number of events per target port'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>target port</em>. Because an event may contain multiple <em>target ports</em>, the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'protocols',
+            _('Number of events per protocol/service'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>protocol or service</em>. Because an event may contain multiple <em>protocols</em>, the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'source_types',
+            _('Number of events per source type'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>source type</em>. Because an event may contain multiple <em>source type tags</em>, the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'target_types',
+            _('Number of events per target type'),
+            _('This view shows total numbers of IDEA events aggregated according to a <em>target type</em>. Because an event may contain multiple <em>target type tags</em>, the total numbers in these charts may differ from the total number of events displayed in the table above.'),
+            'multi'
+        ),
+        (
+            'classes',
+            _('Number of events per class'),
+            _('This view shows total numbers of IDEA events aggregated according to an event <em>classification</em>. The event <em>class</em> is a catalogization mechanism similar to the categories. It is however internal only to Mentat system and attempts to group different events describing the same type of incidents.'),
+            'single'
+        ),
+        (
+            'severities',
+            _('Number of events per severity'),
+            _('This view shows total numbers of IDEA events aggregated according to an event <em>severity</em>. The event <em>severity</em> is internal only to Mentat system and is assigned by predefined set of rules based on the event classification.'),
+            'single'
+        )
+    ) -%}
+        {%- if chsection[0] not in hide_sections %}
+            {%- if chsection[0] in statistics or render_empty %}
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade{% if active_first and not tmp['cntr'] %} in active{% endif %}" id="tab-{{ id_prefix.replace('_', '-') }}-{{ chsection[0] }}">
+                    <h4>{{ chsection[1] }}</h4>
+                    <p>
+                        {{ chsection[2] }}
+                    </p>
+                {%- if chsection[0] in statistics or render_empty %}
+                    {%- if 'timeline' in statistics %}
+                    {{  render_chart_timeline_dict(
+                            statistics,
+                            statistics_var_name,
+                            '{}_per'.format(id_prefix.replace('-', '_')),
+                            chsection[0]
+                        )
+                    }}
+
+                    <br>
+                    {%- endif %}
+                    {%- set _dummy = cfg_params.update({'csag_name': chsection[0]}) -%}
+                    {%- if chsection[3] == 'single' %}
+                    {%- set _dummy = cfg_params.update({'with_table_stats': True}) -%}
+                    {{  render_dataset_pie_dict(
+                            statistics,
+                            statistics_var_name,
+                            '{}_per'.format(id_prefix.replace('-', '_')),
+                            chsection[0],
+                            cfg_params
+                        )
+                    }}
+                    {%- elif chsection[3] == 'multi' %}
+                    {%- set _dummy = cfg_params.update({'with_table_stats': False}) -%}
+                    {{  render_dataset_hbar_dict(
+                            statistics,
+                            statistics_var_name,
+                            '{}_per'.format(id_prefix.replace('-', '_')),
+                            chsection[0],
+                            cfg_params
+                        )
+                    }}
+                    {%- endif %}
+                {%- else %}
+                    {%- call macros_site.render_alert('warning', False) %}
+                    {{ _('No data to be displayed on this panel.') }}
+                    {%- endcall %}
+                {%- endif %}
+                </div> <!-- /.tabpanel #tab-{{ id_prefix.replace('_', '-') }}-{{ chsection[0] }} -->
+
+                {%- if tmp.update({'cntr': tmp['cntr'] + 1}) %}{%- endif %}
+            {%- endif %}
+        {%- endif %}
+    {%- endfor %}
+{%- endmacro %}

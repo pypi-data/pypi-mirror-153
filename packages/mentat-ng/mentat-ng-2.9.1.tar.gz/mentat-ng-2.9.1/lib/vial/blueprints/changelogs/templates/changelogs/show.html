@@ -1,0 +1,74 @@
+{%- extends "_layout.html" %}
+
+{%- block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+                    {{ macros_page.render_breadcrumbs(item) }}
+
+                    <h2>{{ vial_current_view.get_view_title() }}</h2>
+                    <hr>
+                    <h3>{{ item.__str__() }}</h3>
+                    <br>
+                    <table class="table table-striped">
+                        <tbody>
+                            <tr>
+                                <th>
+                                    {{ _('Log time') }}:
+                                </th>
+                                <td>
+                                    {{ babel_format_datetime(item.createtime) }} ({{ _('%(delta)s ago', delta = babel_format_timedelta(current_datetime_utc - item.createtime)) }})
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>
+                                    {{ _('Author') }}:
+                                </th>
+                                <td>
+                                    {%- if item.author %}
+                                    <a data-toggle="tooltip" href="{{ url_for('users.show', item_id = item.author.id ) }}" title="{{ _('View details of user account &quot;%(item)s&quot;', item = item.author.login) }}">
+                                        {{ item.author.login }}
+                                    </a>
+                                    {%- else %}
+                                    {{ _('<< system change >>') }}
+                                    {%- endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>
+                                    {{ _('Item') }}:
+                                </th>
+                                <td>
+                                    {%- if item.operation in ('create','update','enable','disable') %}<a data-toggle="tooltip" href="{{ url_for('{}.show'.format(item.module), item_id = item.model_id ) }}" title="{{ _('View details of item &quot;%(item)s&quot;', item = '{}#{}'.format(item.model, item.model_id)) }}">{{ item.model }}#{{ item.model_id }}</a>{%- else %}{{ item.model }}#{{ item.model_id }}{%- endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>
+                                    {{ _('Endpoint') }}:
+                                </th>
+                                <td>
+                                    {{ macros_page.render_label_endpoint(item.endpoint) }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h4>{{ _('Initial item state') }}:</h4>
+                            <pre>{{ item.before }}</pre>
+                        </div>
+                        <div class="col-md-4">
+                            <h4>{{ _('Difference') }}:</h4>
+                            <pre>{{ item.diff }}</pre>
+                        </div>
+                        <div class="col-md-4">
+                            <h4>{{ _('Final item state') }}:</h4>
+                            <pre>{{ item.after }}</pre>
+                        </div>
+                    </div>
+
+                </div><!-- /.col-lg-12 -->
+            </div><!-- /.row -->
+
+{%- endblock content %}

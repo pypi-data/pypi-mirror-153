@@ -1,0 +1,226 @@
+{% extends "_layout.html" %}
+
+{% block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+
+                    {{ macros_page.render_breadcrumbs() }}
+
+                    <!-- Search form - BEGIN ---------------------------------->
+                    <div class="jumbotron" style="margin-top: 1em;">
+                        <h2>{{ vial_current_view.get_view_title() }}</h2>
+                        <hr>
+                        <form method="GET" class="form" action="{{ url_for(request.endpoint) }}">
+                            <div class="row">
+                                <div class="col-sm-4">
+                                    {{ macros_form.render_form_item_default(g.search_form.host_addr) }}
+                                </div>
+                                <div class="col-sm-4">
+                                    {{ macros_form.render_form_item_datetime(g.search_form.dt_from, 'datetimepicker-from') }}
+                                </div>
+                                <div class="col-sm-4">
+                                    {{ macros_form.render_form_item_datetime(g.search_form.dt_to, 'datetimepicker-to') }}
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <div class="btn-toolbar" role="toolbar" aria-label="{{ _('Form submission buttons') }}">
+                                <div class="btn-group" role="group">
+                                    {{ g.search_form.submit(class_='btn btn-primary') }}
+                                    <a role="button" class="btn btn-default" href="{{ url_for(request.endpoint) }}">
+                                        {{ _('Clear') }}
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div> <!-- /.jumbotron -->
+                    <!-- Search form - END ------------------------------------>
+
+                    <p>
+                        {{ _('This module attempts to provide all available security events along with information from all available third party services about given single IP address. Security events are displayed in the form of various aggregation and timeline charts.') | safe }}
+                    </p>
+
+                </div> <!-- .col-lg-12 -->
+            </div> <!-- .row -->
+
+    {%- if searched %}
+        {%- if permission_can('power') %}
+            {%- call macros_site.render_alert('info', False, 'role-admin') %}
+                <strong>{{ _('SQL query:') }}</strong> <code>{{ sqlquery }}</code>
+            {%- endcall %}
+        {%- endif %}
+
+        {%- if 'tiid' in request.args %}
+            {{ macros_site.render_timepager(query_params, form_data.dt_from, request.args.tiid) }}
+        {%- endif %}
+
+        {%- if items_count %}
+
+            <!-- Search result dump - BEGIN ----------------------------------->
+            <script>
+                var search_result_statistics = {{ statistics | tojson }};
+            </script>
+            <!-- Search result dump - END ------------------------------------->
+
+            <div class="object-additional-data-block onload" data-object-type="ip4" data-object-name="{{ form_data.host_addr }}" data-render-type="full" data-render-title="true" data-render-flash="false">
+            </div>
+
+            <hr>
+
+            <div class="row">
+                <div class="col-lg-12">
+
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">{{ _('Result summary') }}</h3>
+                        </div>
+                        <table class="table">
+                            <tr>
+                                <th>{{ _('Number of events') }}:</th>
+                                <td>{{ babel_format_decimal(items_count) }}</td>
+                            </tr>
+                            <tr>
+                                <th>{{ _('Time interval') }}:</th>
+                                <td>{{ babel_format_datetime(statistics['timeline_cfg']['dt_from']) }} - {{ babel_format_datetime(statistics['timeline_cfg']['dt_to']) }}</td>
+                            </tr>
+                            <tr>
+                                <th>{{ _('Time interval delta') }}:</th>
+                                <td>{{ babel_format_timedelta(statistics['timeline_cfg']['dt_to'] - statistics['timeline_cfg']['dt_from']) }}</td>
+                            </tr>
+                            {%- if permission_can('admin') and 'timeline_cfg' in statistics %}
+                            <tr>
+                                <th><span class="pull-right">{{ get_icon('role-admin') }}</span>{{ _('Timeline steps') }}:</th>
+                                <td>{{ babel_format_decimal(statistics['timeline_cfg']['count']) }} x {{ statistics['timeline_cfg']['step'].__str__() }}</td>
+                            </tr>
+                            {%- endif %}
+                        </table>
+                    </div>
+
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+
+            <!-- Tab navigation - BEGIN --------------------------------------->
+            <ul class="nav nav-tabs nav-tabs-tooltipped" role="tablist">
+                <li role="presentation" class="text-center active">
+                    <a role="tab" data-toggle="tab" href="#tab-stats-totals" class="chart-tab">
+                        {{ _('# events') }}
+                    </a>
+                </li>
+                <li role="presentation" class="text-center">
+                    <a role="tab" data-toggle="tab" href="#tab-stats-recurrence" class="chart-tab">
+                        {{ _('# recurrences') }}
+                    </a>
+                </li>
+                {{
+                    macros_chart.render_dashboard_nav(
+                        statistics,
+                        'stats',
+                        hide_sections = ['abuses', 'asns', 'countries', 'ips']
+                    )
+                }}
+            </ul>
+            <!-- Tab navigation - END ----------------------------------------->
+
+            <!-- Tab panels - BEGIN ------------------------------------------->
+            <div class="tab-content">
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade in active" id="tab-stats-totals">
+                    <h4>{{ _('Total event counts') }}</h4>
+                    <p>
+                        {{ _('This view shows total numbers of IDEA events related to given host.') | safe }}
+                    </p>
+
+                    {%-
+                        set data_series = [
+                            ['cnt_events', _('total events')]
+                        ]
+                    %}
+                    {{
+                        macros_chart.render_chart_timeline_list(
+                            statistics,
+                            'search_result_statistics',
+                            'totals',
+                            data_series
+                        )
+                    }}
+
+                    <br>
+                    {{
+                        macros_chart.render_dataset_pie_list(
+                            statistics,
+                            'search_result_statistics',
+                            'totals',
+                            data_series
+                        )
+                    }}
+                </div> <!-- /.tabpanel #tab-stats-totals -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-stats-recurrence">
+                    <h4>{{ _('Event recurrence') }}</h4>
+                    <p>
+                        {{ _('This view shows the IDEA event recurrence. The recurring events are those with repeating combination of event source and classification within the dataset.') | safe }}
+                    </p>
+
+                    {%-
+                        set data_series = [
+                            ['cnt_recurring', _('recurring')],
+                            ['cnt_unique',    _('unique')]
+                        ]
+                    %}
+                    {{
+                        macros_chart.render_chart_timeline_list(
+                            statistics,
+                            'search_result_statistics',
+                            'recurrence',
+                            data_series
+                        )
+                    }}
+
+                    <br>
+                    {{
+                        macros_chart.render_dataset_pie_list(
+                            statistics,
+                            'search_result_statistics',
+                            'recurrence',
+                            data_series
+                        )
+                    }}
+                </div> <!-- /.tabpanel #tab-stats-recurrence -->
+                {{
+                    macros_chart.render_dashboard_panels(
+                        statistics,
+                        'search_result_statistics',
+                        'stats',
+                        hide_sections = ['abuses', 'asns', 'countries', 'ips']
+                    )
+                }}
+            </div>
+            <!-- Tab panels - END --------------------------------------------->
+
+            {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('statistics', statistics) }}
+            {%- endif %}
+
+        {%- else %}
+
+            {%- call macros_site.render_alert('warning', False) %}
+                {{ _('No data matches your search criteria.') }}
+            {%- endcall %}
+
+        {%- endif %}
+
+    {%- endif %}
+
+    {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('request_args', request.args) }}
+            {{ macros_site.render_raw_var('form_data', form_data) }}
+            {{ macros_site.render_raw_var('query_params', query_params) }}
+    {%- endif %}
+
+{%- endblock content %}

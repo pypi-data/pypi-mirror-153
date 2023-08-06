@@ -1,0 +1,675 @@
+{% extends "_layout.html" %}
+
+{% block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="active">
+                            <a href="#tab-users" aria-controls="tab-users" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('module-users') }} {{ _('Users') }}</strong>
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab-groups" aria-controls="tab-groups" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('module-groups') }} {{ _('Groups') }}</strong>
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab-filters" aria-controls="tab-filters" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('module-filters') }} {{ _('Filters') }}</strong>
+                            </a>
+                        </li>
+                        <li role="presentation">
+                            <a href="#tab-settingsrep" aria-controls="tab-settingsrep" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('module-settings-reporting') }} {{ _('Reporting settings') }}</strong>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Tab panes -->
+            <div class="tab-content">
+
+                <div role="tabpanel" class="tab-pane fade in active" id="tab-users">
+                    <br>
+                    {{ macros_site.render_view_buttons(['users.list'], with_title = True, btn_size = 'sm') }}
+                    <br>
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Disabled users'), _('This panel contains list of disabled user accounts. These users are forbidden to access the system and you may consider either enabling these users to grant them access to the system, or permanently deleting unnecessary records to remove database clutter.')) }}</span>
+                                    {{ _('Disabled users') }}&nbsp;&nbsp;<span class="badge">{{ users_disabled | length }}</span>
+                                </div>
+                                {%- if users_disabled %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in users_disabled %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_user) }}
+                                            </td>
+                                            <td>
+                                                {{ item.login }}
+                                            </td>
+                                            <td>
+                                                {{ item.fullname }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Users without memberships'), _('This panel contains list of user accounts without membership in any group. Each user should belong to at least one group, otherwise he/she has access only to most generic features of the system and presence of the account may not make much sense. Consider adding these users into appropriate group(s).')) }}</span>
+                                    {{ _('Users without memberships') }}&nbsp;&nbsp;<span class="badge">{{ users_nomemberships | length }}</span>
+                                </div>
+                                {%- if users_nomemberships %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in users_nomemberships %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_user) }}
+                                            </td>
+                                            <td>
+                                                {{ item.login }}
+                                            </td>
+                                            <td>
+                                                {{ item.fullname }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Users without roles'), _('This panel contains list of user accounts without any roles in the system. Each user must have at least role *user*, otherwise he/she will not have any access to the system at all.')) }}</span>
+                                    {{ _('Users without roles') }}&nbsp;&nbsp;<span class="badge">{{ users_noroles | length }}</span>
+                                </div>
+                                {%- if users_noroles %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in users_noroles %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_user) }}
+                                            </td>
+                                            <td>
+                                                {{ item.login }}
+                                            </td>
+                                            <td>
+                                                {{ item.fullname }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Users without login in last year'), _('This panel contains list of user accounts without any login to the system within the past year. These user accounts may be outdated and you may consider disabling them for security reasons or deleting them to reduce unnecessary database clutter.')) }}</span>
+                                    {{ _('Users without login in last year') }}&nbsp;&nbsp;<span class="badge">{{ users_noroles | length }}</span>
+                                </div>
+                                {%- if users_noroles %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in users_noroles %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_user) }}
+                                            </td>
+                                            <td>
+                                                {{ item.login }}
+                                            </td>
+                                            <td>
+                                                {{ item.fullname }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+
+                </div><!-- #tab-users -->
+
+                <div role="tabpanel" class="tab-pane fade" id="tab-groups">
+                    <br>
+                    {{ macros_site.render_view_buttons(['groups.list'], with_title = True, btn_size = 'sm') }}
+                    <br>
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Disabled groups'), _('This panel contains list of disabled groups. When a group is disabled, it is removed from any whois resolving and reporting. So no events will be categorized as belonging to that group and no reports will be generated for that group.')) }}</span>
+                                    {{ _('Disabled groups') }}&nbsp;&nbsp;<span class="badge">{{ groups_disabled | length }}</span>
+                                </div>
+                                {%- if groups_disabled %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in groups_disabled %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_group) }}
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Groups without members'), _('This panel contains list of groups without any members. While the recomendation from this side of the user-group relationship is not as strong as for the other direction, there still should be some users belonging to particular group. Otherwise it might not make much sense to have group consuming resources with noone interested in that group`s data.')) }}</span>
+                                    {{ _('Groups without members') }}&nbsp;&nbsp;<span class="badge">{{ groups_nomembers | length }}</span>
+                                </div>
+                                {%- if groups_nomembers %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in groups_nomembers %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_group) }}
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Groups without managers'), _('This panel contains list of groups without any assigned managers. In large setup managing lots of groups can be a tedious task for single administrator. It makes much more sense to delegate responsibility for management of particular group to a user belonging to that group.')) }}</span>
+                                    {{ _('Groups without managers') }}&nbsp;&nbsp;<span class="badge">{{ groups_nomanagers | length }}</span>
+                                </div>
+                                {%- if groups_nomanagers %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in groups_nomanagers %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_group) }}
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Groups without networks'), _('This panel contains list of groups without any defined networks. One of the reasons for having groups in the first place is to divide data according to the networks. Groups without any networks are not very usefull for their members.')) }}</span>
+                                    {{ _('Groups without networks') }}&nbsp;&nbsp;<span class="badge">{{ groups_nonetworks | length }}</span>
+                                </div>
+                                {%- if groups_nonetworks %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in groups_nonetworks %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_group) }}
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+
+                </div><!-- #tab-groups -->
+
+                <div role="tabpanel" class="tab-pane fade" id="tab-filters">
+                    <br>
+                    {{ macros_site.render_view_buttons(['filters.list'], with_title = True, btn_size = 'sm') }}
+                    <br>
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Disabled filters'), _('This panel contains list of disabled reporting filters. You may consider deleting useless filters to reduce database clutter.')) }}</span>
+                                    {{ _('Disabled filters') }}&nbsp;&nbsp;<span class="badge">{{ filters_disabled | length }}</span>
+                                </div>
+                                {%- if filters_disabled %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in filters_disabled %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_filter) }}
+                                            </td>
+                                            <td>
+                                                <a data-toggle="tooltip" href="{{ url_for('groups.show', item_id = item.group.id ) }}" title="{{ _('View details of group &quot;%(item)s&quot;', item = item.group.name) }}">
+                                                    {{ item.group.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Filters without hits'), _('This panel contains list of reporting filters without any hits. These can be either outdated useless filters, that do not match any current messages and since they eat up resources, you should consider deleting them. Or they can be missing due to the incorrectly formulated filtering expression and you should fix them.')) }}</span>
+                                    {{ _('Filters without hits') }}&nbsp;&nbsp;<span class="badge">{{ filters_nohits | length }}</span>
+                                </div>
+                                {%- if filters_nohits %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in filters_nohits %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_filter) }}
+                                            </td>
+                                            <td>
+                                                <a data-toggle="tooltip" href="{{ url_for('groups.show', item_id = item.group.id ) }}" title="{{ _('View details of group &quot;%(item)s&quot;', item = item.group.name) }}">
+                                                    {{ item.group.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Filters with future validity'), _('This panel contains list of reporting filters with future validity. These filters will be used in the future, but it can be a configuration mistake.')) }}</span>
+                                    {{ _('Filters with future validity') }}&nbsp;&nbsp;<span class="badge">{{ filters_future | length }}</span>
+                                </div>
+                                {%- if filters_future %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in filters_future %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_filter) }}
+                                            </td>
+                                            <td>
+                                                <a data-toggle="tooltip" href="{{ url_for('groups.show', item_id = item.group.id ) }}" title="{{ _('View details of group &quot;%(item)s&quot;', item = item.group.name) }}">
+                                                    {{ item.group.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Filters with expired validity'), _('This panel contains list of reporting filters with expired validity. These filters are no longer valid and you may consider deleting them to reduce database clutter.')) }}</span>
+                                    {{ _('Filters with expired validity') }}&nbsp;&nbsp;<span class="badge">{{ filters_expired | length }}</span>
+                                </div>
+                                {%- if filters_expired %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in filters_expired %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item, context_action_menu_filter) }}
+                                            </td>
+                                            <td>
+                                                <a data-toggle="tooltip" href="{{ url_for('groups.show', item_id = item.group.id ) }}" title="{{ _('View details of group &quot;%(item)s&quot;', item = item.group.name) }}">
+                                                    {{ item.group.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {{ item.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+
+                </div><!-- #tab-filters -->
+
+                <div role="tabpanel" class="tab-pane fade" id="tab-settingsrep">
+                    <br>
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Groups with redirected reporting'), _('This panel contains list of groups with reporting redirected to system administrators. Reports for these groups are not being send directly to responsible system administrators within the target networks. This could be desired or undesired effect for particular group from the point of view of the system administrator.')) }}</span>
+                                    {{ _('Groups with redirected reporting') }}&nbsp;&nbsp;<span class="badge">{{ settingsrep_redirected | length }}</span>
+                                </div>
+                                {%- if settingsrep_redirected %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in settingsrep_redirected %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item.group, context_action_menu_group) }}
+                                            </td>
+                                            <td>
+                                                {{ item.group.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Groups with no reporting'), _('This panel contains list of groups with no reporting. Reports for these groups are not generated at all. This setting should be VERY scarce and justified.')) }}</span>
+                                    {{ _('Groups with no reporting') }}&nbsp;&nbsp;<span class="badge">{{ settingsrep_modenone | length }}</span>
+                                </div>
+                                {%- if settingsrep_modenone %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in settingsrep_modenone %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item.group, context_action_menu_group) }}
+                                            </td>
+                                            <td>
+                                                {{ item.group.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <div class="panel panel-default">
+                                <!-- Default panel contents -->
+                                <div class="panel-heading">
+                                    <span class="pull-right">{{ macros_site.render_help_popover(_('Groups with custom emails'), _('This panel contains list of groups with custom target report emails. Reports for these groups are being send to different that standard email addressess and you may wish to review these settings.')) }}</span>
+                                    {{ _('Groups with custom emails') }}&nbsp;&nbsp;<span class="badge">{{ settingsrep_emailscust | length }}</span>
+                                </div>
+                                {%- if settingsrep_emailscust %}
+                                <div class="content-maxheight">
+                                    <table class="table">
+                                        {%- for item in settingsrep_emailscust %}
+                                        <tr>
+                                            <td>
+                                                {{ macros_page.render_menu_context_actions(item.group, context_action_menu_group) }}
+                                            </td>
+                                            <td>
+                                                {{ item.group.name }}
+                                            </td>
+                                            <td>
+                                                <span data-toggle="tooltip" title="{{ _('Item created') }}: {{ babel_format_datetime(item.createtime) }}">
+                                                    {{ babel_format_timedelta(current_datetime_utc - item.createtime) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {%- endfor %}
+                                    </table>
+                                </div>
+                                {%- else %}
+                                <div class="panel-body content-maxheight">
+                                {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('No data matches this search criteria.') }}
+                                {%- endcall %}
+                                </div>
+                            {%- endif %}
+                            </div>
+                        </div>
+
+                    </div><!-- .row -->
+
+                </div><!-- #tab-settingsrep -->
+
+            </div><!-- .tab-content -->
+
+{%- endblock content %}

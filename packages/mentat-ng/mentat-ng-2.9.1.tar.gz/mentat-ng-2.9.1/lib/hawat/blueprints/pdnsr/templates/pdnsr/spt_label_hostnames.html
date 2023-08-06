@@ -1,0 +1,57 @@
+{%- set content_id = get_uuid4() -%}
+<div class="popover-hover" role="button" data-popover-content="#po-{{ content_id }}">
+    <span class="label label-default">
+        {{ get_icon('module-pdnsr') }} | {{ search_result[0].get('domain', _('-- undefined --')) }}{% if search_result|length > 1 %} ({{ _('%(cnt)d more', cnt = (search_result|length -1))}}){% endif %}
+    </span>
+    <div id="po-{{ content_id }}" class="hidden">
+        <div class="popover top">
+            <div class="arrow"></div>
+            <h3 class="popover-title">
+                <a href="{{ url_for('pdnsr.search', submit = _('Search'), search = search_item, sortby = 'count.desc') }}" data-toggle="tooltip" title="{{ _('Go to full search page') }}">
+                    {{ get_icon('module-pdnsr') }} {{ _('PassiveDNS') }} - {{ _('Hostname resolving') }}
+                </a>
+                <span class="pull-right">
+                    <span data-toggle="tooltip" title="{{ _('Query time') }}: {{ get_timedelta(g.requeststart) }}">
+                        {{ get_icon('stopwatch') }}
+                    </span>
+                </span>
+            </h3>
+            <div class="popover-content">
+                <table class="table table-condensed">
+                    <tr>
+                        <th></th>
+                        <th>
+                            <span data-toggle="tooltip" title="{{ _('Domain') }}">
+                                {{ get_icon('domain') }}
+                            </span>
+                        </th>
+                        <th>
+                            <span data-toggle="tooltip" title="{{ _('First seen') }}">
+                                {{ get_icon('time-from') }}
+                            </span>
+                        </th>
+                        <th>
+                            <span data-toggle="tooltip" title="{{ _('Last seen') }}">
+                                {{ get_icon('time-to') }}
+                            </span>
+                        </th>
+                        <th>
+                            <span data-toggle="tooltip" title="{{ _('Count') }}">
+                                {{ get_icon('cnt') }}
+                            </span>
+                        </th>
+                    </tr>
+    {%- for sritem in search_result %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ sritem.get('domain', _('-- undefined --')) }}</td>
+                        <td>{{ sritem.get('time_first', _('-- undefined --')) }}</td>
+                        <td>{{ sritem.get('time_last', _('-- undefined --')) }}</td>
+                        <td>{{ sritem.get('count', _('-- undefined --')) }}</td>
+                    </tr>
+    {%- endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

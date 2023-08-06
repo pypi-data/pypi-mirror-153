@@ -1,0 +1,77 @@
+{%- extends "_layout.html" %}
+
+{%- block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+
+                    {{ macros_page.render_breadcrumbs() }}
+
+                    <!-- Search form - BEGIN ---------------------------------->
+                    <div class="jumbotron" style="margin-top: 1em;">
+                        <h2>{{ vial_current_view.get_view_title() }}</h2>
+                        <hr>
+                        <form method="GET" class="form" action="{{ url_for(request.endpoint) }}">
+                        	{% block contentsearchform %}{% endblock contentsearchform %}
+
+                            <hr>
+
+                            <div class="btn-toolbar" role="toolbar" aria-label="{{ _('Form submission buttons') }}">
+                                <div class="btn-group" role="group">
+                                    {{ g.search_form.submit(class_='btn btn-primary') }}
+                                    <a role="button" class="btn btn-default" href="{{ url_for(request.endpoint) }}">{{ _('Clear') }}</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <!-- Search form - END ------------------------------------>
+
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+
+    {%- if searched %}
+        {%- if permission_can('power') %}
+            {{ macros_site.render_timemarks(time_marks) }}
+        {%- endif %}
+
+        {%- if items %}
+
+            {{ macros_site.render_pager(request.endpoint, query_params, pager_index_low, pager_index_high, pager_index_limit) }}
+
+            <!-- Search results - BEGIN --------------------------------------->
+            <div class="row">
+                <div class="col-lg-12">
+
+                	{% block contentsearchresult %}{% endblock contentsearchresult %}
+
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+            <!-- Search results - END ----------------------------------------->
+
+            {{ macros_site.render_pager(request.endpoint, query_params, pager_index_low, pager_index_high, pager_index_limit) }}
+
+            {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('form_data', form_data) }}
+            {{ macros_site.render_raw_var('items', items) }}
+            {{ macros_site.render_raw_var('statistics', statistics) }}
+            {%- endif %}
+
+        {%- else %}
+
+            {%- call macros_site.render_alert('warning', False) %}
+                {{ _('No data matches your search criteria.') }}
+            {%- endcall %}
+
+        {%- endif %}
+
+        {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('request_args', request.args) }}
+            {{ macros_site.render_raw_var('query_params', query_params) }}
+            {{ macros_site.render_raw_var('time_marks',   time_marks) }}
+        {%- endif %}
+
+    {%- endif %}
+
+{%- endblock content %}

@@ -1,0 +1,80 @@
+{%- extends "_layout.html" %}
+
+{%- block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <ol class="breadcrumb">
+                        <li><a href="{{ url_for('home.index') }}">{{ _('Home') }}</a></li>
+                        <li><a href="{{ url_for('groups.list') }}">{{ _('Group management') }}</a></li>
+                        <li><a href="{{ url_for('groups.show', item_id = item.group.id) }}">{{ _('Group detail') }}</a></li>
+                        <li><a href="{{ url_for('settings_reporting.show', item_id = item.id) }}">{{ _('Reporting settings') }}</a></li>
+                        <li class="active">{{ action_name }}</li>
+                    </ol>
+                    <hr>
+                    <div class="well col-md-4 col-md-offset-4">
+
+                        <form method="POST" action="{{ form_url }}">
+                            <fieldset>
+                                <legend>{{ vial_current_view.get_view_title() }}</legend>
+    {%- if item_action == 'create' %}
+
+                                {{ macros_form.render_form_item_default(form.group) }}
+
+    {%- elif item_action == 'update' %}
+
+                                {{ macros_form.render_form_item_static(_('Group:'), item.group.name) }}
+
+    {%- endif %}
+
+                                {{ macros_form.render_form_item_select(form.mode) }}
+
+                                {{ macros_form.render_form_item_default(form.emails_low) }}
+
+                                {{ macros_form.render_form_item_default(form.emails_medium) }}
+
+                                {{ macros_form.render_form_item_default(form.emails_high) }}
+
+                                {{ macros_form.render_form_item_default(form.emails_critical) }}
+
+                                {{ macros_form.render_form_item_select(form.locale) }}
+
+                                {{ macros_form.render_form_item_select(form.timezone) }}
+
+                                {%- if permission_can('admin') %}
+                                    {{ macros_form.render_form_item_radiobutton(form.redirect) }}
+                                {%- endif %}
+
+                                <hr>
+
+                                {{ macros_form.render_form_errors(form.next.errors) }}
+                                {{ form.next }}
+                                {{ macros_form.render_form_errors(form.csrf_token.errors) }}
+                                {{ form.csrf_token }}
+
+                                <div class="btn-toolbar" role="toolbar" aria-label="{{ _('Form submission buttons') }}">
+                                    <div class="btn-group" role="group">
+                                        {{ form.cancel(class_='btn btn-default') }}
+                                        {{ form.submit(class_='btn btn-primary') }}
+                                    </div>
+                                </div>
+
+                            <fieldset>
+                        </form>
+
+                    </div> <!-- /.well -->
+
+    {%- if permission_can('developer') %}
+        {%- if item %}
+
+                    <hr>
+
+{{ macros_site.render_raw_item_view(item) }}
+
+        {%- endif %}
+    {%- endif %}
+
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+
+{%- endblock content %}
