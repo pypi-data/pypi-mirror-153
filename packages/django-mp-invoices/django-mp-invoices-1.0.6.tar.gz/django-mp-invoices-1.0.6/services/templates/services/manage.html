@@ -1,0 +1,117 @@
+
+{% load i18n %}
+
+<hr />
+
+<div class="row">
+    <div class="col-xs-6">
+        <h4>{% trans 'Services' %}</h4>
+    </div>
+    <div class="col-xs-6">
+        <a href="{% url 'services:print-services' invoice.id %}"
+           target="blank"
+           class="btn btn-primary btn-sm pull-right">
+            <i class="fa fa-print"></i> {% trans 'Print' %}
+        </a>
+    </div>
+</div>
+
+<div data-role="services-section">
+    {% include 'invoices/service-select-list.html' %}
+
+    <table class="table table-bordered table-sm m-t-20" data-role="service-invoice-list">
+        <thead>
+            <tr>
+                <th>
+                    {% trans 'Code' %}
+                </th>
+                <th>
+                    {% trans 'Service' %}
+                    [
+                        <a href="javascript:void(0)"
+                           data-role="add-service-item"
+                           data-url="{% url 'services:add-service-item' %}">
+                            {% trans 'Add' %}
+                        </a>
+                    ]
+                </th>
+                <th>
+                    {% trans 'Service worker' %}
+                </th>
+                <th class="text-center" width="100">
+                    {% trans 'Quantity' %}
+                </th>
+                <th class="text-center" width="150">
+                    {% trans 'Price' %}
+                </th>
+                <th width="50"></th>
+            </tr>
+        </thead>
+        <tbody data-role="list-items">
+            {% for item in invoice.get_services %}
+                {{ item.render }}
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right">
+                    <b>{% trans 'Total' %}:</b>
+                </td>
+                <td data-role="service_total" class="text-right">
+                    {{ invoice.service_total }}
+                </td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(event) {
+        var $serviceItemList = $('[data-role=service-item-list]'),
+            $serviceItemInvoiceList = $('[data-role=service-invoice-list]');
+
+        new CategoryTree({
+            $container: $('[data-role=services-section]'),
+            data: [
+                {% for c in request.env.services.get_categories %}
+                    {
+                        text: "{{ c.name|escapejs }}",
+                        id: {{ c.id }}
+                    },
+                {% endfor %}
+            ]
+        });
+
+        new List({
+            $container: $serviceItemList,
+            url: '{% url 'services:items' %}'
+        });
+
+        new SelectServiceItemList({
+            $container: $serviceItemList
+        });
+
+        new InvoiceList({
+            $container: $serviceItemInvoiceList,
+            addItemUrl: '{% url 'services:add' invoice.id %}',
+            target: 'service_item'
+        });
+
+        new CellInput({
+            $container: $serviceItemInvoiceList,
+            selector: '[data-role=worker-select]',
+            onSuccess: function () {
+            }
+        });
+
+        new Modal({
+            $target: $('[data-role=add-service-item]'),
+            focusOn: '[name=category]',
+            onSuccess: function (response) {
+                $(window).trigger('service_item-selected', [response.service_item_id]);
+            }
+        });
+    });
+</script>
