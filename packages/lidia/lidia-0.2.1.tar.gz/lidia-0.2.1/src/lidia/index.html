@@ -1,0 +1,311 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>RPC Task GUI</title>
+  <link rel="stylesheet" href="static/style.css">
+  <script src="static/socket.io.js"></script>
+</head>
+
+<body>
+  <svg id="mainSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2100 1200" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <path id="bottomTriangle" stroke="#fff" stroke-width="2" d="m0,0 l-34.64,60 h69.28 z" />
+      <path id="star" fill="#f74afd" stroke="#fff" stroke-width="2"
+        d="M25,0 L9,9 L0,25 L-9,9 L-25,0 L-9,-9 L0,-25 L9,-9 z" />
+      <circle id="pointCircle" cx="0" cy="0" r="23" stroke="#fff" stroke-width="2" />
+      <path id="borderShort"
+        d="M0,-30 v60 h-5 l-17.32,-10 l17.32,-10 l-17.32,-10 l17.32,-10 l-17.32,-10 l17.32,-10 z" />
+      <!-- The larger width prevents wrapping -->
+      <pattern id="borderGreen" x="0" y="0" width="1.1" height=".06">
+        <use href="#borderShort" fill="#0f0" transform="translate(22.32 30)" />
+      </pattern>
+      <pattern id="borderRed" x="0" y="0" width="1.1" height=".06">
+        <use href="#borderShort" fill="#f00" transform="translate(22.32 30)" />
+      </pattern>
+      <rect id="borderLong" x="-22.32" y="-1000" width="22.32" height="1000" />
+    </defs>
+    <rect width="2150" height="1250" x="-25" y="-25" fill="#000" />
+    <!-- Region extents -->
+    <!-- <rect width="630" height="1200" x="0" y="0" fill="#700" />
+    <rect width="340" height="1200" x="630" y="0" fill="#070" />
+    <rect width="1130" height="1200" x="970" y="0" fill="#007" /> -->
+    <g id="textRegion" font-family="sans-serif">
+      <rect width="500" height="500" x="60" y="70" fill="none" stroke="#fff" stroke-width="5" rx="15" />
+      <rect width="150" height="30" x="125" y="55" fill="#000" />
+      <use id="cycFtr" href="#pointCircle" fill="#000" transform="translate(420 150)" />
+      <rect width="500" height="500" x="60" y="630" fill="none" stroke="#fff" stroke-width="5" rx="15" />
+      <rect width="225" height="30" x="125" y="615" fill="#000" />
+      <use id="collFtr" href="#pointCircle" fill="#000" transform="translate(420 710)" />
+      <text font-family="sans-serif" fill="#fff" font-size="50">
+        <tspan x="130" y="80" font-size="30">CYCLIC</tspan>
+        <tspan x="125" y="170">FTR</tspan>
+        <tspan x="125" y="245">LON POS</tspan>
+        <tspan id="cycLonPercent" x="400" y="245">0</tspan>
+        <tspan x="495" y="245">%</tspan>
+        <tspan x="125" y="320">LAT POS</tspan>
+        <tspan id="cycLatPercent" x="400" y="320">0</tspan>
+        <tspan x="495" y="320">%</tspan>
+        <tspan x="130" y="640" font-size="30">COLLECTIVE</tspan>
+        <tspan x="125" y="730">FTR</tspan>
+        <tspan x="125" y="805">POS</tspan>
+        <tspan id="collPercent" x="400" y="805">0</tspan>
+        <tspan x="495" y="805">%</tspan>
+      </text>
+    </g>
+    <g id="collectiveRegion" stroke="#fff">
+      <rect width="60" height="1000" x="775" y="75" fill="#4d4d4d" stroke-width="5" />
+      <g id="collOrigin" transform="translate(805 1075) rotate(270)">
+        <use id="collBoundaryLow" href="#borderShort" fill="#0f0" stroke="none" display="none" />
+        <g id="collBoundaryHigh" fill="#0f0" stroke="none" display="none" transform="translate(1000)">
+          <use href="#borderShort" transform="scale(-1 1)" />
+        </g>
+        <g transform="translate(0 -30)">
+          <g id="collTrimIndicator">
+            <use href="#bottomTriangle" fill="#02f7fa" transform="scale(1 -1)" />
+            <path fill=" none" stroke-dasharray="12,12" stroke-width="4" d="M0,0 v60" />
+          </g>
+        </g>
+        <g id="collTargetIndicator">
+          <use href="#star" />
+          <g fill="none" stroke-dasharray="3,3" stroke-width="3">
+            <line y1="-30" y2="30" x1="-30" x2="-30" />
+            <line y1="-30" y2="30" x1="30" x2="30" />
+            <line y1="-30" y2="30" x1="-50" x2="-50" />
+            <line y1="-30" y2="30" x1="50" x2="50" />
+          </g>
+        </g>
+        <g transform="translate(0 30)">
+          <use id="collInputIndicator" href="#bottomTriangle" fill="#f00" />
+        </g>
+      </g>
+    </g>
+    <g id="cyclicRegion" stroke="#fff">
+      <rect width="1000" height="1000" x="1025" y="75" fill="#4d4d4d" stroke-width="5" />
+      <g id="cycOrigin" transform="translate(1525 575)">
+        <g id="cycLatOrigin" transform="translate(0 500)">
+          <g id="cycLatTrimIndicator">
+            <path fill="none" stroke-dasharray="12,12" stroke-width="4" d="M0,0 v-1000" />
+            <use href="#bottomTriangle" fill="#02f7fa" />
+          </g>
+          <use id="cycBoundaryLeft" href="#borderLong" fill="url(#borderGreen)" stroke="none" display="none"
+            transform="translate(-500)" />
+          <g id="cycBoundaryRight" fill="url(#borderGreen)" stroke="none" display="none" transform="translate(500)">
+            <use href="#borderLong" transform="scale(-1 1)" />
+          </g>
+        </g>
+        <g id="cycLonOrigin" transform="translate(500 0) rotate(90) scale(1 -1)">
+          <g id="cycLonTrimIndicator">
+            <path fill=" none" stroke-dasharray="12,12" stroke-width="4" d="M0,0 v-1000" />
+            <use href="#bottomTriangle" fill="#02f7fa" />
+          </g>
+          <use id="cycBoundaryLow" href="#borderLong" fill="url(#borderGreen)" stroke="none" display="none"
+            transform="translate(-500)" />
+          <g id="cycBoundaryHigh" fill="url(#borderGreen)" stroke="none" display="none" transform="translate(500)">
+            <use href="#borderLong" transform="scale(-1 1)" />
+          </g>
+        </g>
+        <g id="cycTargetIndicator">
+          <use href="#star" />
+          <g fill="none" stroke-dasharray="3,3" stroke-width="3">
+            <circle cx="0" cy="0" r="30" />
+            <circle cx="0" cy="0" r="50" />
+          </g>
+        </g>
+        <use id="cycInputIndicator" href="#pointCircle" fill="#f00" />
+      </g>
+    </g>
+  </svg>
+  <div class="controls">
+    <p>
+      <span>Show regions:</span>
+      <span>
+        <input type="checkbox" id="showText" checked />
+        <label for="showText">Text</label>
+      </span>
+      <span>
+        <input type="checkbox" id="showColl" checked />
+        <label for="showColl">Collective</label>
+      </span>
+      <span>
+        <input type="checkbox" id="showCyc" checked />
+        <label for="showCyc">Cyclic</label>
+      </span>
+    </p>
+    <p>
+      <span>Instruments position:</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="4em" height="4em">
+        <g id="alignGroup" stroke="none" fill="currentColor">
+          <rect x="0" y="0" width="25" height="25" rx="5" />
+          <rect x="37.5" y="0" width="25" height="25" rx="5" />
+          <rect x="75" y="0" width="25" height="25" rx="5" />
+          <rect x="0" y="37.5" width="25" height="25" rx="5" />
+          <rect x="37.5" y="37.5" width="25" height="25" rx="5" fill="#0f0" />
+          <rect x="75" y="37.5" width="25" height="25" rx="5" />
+          <rect x="0" y="75" width="25" height="25" rx="5" />
+          <rect x="37.5" y="75" width="25" height="25" rx="5" />
+          <rect x="75" y="75" width="25" height="25" rx="5" />
+        </g>
+      </svg>
+    </p>
+  </div>
+  <script type="text/javascript">
+    const mainSvg = document.getElementById("mainSvg");
+    const boxText = document.getElementById("showText");
+    const boxColl = document.getElementById("showColl");
+    const boxCyc = document.getElementById("showCyc");
+
+    function updateRegions() {
+      document.getElementById("textRegion").style.display = boxText.checked ? "block" : "none";
+      document.getElementById("collectiveRegion").style.display = boxColl.checked ? "block" : "none";
+      document.getElementById("cyclicRegion").style.display = boxCyc.checked ? "block" : "none";
+
+      var left = 2100, right = 0;
+      if (boxText.checked) {
+        left = Math.min(left, 0);
+        right = Math.max(right, 630);
+      }
+      if (boxColl.checked) {
+        left = Math.min(left, 630);
+        right = Math.max(right, 970);
+      }
+      if (boxCyc.checked) {
+        left = Math.min(left, 970);
+        right = Math.max(right, 2100);
+      }
+
+      mainSvg.setAttribute("viewBox", `${left} 0 ${right - left} 1200`);
+    }
+
+    boxText.addEventListener("change", updateRegions);
+    boxColl.addEventListener("change", updateRegions);
+    boxCyc.addEventListener("change", updateRegions);
+
+    // TODO: Allow selecting regions with location.hash
+    // Update both checkboxes and hash when either one changes
+
+
+    const alignGroup = document.getElementById("alignGroup");
+
+    function setAlign(click) {
+      var x = click.target.x.baseVal.value;
+      var y = click.target.y.baseVal.value;
+      mainSvg.setAttribute("preserveAspectRatio",
+        (x === 0 ? "xMin" : x === 75 ? "xMax" : "xMid") +
+        (y === 0 ? "YMin" : y === 75 ? "YMax" : "YMid") +
+        " meet");
+
+      for (rect of alignGroup.children) {
+        rect.style.fill = rect === click.target ? "#0f0" : "inherit";
+      }
+    }
+
+    for (rect of alignGroup.children) {
+      rect.addEventListener("click", setAlign);
+    }
+  </script>
+  <script type="text/javascript">
+    var socket = io();
+
+    socket.on("echo", s => {
+      console.log(s);
+    })
+  </script>
+  <script type="text/javascript">
+    var socket = io();
+
+    function errorFill(difference) {
+      var e = Math.abs(difference);
+      if (e <= 0.03) return "#0f0";
+      else if (e <= 0.05) return "#ff0";
+      else return "#f00";
+    }
+
+    const collInput = document.getElementById("collInputIndicator");
+    const cycInput = document.getElementById("cycInputIndicator");
+    const collPercent = document.getElementById("collPercent");
+    const cycLatPercent = document.getElementById("cycLatPercent");
+    const cycLonPercent = document.getElementById("cycLonPercent");
+    function updateControl(s) {
+      collInput.setAttribute("transform", `translate(${s.ctrl[4] * 1000})`);
+      cycInput.setAttribute("transform", `translate(${s.ctrl[0] * 500} ${s.ctrl[1] * 500})`);
+
+      collPercent.textContent = Math.round(s.ctrl[4] * 100);
+      // Goes from 0% on the left and 100% on the right instead of -1 to +1
+      cycLatPercent.textContent = Math.round((s.ctrl[0] + 1) * 50);
+      // Same as roll, but reversed: 0% is pulling the stick to +1
+      cycLonPercent.textContent = Math.round((1 - s.ctrl[1]) * 50);
+    }
+
+    const collTarget = document.getElementById("collTargetIndicator");
+    const cycTarget = document.getElementById("cycTargetIndicator");
+    function updateTarget(s) {
+      collTarget.setAttribute("transform", `translate(${s.trgt[4] * 1000})`);
+      cycTarget.setAttribute("transform", `translate(${s.trgt[0] * 500} ${s.trgt[1] * 500})`);
+
+      if ("ctrl" in s) {
+        collInput.style.fill = errorFill(s.ctrl[4] - s.trgt[4]);
+        cycInput.style.fill = errorFill(Math.sqrt(
+          Math.pow(s.ctrl[0] - s.trgt[0], 2) + Math.pow(s.ctrl[1] - s.trgt[1], 2)
+        ) / 2);  // The error is defined in terms of percent of range and these go -1 to +1
+      }
+    }
+
+    const collTrim = document.getElementById("collTrimIndicator");
+    const cycLatTrim = document.getElementById("cycLatTrimIndicator");
+    const cycLonTrim = document.getElementById("cycLonTrimIndicator");
+    function updateTrim(s) {
+      collTrim.setAttribute("transform", `translate(${s.trim[4] * 1000})`);
+      cycLatTrim.setAttribute("transform", `translate(${s.trim[0] * 500})`);
+      cycLonTrim.setAttribute("transform", `translate(${s.trim[1] * 500})`);
+    }
+
+    const collBoundaryLow = document.getElementById("collBoundaryLow");
+    const collBoundaryHigh = document.getElementById("collBoundaryHigh");
+    const cycBoundaryLow = document.getElementById("cycBoundaryLow");
+    const cycBoundaryHigh = document.getElementById("cycBoundaryHigh");
+    const cycBoundaryLeft = document.getElementById("cycBoundaryLeft");
+    const cycBoundaryRight = document.getElementById("cycBoundaryRight");
+    function updateBorderPair(input, lowBdr, highBdr, lowRef, highRef, oneSided = false, pattern = false) {
+      if (lowBdr === (oneSided ? 0.0 : -1.0) && highBdr === 1.0) {
+        lowRef.style.display = "none";
+        highRef.style.display = "none";
+        return;
+      } else {
+        lowRef.style.display = "block";
+        highRef.style.display = "block";
+      }
+
+      lowRef.setAttribute("transform", `translate(${lowBdr * (oneSided ? 1000 : 500)})`);
+      highRef.setAttribute("transform", `translate(${highBdr * (oneSided ? 1000 : 500)})`);
+
+      if (input < lowBdr) lowRef.style.fill = pattern ? "url(#borderRed)" : "#f00";
+      else lowRef.style.fill = pattern ? "url(#borderGreen)" : "#0f0";
+      if (input > highBdr) highRef.style.fill = pattern ? "url(#borderRed)" : "#f00";
+      else highRef.style.fill = pattern ? "url(#borderGreen)" : "#0f0";
+    }
+    function updateBorders(s) {
+      updateBorderPair(s.ctrl[4], s.brdr.low[4], s.brdr.high[4], collBoundaryLow, collBoundaryHigh, true);
+      updateBorderPair(s.ctrl[0], s.brdr.low[0], s.brdr.high[0], cycBoundaryLeft, cycBoundaryRight, false, true);
+      updateBorderPair(s.ctrl[1], s.brdr.low[1], s.brdr.high[1], cycBoundaryLow, cycBoundaryHigh, false, true);
+      console.log(s.ctrl[1], s.brdr.low[1], s.brdr.high[1]);
+    }
+
+    const collFtr = document.getElementById("collFtr");
+    const cycFtr = document.getElementById("cycFtr");
+    function updateButtons(s) {
+      collFtr.style.fill = s.btn[0] & (1 << 0) ? "#ff0" : "#000";
+      cycFtr.style.fill = s.btn[0] & (1 << 1) ? "#ff0" : "#000";
+    }
+
+    socket.on("smol", s => {
+      if ("ctrl" in s) updateControl(s);
+      if ("trgt" in s) updateTarget(s);
+      if ("trim" in s) updateTrim(s);
+      if ("brdr" in s) updateBorders(s);
+      if ("btn" in s) updateButtons(s);
+    })
+  </script>
+</body>
+
+</html>
