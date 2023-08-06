@@ -1,0 +1,250 @@
+{% extends "layout.html" %}
+
+{% load static %}
+
+{% block head %}
+  <title>Jobs - PtpUploader</title>
+  <script type=text/javascript src="{% static "script/jquery-3.6.0.min.js" %}"></script>
+  <link rel="stylesheet" href="{% static "script/jquery.contextMenu.min.css" %}">
+  <link href="{% static "script/select2.min.css" %}" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" type="text/css" href="{% static "script/bulma.min.css" %}"/>
+  <link rel="stylesheet" type="text/css" href="{% static "script/datatables.min.css" %}"/>
+  <script defer src="{% static "script/jquery.contextMenu.min.js" %}"></script>
+  <script defer src="{% static "script/jquery.ui.position.min.js" %}"></script>
+  <script defer src="{% static "script/select2.min.js" %}"></script>
+  <script defer type="text/javascript" src="{% static "script/datatables.min.js" %}"></script>
+  <script type="text/javascript">
+   var jobsTable;
+
+   function ToggleSearch(searchToggler) {
+     if (!window.localStorage)
+       return;
+
+     if (window.localStorage.getItem('HideSearch') == '1') {
+       $(".ToggledByHideSearch").toggle(true);
+       window.localStorage.removeItem('HideSearch');
+     } else {
+       $(".ToggledByHideSearch").toggle(false);
+       window.localStorage.setItem('HideSearch', '1');
+     }
+   }
+
+   function executeJobCommand(linkNode, jobId, jobCommand) {
+     $.ajax({
+       type: "GET",
+       url: "/job/" + jobId + jobCommand,
+       context: linkNode,
+       success: function(msg) {
+         $(this).text(msg);
+         if (msg == "OK")
+           $(this).fadeOut("slow");
+       }
+     });
+   }
+
+   function executeDeleteJobCommand(linkNode, jobId, deleteMode) {
+     $.ajax({
+       type: "GET",
+       url: "/job/" + jobId + '/delete/' + deleteMode,
+       context: linkNode,
+       success: function(msg) {
+         if (msg == "OK")
+           $(this).parent().parent().fadeOut("fast");
+         else
+           $(this).text(msg);
+       }
+     });
+   }
+
+
+   $(document).ready(function() {
+     jobsTable = $('#jobs').DataTable({
+       "pageLength": 50,
+       "dom": "<'columns is-gapless is-multiline'" +
+	      "<'column is-half'l>" +
+	      "<'column is-half'>" +
+	      "<'column is-full'tr>" +
+	      "<'column is-half'i>" +
+	      "<'column is-half'p>" +
+	      ">",
+       "ajax": "/ajax/jobs",
+       "lengthChange": false,
+       "order": [
+         [4, "desc"]
+       ],
+       "columns": [{
+         "data": "JobRunningState",
+         "type": "num",
+         "render": {
+           _: '_',
+           sort: 'sort',
+           filter: 'sort'
+         },
+         className: "dt-right"
+       }, {
+         "data": "ReleaseName",
+         "render": function(data, type, row) {
+           ret = data;
+           if (row['PtpId']) {
+             if (row['PtpTorrentId']) {
+               ret = '<a href="https://passthepopcorn.me/torrents.php?id=' + row['PtpId'] + '&torrentid=' + row['PtpTorrentId'] + '">' + data + '</a>'
+             } else {
+               ret = '<a href="https://passthepopcorn.me/torrents.php?id=' + row['PtpId'] + '">' + data + '</a>'
+             }
+           } else if (row['ImdbId'] && row['ImdbId'] != "0") {
+             ret = '<a href="https://passthepopcorn.me/torrents.php?imdb=' + row['ImdbId'] + '">' + data + '</a>'
+           }
+           ret = '<span class="job_title">' + ret + '</span>';
+           if (row['ErrorMessage']) {
+             ret = ret + '</br>' + row['ErrorMessage'];
+           }
+           return ret;
+         }
+       },{
+         "data": "AnnouncementSourceName",
+         'type': 'html',
+         className: "nowrap",
+         "render": {
+           _: '_',
+           sort: 'sort'
+         }
+       },{
+         "data": "Size",
+         'type': 'num',
+         className: "nowrap",
+         "render": {
+           _: '_',
+           sort: 'sort'
+         }
+       },{
+         "data": "LastModificationTime",
+         'type': 'num',
+         className: "nowrap",
+         "render": {
+           _: '_',
+           sort: 'sort'
+         }
+       },{
+         "data": "Actions",
+         "orderable": false,
+         className: "nowrap jobbuttons dt-right",
+         width: "60px",
+         "render": function(data, type, row) {
+           html = '';
+           actions = data.split(",");
+           if (actions.includes("start")) {
+             html += '<a href="#" onclick=\'executeJobCommand( this, ' + row['Id'] + ', "/start" ); jobsTable.ajax.reload(null, false); return false;\'><span class="icon is-small"><i class="fas fa-play-circle"></i></span></a>'
+           }
+           if (actions.includes("stop")) {
+             html += '<a href="#" onclick=\'executeJobCommand( this, ' + row['Id'] + ', "/stop" ); jobsTable.ajax.reload(null, false); return false;\'><span class="icon is-small"><i class="fas fa-stop-circle"></i></span></a>'
+           }
+           if (actions.includes("edit")) {
+             html += '<a href="/job/' + row['Id'] + '/edit"><span class="icon"><i class="fas fa-edit"></i></span></a>';
+           }
+           if (actions.includes("delete")) {
+             html += '<a href="#" class="delete_job_context_menu" PtpUploaderJobId="' + row['Id'] + '"><span class="icon is-small"><i class="fas fa-trash has-text-danger"></i></span></a>';
+           }
+           return html;
+         }
+       },
+       ]
+     });
+     state_filter = $("#state_filter").select2({placeholder: 'Filter states'});
+     state_filter.on(
+       "change.select2",
+       function (e) {
+         vals = state_filter.select2('data').map(function(e){
+           return e.id;
+         }).join("|")
+         if (vals == "") {
+           jobsTable.columns(0).search("").draw();
+         } else {
+           jobsTable.columns(0).search("^("+vals+")$", true, false, false).draw();
+         }
+       }
+     );
+     $("#search_filter").on(
+       "input",
+       function (e) {
+         jobsTable.columns(1).search($("#search_filter").val()).draw();
+       }
+     );
+     $.contextMenu({
+       selector: '.delete_job_context_menu',
+       trigger: 'left',
+       callback: function(key, options) {
+         var deleteLink = options.$trigger;
+         var jobId = deleteLink.attr('PtpUploaderJobId');
+         if (jobId.length > 0) {
+           executeDeleteJobCommand(deleteLink, jobId, key);
+         }
+       },
+       items: {
+         "job": {
+           name: "Delete job"
+         },
+         "job_source": {
+           name: "Delete job & source data"
+         },
+         "job_upload": {
+           name: "Delete job & upload data"
+         },
+         "job_all": {
+           name: "Delete job & all data"
+         },
+       }
+     });
+   });
+  </script>
+{% endblock %}
+
+{% block body %}
+  <div class="column dt-bulma is-10 is-offset-1">
+    <nav class="level">
+      <div class="level-left">
+        <div class="level-item">
+          <input class="input" type="text" id="search_filter" placeholder="Search" value="" autocomplete="off"/>
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          <select multiple=multiple class="select2" id="state_filter">
+            {% for key, val in state %}
+              <option value="{{key}}">{{val}}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </nav>
+
+    <table id="jobs" class="jobs table is-hoverable is-striped
+               is-fullwidth" border="0" cellpadding="3" cellspacing="1">
+      <thead>
+        <tr>
+          <th class="state"></th>
+          <th>Release name</th>
+          <th>Source</th>
+          <th>Size</th>
+          <th>Date</th>
+          <th>Edit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="state">
+          </td>
+          <td class="name">
+          </td>
+          <td class="nowrap">
+          </td>
+          <td class="nowrap">
+          </td>
+          <td class="nowrap">
+          </td>
+          <td class="nowrap jobbuttons dt-right">
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
