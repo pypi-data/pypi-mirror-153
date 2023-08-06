@@ -1,0 +1,1 @@
+from pytorch_extra_mhirano.version import __version__
