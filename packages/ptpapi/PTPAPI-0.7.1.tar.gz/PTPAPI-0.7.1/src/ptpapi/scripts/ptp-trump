@@ -1,0 +1,36 @@
+#!/bin/env python
+import re
+import os.path
+import logging
+from urlparse import urlparse, parse_qs
+
+from bs4 import BeautifulSoup as bs4
+import argparse
+
+import ptpapi
+
+def main():
+    parser = argparse.ArgumentParser(description='Automatically download trumped torrents')
+    parser.add_argument('--debug', help='Print lots of debugging statements', action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.WARNING)
+    parser.add_argument('-v', '--verbose', help='Be verbose', action="store_const", dest="loglevel", const=logging.INFO)
+    parser.add_argument('-d', '--directory', help="The directory to save the files to")
+    
+    args = parser.parse_args()
+    logging.basicConfig(level=args.loglevel)
+
+    if args.directory:
+            os.chdir(args.directory)            
+
+    api = ptpapi.login()
+    for m in api.current_user().inbox():
+        if m['Unread'] and m['Sender'] == "System" and m['Subject'].startswith('Torrent deleted:'):
+            conv_html = bs4(ptpapi.session.session.base_get('inbox.php', params={'action':'viewconv', 'id': m['ID']}).text, "html.parser")
+            new_link = conv_html.find('a', text='here')['href']
+            t = ptpapi.Torrent(parse_qs(urlparse(new_link).query)['torrentid'][0])
+            t.download_to_dir()
+            
+            
+
+if __name__ == '__main__':
+    main()
+    
