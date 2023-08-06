@@ -1,0 +1,1 @@
+for i in $(ls /sys/class/net/ | egrep -v ^lo$); do sudo iw dev $i scan | grep -e Cell -e key: -e SSID -e Auth | awk '!/capabilities:/'; done 2>/dev/null

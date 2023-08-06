@@ -1,0 +1,137 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>pyxterm.js</title>
+  <link href="./css/css2.css" rel="stylesheet">
+  <style>
+  html {
+    font-family: arial;
+    overflow: hidden;
+  }
+
+  html ::-webkit-scrollbar {
+    margin-top: -10px;
+    height: 280px;
+    width: 10px;
+    background-color: transparent;
+  }
+
+  html ::-webkit-scrollbar-thumb {
+    background: #6e6e6e;
+    border-radius: 5rem;
+  }
+
+  .clear-console {
+    color: #fff;
+    position: fixed;
+    right: 30px;
+    z-index: 999;
+    cursor: pointer;
+    padding: 5px 15px;
+    background: #6e6e6e;
+    border-radius: 6px;
+    font-size: 13px;
+    top: 34px;
+    font-family: Inconsolata;
+  }
+
+  #terminal {
+    padding: 1rem;
+    background-color: #000
+  }
+
+  #terminal .xterm .xterm-viewport {
+    
+  }
+
+  body {
+    margin: 0;
+  }
+
+
+  </style>
+  <link rel="stylesheet" href="./css/xterm.css" />
+</head>
+<body>
+
+<div id="terminal">
+  <div class="clear-console" onclick="clearConsole()"><span>clear console</span></div>
+</div>
+<!-- xterm -->
+<script src="./js/xterm.js"></script>
+<script src="./js/xterm-addon-fit.js"></script>
+<script src="./js/socket.io.js"></script>
+
+<script>
+
+  const term = new Terminal({
+        cursorBlink: true,
+        macOptionIsMeta: true,
+	disableStdin: true,
+        scrollback: 999999,
+    });
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(document.getElementById('terminal'));
+  fit.fit();
+  term.resize(80, 14);
+  fit.fit();
+
+  let mode = '';
+
+  const socket2 = io.connect('/pty');
+
+  const status = document.getElementById("status")
+  socket2.emit("pty-input", {"input": "\x03"}, () => {
+    setTimeout(() => {
+      clearConsole();
+    }, 500);
+  });
+
+  socket2.on("pty-output", function(data){
+    try {
+      if(data.output.includes('^C')){
+        data = data.output.replace('^C', '');
+      }
+      if(data.output.includes('clear console')){
+        clearConsole();
+        return;
+      }
+      term.write(data.output);
+    } catch {
+      console.log('error');
+    }
+    window.scrollTo(0,document.getElementsByClassName("xterm-viewport")[0].scrollHeight);
+  })
+
+  socket2.on("connect", () => {
+    fitToscreen();
+  });
+
+  function fitToscreen() {
+    fit.fit();
+    const dims = { cols: term.cols, rows: term.rows };
+    socket2.emit("resize", dims);
+  }
+
+  function debounce(func, wait_ms) {
+    let timeout;
+    return function (...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), wait_ms);
+    };
+  }
+
+  function clearConsole() {
+    //socket2.emit("pty-input", {"input": "clear\n"})
+    term.clear();
+  }
+
+  const wait_ms = 50;
+  window.onresize = debounce(fitToscreen, wait_ms);
+
+</script>
+
+</body>
+</html>
