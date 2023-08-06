@@ -1,0 +1,2 @@
+from .CellAutomatBinary import CellAutomatBinary
+from .CellAutomatRegression import CellAutomatRegression
