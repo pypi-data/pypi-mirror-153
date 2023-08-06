@@ -1,0 +1,462 @@
+import logging
+
+from typing import Dict, List, Any
+
+from wykop.api.api_const import PAGE_NAMED_ARG, BODY_NAMED_ARG, FILE_POST_NAME
+from wykop.api.api_values import NotificationType, DirectNotificationType
+from wykop.api.exceptions.base import ReceiverProbablyDoesNotExist, WykopAPIError
+from wykop.api.exceptions.client_exceptions import InvalidWykopConnectSign
+from wykop.api.models.wykop_connect import WykopConnectLoginInfo
+from wykop.core.credentials import Credentials
+from wykop.core.parsers import default_parser
+from wykop.core.requestor import Requestor
+
+log = logging.getLogger(__name__)
+
+
+class WykopAPI:
+    """Wykop API version 2."""
+
+    def __init__(self, appkey, secretkey=None, account_key=None, output='', response_format='json'):
+        self.__parser = default_parser
+        self.__requestor = Requestor(
+            credentials=Credentials(appkey, secretkey, account_key),
+            parser=self.__parser,
+            output=output,
+            response_format=response_format
+        )
+
+    def request(self, rtype, rmethod=None,
+                named_params=None, api_params=None, post_params=None, file_params=None):
+        return self.__requestor.request(rtype, rmethod=rmethod,
+                                        named_params=named_params,
+                                        api_params=api_params,
+                                        post_params=post_params,
+                                        file_params=file_params)
+
+    def authenticate(self, account_key=None, login=None, password=None):
+        self.__requestor.authenticate(account_key=account_key, login=login, password=password)
+
+    def authenticate_2fa(self, tfa_code):
+        self.__requestor.user_login_2fa(tfa_code)
+
+    def wykop_connect_url(self, redirect_url: str = None):
+        return self.__requestor.wykop_connect_url(redirect_url)
+
+    def parse_wykop_connect_response(self, response: str) -> WykopConnectLoginInfo:
+        connect_response = self.__parser.parse_wykop_connect_response(response)
+        if not self.__requestor.valid_sign(connect_response):
+            raise InvalidWykopConnectSign
+        return connect_response
+
+    # entries
+
+    def entries_stream(self, page=1, first_id=None):
+        named_params = self \
+            .__with_page(page)
+        if first_id:
+            named_params.update(dict(firstId=first_id))
+        return self.request('Entries', 'Stream', named_params=named_params)
+
+    def entries_hot(self, page=1, period=12):
+        assert period in [6, 12, 24]
+        named_params = self \
+            .__with_page(page)
+        named_params.update(dict(period=period))
+        return self.request('Entries', 'Hot',
+                            named_params=named_params)
+
+    def entries_active(self, page=1):
+        return self.request('Entries', 'Active',
+                            named_params=self.__with_page(page))
+
+    def entries_observed(self, page=1):
+        return self.request('Entries', 'Observed',
+                            named_params=self.__with_page(page))
+
+    def entry(self, entry_id):
+        return self.request('Entries', 'Entry',
+                            api_params=self.__api_param(entry_id))
+
+    def entry_add(self, body: str, file=None, file_url: str = None, is_adult_media: bool = False):
+        return self.request('Entries', 'Add',
+                            post_params=self.content_post_params(
+                                body, file_url, is_adult_media),
+                            file_params=self.__with_file(file))
+
+    def entry_edit(self, entry_id: str, body: str, file=None, file_url: str = None, is_adult_media: bool = False):
+        return self.request('Entries', 'Edit',
+                            post_params=self.content_post_params(
+                                body, file_url, is_adult_media),
+                            api_params=self.__api_param(entry_id),
+                            file_params=self.__with_file(file))
+
+    def entry_vote_up(self, entry_id: str):
+        return self.request('Entries', 'VoteUp',
+                            api_params=self.__api_param(entry_id))
+
+    def entry_vote_remove(self, entry_id: str):
+        return self.request('Entries', 'VoteRemove',
+                            api_params=self.__api_param(entry_id))
+
+    def entry_upvoters(self, entry_id: str):
+        return self.request('Entries', 'Upvoters',
+                            api_params=self.__api_param(entry_id))
+
+    def entry_delete(self, entry_id: str):
+        return self.request('Entries', 'Delete',
+                            api_params=self.__api_param(entry_id))
+
+    def entry_favorite_toggle(self, entry_id: str):
+        return self.request('Entries', 'Favorite',
+                            api_params=self.__api_param(entry_id))
+
+    def entry_survey_vote(self, entry_id: str, answer_id: str):
+        return self.request('Entries', 'SurveyVote',
+                            api_params=[entry_id, answer_id])
+
+    # comments
+
+    def entry_comment(self, comment_id: str):
+        return self.request('Entries', 'Comment',
+                            api_params=self.__api_param(comment_id))
+
+    def entry_comment_add(self, entry_id: str, body: str, file=None, file_url: str = None,
+                          is_adult_media: bool = False):
+        return self.request('Entries', 'CommentAdd',
+                            post_params=self.content_post_params(
+                                body, file_url, is_adult_media),
+                            api_params=self.__api_param(entry_id),
+                            file_params=self.__with_file(file))
+
+    def entry_comment_edit(self, comment_id: str, body: str, file=None, file_url: str = None,
+                           is_adult_media: bool = False):
+        return self.request('Entries', 'CommentEdit',
+                            post_params=self.content_post_params(
+                                body, file_url, is_adult_media),
+                            api_params=self.__api_param(comment_id),
+                            file_params=self.__with_file(file))
+
+    def entry_comment_delete(self, comment_id: str):
+        return self.request('Entries', 'CommentDelete',
+                            api_params=self.__api_param(comment_id))
+
+    def entry_comment_vote_up(self, comment_id: str):
+        return self.request('Entries', 'CommentVoteUp',
+                            api_params=self.__api_param(comment_id))
+
+    def entry_comment_vote_remote(self, comment_id: str):
+        return self.request('Entries', 'CommentVoteRemove',
+                            api_params=self.__api_param(comment_id))
+
+    def entry_comment_observed(self, page: int = 1):
+        return self.request('Entries', 'ObservedComments',
+                            named_params=self.__with_page(page))
+
+    def entry_comment_favorite_toggle(self, entry_id: str):
+        return self.request('Entries', 'CommentFavorite',
+                            api_params=self.__api_param(entry_id))
+
+    # links
+
+    def links_promoted(self, page=1):
+        return self.request('links', 'promoted',
+                            named_params=self.__with_page(page))
+
+    def link(self, link_id: str):
+        return self.request('links', 'link',
+                            api_params=self.__api_param(link_id))
+
+    # mywykop
+
+    def mywykop_entries(self, page: int = 1) -> list:
+        """
+        Get entries from observed users and tags.
+        """
+        return self.request('mywykop', 'entries',
+                            named_params=self.__with_page(page))
+
+    # profiles
+
+    def profile(self, login):
+        return self.request('profiles', 'index', api_params=self.__api_param(login))
+
+    def profile_observe(self, login):
+        named_params = {
+            'observe': login,
+        }
+        return self.request('profiles', named_params=named_params)
+
+    def profile_unobserve(self, login):
+        named_params = {
+            'unobserve': login,
+        }
+        return self.request('profiles', named_params=named_params)
+
+    def profile_block(self, login):
+        named_params = {
+            'block': login,
+        }
+        return self.request('profiles', named_params=named_params)
+
+    def profile_unblock(self, login):
+        named_params = {
+            'unblock': login,
+        }
+        return self.request('profiles', named_params=named_params)
+
+    def profile_added(self, login, page=1):
+        return self.request('profiles', 'Added',
+                            named_params=self.__with_page(page),
+                            api_params=self.__api_params([login])
+                            )
+
+    def profile_digged(self, login, page=1):
+        return self.request('profiles', 'Digged',
+                            named_params=self.__with_page(page),
+                            api_params=self.__api_params([login])
+                            )
+
+    def profile_buried(self, login, page=1):
+        return self.request('profiles', 'Buried',
+                            named_params=self.__with_page(page),
+                            api_params=self.__api_params([login])
+                            )
+
+    def profile_comments(self, login, page=1):
+        return self.request('profiles', 'Comments',
+                            named_params=self.__with_page(page),
+                            api_params=self.__api_params([login])
+                            )
+
+    def profile_entries(self, login, page=1):
+        return self.request('profiles', 'Entries',
+                            named_params=self.__with_page(page),
+                            api_params=self.__api_params([login])
+                            )
+
+    # hits
+
+    def hits_popular(self):
+        return self.request('hits', 'popular')
+
+    def hits_day(self):
+        return self.request('hits', 'day')
+
+    def hits_week(self):
+        return self.request('hits', 'week')
+
+    def hits_month(self, month: int = None, year: int = None):
+        return self.request('hits', 'month',
+                            api_params=self.__api_params([year, month]))
+
+    def hits_year(self, year: int = None):
+        return self.request('hits', 'year',
+                            api_params=self.__api_param(str(year)))
+
+    # pm
+
+    def conversations_list(self):
+        return self.request('pm', 'conversationsList')
+
+    def conversation(self, receiver: str):
+        try:
+            return self.request('pm', 'Conversation', api_params=self.__api_param(receiver))
+        except WykopAPIError as ex:
+            if '503' in ex.args[1]:
+                raise ReceiverProbablyDoesNotExist()
+            raise ex
+
+    def message_send(self, receiver: str, message: str):
+        return self.request('pm', 'SendMessage',
+                            post_params=self.__with_body(message),
+                            api_params=self.__api_param(receiver))
+
+    def conversation_delete(self, receiver: str):
+        return self.request('pm', 'DeleteConversation',
+                            api_params=self.__api_param(receiver))
+
+    # notifications
+
+    def notifications_direct(self, page=1, notification_type: DirectNotificationType = None):
+        notifications = self.request('notifications', named_params=self.__with_page(page))
+        if notification_type:
+            return [n for n in notifications if n['type'] == notification_type.value]
+        return notifications
+
+    def notifications_direct_count(self):
+        return self.request('notifications', 'Count')
+
+    def notifications_hashtags_notifications(self, page=1):
+        return self.request('notifications', 'hashtags',
+                            named_params=self.__with_page(page))
+
+    def notifications_hashtags_count(self):
+        return self.request('notifications', 'hashtagscount')
+
+    def notifications_all(self, page=1, notification_type: NotificationType = None):
+        notifications = self.request('notifications', 'total', named_params=self.__with_page(page))
+        if notification_type:
+            return [n for n in notifications if n['type'] == notification_type.value]
+        return notifications
+
+    def notifications_all_count(self):
+        return self.request('notifications', 'totalcount')
+
+    def notification_mark_all_as_read(self):
+        return self.request('Notifications', 'ReadAllNotifications')
+
+    def notifications_mark_all_direct_as_read(self):
+        return self.request('Notifications', 'ReadDirectedNotifications')
+
+    def notifications_mark_all_hashtag_as_read(self):
+        return self.request('Notifications', 'ReadHashTagsNotifications')
+
+    def notification_mark_as_read(self, notification_id):
+        return self.request('Notifications', 'MarkAsRead',
+                            api_params=self.__api_param(notification_id))
+
+    # search
+
+    def search_links(self, page=1, query=None, when=None, votes=None, from_date=None, to_date=None, what=None,
+                     sort=None):
+        assert len(query) > 2 if query else True
+        assert when.lower() in ["all", "today", "yesterday", "week", "month", "range"] if when else True
+        assert what.lower() in ["all", "promoted", "archived", "duplicates"] if when else True
+        assert sort.lower() in ["best", "diggs", "comments", "new"] if when else True
+        assert (from_date and to_date) or (not from_date and not to_date)
+        post_params = {
+            'q': query,
+            'when': 'range' if from_date and to_date else when,
+            'votes': votes,
+            'from': from_date,
+            'to': to_date,
+            'what': what,
+            'sort': sort
+        }
+        return self.request('Search', 'Links',
+                            post_params=post_params,
+                            named_params=self.__with_page(page))
+
+    def search_entries(self, page=1, query=None, when='all', votes=None, from_date=None, to_date=None):
+        assert len(query) > 2 if query else True
+        assert when.lower() in ["all", "today", "yesterday", "week", "month", "range"] if when else True
+        assert (from_date and to_date) or (not from_date and not to_date)
+        post_params = {
+            'q': query,
+            'when': 'range' if from_date and to_date else when,
+            'votes': votes,
+            'from': from_date,
+            'to': to_date
+        }
+        return self.request('Search', 'Entries',
+                            post_params=post_params,
+                            named_params=self.__with_page(page))
+
+    def search_profiles(self, query):
+        assert len(query) > 2 if query else True
+        post_params = {
+            'q': query,
+        }
+        return self.request('Search', 'Profiles',
+                            post_params=post_params)
+
+    # tags
+
+    def tag(self, tag, page=1):
+        return self.request('Tags', 'Index',
+                            named_params=dict(page=page),
+                            api_params=self.__api_param(tag))
+
+    def tag_links(self, tag, page=1):
+        return self.request('Tags', 'Links',
+                            named_params=self.__with_page(page),
+                            api_params=self.__api_param(tag))
+
+    def tag_entries(self, tag, page=1):
+        return self.request('Tags', 'Entries',
+                            named_params=self.__with_page(page),
+                            api_params=self.__api_param(tag))
+
+    def tag_observe(self, tag):
+        return self.request('Tags', 'Observe',
+                            api_params=self.__api_param(tag))
+
+    def tag_unobserve(self, tag):
+        return self.request('Tags', 'Unobserve',
+                            api_params=self.__api_param(tag))
+
+    def tag_enable_notifications(self, tag):
+        return self.request('Tags', 'Notify',
+                            api_params=self.__api_param(tag))
+
+    def tag_disable_notifications(self, tag):
+        return self.request('Tags', 'Dontnotify',
+                            api_params=self.__api_param(tag))
+
+    def tag_block(self, tag):
+        return self.request('Tags', 'Block',
+                            api_params=self.__api_param(tag))
+
+    def tag_unblock(self, tag):
+        return self.request('Tags', 'Unblock',
+                            api_params=self.__api_param(tag))
+
+    # settings
+
+    def settings_profile_update(self, profile_settings: Dict[str, str]):
+        return self.request('Settings', 'Profile',
+                            post_params=profile_settings)
+
+    def settings_avatar_update(self, avatar_file):
+        return self.request('Settings', 'Avatar',
+                            file_params=self.__with_file(avatar_file))
+
+    def settings_background_update(self, background_file):
+        return self.request('Settings', 'Background',
+                            file_params=self.__with_file(background_file))
+
+    def settings_password_update(self, old_password: str, new_password: str):
+        post_params = {
+            'old_password': old_password,
+            'password': new_password
+        }
+        return self.request('Settings', 'Password',
+                            post_params=post_params)
+
+    def settings_password_reset(self, email: str):
+        post_params = {
+            'email': email
+        }
+        return self.request('Settings', 'ResetPassword',
+                            post_params=post_params)
+
+    @staticmethod
+    def __api_param(param: str) -> List[str]:
+        return [str(param)] if param else None
+
+    @staticmethod
+    def __api_params(params: List[Any]) -> List[str]:
+        api_params = [str(p) for p in params if p]
+        return api_params if api_params else None
+
+    @staticmethod
+    def __with_page(page: int) -> Dict[str, int]:
+        return {PAGE_NAMED_ARG: page} if page else {}
+
+    @staticmethod
+    def __with_body(body: str) -> Dict[str, str]:
+        return {BODY_NAMED_ARG: body} if body else {}
+
+    @staticmethod
+    def __with_file(file: str) -> Dict[str, str]:
+        return {FILE_POST_NAME: file} if file else {}
+
+    @staticmethod
+    def content_post_params(body: str, file_url: str, is_adult_media: bool):
+        post_params = {
+            'adultmedia': is_adult_media,
+            'body': body,
+            'embed': file_url
+        }
+        return post_params
