@@ -1,0 +1,7 @@
+include LICENSE
+include README.md
+include CONTRIBUTING.md
+include CHANGELOG.md
+include *requirements.txt
+graft example
+graft oauthenticator/schemas
