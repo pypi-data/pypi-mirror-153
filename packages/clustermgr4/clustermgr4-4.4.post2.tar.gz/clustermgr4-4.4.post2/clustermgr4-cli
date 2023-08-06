@@ -1,0 +1,122 @@
+#!/bin/sh
+
+export PYTHONPATH=$PYTHONPATH:/usr/local/bin:/usr/bin:/opt/clustermgr:/opt/clustermgr/bin
+export PYTHONWARNINGS="ignore"
+export PATH=$PATH:/opt/clustermgr/bin
+
+CELERY_PID="$HOME/.clustermgr4/celery.pid"
+CELERY_BEAT_PID="$HOME/.clustermgr4/celery-beat.pid"
+GUNICORN_PID="$HOME/.clustermgr4/gunicorn.pid"
+PW_FILE="$HOME/.clustermgr4/.pw"
+NEW_UUID=`head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1`
+app=`which clusterapp.py`
+export PYTHONPATH=$PYTHONPATH:`dirname $app`
+
+#if ! java -version 2>&1 >/dev/null | grep -q "version"; then
+#  echo "Java is not found in PATH. Please install Java and/or add PATH before starting Cluster Manager."
+#  exit
+#fi
+
+start() { 
+    if [ ! -f "$HOME/.clustermgr4/instance" ]
+    then
+        echo "Creating clustermgr data directory"
+        mkdir -p "$HOME/.clustermgr4/instance/"
+    fi
+
+    echo "Upgrading Database"
+    $app db upgrade
+
+    printf "DEBUG = False\nSECRET_KEY = '$NEW_UUID'\nLICENSE_ENFORCEMENT_ENABLED = False" > "$HOME/.clustermgr4/instance/config.py"
+
+    if [ ! -f "$HOME/.clustermgr4/.start" ]
+    then
+        echo `date +%s` > $HOME/.clustermgr4/.start
+    fi
+
+    echo "Starting Celery Worker"
+    if [ -f "$CELERY_PID" ]
+    then
+        echo "Celery Worker pid file $CELERY_PID exists, not starting"
+    else
+        NEW_UUID=$NEW_UUID celery multi start -A clusterapp.celery worker --loglevel=info -P prefork --pidfile=$CELERY_PID --logfile="$HOME/.clustermgr4/logs/celery.log" --detach
+    fi
+    
+    echo "Starting Celery Beat"
+    if [ -f "$CELERY_BEAT_PID" ]
+    then
+        echo "Celery Beat pid file $CELERY_BEAT_PID exists, not starting"
+    else
+        NEW_UUID=$NEW_UUID celery -A clusterapp.celery beat --loglevel=info --pidfile=$CELERY_BEAT_PID --logfile="$HOME/.clustermgr4/logs/celery-beat.log" -s "$HOME/.clustermgr4/celerybeat-schedule" --detach
+    fi
+
+    echo "Starting Gunicorn Web Server"
+    if [ -f "$GUNICORN_PID" ]
+    then
+        echo "Gunicorn pid file $GUNICORN_PID exists, not starting"
+    else
+        NEW_UUID=$NEW_UUID gunicorn --daemon --pid $GUNICORN_PID  --error-logfile "$HOME/.clustermgr4/logs/gunicorn_error.log"   -w 2 -b 127.0.0.1:5000 clusterapp:app
+    fi
+}
+
+stop() {
+    
+    echo "Stopping Celery Workers"
+    ps auxww | grep '[c]elery worker' | awk '{print $2}' | xargs kill -9
+    
+    if [ -f "$CELERY_PID" ]
+    then
+        rm "$CELERY_PID"
+    fi
+
+    
+    echo "Stopping Celery Beats"
+    ps auxww | grep '[c]elery beat' | awk '{print $2}' | xargs kill -9
+
+    if [ -f "$CELERY_BEAT_PID" ]
+    then
+        rm "$CELERY_BEAT_PID"
+    fi
+
+
+    echo "Stopping Gunicorn Web Server"
+    ps auxww | grep '[g]unicorn --daemon' | awk '{print $2}' | xargs kill -9
+
+    if [ -f "$GUNICORN_PID" ]
+    then
+        rm "$GUNICORN_PID"
+    fi
+
+    if [ -f "$PW_FILE" ]
+    then
+        rm "$PW_FILE"
+    fi
+
+}
+
+restart() {
+    stop
+    start
+}
+
+
+
+case "$1" in
+    start)
+        start
+    ;;
+
+    stop)
+        stop
+    ;;
+
+
+    restart)
+        restart
+    ;;
+
+    *)
+        echo "Usage: clustermgr-cli {start|stop|restart}"
+        exit 64
+    ;;
+esac

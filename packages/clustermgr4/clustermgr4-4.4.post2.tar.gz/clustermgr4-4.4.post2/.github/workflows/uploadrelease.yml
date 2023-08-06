@@ -1,0 +1,126 @@
+name: upload-release
+# This builds, packages and releases pygluu-kubernetes
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+jobs:
+  build_python_packages:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - uses: addnab/docker-run-action@v3
+      name: Build with CentOS8
+      continue-on-error: true
+      with:
+        image: quay.io/centos/centos:stream8
+        options: -v ${{ github.workspace }}:/centos8
+        run: |
+          export LC_ALL=C.UTF-8
+          yum install -y wget unzip python3 python3-pip make
+          pip3 install --upgrade pip
+          pip3 install --upgrade setuptools
+          pip3 install --upgrade shiv
+          echo "Building package"
+          cd /centos8
+          pip install shiv
+          make zipapp
+          mv clustermgr4-4.pyz clustermgr4-4-el8-X86-64-setup.pyz
+          sha256sum clustermgr4-4-el8-X86-64-setup.pyz > clustermgr4-4-el8-X86-64-setup.pyz.sha256sum
+    - uses: addnab/docker-run-action@v3
+      name: Build with CentOS7
+      continue-on-error: true
+      with:
+        image: centos:centos7
+        options: -v ${{ github.workspace }}:/centos7
+        run: |
+          export LC_ALL=en_US
+          yum install -y wget unzip python3 python3-pip make
+          pip3 install --upgrade pip
+          pip3 install --upgrade setuptools
+          pip3 install --upgrade shiv
+          echo "Building package"
+          cd /centos7
+          pip install shiv
+          make zipapp
+          mv clustermgr4-4.pyz clustermgr4-4-el7-X86-64-setup.pyz
+          sha256sum clustermgr4-4-el7-X86-64-setup.pyz > clustermgr4-4-el7-X86-64-setup.pyz.sha256sum
+
+    - uses: addnab/docker-run-action@v3
+      name: Build with Ubuntu 20.04
+      continue-on-error: true
+      with:
+        image: ubuntu:20.04
+        options: -v ${{ github.workspace }}:/ubuntu
+        run: |
+          apt-get update
+          apt install -y python3 python3-dev python3-pip make build-essential
+          pip3 install --upgrade pip
+          pip3 install --upgrade setuptools
+          pip3 install --upgrade shiv
+          echo "Building package"
+          cd /ubuntu
+          make zipapp
+          mv clustermgr4-4.pyz clustermgr4-4-ubuntu-X86-64-setup.pyz
+          sha256sum clustermgr4-4-ubuntu-X86-64-setup.pyz > clustermgr4-4-ubuntu-X86-64-setup.pyz.sha256sum
+
+
+    - uses: actions/cache@v3
+      id: cache-installers
+      with:
+        path: |
+          ${{github.workspace}}/clustermgr4-4-el7-X86-64-setup.pyz
+          ${{github.workspace}}/clustermgr4-4-el7-X86-64-setup.pyz.sha256sum
+          ${{github.workspace}}/clustermgr4-4-el8-X86-64-setup.pyz
+          ${{github.workspace}}/clustermgr4-4-el8-X86-64-setup.pyz.sha256sum
+          ${{github.workspace}}/clustermgr4-4-ubuntu-X86-64-setup.pyz
+          ${{github.workspace}}/clustermgr4-4-ubuntu-X86-64-setup.pyz.sha256sum
+        key: ${{ github.sha }}
+
+  upload_python_packages:
+    needs: build_python_packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        name: [el7, ubuntu, el8]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      id: cache-installers
+      with:
+        path: |
+          ${{github.workspace}}/clustermgr4-4-el7-X86-64-setup.pyz
+          ${{github.workspace}}/clustermgr4-4-el7-X86-64-setup.pyz.sha256sum
+          ${{github.workspace}}/clustermgr4-4-el8-X86-64-setup.pyz
+          ${{github.workspace}}/clustermgr4-4-el8-X86-64-setup.pyz.sha256sum
+          ${{github.workspace}}/clustermgr4-4-ubuntu-X86-64-setup.pyz
+          ${{github.workspace}}/clustermgr4-4-ubuntu-X86-64-setup.pyz.sha256sum
+        key: ${{ github.sha }}
+    - name: Get latest tag
+      id: previoustag
+      run: |
+        echo "::set-output name=tag::$(curl https://api.github.com/repos/${{ github.repository }}/releases -s | grep "tag_name" | cut -d '"' -f 4 | grep -o '^\v.*' | head -n 1)"
+    - name: Print Version
+      run: |
+        echo "${{ steps.previoustag.outputs.tag }}"
+    - name: Upload binaries to release
+      id: upload_binaries_setup
+      continue-on-error: true
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.MOWORKFLOWTOKEN }}
+        file: ${{github.workspace}}/clustermgr4-4-${{ matrix.name }}-X86-64-setup.pyz
+        asset_name: clustermgr4-4-${{ matrix.name }}-X86-64-setup.pyz
+        tag: ${{ steps.previoustag.outputs.tag }}
+    - name: Upload checksum to release
+      id: upload_shas_setup
+      continue-on-error: true
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.MOWORKFLOWTOKEN }}
+        file: ${{github.workspace}}/clustermgr4-4-${{ matrix.name }}-X86-64-setup.pyz.sha256sum
+        asset_name: clustermgr4-4-${{ matrix.name }}-X86-64-setup.pyz.sha256sum
+        tag: ${{ steps.previoustag.outputs.tag }}

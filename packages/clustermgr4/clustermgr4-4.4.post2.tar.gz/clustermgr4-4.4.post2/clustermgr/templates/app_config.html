@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% from 'macros.html' import render_field, render_checkbox_field, render_form %}
+
+{% block header %}
+    <h1>Application Settings</h1>
+    <ol class="breadcrumb">
+        <li><i class="fa fa-home"></i> <a href="{{ url_for('index.home') }}">Home</a></li>
+        <li class="active">Settings</li>
+    </ol>
+{% endblock %}
+
+{% block content %}
+
+<div class="box box-primary">
+    <form id="cform" action="{{ url_for('index.app_configuration', next=next) }}" method="POST" class="form-horizontal">
+
+    <div class="box-body">
+            {{ cform.csrf_token }}
+
+            <div class="form-group {{ 'has-error' if cform.gluu_version.errors else '' }}">
+                {{ cform.gluu_version.label(class="control-label col-md-3") }}
+                <div class="col-md-9">
+                    {{ cform.gluu_version(class="form-control") }}
+                </div>
+                {% for error in cform.gluu_version.errors %}
+                <p class="help-block">{{ error }}</p>
+                {% endfor %}
+            </div>
+        
+            <div class="form-group {{ 'has-error' if cform.gluu_archive.errors else '' }}">
+                <div class="col-md-offset-3 col-md-2">
+                    {{ render_checkbox_field(cform.offline) }}
+                </div>
+                <div id="div-gluu-archive">
+                    <div class="col-md-2">  {{ cform.gluu_version.label(class="control-label") }}</div>
+                    <div class="col-md-5" data-toggle="gluu-repo-tooltip" title="Please put gluu .deb or .rpm archives to {{repo_dir}}"> {{ cform.gluu_archive(class="form-inline form-control")  }}
+                    
+                     {% for error in cform.gluu_archive.errors %}
+                    <p class="help-block">{{ error }}</p>
+                    {% endfor %}
+                    </div>
+
+                </div>
+ 
+            </div>
+
+            {% if cform.replication_pw %}
+                <div class="form-group {{ 'has-error' if cform.replication_pw.errors else '' }}">
+                    {{ cform.replication_pw.label(class="control-label col-md-3") }}
+                    <div class="col-md-9">
+                        {{ cform.replication_pw(class="form-control", required=False) }}
+                        {% for error in cform.replication_pw.errors %}
+                            <p class="help-block">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ cform.replication_pw_confirm.label(class="control-label col-md-3") }}
+                    <div class="col-md-9">
+                        {{ cform.replication_pw_confirm(class="form-control", required=False) }}
+                    </div>
+                </div>
+
+            {% endif %}
+
+
+            <div class="well well-sm">
+
+                <div class="form-group {{ 'has-error' if cform.nginx_host.errors else '' }}">
+                    {{ cform.nginx_host.label(class="control-label col-md-3") }}
+                    <div class="col-md-9">
+                        {{ cform.nginx_host(class="form-control") }}
+                        {% for error in cform.nginx_host.errors %}
+                            <p class="help-block">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group {{ 'has-error' if cform.external_load_balancer.errors else '' }}" id="external_ip_group" {% if cform.external_load_balancer.data %}style="display: none"{% endif %} >
+                    
+                    {{ cform.nginx_ip.label(class="control-label col-md-3") }}
+                    <div class="col-md-4">
+                        {% if cform.external_load_balancer.data %}
+                            {{ cform.nginx_ip(class="form-control", required=False) }}
+                        {%else%}
+                            {{ cform.nginx_ip(class="form-control") }}
+                        {%endif%}
+                        {% for error in cform.nginx_ip.errors %}
+                            <p class="help-block">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    
+                    {{ cform.nginx_ssh_port.label(class="control-label col-md-2") }}
+                    <div class="col-md-3">
+                        {% if cform.external_load_balancer.data %}
+                            {{ cform.nginx_ssh_port(class="form-control", required=False) }}
+                        {%else%}
+                            {{ cform.nginx_ssh_port(class="form-control") }}
+                        {%endif%}
+                        {% for error in cform.nginx_ssh_port.errors %}
+                            <p class="help-block">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    
+                    
+                </div>
+
+                <div class="form-group">
+                    <div class="col-md-offset-3 col-md-9">
+                        {{ render_checkbox_field(cform.external_load_balancer, checked=external_lb_checked) }}
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="ldap-cache-div" class="form-group"{% if installSaml %} style="display: none" {% endif %}>
+                <div class="col-md-offset-3 col-md-9">
+                    {{ render_checkbox_field(cform.use_ldap_cache) }}  
+                </div>
+            </div>
+
+            <div class="form-group {{ 'has-error' if cform.ldap_update_period.errors else '' }}">
+                {{ cform.ldap_update_period.label(class="control-label col-md-3") }}
+                <div class="col-md-9">
+                    {{ cform.ldap_update_period(class="form-control") }}
+                    {% for error in cform.ldap_update_period.errors %}
+                        <p class="help-block">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-md-offset-3 col-md-9">
+                    {{ render_checkbox_field(cform.modify_hosts) }}
+                </div>
+            </div>
+
+
+            <div class="form-group {{ 'has-error' if cform.ldap_cache_clean_period.errors else '' }}">
+                {{ cform.ldap_cache_clean_period.label(class="control-label col-md-3") }}
+                <div class="col-md-9">
+                    {{ cform.ldap_cache_clean_period(class="form-control") }}
+                    {% for error in cform.ldap_cache_clean_period.errors %}
+                        <p class="help-block">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+
+        </div>
+
+        {#
+        <div class="box-header with-border">
+            <h3 class="panel-title">Notification</h3>
+        </div>
+        <div class="box-body">
+            <div class="form-group {{ 'has-error' if cform.admin_email.errors else '' }}">
+                {{ cform.admin_email.label(class="control-label col-md-3") }}
+                <div class="col-md-9">
+                    {{ cform.admin_email(class="form-control") }}
+                    {% for error in cform.admin_email.errors %}
+                        <p class="help-block">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        #}
+
+        <div class="box-footer">
+            {{ cform.update(class="btn btn-primary pull-right") }}
+        </div>
+    </form>
+</div>
+
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">
+            <a data-toggle="collapse" href="#collapse1">Custom Schema Files</a>
+        </h3>
+    </div>
+    
+    <div id="collapse1" class="panel-collapse collapse">
+    <div class="panel-body">
+        <ul class="list-group">
+            {% for sf in schemafiles %}
+            <li class="list-group-item">{{ sf }} <a href="{{ url_for('index.remove_custom_schema', schema_file=sf) }}"><span class="glyphicon glyphicon-trash"></span></a></li>
+            {% endfor %}
+        </ul>
+        <form id="sform" action="" method="POST" enctype="multipart/form-data">
+            {{ sform.csrf_token }}
+            <div class="row">
+                <div class="col-md-3">
+                    {{ sform.schema }}
+                </div>
+                <div class="col-md-6">
+                    {{ sform.upload(class="btn btn-success") }}
+                </div>
+            </div>
+            {% if sform.schema.errors %}
+            {% for e in sform.schema.errors %}
+            <p class="text-danger">{{ e }}</p>
+            {% endfor %}
+            {% endif %}
+        </form>
+    </div>
+    </div>
+</div>
+
+
+{% if localos != 'Alpine' %}
+
+
+
+  {% if not request.path.endswith('upgradewithpip') and (config.latest_version and config.latest_version > version) %}
+
+    <div class="panel panel-default" id="upgrade-panel">
+        <div class="panel-heading">
+            <h3 class="panel-title">Upgrade</h3>
+        </div>
+        <div class="panel-body">
+        <span class="text-warning">Version {{latest_version}} is available!</span> Upgrade Clustermgr from github repository<br><br>
+        <a class="btn btn-primary" href="{{ url_for('index.upgrade_clustermgr') }}">Upgrade</a>
+
+        </div>
+    </div>
+    {% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+
+{% block js %}
+<script>
+
+$('#external_load_balancer').change(function() {
+    if(this.checked) {
+            if ( ! $('#use_ldap_cache').prop('checked')) {
+               $('#external-load-balancer-box').removeAttr('style');
+            }
+            $('#external_ip_group').attr('style',  'display: none');
+            $('#nginx_ip').removeAttr('required');
+
+    } else {
+        $('#external-load-balancer-box').attr('style',  'display: none');
+        $('#external_ip_group').removeAttr('style');
+        $('#nginx_ip').prop('required',true);
+    }
+
+});
+
+
+function offlineInstallation() {
+
+    if ($('#offline').is(':checked')) {
+        $('#div-gluu-archive').removeAttr('style',  'display: none');
+        $('#gluu_archive').attr('required');
+            
+        
+    } else {
+        
+        $('#div-gluu-archive').attr('style',  'display: none');
+        $('#gluu_archive').removeAttr('required');
+            
+    }
+
+}
+
+
+$('#offline').change(function() {
+        
+        offlineInstallation();
+});
+
+
+offlineInstallation();
+
+
+$(document).ready(function(){
+  $('[data-toggle="gluu-repo-tooltip"]').tooltip(); 
+});
+
+</script>
+{% endblock %}
