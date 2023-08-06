@@ -1,0 +1,118 @@
+Metadata-Version: 2.1
+Name: rayse
+Version: 0.1.1
+License: GNU LGPLv3
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Rust
+Classifier: Programming Language :: Python :: 3
+Classifier: Development Status :: 3 - Alpha
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: plana
+Requires-Dist: replana
+Requires-Dist: replanaii
+Requires-Dist: pane
+Requires-Dist: repane
+Requires-Dist: repaneii
+Requires-Dist: elast
+Requires-Dist: relast
+Requires-Dist: relastii
+Requires-Dist: plotly
+
+# Rayse
+
+A fast hp-FEA library for linear elasticity and the relaxed micromorphic model. The library exposes models for full
+three-dimensional-, plane-strain- and antiplane-shear models with a common user interface.
+
+## Installation
+
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install Rayse:
+
+```bash
+pip install rayse
+```
+
+## Usage
+Example for a relaxed micromorphic model of plane-strain.
+In this example, the python library [meshzoo](https://pypi.org/project/meshzoo/) is used to generate the mesh.
+
+```python
+from rayse.relaxed_plane_strain import *
+from rayse.plot import *
+from rayse.consts import *
+import meshzoo
+
+# Example mesh generation with meshzoo
+h = 0.25
+
+pts, cells = meshzoo.ngon(4, int(1. / h))
+pts, cells = pts.tolist(), cells.tolist()
+
+# Define element power and plot resolution
+p = 7
+res = 5
+
+# Initialize the mesh object
+mesh = Mesh(pts, cells, p)
+# Create a group for the outher boundary
+outer = mesh.def_outer()
+
+# Initialize the computational domain
+dom = Dom(mesh)
+
+# Define group "outer" as the Dirichlet boundary
+dom.set_boundary(outer)
+
+# Get the number of degrees of freedom
+free_dofs, constrained_dofs = dom.dofs()
+
+# Plot the mesh
+sys = plot_curves(*dom.plot_sys())
+plot(sys).show()
+
+# Define material constants
+lam = 11.54
+mu = 7.69
+c_ec = venant(lam, mu, 2)
+c_ecm = venant(2. * lam, 2. * mu, 2)
+mulc = 1.
+
+# Set material constants
+dom.set_consts(c_ec, c_ecm, mulc)
+
+# Embed a Dirichlet boundary condition on the outer group
+dom.embed_bcond(lambda x, y: [sin(x), cos(y)], outer)
+
+# Set force and micro-moment
+dom.set_force(lambda x, y: [0., 0.])
+
+# Solve
+dom.solve()
+
+# Retrieve results
+dom.set_vals()
+
+# Plot results
+curves = plot_curves(*dom.plot_curves(res))
+surface = plot_surf(*dom.plot_disp(res), opacity=0.9)
+plot(curves, surface).show()
+
+# Plot the flux of the microdistorion for the y-axis
+flux = plot_flux(*dom.plot_flux(res, 1))
+plot(sys, flux).show()
+```
+
+## License
+
+Rayse is licensed under [GNU LGPLv3](https://choosealicense.com/licenses/lgpl-3.0).
+
+This software relies on the [PyO3](https://github.com/PyO3/pyo3) library under
+the [Apache-2.0](https://choosealicense.com/licenses/apache-2.0/) license for ffi and on
+the [rayon](https://github.com/rayon-rs/rayon) crate under the [MIT](https://choosealicense.com/licenses/mit/#)
+and [Apache-2.0](https://choosealicense.com/licenses/apache-2.0/)
+licenses for parallelism.
+The library also exposes a small wrapper for the [Plotly](https://github.com/plotly/plotly.py) library 
+under the [MIT](https://choosealicense.com/licenses/mit/#) license for the purpose of visualization.
