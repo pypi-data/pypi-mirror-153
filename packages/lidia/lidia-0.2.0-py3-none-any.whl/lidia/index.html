@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>RPC Task GUI</title>
+    <link rel="stylesheet" href="static/style.css">
+    <script src="static/socket.io.js"></script>
+</head>
+
+<body>
+    <svg id="mainSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2100 1200" preserveAspectRatio="xMidYMid meet">
+        <defs>
+            <path id="bottomTriangle" stroke="#fff" stroke-width="2" d="m0,0 l-34.64,60 h69.28 z" />
+            <path id="star" fill="#f74afd" stroke="#fff" stroke-width="2"
+                d="M25,0 L9,9 L0,25 L-9,9 L-25,0 L-9,-9 L0,-25 L9,-9 z" />
+            <circle id="pointCircle" cx="0" cy="0" r="23" stroke="#fff" stroke-width="2" />
+            <path id="borderShort"
+                d="M0,-30 v60 h-5 l-17.32,-10 l17.32,-10 l-17.32,-10 l17.32,-10 l-17.32,-10 l17.32,-10 z" />
+            <!-- The larger width prevents wrapping -->
+            <pattern id="borderGreen" x="0" y="0" width="1.1" height=".06">
+                <use href="#borderShort" fill="#0f0" transform="translate(22.32 30)" />
+            </pattern>
+            <pattern id="borderRed" x="0" y="0" width="1.1" height=".06">
+                <use href="#borderShort" fill="#f00" transform="translate(22.32 30)" />
+            </pattern>
+            <rect id="borderLong" x="-22.32" y="-1000" width="22.32" height="1000" />
+        </defs>
+        <rect width="2150" height="1250" x="-25" y="-25" fill="#000" />
+        <!-- Region extents -->
+        <!-- <rect width="630" height="1200" x="0" y="0" fill="#700" />
+    <rect width="340" height="1200" x="630" y="0" fill="#070" />
+    <rect width="1130" height="1200" x="970" y="0" fill="#007" /> -->
+        <g id="textRegion" font-family="sans-serif">
+            <rect width="500" height="500" x="60" y="70" fill="none" stroke="#fff" stroke-width="5" rx="15" />
+            <rect width="150" height="30" x="125" y="55" fill="#000" />
+            <use id="cycFtr" href="#pointCircle" fill="#000" transform="translate(420 150)" />
+            <rect width="500" height="500" x="60" y="630" fill="none" stroke="#fff" stroke-width="5" rx="15" />
+            <rect width="225" height="30" x="125" y="615" fill="#000" />
+            <use id="collFtr" href="#pointCircle" fill="#000" transform="translate(420 710)" />
+            <text font-family="sans-serif" fill="#fff" font-size="50">
+                <tspan x="130" y="80" font-size="30">CYCLIC</tspan>
+                <tspan x="125" y="170">FTR</tspan>
+                <tspan x="125" y="245">LON POS</tspan>
+                <tspan id="cycLonPercent" x="400" y="245">0</tspan>
+                <tspan x="495" y="245">%</tspan>
+                <tspan x="125" y="320">LAT POS</tspan>
+                <tspan id="cycLatPercent" x="400" y="320">0</tspan>
+                <tspan x="495" y="320">%</tspan>
+                <tspan x="130" y="640" font-size="30">COLLECTIVE</tspan>
+                <tspan x="125" y="730">FTR</tspan>
+                <tspan x="125" y="805">POS</tspan>
+                <tspan id="collPercent" x="400" y="805">0</tspan>
+                <tspan x="495" y="805">%</tspan>
+            </text>
+        </g>
+        <g id="collectiveRegion">
+            <rect width="60" height="1000" x="775" y="75" fill="#4d4d4d" stroke="#fff" stroke-width="5" />
+            <g id="collOrigin" transform="translate(805 1075) rotate(270)">
+                <use id="collBoundaryLow" href="#borderShort" fill="#0f0" display="none" />
+                <g id="collBoundaryUp" fill="#0f0" display="none" transform="translate(1000)">
+                    <use href="#borderShort" transform="scale(-1 1)" />
+                </g>
+                <g transform="translate(0 -30)">
+                    <g id="collTrimIndicator">
+                        <use href="#bottomTriangle" fill="#02f7fa" transform="scale(1 -1)" />
+                        <path fill=" none" stroke="#fff" stroke-dasharray="12,12" stroke-width="4" d="M0,0 v60" />
+                    </g>
+                </g>
+                <use id="collTargetIndicator" href="#star" />
+                <g transform="translate(0 30)">
+                    <use id="collInputIndicator" href="#bottomTriangle" fill="#f00" />
+                </g>
+            </g>
+        </g>
+        <g id="cyclicRegion">
+            <rect width="1000" height="1000" x="1025" y="75" fill="#4d4d4d" stroke="#fff" stroke-width="5" />
+            <g id="cycOrigin" transform="translate(1025 1075) scale(1 -1)">
+                <g id="cycLatOrigin" transform="scale(1 -1)">
+                    <g id="cycLatTrimIndicator" transform="translate(500)">
+                        <path fill="none" stroke="#fff" stroke-dasharray="12,12" stroke-width="4" d="M0,0 v-1000" />
+                        <use href="#bottomTriangle" fill="#02f7fa" />
+                    </g>
+                    <use id="cycBoundaryLeft" href="#borderLong" fill="url(#borderGreen)" display="none" />
+                    <g id="cycBoundaryRight" fill="url(#borderGreen)" display="none" transform="translate(1000)">
+                        <use href="#borderLong" transform="scale(-1 1)" />
+                    </g>
+                </g>
+                <g id="cycLonOrigin" transform="translate(1000 0) rotate(90) scale(1 -1)">
+                    <g id="cycLonTrimIndicator" transform="translate(500)">
+                        <path fill=" none" stroke="#fff" stroke-dasharray="12,12" stroke-width="4" d="M0,0 v-1000" />
+                        <use href="#bottomTriangle" fill="#02f7fa" />
+                    </g>
+                    <use id="cycBoundaryLow" href="#borderLong" fill="url(#borderGreen)" display="none" />
+                    <g id="cycBoundaryUp" fill="url(#borderGreen)" display="none" transform="translate(1000)">
+                        <use href="#borderLong" transform="scale(-1 1)" />
+                    </g>
+                </g>
+                <g id="cycTargetIndicator" transform="translate(500 500)">
+                    <use href="#star" />
+                    <g fill="none" stroke="#fff" stroke-dasharray="3,3" stroke-width="3">
+                        <circle cx="0" cy="0" r="30" />
+                        <circle cx="0" cy="0" r="50" />
+                    </g>
+                </g>
+                <use id="cycInputIndicator" href="#pointCircle" fill="#f00" transform="translate(500 500)" />
+            </g>
+        </g>
+    </svg>
+    <div class="controls">
+        <p>
+            <span>Show regions:</span>
+            <span>
+                <input type="checkbox" id="showText" checked />
+                <label for="showText">Text</label>
+            </span>
+            <span>
+                <input type="checkbox" id="showColl" checked />
+                <label for="showColl">Collective</label>
+            </span>
+            <span>
+                <input type="checkbox" id="showCyc" checked />
+                <label for="showCyc">Cyclic</label>
+            </span>
+        </p>
+        <p>
+            <span>Instruments position:</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="4em" height="4em">
+                <g id="alignGroup" stroke="none" fill="currentColor">
+                    <rect x="0" y="0" width="25" height="25" rx="5" />
+                    <rect x="37.5" y="0" width="25" height="25" rx="5" />
+                    <rect x="75" y="0" width="25" height="25" rx="5" />
+                    <rect x="0" y="37.5" width="25" height="25" rx="5" />
+                    <rect x="37.5" y="37.5" width="25" height="25" rx="5" fill="#0f0" />
+                    <rect x="75" y="37.5" width="25" height="25" rx="5" />
+                    <rect x="0" y="75" width="25" height="25" rx="5" />
+                    <rect x="37.5" y="75" width="25" height="25" rx="5" />
+                    <rect x="75" y="75" width="25" height="25" rx="5" />
+                </g>
+            </svg>
+        </p>
+    </div>
+    <script type="text/javascript">
+        var socket = io();
+
+        socket.on("echo", s => {
+            console.log(s);
+        })
+    </script>
+</body>
+
+</html>
