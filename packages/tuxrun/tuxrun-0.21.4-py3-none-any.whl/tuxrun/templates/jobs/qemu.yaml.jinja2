@@ -1,0 +1,88 @@
+device_type: "qemu"
+
+{% if tests %}
+job_name: "tuxrun@{{ device.name }}: {{ tests|map(attribute="name")|join(", ")}}"
+{% else %}
+job_name: "tuxrun@{{ device.name }}: boot"
+{% endif %}
+priority: "medium"
+visibility: "public"
+
+context:
+    arch: "{{ lava_arch }}"
+    machine: "{{ machine }}"
+    cpu: "{{ cpu }}"
+{% if memory %}
+    memory: "{{ memory }}"
+{% endif %}
+    extra_options: ["-no-reboot", "{{ '", "'.join(extra_options) }}"]
+    no_kvm: true
+    no_network: true
+
+{%- set deploy_timeout = timeouts.deploy|default(5) %}
+{%- set boot_timeout = timeouts.boot|default(15) %}
+
+{% block timeouts %}
+timeouts:
+  job:
+    minutes: {{ deploy_timeout + boot_timeout + tests_timeout }}
+  action:
+   minutes: 5
+  actions:
+    power-off:
+      seconds: 30
+{% endblock %}
+
+actions:
+- deploy:
+    to: tmpfs
+    timeout:
+      minutes: {{ deploy_timeout }}
+    os: oe
+    images:
+      kernel:
+        image_arg: '-kernel {kernel} -append "console={{ console }},115200 rootwait root={{ rootfs_dev }}{{ rootfs_partition|default("", true) }} debug verbose console_msg_format=syslog{% if tux_boot_args %} {{ tux_boot_args }}{% endif %}"'
+        url: "{{ kernel }}"
+{% if compression(kernel)[1] %}
+        compression: {{ compression(kernel)[1] }}
+{% endif %}
+{% if bios %}
+      bios:
+        image_arg: "-bios {bios}"
+        url: "{{ bios }}"
+{% endif %}
+{% if dtb %}
+      dtb:
+        image_arg: "-dtb {dtb}"
+        url: "{{ dtb }}"
+{% endif %}
+      rootfs:
+        image_arg: "{{ rootfs_arg }}"
+        url: "{{ rootfs }}"
+        compression: {{ compression(rootfs)[1] }}
+        format: ext4
+{% if overlays %}
+        overlays:
+{% if tests %}
+          lava: true
+{% endif %}
+{% for name, overlay, dst in overlays %}
+          {{ name }}:
+            url: "{{ overlay }}"
+            path: "{{ dst }}"
+            format: tar
+            compression: {{ compression(overlay)[1] }}
+{% endfor %}
+{% elif tests %}
+        overlays:
+          lava: true
+{% endif %}
+- boot:
+    method: qemu
+    timeout:
+      minutes: {{ boot_timeout }}
+    auto_login:
+      login_prompt: '(.*)login:'
+      username: root
+    prompts:
+    - 'root@(.*):[/~]#'
