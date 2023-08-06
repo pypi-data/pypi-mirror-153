@@ -1,0 +1,1 @@
+Esto es una libreria para el sensado de la temperatura y humedad. La misma cuenta con una alarma via mail, luces led y un boton de reset. Es utilizada en una Raspberry.
