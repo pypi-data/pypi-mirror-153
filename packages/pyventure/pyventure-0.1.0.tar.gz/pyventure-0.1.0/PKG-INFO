@@ -1,0 +1,97 @@
+Metadata-Version: 2.1
+Name: pyventure
+Version: 0.1.0
+Summary: A simple framework for creating text adventure games.
+Home-page: https://github.com/d-flood/pyventure
+License: MIT
+Author: David Flood
+Author-email: davidfloodii@gmail.com
+Requires-Python: >=3.10,<4.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Requires-Dist: rich (>=12.4.4,<13.0.0)
+Project-URL: Repository, https://github.com/d-flood/pyventure
+Description-Content-Type: text/markdown
+
+# Pyventure is a simple library for creating a text adventure with Python
+I created this library with and for my son for him practice coding,
+using pip, and importing libraries.
+
+
+## Installation
+`python -m pip install pyventure`
+
+## Tutorial
+Pyventure handles the game logic; all the user needs to do is
+create `Place` objects. Each `Place` object represents a node
+on the game map. It is a setting which includes things with 
+which the player can interact.
+
+A `Place` object is created by providing four parameters:
+1. a string `name` _required_
+2. a string `description` _required_
+3. a list of `Feature`s
+4. a list of `Node`s
+
+### Example of a playable game with two places to move between
+```python
+from pyventure.place import Place, Feature, Node
+from pyventure.items import Clue, Consumable, Tool
+from pyventure.game_loops import start
+
+LIVING_ROOM = 'Living Room'
+KITCHEN = 'Kitchen'
+
+living_room = Place(
+    name=LIVING_ROOM,
+    description="There is a door on your [u]left[/u] and a pencil on the carpet.",
+    features=[
+        Feature(
+            name='pencil',
+            interact_msg='It is a no. 2 Pencil',
+            takeable=Tool(
+                name='pencil',
+                risk=0,
+                uses=10,
+                description='it could stand to be sharpened',
+                total=1
+            )
+        )
+    ],
+    nodes = [
+        Node(
+            name='left',
+            place_name=KITCHEN,
+            travel_msg='You open the door and stop into the kitchen.',
+            accessible=True
+        )
+    ]
+)
+
+
+kitchen = Place(
+    name=KITCHEN,
+    description="The floor is dirty. You're afraid of what is in the refridgerator.",
+    features=[],
+    nodes = [
+        Node(
+            name='living room',
+            place_name=LIVING_ROOM,
+            travel_msg='You are back in the living room.',
+            accessible=True
+        )
+    ]
+)
+
+all_places = {
+    LIVING_ROOM: living_room,
+    KITCHEN: kitchen
+}
+
+
+if __name__ == '__main__':
+    start(new_game_msg='Name your character: ', all_places=all_places)
+
+```
+
