@@ -1,0 +1,109 @@
+Metadata-Version: 2.1
+Name: amiyabot
+Version: 1.0.3
+Summary: 快速构建 QQ 频道机器人
+Home-page: https://gitee.com/vivien8261/amiya-bot-core
+Author: vivien8261
+Author-email: 826197021@qq.com
+License: MIT Licence
+Platform: UNKNOWN
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: pillow (~=9.1.1)
+Requires-Dist: aiohttp (~=3.7.4.post0)
+Requires-Dist: jieba (~=0.42.1)
+Requires-Dist: peewee (~=3.14.10)
+Requires-Dist: playwright (~=1.22.0)
+Requires-Dist: pymysql (~=1.0.2)
+Requires-Dist: pyyaml (~=6.0)
+Requires-Dist: qq-bot (~=0.8.5)
+Requires-Dist: requests (~=2.27.1)
+Requires-Dist: zhon (~=1.1.5)
+
+# Amiya-Bot
+
+快速构建 QQ 频道机器人
+
+    pip install amiyabot
+
+### 创建一个实例
+
+```python
+import asyncio
+
+from amiyabot import AmiyaBot, Message, Chain
+
+bot = AmiyaBot(appid='******', token='******')
+
+
+@bot.on_message(keywords='hello')
+async def _(data: Message):
+    return Chain(data).text(f'hello, {data.nickname}')
+
+
+asyncio.run(bot.start())
+```
+
+### 创建多个单独实例
+
+```python
+import asyncio
+
+from amiyabot import AmiyaBot, Message, Chain
+
+bot1 = AmiyaBot(appid='******', token='******', public=False)
+bot2 = AmiyaBot(appid='******', token='******')
+
+
+@bot1.on_message(keywords='hello')
+async def _(data: Message):
+    return Chain(data).text(f'hello, {data.nickname}')
+
+
+@bot2.on_message(keywords='hey')
+async def _(data: Message):
+    return Chain(data).text(f'hey, {data.nickname}')
+
+
+asyncio.run(
+    asyncio.wait([
+        bot1.start(),
+        bot2.start()
+    ])
+)
+```
+
+### 创建一个多账号实例
+
+```python
+import asyncio
+
+from amiyabot import AmiyaBot, MultipleAccounts, Message, Chain
+
+bot1 = AmiyaBot(appid='******', token='******', public=False)
+bot2 = AmiyaBot(appid='******', token='******')
+
+bot = MultipleAccounts(
+    [
+        bot1,
+        bot2
+    ]
+)
+
+
+# 公共触发器
+@bot.on_message(keywords='hello')
+async def _(data: Message):
+    return Chain(data).text(f'hello, {data.nickname}')
+
+
+# 专属触发器
+@bot1.on_message(keywords='hey')
+async def _(data: Message):
+    return Chain(data).text(f'hey, my name is Amiyabot')
+
+
+asyncio.run(bot.start())
+```
+
+
