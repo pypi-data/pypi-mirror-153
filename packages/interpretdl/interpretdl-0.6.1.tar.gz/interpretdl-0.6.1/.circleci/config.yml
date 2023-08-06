@@ -1,0 +1,52 @@
+version: 2.1
+
+commands:
+  check-changed-files-or-halt:
+    description: "Check code changes"
+    steps:
+      - run: git show -m HEAD --name-only --pretty="" | grep -E 'interpretdl/|tests/' || circleci step halt
+
+  pip_install:
+    description: "Install dependencies via pip"
+    parameters:
+      args:
+        type: string
+        default: ""
+    steps:
+      - run:
+          name: "Install dependencies via pip"
+          command: sh ./scripts/install_from_scratch.sh << parameters.args >>
+
+  unit_tests:
+    description: "Run unit tests"
+    steps:
+      - run:
+          name: "Run unit tests"
+          command: |
+            pip install setuptools_scm
+            pip install paddlenlp
+            pip install coverage
+            coverage run --source=interpretdl -m unittest -v
+            coverage report -m
+
+jobs:
+  test_py37_cpu:
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - checkout
+      # - check-changed-files-or-halt
+      # - restore_cache: # https://circleci.com/docs/2.0/caching/
+      #     key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ checksum "./scripts/install_from_scratch.sh"}}
+      - pip_install
+      - unit_tests
+      # - save_cache: # https://circleci.com/docs/2.0/caching/
+      #     key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ checksum "./scripts/install_from_scratch.sh"}}
+      #     paths:
+      #       - "/home/circleci/.local/lib/python3.7/site-packages"
+    # parallelism: 4
+
+workflows:
+  tests:
+    jobs:
+      - test_py37_cpu
