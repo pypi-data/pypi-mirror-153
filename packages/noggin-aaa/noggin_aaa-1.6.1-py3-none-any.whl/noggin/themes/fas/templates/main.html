@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block website %}{{_("Fedora Accounts")}}{% endblock %}
+
+{% set OPENID = 'https://%s.id.fedoraproject.org' %}
+
+{% block head %}
+    <link href="{{ url_for('theme.static', filename='js/fedora-bootstrap/fedora-bootstrap.min.nodata.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('theme.static', filename='fonts/open-sans.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('theme.static', filename='fonts/hack.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('theme.static', filename='css/fedoraaccounts.css') }}" rel="stylesheet" type="text/css" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('theme.static', filename='favicon/apple-touch-icon.png', v='alJGQ5vmvC') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('theme.static', filename='favicon/favicon-32x32.png', v='alJGQ5vmvC') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('theme.static', filename='favicon/favicon-16x16.png', v='alJGQ5vmvC') }}">
+    <link rel="manifest" href="{{ url_for('theme.static', filename='favicon/site.webmanifest', v='alJGQ5vmvC') }}">
+    <link rel="mask-icon" href="{{ url_for('theme.static', filename='favicon/safari-pinned-tab.svg', v='alJGQ5vmvC') }}" color="#51a2da">
+    <link rel="shortcut icon" href="{{ url_for('theme.static', filename='favicon/favicon.ico', v='alJGQ5vmvC') }}">
+    <meta name="theme-color" content="#ffffff">
+{% endblock %}
+
+{% block navbar %}
+    <nav class="navbar navbar-expand-lg navbar-light masthead justify-content-between py-2">
+        <a class="navbar-brand" href="{{ url_for('root.root') }}"><img src="{{ url_for('theme.static', filename='images/FedoraAccounts.png') }}" alt="Fedora Account System logo" height="40"></a>
+        {% if current_user %}
+        <form><input id="search" type="search" class="typeahead form-control" autocomplete="off" placeholder="{{_('search...')}}"></form>
+        <ul class="navbar-nav align-items-center">
+            <li class="nav-item">
+                <a class="nav-link color-white" href="{{ url_for('.groups') }}">{{_("Groups")}}</a>
+            </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <img src="{{ gravatar(current_user.mail if current_user.mail else 'default', 30) }}" class="bg-white"/>
+
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
+                    <a class="dropdown-item" href="{{ url_for('.user', username=current_user.username) }}">{{_("Profile")}}</a>
+                    <a class="dropdown-item" href="{{ url_for('.user_settings_profile', username=current_user.username) }}">{{_("Settings")}}</a>
+                    {% if config["STAGE_USERS_ROLE"] in current_user.roles %}
+                    <a class="dropdown-item" href="{{ url_for('.registering_users') }}">{{_("Registering Users")}}</a>
+                    {% endif %}
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="https://docs.fedoraproject.org/en-US/fedora-accounts/user/" target="_blank" rel="noopener noreferrer">{{_("Help")}}</a>
+                    <a class="dropdown-item" href="{{ url_for('.logout') }}">{{_("Log Out")}}</a>
+                </div>
+            </li>
+        </ul>
+        {% endif %}
+    </nav>
+    {% with flashes = get_flashed_messages(with_categories=True) %}
+        {% if flashes %}
+        <div class="container flash-messages fixed-top mt-5">
+            {% for category, flash in flashes %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show">
+                {{ flash }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+{% endblock %}
+
+{% block bodycontent %}
+    <div class="bodycontent mb-auto pb-5">
+        {% block content %}{% endblock %}
+    </div>
+{% endblock %}
+
+{% block footer %}
+<div class="footer py-5 text-white">
+    <div class="container">
+        <div class="row footerlinks justify-content-center">
+            <div class="col-sm-3 col-4 mt-3">
+                <div>
+                    <dl>
+                        <dt class="text-uppercase h4"><strong>About</strong></dt>
+                        <dd><a href="https://getfedora.org/">Get Fedora Linux</a></dd>
+                        <dd><a href="https://getfedora.org/en/sponsors/">Sponsors</a></dd>
+                        <dd><a href="https://fedoramagazine.org">Fedora Magazine</a></dd>
+                        <dd><a href="https://fedoraproject.org/wiki/Legal:Main#Legal">Legal</a></dd>
+                    </dl>
+                </div>
+           </div>
+           <div class="col-sm-3 col-4 mt-3">
+                <div>
+                    <dl>
+                        <dt class="text-uppercase h4"><strong>Support</strong></dt>
+                        <dd><a href="https://fedoraproject.org/wiki/Communicating_and_getting_help">Get Help</a></dd>
+                        <dd><a href="https://ask.fedoraproject.org/">Ask Fedora</a></dd>
+                        <dd><a href="https://fedoraproject.org/wiki/Common_F33_bugs">Common Bugs</a></dd>
+                        <dd><a href="https://developer.fedoraproject.org/">Fedora Developer Portal</a></dd>
+                    </dl>
+                </div>
+           </div>
+           <div class="col-sm-3 col-4 mt-3">
+                <div>
+                    <dl>
+                        <dt class="text-uppercase h4"><strong>Community</strong></dt>
+                        <dd><a href="https://fedoraproject.org/wiki/Join">Join Fedora</a></dd>
+                        <dd><a href="https://fedoraproject.org/wiki/Overview">About Fedora</a></dd>
+                        <dd><a href="http://fedoraplanet.org">Planet Fedora</a></dd>
+                        <dd><a href="https://accounts.fedoraproject.org/">Fedora Accounts</a></dd>
+                    </dl>
+                </div>
+           </div>
+        </div>
+        <div class="row footerlinks">
+            <div class="col-12 text-center">
+                <p> Fedora is sponsored by Red Hat. <a href="https://www.redhat.com/en/technologies/linux-platforms/articles/relationship-between-fedora-and-rhel">Learn more about the relationship between Red Hat and Fedora »</a> </p>
+                <div class="py-3"> <a href="https://www.redhat.com/"><img class="rh-logo" height=24px src="{{ url_for('theme.static', filename='images/redhat.png') }}" alt="Red Hat Logo"></a> </div>
+                <p> © 2021 Red Hat, Inc. and others. </p>
+            </div>
+            <div class="col-12 text-center">
+                {% set noggin_link %}
+                    <a href="https://github.com/fedora-infra/noggin">noggin</a>
+                {% endset %}
+                <p>{{_("Powered by %(noggin_link)s", noggin_link=noggin_link)}} v{{ noggin_version }}</p>
+                <p class="text-muted">{{ ipa.ipa_version|default('') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script nonce="{{ csp_nonce() }}" src="{{ url_for('theme.static', filename='js/jquery/jquery-3.3.1.min.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}" src="{{ url_for('theme.static', filename='js/fedora-bootstrap/fedora-bootstrap.min.js') }}"></script>
+    {{ super() }}
+{% endblock %}
+
+{% macro userlinks() %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <strong title='{{_("Wiki")}}'><i class="fa fa-fw fa-link" aria-hidden="true"></i> {{_("Wiki")}}</strong>
+        <a href="https://fedoraproject.org/wiki/User:{{ user.username }}">User:{{ user.username }}</a>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <strong title='{{_("Fedora People")}}'><i class="fa fa-fw fa-link" aria-hidden="true"></i> {{_("Fedora People")}}</strong>
+        <a href="https://{{ user.username }}.fedorapeople.org/">{{ user.username }}</a>
+    </li>
+{% endmacro %}
+
+
+{% macro front_page_blurb() %}
+<h2 class="display-4">{{_("Fedora Accounts")}}</h2>
+<p class="lead">
+  {{_("Fedora Accounts allows you to create and manage an account for Fedora Tools and Infrastructure.")}}
+</p>
+{% endmacro %}
+
+
+{# an optional macro defining an element to show for editing group details #}
+{# typically, it used to link to a ticket tracker for an admin to edit a group #}
+{% macro edit_group_details() %}
+    <button tabindex="0"
+        class="btn btn-link"
+        role="button" data-toggle="popover"
+        data-trigger="focus"
+        title="{{_('Edit Group')}}"
+        data-content="{{_("To change group details or add sponsors, file a ticket with")}} <a href='https://pagure.io/fedora-infrastructure/new_issue' target='_blank'>fedora-infra</a>"
+        data-html="true">
+        <i class="fa fa-fw fa-pencil" aria-hidden="true"></i>
+</button>
+{% endmacro %}
+
+{# an optional macro defining an element to show for account disable #}
+{# typically, it used to link to a ticket tracker for an admin to perform the disable #}
+{% macro request_disable_account() %}
+    <div class="col-auto ml-auto">
+        <a class="btn btn-sm btn-outline-primary" href="https://pagure.io/fedora-pdr/new_issue" title="{{_('Create a PDR request to disable your account')}}">
+            {{_("Request account deletion")}}
+        </a>
+    </div>
+{% endmacro %}
+
+{% macro lost_otp_token() %}
+<div class="container py-4">
+    <div class="row">
+      <div class="col-6 mx-auto">
+        <div class="card">
+            <div class="card-body">
+              <h5 id="pageheading">{{_("Did you lose your last OTP token?")}}</h5>
+              {% set admin_email -%}
+                <code>admin at fedoraproject.org</code>
+              {%- endset %}
+              <p>{{_("If you have lost your last OTP token you need to send an email to %(admin_email)s. Please sign this email using the GPG key associated with your account if possible, so that the administrator can verify your identity.", admin_email=admin_email)}}</p>
+              <p>{{_("If you had multiple tokens and lost one, you can use another to login and delete the lost token from your account.")}}</p>
+              <p class="mb-0">{{_("If you haven't enrolled a OTP token, you don't have one and this doesn't apply to you.")}}</p>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+{# an optional macro to show a note that when applied it also applies to kinit / krb5 / kerberos #}
+{% macro otp_notice() %}
+<div class="card-body">
+    <div class="alert alert-info text-center my-3">
+        <div><strong>{{_("Additional configuration is required when using Kerberos tickets when OTP is enabled")}}</strong></div>
+        <div>{{_("Read the <a href='https://docs.fedoraproject.org/en-US/fedora-accounts/user/#pkinit'>documentation</a> for details on configuring your system")}}</div>
+    </div>
+</div>
+{% endmacro %}
+
+
+{% macro spamcheck_contact() %}
+{% set email_link %}
+<a href="mailto:spamcheck@fedoraproject.org?Subject=Not%20Spam:%20{{ user.username }}">spamcheck@fedoraproject.org</a>
+{% endset %}
+<p>
+    {{ _("To let admins know that you're not a spammer, please send an email to %(email_link)s and explain the situation.", email_link=email_link) }}
+</p>
+{% endmacro %}
+
+{# an optional macro to show a note above the login form #}
+{% macro login_note() %}
+<div class="alert alert-info text-center mb-0">
+    <div>
+        {{ _("By using a Fedora account, you agree to follow the <a href='https://docs.fedoraproject.org/en-US/project/code-of-conduct/'>Fedora&nbsp;Code&nbsp;of&nbsp;Conduct</a>.") }}
+    </div>
+    <div>
+        {{ _("You can also use your CentOS account to login here.") }}
+    </div>
+</div>
+{% endmacro %}
