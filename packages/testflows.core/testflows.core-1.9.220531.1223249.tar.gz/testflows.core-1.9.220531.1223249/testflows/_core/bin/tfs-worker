@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+# Copyright 2022 Katteli Inc.
+# TestFlows.com Open-Source Software Testing Framework (http://testflows.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import os
+import sys
+import testflows.settings as settings
+import testflows._core.tracing as tracing
+
+from testflows._core.parallel.service import process_service
+from testflows._core.parallel.executor.process import WorkQueue
+from testflows._core.exceptions import exception
+from testflows._core.cli.text import danger, warning
+from testflows._core.cli.arg.exit import *
+from testflows._core.cli.arg.parser import ArgumentParser
+from testflows._core.cli.arg.type import trace_level as trace_level_type
+from testflows._core.parallel.executor.process import WORKER_READY
+from testflows._core.parallel.service import Address
+
+tracer = tracing.getLogger(__name__)
+
+def worker_ready():
+    """Signal that worker is ready.
+    """
+    sys.stdout.write(WORKER_READY)
+    sys.stdout.flush()
+
+def worker(args):
+    """TestFlows process worker.
+    """
+    worker_ready()
+    process_service()
+
+    work_queue = WorkQueue(oid=int(args.oid), identity=bytes.fromhex(args.identity), address=Address(args.hostname, int(args.port)))
+    
+    tracer.info(f"starting worker loop {os.getpid()}")
+    while True:
+        with tracing.Event(tracer, "waiting for work item") as event_tracer:
+            try:
+                work_item = work_queue.get(block=True, timeout=0.1)
+            except WorkQueue.Empty:
+                continue
+            try:
+                event_tracer.debug(f"got work item {work_item}")
+                if work_item is not None:
+                    work_item.run()
+                    del work_item
+                    continue
+                else:
+                    # exit worker
+                    break
+            finally:
+                work_queue.task_done()
+    tracer.info(f"exited worker loop {os.getpid()}")
+
+parser = ArgumentParser(prog="tfs-worker", description="""Worker process that executes remote tests.""")
+
+parser.add_argument("--debug", dest="debug", action="store_true",
+                    help="enable debugging mode", default=False)
+parser.add_argument("--no-colors", dest="no_colors", action="store_true",
+                    help="disable terminal color highlighting", default=False)
+parser.add_argument("--identity", type=str, metavar="identity", required=True,
+                    help="identity of the remote service that provides work queue")
+parser.add_argument("--hostname", type=str, metavar="hostname", required=True,
+                    help="hostname of the remote service that provides work queue")
+parser.add_argument("--port", type=int, metavar="port", required=True,
+                    help="port of the remote service that provide work queue")
+parser.add_argument("--oid", type=str, metavar="id", required=True,
+                    help="object id of the work queue on the remote service")
+parser.add_argument("--trace", dest="trace", 
+                    type=trace_level_type, default=None,
+                    metavar=trace_level_type.metavar,
+                    help="enable low-level test program tracing for debugging "
+                        "using Python's logging module at the specified level.")
+
+parser.set_defaults(func=worker)
+
+exitcode = 0
+
+try:
+    if len(sys.argv) == 1:
+        exitcode = 1
+        sys.argv.append("-h")
+
+    args, unknown = parser.parse_known_args()
+
+    if args.debug:
+        settings.debug = True
+
+    if args.no_colors:
+        settings.no_colors = True
+
+    if unknown:
+        raise ExitWithError(f"unknown argument {unknown}")
+
+    if args.trace:
+        settings.trace = args.trace
+
+    tracing.configure_tracing(main=False)
+
+    args.func(args)
+
+except (ExitException, KeyboardInterrupt, Exception) as exc:
+    if settings.debug:
+        sys.stderr.write(warning(exception(), eol='\n'))
+    if not isinstance(exc, (KeyboardInterrupt, BrokenPipeError)):
+        sys.stderr.write(danger("error: " + str(exc).strip()))
+    else:
+        pass
+
+    if isinstance(exc, ExitException):
+        exitcode = exc.exitcode
+    else:
+        exitcode = 1
+except SystemExit as exc:
+    exitcode = exc.code or exitcode
+finally:
+    if not sys.stdout.isatty():
+        try:
+            sys.stdout.close()
+        except BrokenPipeError:
+            pass
+    sys.exit(exitcode)

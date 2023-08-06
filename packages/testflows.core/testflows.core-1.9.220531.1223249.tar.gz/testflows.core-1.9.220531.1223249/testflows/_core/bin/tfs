@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+# Copyright 2019 Katteli Inc.
+# TestFlows.com Open-Source Software Testing Framework (http://testflows.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+try:
+    import sys
+
+    import testflows.settings as settings
+
+    from testflows._core.exceptions import exception
+    from testflows._core.cli.text import danger, warning
+    from testflows._core.cli.arg.exit import *
+    from testflows._core.cli.arg.parser import parser
+except KeyboardInterrupt:
+    import sys
+    sys.exit(1)
+
+exitcode = 0
+
+try:
+    if len(sys.argv) == 1:
+        sys.argv.append("-h")
+
+    args, unknown = parser.parse_known_args()
+
+    if args.debug:
+        settings.debug = True
+
+    if args.no_colors:
+        settings.no_colors = True
+
+    handle_unknown = False
+    try:
+        import testflows.texts.run
+        if isinstance(args.func, testflows.texts.run.Handler):
+            handle_unknown = True
+    except ImportError:
+        pass
+
+    if handle_unknown:
+        if unknown and unknown[0] == "--":
+            unknown = unknown[1:]
+        sys.argv = sys.argv[:1] + unknown
+    elif unknown:
+        raise ExitWithError(f"unknown argument {unknown}")
+
+    if args.show_skipped:
+        settings.show_skipped = True
+
+    if args.trim_results:
+        settings.trim_results = True
+
+    args.func(args)
+
+except (ExitException, KeyboardInterrupt, Exception) as exc:
+    if settings.debug:
+        sys.stderr.write(warning(exception(), eol='\n'))
+    if not isinstance(exc, (KeyboardInterrupt, BrokenPipeError)):
+        sys.stderr.write(danger("error: " + str(exc).strip()))
+    else:
+        pass
+    if isinstance(exc, ExitException):
+        exitcode = exc.exitcode
+    else:
+        exitcode = 1
+except SystemExit as exc:
+    exitcode = exc.code
+finally:
+    if not sys.stdout.isatty():
+        try:
+            sys.stdout.close()
+        except BrokenPipeError:
+            pass
+    sys.exit(exitcode)
