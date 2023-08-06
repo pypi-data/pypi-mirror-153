@@ -1,0 +1,172 @@
+name: Release candidate version
+
+on:
+  pull_request:
+    types: [ closed ]
+    paths-ignore:
+      - '.github/**'
+      - 'scripts/**'
+      - '**.md'
+      - 'git-conventional-commits.json'
+      - 'LICENSE'
+      - 'docker/**'
+      - 'images/**'
+
+concurrency:
+  group: ${{ github.ref }}
+
+jobs:
+  prepare-deploy:
+    strategy:
+      matrix:
+        python-version: [3.8]
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        echo PR #${{ github.event.number }} has been merged
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: master
+        token: ${{ secrets.REPO_SECRET_TOKEN }}
+        fetch-depth: 0
+
+    - name: Setup git configuration
+      run: |
+          # Setup github-actions user
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+          # Upgrade pip
+          python3 -m pip install --upgrade pip
+          # Install build deps
+          python3 -m pip install setuptools wheel twine python-semantic-release==7.28.1
+          # If requirements.txt exists, install from it
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi 
+          # Install linters
+          python3 -m pip install poetry pypi-cleanup
+          poetry install --no-interaction
+
+    - name: Build and publish release-candidate version
+      id: publish-pypi
+      env:
+        TWINE_USERNAME: alvindotai
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        sudo apt-get install mysql-client
+        VERSION=$(./scripts/release-candidates.sh ${{ secrets.MYSQL_PASSWORD }})
+
+        rm -rf dist/
+        rm -rf build/
+        # Create a source distribution (sdist) & a wheel (bdist wheel)
+        python setup.py sdist bdist_wheel
+        twine upload dist/*
+
+        git add .
+        git commit -m "Upgrade CHANGELOG.md with version $VERSION"
+        git tag $VERSION
+
+
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+
+    - name: Update queue on success
+      if: steps.publish-pypi.outcome == 'success'
+      run: |
+        git push 
+        git push --tags
+
+        export PYPI_CLEANUP_PASSWORD=${{ secrets.PYPI_PASSWORD }}
+
+        mysql -h 34.89.189.11 -u github_actions -p${{ secrets.MYSQL_PASSWORD }} --skip-column-names -s -r -e "USE pypi_packages; UPDATE alvin_integration SET is_published=true WHERE semantic_version='${{ env.VERSION }}';"
+
+        for beta_version in $(mysql -h 34.89.189.11 --skip-column-names -s -r -u github_actions -p${{ secrets.MYSQL_PASSWORD }} -e "USE pypi_packages; SELECT semantic_version FROM \`${{ github.head_ref }}\`;"); do
+          echo "Deleting beta version $beta_version"
+          pypi-cleanup -u alvindotai -p alvin-integration -v -r $beta_version -y --do-it
+        done
+
+        mysql -h 34.89.189.11 -u github_actions -p${{ secrets.MYSQL_PASSWORD }} --skip-column-names -s -r -e "USE pypi_packages; DROP TABLE \`${{ github.head_ref }}\`;"
+
+
+
+    - name: Post result to Slack
+      if: steps.publish-pypi.outcome == 'success'
+      id: slack
+      uses: slackapi/slack-github-action@v1.18.0
+      with:
+        # Slack channel id, channel name, or user id to post message.
+        # See also: https://api.slack.com/methods/chat.postMessage#channels
+        channel-id: 'release-package-alvin-integration'
+        # For posting a simple plain text message
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": ":white_check_mark: New alvin-integration release",
+                  "emoji": true
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*What has changed*\n<https://github.com/alvindotai/alvin-integration/blob/${{ env.VERSION }}/CHANGELOG.md|CHANGELOG.md>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Pull Request number*\n<https://github.com/alvindotai/alvin/pull/${{ github.event.number }}|#${{ github.event.number }}>"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Previous version*\n*-*"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Current version*\n*${{ env.VERSION }}*"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}    
+
+
+    - name: Update queue on failure
+      if: steps.publish-pypi.outcome == 'failure'
+      run: |
+        mysql -h 34.89.189.11 -u github_actions -p${{ secrets.MYSQL_PASSWORD }} --skip-column-names -s -r -e "USE pypi_packages; DELETE FROM alvin_integration WHERE semantic_version='${{ env.VERSION }}';"
+
+  close_job:
+    # this job will only run if the PR has been closed without being merged
+    if: github.event.pull_request.merged == false
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        echo PR #${{ github.event.number }} has been closed without being merged
+
+        export PYPI_CLEANUP_PASSWORD=${{ secrets.PYPI_PASSWORD }}
+
+        for beta_version in $(mysql -h 34.89.189.11 --skip-column-names -s -r -u github_actions -p${{ secrets.MYSQL_PASSWORD }} -e "USE pypi_packages; SELECT semantic_version FROM \`${{ github.head_ref }}\`;"); do
+          echo "Deleting beta version $beta_version"
+          pypi-cleanup -u alvindotai -p alvin-integration -v -r $beta_version -y --do-it
+        done
+
+        mysql -h 34.89.189.11 -u github_actions -p${{ secrets.MYSQL_PASSWORD }} --skip-column-names -s -r -e "USE pypi_packages; DROP TABLE \`${{ github.head_ref }}\`;"
