@@ -1,0 +1,98 @@
+# Very simple dummy experiment run. Does nothing except for exercising
+# all relevant components of the software. 
+# Do not change it! But you can copy it and modify it to your needs,
+# of course. :^)
+
+uid: "Yo-ho, a dummy experiment run for me!"# User defined ID
+seed: 42  # The random seed, as usual
+# Version of palaestrai this run file is compatible with
+# Just a check and a log message if versions do not match
+version: "3.4"
+schedule:  # The schedule for this run; it is a list
+  - phase_0:  # Name of the current phase. Can be any user-chosen name
+      environments:  # Definition of the environments for this phase
+        - environment:
+            name: palaestrai.environment.dummy_environment:DummyEnvironment
+            uid: myenv
+            params: {"discrete": true}
+      agents:  # Definiton of agents for this phase
+        - name: mighty_defender
+          brain:
+            name: palaestrai.agent.dummy_brain:DummyBrain
+            params: { "store_path": "./custom" } # the base store path
+          muscle:
+            name: palaestrai.agent.dummy_muscle:DummyMuscle
+            params: { }
+          objective:
+            name: palaestrai.agent.dummy_objective:DummyObjective
+            params: {"params": 1}
+          sensors: [myenv.0, myenv.1, myenv.2, myenv.3, myenv.4]
+          actuators: [myenv.0, myenv.1, myenv.2, myenv.3, myenv.4]
+        - name: evil_attacker
+          brain:
+            name: palaestrai.agent.dummy_brain:DummyBrain
+            params: { }
+          muscle:
+            name: palaestrai.agent.dummy_muscle:DummyMuscle
+            params: { }
+          objective:
+            name: palaestrai.agent.dummy_objective:DummyObjective
+            params: {"params": 1}
+          sensors: [myenv.5, myenv.6, myenv.7, myenv.8, myenv.9]
+          actuators: [myenv.5, myenv.6, myenv.7, myenv.8, myenv.9]
+      simulation:  # Definition of the simulation controller for this phase
+        name: palaestrai.simulation:VanillaSimController
+        conditions:
+          - name: palaestrai.simulation:VanillaSimControllerTerminationCondition
+            params: {}
+      phase_config:  # Additional config for this phase
+        mode: train
+        worker: 1
+        episodes: 1
+  - phase_1:  # Name of the current phase. Can be any user-chosen name
+      environments:  # Definition of the environments for this phase
+        - environment:
+            name: palaestrai.environment.dummy_environment:DummyEnvironment
+            uid: myenv
+            params: {"discrete": true}
+      agents:  # Definiton of agents for this phase
+        - name: mighty_defender
+          # we load the agent with the same name and the same experiment_id, optional: specify "agent_name" or "experiment_id"
+          load: {base: "./custom", phase_name: "phase_0"}
+          brain:
+            name: palaestrai.agent.dummy_brain:DummyBrain
+            params: { "store_path": "./custom" }
+          muscle:
+            name: palaestrai.agent.dummy_muscle:DummyMuscle
+            params: { }
+          objective:
+            name: palaestrai.agent.dummy_objective:DummyObjective
+            params: {"params": 1}
+          sensors: [myenv.0, myenv.1, myenv.2, myenv.3, myenv.4]
+          actuators: [myenv.0, myenv.1, myenv.2, myenv.3, myenv.4]
+        - name: evil_attacker
+          load: {phase_name: "phase_0"}
+          brain:
+            name: palaestrai.agent.dummy_brain:DummyBrain
+            params: { }
+          muscle:
+            name: palaestrai.agent.dummy_muscle:DummyMuscle
+            params: { }
+          objective:
+            name: palaestrai.agent.dummy_objective:DummyObjective
+            params: {"params": 1}
+          sensors: [myenv.5, myenv.6, myenv.7, myenv.8, myenv.9]
+          actuators: [myenv.5, myenv.6, myenv.7, myenv.8, myenv.9]
+      simulation:  # Definition of the simulation controller for this phase
+        name: palaestrai.simulation:VanillaSimController
+        conditions:
+          - name: palaestrai.simulation:VanillaSimControllerTerminationCondition
+            params: {}
+      phase_config:  # Additional config for this phase
+        mode: train
+        worker: 1
+        episodes: 1
+run_config:  # Not a runTIME config
+  condition:
+    name: palaestrai.experiment:VanillaRunGovernorTerminationCondition
+    params: {}
