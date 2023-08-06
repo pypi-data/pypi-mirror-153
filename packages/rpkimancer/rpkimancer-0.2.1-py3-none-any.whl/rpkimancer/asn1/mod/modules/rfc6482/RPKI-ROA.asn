@@ -1,0 +1,44 @@
+RPKI-ROA { iso(1) member-body(2) us(840) rsadsi(113549)
+   pkcs(1) pkcs9(9) smime(16) mod(0) 61 }
+
+DEFINITIONS EXPLICIT TAGS ::= BEGIN
+
+IMPORTS
+    CONTENT-TYPE FROM CryptographicMessageSyntax-2009
+        { iso(1) member-body(2) us(840) rsadsi(113549)
+          pkcs(1) pkcs-9(9) smime(16) modules(0) id-mod-cms-2004-02(41) } ;
+
+-- ROA Content Type
+
+ct-routeOriginAuthz CONTENT-TYPE ::=
+   { TYPE RouteOriginAttestation IDENTIFIED BY id-ct-routeOriginAuthz}
+
+-- ROA Content Type: OID
+
+id-smime OBJECT IDENTIFIER ::= { iso(1) member-body(2)
+us(840) rsadsi(113549) pkcs(1) pkcs9(9) 16 }
+
+id-ct OBJECT IDENTIFIER ::= { id-smime 1 }
+
+id-ct-routeOriginAuthz OBJECT IDENTIFIER ::= { id-ct 24 }
+
+-- ROA Content Type: eContent
+
+RouteOriginAttestation ::= SEQUENCE {
+   version [0] INTEGER DEFAULT 0,
+   asID  ASID,
+   ipAddrBlocks SEQUENCE (SIZE(1..MAX)) OF ROAIPAddressFamily }
+
+ASID ::= INTEGER
+
+ROAIPAddressFamily ::= SEQUENCE {
+   addressFamily OCTET STRING (SIZE (2..3)),
+   addresses SEQUENCE (SIZE (1..MAX)) OF ROAIPAddress }
+
+ROAIPAddress ::= SEQUENCE {
+   address IPAddress,
+   maxLength INTEGER OPTIONAL }
+
+IPAddress ::= BIT STRING
+
+END
