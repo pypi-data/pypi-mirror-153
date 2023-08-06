@@ -1,0 +1,1 @@
+A "module" that basically installs all the required module for GUI Mail Client
