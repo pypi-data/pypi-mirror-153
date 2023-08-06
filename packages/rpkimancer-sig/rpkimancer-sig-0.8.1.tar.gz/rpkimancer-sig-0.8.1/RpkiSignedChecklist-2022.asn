@@ -1,0 +1,56 @@
+RpkiSignedChecklist-2022
+  { iso(1) member-body(2) us(840) rsadsi(113549)
+    pkcs(1) pkcs9(9) smime(16) mod(0) TBD }
+
+DEFINITIONS EXPLICIT TAGS ::=
+BEGIN
+
+IMPORTS
+  CONTENT-TYPE, Digest, DigestAlgorithmIdentifier
+  FROM CryptographicMessageSyntax-2010 -- in [RFC6268]
+    { iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1)
+      pkcs-9(9) smime(16) modules(0) id-mod-cms-2009(58) }
+
+  IPAddressOrRange, ASIdOrRange
+  FROM IPAddrAndASCertExtn -- in [RFC3779]
+    { iso(1) identified-organization(3) dod(6) internet(1)
+      security(5) mechanisms(5) pkix(7) mod(0)
+      id-mod-ip-addr-and-as-ident(30) } ;
+
+ct-rpkiSignedChecklist CONTENT-TYPE ::=
+    { TYPE RpkiSignedChecklist IDENTIFIED BY
+      id-ct-signedChecklist }
+
+id-ct-signedChecklist OBJECT IDENTIFIER ::=
+    { iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1)
+      pkcs-9(9) id-smime(16) id-ct(1) 48 }
+
+RpkiSignedChecklist ::= SEQUENCE {
+  version  [0]          INTEGER DEFAULT 0,
+  resources             ResourceBlock,
+  digestAlgorithm       DigestAlgorithmIdentifier,
+  checkList             SEQUENCE (SIZE(1..MAX)) OF FileNameAndHash }
+
+FileNameAndHash ::= SEQUENCE {
+  fileName        PortableFilename OPTIONAL,
+  hash            Digest }
+
+PortableFilename ::= IA5String (FROM("a".."z" | "A".."Z" | "0".."9" | "." | "_" | "-"))
+
+ResourceBlock ::= SEQUENCE {
+  asID         [0]       ConstrainedASIdentifiers OPTIONAL,
+  ipAddrBlocks [1]       ConstrainedIPAddrBlocks OPTIONAL }
+  -- at least one of asID or ipAddrBlocks MUST be present
+  ( WITH COMPONENTS { ..., asID PRESENT} |
+    WITH COMPONENTS { ..., ipAddrBlocks PRESENT } )
+
+ConstrainedIPAddrBlocks     ::= SEQUENCE (SIZE(1..MAX)) OF ConstrainedIPAddressFamily
+
+ConstrainedIPAddressFamily   ::= SEQUENCE {
+  addressFamily        OCTET STRING (SIZE(2)),
+  addressesOrRanges    SEQUENCE (SIZE(1..MAX)) OF IPAddressOrRange }
+
+ConstrainedASIdentifiers    ::= SEQUENCE {
+  asnum               [0] SEQUENCE (SIZE(1..MAX)) OF ASIdOrRange }
+
+END
