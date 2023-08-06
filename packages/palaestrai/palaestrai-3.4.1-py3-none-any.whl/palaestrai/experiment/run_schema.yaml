@@ -1,0 +1,82 @@
+# Experiment run YAML schema
+uid: str()
+seed: int()
+version: str() 
+schedule: List(any(include('run_phases', required=True), include('optional_parameters')))
+run_config: include('run_config_parameters')
+---
+run_phases:
+    map(include('run_parameters')) # workaround to allow 'wildcard' keys e.g. phase_0, phase_1
+
+optional_parameters:
+    map(include('optional_run_parameters')) 
+
+run_parameters:
+    environments: List(include('enviroment_parameters'))
+    agents: List(include('agent_parameters'))
+    simulation: include('simulation_parameters')
+    phase_config: include('phase_config_parameters')
+
+optional_run_parameters:
+    environments: List(include('optional_enviroment_parameters'), required=False)
+    agents: List(include('optional_agent_parameters'), required=False)
+    simulation: include('optional_simulation_parameters', required=False)
+    phase_config: include('optional_phase_config_parameters', required=False)
+
+enviroment_parameters:
+    environment: include('name_params')
+    reward: include('name_params') 
+
+optional_enviroment_parameters:
+    environment: include('name_params', required=False)
+    reward: include('name_params', required=False) 
+
+agent_parameters:
+    name: str()
+    load: map(required=False)
+    brain: include('name_params')
+    muscle: include('name_params')
+    objective: include('name_params')
+    sensors: list()
+    actuators: list()
+
+optional_agent_parameters:
+    name: str(required=False)
+    load: map(required=False)
+    brain: include('name_params', required=False)
+    muscle: include('name_params', required=False)
+    objective: include('name_params', required=False)
+    sensors: list(required=False)
+    actuators: list(required=False)
+
+simulation_parameters:
+    name: any() 
+    conditions: any()
+
+optional_simulation_parameters:
+    name: any(required=False) 
+    conditions: any(required=False)
+
+phase_config_parameters:
+    mode: str()
+    worker: int()
+    episodes: int()
+
+optional_phase_config_parameters:
+    mode: str(required=False)
+    worker: int(required=False)
+    episodes: int(required=False)
+
+name_params:
+    name: str()
+    uid: str(required=False)
+    params: map()
+
+optional_name_params:
+    name: str(required=False)
+    params: map(required=False)
+
+run_config_parameters:
+    condition: 
+        name: any()
+        params: any()
