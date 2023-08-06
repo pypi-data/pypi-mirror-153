@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+"""Command line script."""
+
+import sys
+
+# First search for a python3 executable.
+# This is required since macports does not provide a python3 executable
+# but rather individual versions
+
+if (sys.version_info < (3, 6)):
+    import os
+    import subprocess
+    executable=["python3","python3.9","python3.8","python3.7","python3.6"]
+    for exe in executable:
+        args=[exe,os.path.abspath(__file__)]
+        args.extend(sys.argv[1:])
+        try:
+            sys.stderr.write(sys.argv[0]+": fallback to "+exe+"\n")
+            sys.exit(subprocess.call(args))
+        except OSError as e:
+            pass
+    print("ERROR: could not find python executable >= 3.6")
+    sys.exit(1)
+
+try:
+    from bussilab.cli import _main_
+except ModuleNotFoundError:
+    import os
+    directory=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.stderr.write(sys.argv[0]+": adding '" + directory + "' to path\n")
+    sys.path.append(directory)
+    from bussilab.cli import _main_
+
+if __name__ == "__main__":
+    _main_()
