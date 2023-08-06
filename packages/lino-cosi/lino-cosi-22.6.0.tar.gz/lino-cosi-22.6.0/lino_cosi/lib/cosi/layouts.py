@@ -1,0 +1,47 @@
+# -*- coding: UTF-8 -*-
+# Copyright 2017-2021 Rumma & Ko Ltd
+# License: GNU Affero General Public License v3 (see file COPYING for details)
+
+"""The default :attr:`custom_layouts_module
+<lino.core.site.Site.custom_layouts_module>` for Lino Cosi.
+
+"""
+
+from lino.modlib.system.choicelists import DashboardLayouts
+from lino.api import rt, _
+
+DashboardLayouts.clear()
+add = DashboardLayouts.add_item
+add('default', _("Default dashboard"),
+"""
+welcome_messages
+ledger.JournalsOverview
+""")
+
+# rt.models.products.Products.column_names = "id name category sales_price *"
+# rt.models.products.Products.detail_layout = """
+# id category sales_price vat_class delivery_unit
+# name
+# body
+# """
+
+rt.models.countries.Places.detail_layout = """
+name country
+type parent zip_code id
+PlacesByPlace contacts.PartnersByCity
+"""
+
+rt.models.ledger.Accounts.column_names = "\
+description sheet_item needs_partner clearable purchases_allowed ref *"
+
+rt.models.ledger.Accounts.detail_layout = """
+ref:10 name:20
+common_account sheet_item id default_amount:10 vat_class vat_column
+needs_partner clearable purchases_allowed
+ledger.MovementsByAccount
+"""
+
+rt.models.system.SiteConfigs.set_detail_layout("""
+site_company next_partner_id:10
+default_build_method simulate_today
+""", window_size=(60, 'auto'))
