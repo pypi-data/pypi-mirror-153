@@ -1,0 +1,409 @@
+Metadata-Version: 2.1
+Name: cs.fstags
+Version: 20220606
+Summary: Simple filesystem based file tagging and the associated `fstags` command line script.
+Home-page: https://bitbucket.org/cameron_simpson/css/commits/all
+Author: Cameron Simpson
+Author-email: Cameron Simpson <cs@cskk.id.au>
+License: GNU General Public License v3 or later (GPLv3+)
+Project-URL: URL, https://bitbucket.org/cameron_simpson/css/commits/all
+Keywords: python3
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Description-Content-Type: text/markdown
+
+Simple filesystem based file tagging
+and the associated `fstags` command line script.
+
+*Latest release 20220606*:
+FSTagsCommand.edit: mention the filename in the header comments in tagset edit mode.
+
+Many basic tasks can be performed with the `fstags` command line utility,
+documented under the `FSTagsCommand` class below.
+
+Why `fstags`?
+By storing the tags in a separate file we:
+* can store tags without modifying a file
+* do not need to know the file's format,
+  or even whether that format supports metadata
+* can process tags on any kind of file
+* because tags are inherited from parent directories,
+  tags can be automatically acquired merely by arranging your file tree
+
+Tags are stored in the file `.fstags` in each directory;
+there is a line for each entry in the directory
+consisting of the directory entry name and the associated tags.
+
+Tags may be "bare", or have a value.
+If there is a value it is expressed with an equals (`'='`)
+followed by the JSON encoding of the value.
+
+The tags for a file are the union of its direct tags
+and all relevant ancestor tags,
+with priority given to tags closer to the file.
+
+For example, a media file for a television episode with the pathname
+`/path/to/series-name/season-02/episode-name--s02e03--something.mp4`
+might have the tags:
+
+    series_title="Series Full Name"
+    season=2
+    sf
+    episode=3
+    episode_title="Full Episode Title"
+
+obtained from the following `.fstags` entries:
+* tag file `/path/to/.fstags`:
+
+    series-name sf series_title="Series Full Name"
+
+* tag file `/path/to/series-name/.fstags`:
+
+  season-02 season=2
+
+* tag file `/path/to/series-name/season-02/.fstags`:
+
+  episode-name--s02e03--something.mp4 episode=3 episode_title="Full Episode Title"
+
+## `fstags` Examples ##
+
+### Backing up a media tree too big for the removable drives ###
+
+Walk the media tree for files tagged for backup to `archive2`:
+
+    fstags find /path/to/media backup=archive2
+
+Walk the media tree for files not assigned to a backup archive:
+
+    fstags find /path/to/media -backup
+
+Backup the `archive2` files using `rsync`:
+
+    fstags find --for-rsync /path/to/media backup=archive2 \
+    | rsync -ia --include-from=- /path/to/media /path/to/backup_archive2
+
+## Class `CascadeRule`
+
+A cascade rule of possible source tag names to provide a target tag.
+
+## Class `FSTags(cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin)`
+
+A class to examine filesystem tags.
+
+## Class `FSTagsCommand(cs.cmdutils.BaseCommand, cs.tagset.TagsCommandMixin)`
+
+`fstags` main command line utility.
+
+Command line usage:
+
+    Usage: fstags [-o ontology] subcommand [...]
+      -o ontology   Specify the path to an ontology file.
+      Subcommands:
+        autotag paths...
+          Tag paths based on rules from the rc file.
+        cp [-finv] srcpath dstpath, cp [-finv] srcpaths... dstdirpath
+          POSIX cp(1) equivalent, but also copying tags:
+          copy files and their tags into targetdir.
+          -f  Force: remove destination if it exists.
+          -i  Interactive: fail if the destination exists.
+          -n  No remove: fail if the destination exists.
+          -v  Verbose: show copied files.
+        cptags srcpath dstpath
+          Copy the direct tags from srcpath to dstpath.
+        edit [-ad] [path]
+          Edit the direct tagsets of path, default: '.'
+          If path is a directory, provide the tags of its entries.
+          Otherwise edit just the tags for path.
+          -a    List all names in directory edit mode; normally
+                names commencing with a dot are omitted.
+          -d    Treat directories like files: edit just its tags.
+        export [-a] [--direct] path {tag[=value]|-tag}...
+          Export tags for files from path matching all the constraints.
+          -a        Export all paths, not just those with tags.
+          --direct  Export the direct tags instead of the computed tags.
+          The output is in the same CSV format as that from "sqltags export",
+          with the following columns:
+          * unixtime: the file's st_mtime from os.stat.
+          * id: empty
+          * name: the file path
+          * tags: the file's direct or indirect tags
+        find [--direct] [--for-rsync] [-o output_format] path {tag[=value]|-tag}...
+          List files from path matching all the constraints.
+          --direct    Use direct tags instead of all tags.
+          --for-rsync Instead of listing matching paths, emit a
+                      sequence of rsync(1) patterns suitable for use with
+                      --include-from in order to do a selective rsync of the
+                      matched paths.
+          -o output_format
+                      Use output_format as a Python format string to lay out
+                      the listing.
+                      Default: {fspath}
+        help [-l] [subcommand-names...]
+          Print the full help for the named subcommands,
+          or for all subcommands if no names are specified.
+          -l  Long help even if no subcommand-names provided.
+        import {-|srcpath}...
+          Import CSV data in the format emitted by "export".
+          Each argument is a file path or "-", indicating standard input.
+        infer pathname
+          Print the base and inferred tags for pathname.
+        json_import --prefix=tag_prefix {-|path} {-|tags.json}
+          Apply JSON data to path.
+          A path named "-" indicates that paths should be read from
+          the standard input.
+          The JSON tag data come from the file "tags.json"; the name
+          "-" indicates that the JSON data should be read from the
+          standard input.
+        ln [-finv] srcpath dstpath, ln [-finv] srcpaths... dstdirpath
+          POSIX ln(1) equivalent, but also copying the tags:
+          link files and their tags into targetdir.
+          -f  Force: remove destination if it exists.
+          -i  Interactive: fail if the destination exists.
+          -n  No remove: fail if the destination exists.
+          -v  Verbose: show linked files.
+        ls [-d] [--direct] [-o output_format] [paths...]
+          List files from paths and their tags.
+          -d          Treat directories like files, do not recurse.
+          --direct    List direct tags instead of all tags.
+          -l          Long format.
+          -o output_format
+                      Use output_format as a Python format string to lay out
+                      the listing.
+                      Default: {fspath:json} {tags}
+        mv [-finv] srcpath dstpath, mv [-finv] srcpaths... dstdirpath
+          POSIX mv(1) equivalent, but also copying the tags:
+          move files and their tags into targetdir.
+          -f  Force: remove destination if it exists.
+          -i  Interactive: fail if the destination exists.
+          -n  No remove: fail if the destination exists.
+          -v  Verbose: show moved files.
+        ns [-d] [--direct] [paths...]
+          Report on the available primary namespace fields for formatting.
+          Note that because the namespace used for formatting has
+          inferred field names there are also unshown secondary field
+          names available in format strings.
+          -d          Treat directories like files, do not recurse.
+          --direct    List direct tags instead of all tags.
+        ont [subcommand [args...]]
+          With no arguments, print the ontology.
+        rename -n newbasename_format paths...
+          Rename paths according to a format string.
+          -n newbasename_format
+              Use newbasename_format as a Python format string to
+              compute the new basename for each path.
+        scrub paths...
+          Remove all tags for missing paths.
+          If a path is a directory, scrub the immediate paths in the directory.
+        tag {-|path} {tag[=value]|-tag}...
+          Tag a path with multiple tags.
+          With the form "-tag", remove that tag from the direct tags.
+          A path named "-" indicates that paths should be read from the
+          standard input.
+        tagfile tagfile_path [subcommand ...]
+          Subcommands:
+            tag tagset_name {tag[=value]|-tag}...
+              Directly modify tag_name within the tag file tagfile_path.
+        tagpaths {tag[=value]|-tag} {-|paths...}
+          Tag multiple paths.
+          With the form "-tag", remove the tag from the immediate tags.
+          A single path named "-" indicates that paths should be read
+          from the standard input.
+        test [--direct] path {tag[=value]|-tag}...
+          Test whether the path matches all the constraints.
+          --direct    Use direct tags instead of all tags.
+        xattr_export {-|paths...}
+          Import tag information from extended attributes.
+        xattr_import {-|paths...}
+          Update extended attributes from tags.
+
+## Class `FSTagsConfig`
+
+A configuration for fstags.
+
+*Method `FSTagsConfig.__init__(self, rcfilepath=None)`*:
+Initialise the config.
+
+Parameters:
+* `rcfilepath`: the path to the confguration file
+  If `None`, default to `'~/.fstagsrc'` (from `RCFILE`).
+
+## Class `FSTagsTagFile(cs.tagset.TagFile, cs.fs.FSPathBasedSingleton, cs.obj.SingletonMixin, cs.fs.HasFSPath, cs.tagset.BaseTagSets, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, collections.abc.MutableMapping, collections.abc.Mapping, collections.abc.Collection, collections.abc.Sized, collections.abc.Iterable, collections.abc.Container, HasFSTagsMixin)`
+
+A `FSTagsTagFile` indexing `TagSet`s for file paths
+which lives in the file path's directory.
+
+## Function `get_xattr_value(fspath, xattr_name)`
+
+Read the extended attribute `xattr_name` of `fspath`.
+Return the extended attribute value as a string,
+or `None` if the attribute does not exist.
+
+Parameters:
+* `fspath`: the filesystem path to update
+* `xattr_name`: the extended attribute to obtain
+  if this is a `str`, the attribute is the UTF-8 encoding of that name.
+
+## Class `HasFSTagsMixin`
+
+Mixin providing an automatic `.fstags` property.
+
+## Function `is_valid_basename(name: str)`
+
+Test whether `name` is a valid basefile for something in a directory.
+
+## Function `main(argv=None)`
+
+Command line mode.
+
+## Function `rfilepaths(path, name_selector=None, U=None)`
+
+Generator yielding pathnames of files found under `path`.
+
+## Function `rpaths(*a, **kw)`
+
+Recurse over `path`, yielding `(is_dir,subpath)`
+for all selected subpaths.
+
+## Function `rsync_patterns(paths, top_path)`
+
+Return a list of rsync include lines
+suitable for use with the `--include-from` option.
+
+## Class `TaggedPath(cs.tagset.TagSet, builtins.dict, cs.dateutils.UNIXTimeMixin, cs.lex.FormatableMixin, cs.lex.FormatableFormatter, string.Formatter, cs.mappings.AttrableMappingMixin, HasFSTagsMixin, cs.fs.HasFSPath)`
+
+Class to manipulate the tags for a specific path.
+
+## Function `update_xattr_value(fspath, xattr_name, new_xattr_value)`
+
+Update the extended attributes of `fspath`
+with `new_xattr_value` for `xattr_name`.
+Return the previous value, or `None` if the attribute was missing.
+
+We avoid calling `os.setxattr` if the value will not change.
+
+Parameters:
+* `fspath`: the filesystem path to update
+* `xattr_name`: the extended attribute to update;
+  if this is a `str`, the attribute is the UTF-8 encoding of that name.
+* `new_xattr_value`: the new extended attribute value, a `str`
+  which should be the transcription of `TagSet`
+  i.e. `str(tagset)`
+
+## Function `verbose(msg, *a)`
+
+Emit message if in verbose mode.
+
+# Release Log
+
+
+
+*Release 20220606*:
+FSTagsCommand.edit: mention the filename in the header comments in tagset edit mode.
+
+*Release 20220430*:
+Minor bugfixes.
+
+*Release 20220311*:
+* New TaggedPath.infer_tags() method to compute and return the inferred TagSet.
+* New "fstags infer pathname" command.
+
+*Release 20211212*:
+* Rename edit_many to edit_tagsets for clarity.
+* FSTags.edit_dirpath: include realpath(dirpath) at the top of the edit list.
+
+*Release 20210906*:
+* TaggedPath: new auto_infer method overriding the inherited TagSet.auto_infer which consults the cascade_rules from the .fstagsrc.
+* fstags ls: new -l option to print a multiline tag listing.
+* fstags cptags: copy the tags from one path to another.
+* Assorted other changes.
+
+*Release 20210404*:
+* FSTags.edit_dirpath: new all_names parameter to include dot-names.
+* FSTagsCommand.cmd_edit: new -a option to turn on the all_names parameter.
+
+*Release 20210306*:
+* FSTags: new tagfile_for(filepath) to obtain the TagFile for filepath.
+* FSTagsCommand: new -o ontology option to supply an ontology file for the FSTags.
+* FSTagsCommand.cmd_ont: drop -o/--ontology, superceded by global -o option.
+* Move BaseTagFile from cs.fstags to TagFile in cs.tagset.
+* FSTags.edit_dirpath: we now get (old_name,new_name,TaggedPath) back from edit_many, obviating the te_id_map.
+* TaggedPath: .name property returning basename(self.filepath), .set and .discard methods rejecting use of the 'name' tag.
+* FSTagsCommand: port to new cs.cmdutils API.
+* Many small refactors and bugfixes.
+
+*Release 20200717.1*:
+Add the manual page MarkDown source files. Note: well out of date, need updating.
+
+*Release 20200717*:
+DISTINFO: require cs.obj>=20200716 for SingletonMixin API change.
+
+*Release 20200716*:
+* Update for changed cs.obj.SingletonMixin API.
+* fstags: new "export" and "import" subcommands roughly paralleling those from "sqltags", providing CSV formatted export/import.
+* fstags export: ew -a (all paths) option - the default is not to not export paths with no tags.
+
+*Release 20200521.1*:
+fix DISTINFO.install_requires
+
+*Release 20200521*:
+* Add -i option to cp,ln,mv for command line compatibility, just disables -f.
+* New "rename" subcommand to rename files according to a format string.
+* Ontology support (optional).
+* Various classes are now singletons to avoid dissonance.
+* Fold "edittags" subcommand into "edit" via the "-d" (directories like files) option.
+* New "ns" subcommand reporting on the primary names available for formatting.
+* Accept [clausename]entryname as a format string to obtain the string from that entry of the config file.
+* Many bugfixes and improvements.
+
+*Release 20200229*:
+* New TaggedPath.modified property aliasing the TagSet.modified attribute.
+* ls: new -d option to treat directories like files (do not recurse), aiding reporting of tags for a directory.
+* find,ls subcommands: work off the realpath of the supplied top level path.
+* Tag: now subclasses namedtuple.
+* Rewrite rpaths() to use scandir and to also yield (is_dir,path) tuples.
+* TagSet, Tag, TagChoice moved into new cs.tagset module for reuse.
+* json_import: make --prefix mandatory, is "." as separator if not empty.
+* Move filename regexp rules to [filename_rules] config section.
+* New CascadeRule for representing a "target_tag_name = tag_name1 tag_name2..." config rules.
+* autotag: include the cascade rules in the autotagging after the filename rules.
+
+*Release 20200210*:
+* New "json_import" subcommand to import a JSON dict as tags, initial use case to load the metadata from youtube-dl.
+* New "scrub" command line operation, to purge tags of paths which do not exist.
+* New "cp", "ln" and "mv" subcommands to copy/link/move paths and take their tags with them.
+* New "test" subcommand to test paths against tag criteria, useful for find and scripts.
+* Small bugfixes.
+
+*Release 20200130*:
+* New FSTagsConfig class which parses the .fstagsrc as a .ini file; related adjustments.
+* New HasFSTagsMixin presenting a settable .fstags property with a shared default.
+* New xattr_import and xattr_export subcommands, remove implicit xattr access/update from other operations.
+* New TagSet.__len__ returning the number of tags.
+* Add "-" support for stdin to "tag" and "tagpaths" subcommands.
+
+*Release 20200113.2*:
+FSTagsCommand docstring tweak.
+
+*Release 20200113.1*:
+Small docstring updates.
+
+*Release 20200113*:
+Mirror tags to user.cs.fstags xattr to honour Linux namespace requirements. Add "filesize" to available tag string format (-o option). Small bugfixes.
+
+*Release 20191230*:
+* Command line: new "find" command to search a file tree based on tags.
+* Command line: new "mv" command to move a file and its tags.
+* Command line: Python string formats for "find" and "ls" output.
+* TaggedPath.autotag: new optional `no_save` parameter, default False, to suppress update of the associated .fstags file.
+* Inital and untested "mirror tags to xattrs" support.
+
+*Release 20191201*:
+New "edit" subcommand to rename files and edit tags.
+
+*Release 20191130.1*:
+Initial release: fstags, filesystem based tagging utility.

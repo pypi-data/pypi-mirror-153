@@ -1,0 +1,239 @@
+.TH FSTAGS 1cs
+.SH NAME
+.PP
+fstags \- set and query filesystem based tags
+.SH SYNOPSIS
+.PP
+\fB\fCfstags\fR \fIsubcommand\fP [\fIarg\fP\&...]
+.SH DESCRIPTION
+.PP
+The \fB\fCfstags\fR command is the command line mode of the \fB\fCcs.fstags\fR Python module.
+.PP
+By storing the tags outside filesystem objects
+it is possible to tag any object (a file, a directory, etc)
+and it is not necessary to have knowledge of a file's internal data format.
+.PP
+Filesystem tags are stored in the file \fB\fC\&.fstags\fR
+in the directory containing the object tagged.
+The tags for a path are the cumulative set of the direct tags
+(stored in the \fB\fC\&.fstags\fR file in the object's directory)
+and the tags of each ancestor of the object
+with precedence given to the \fB\fC\&.fstags\fR files closer to the object.
+.PP
+For example, a media file for a television episode with the pathname
+\fB\fC/path/to/series\-name/season\-02/episode\-name\-\-s02e03\-\-something.mp4\fR
+might obtain the tags:
+.PP
+.RS
+.nf
+series.title="Series Full Name"
+season=2
+sf
+episode=3
+episode.title="Full Episode Title"
+.fi
+.RE
+.PP
+from the following \fB\fC\&.fstags\fR entries:
+* tag file \fB\fC/path/to/.fstags\fR:
+  \fB\fCseries\-name sf series.title="Series Full Name"\fR
+* tag file \fB\fC/path/to/series\-name/.fstags\fR:
+  \fB\fCseason\-02 season=2\fR
+* tag file \fB\fC/path/to/series\-name/season\-02/.fstags\fR:
+  \fB\fCepisode\-name\-\-s02e03\-\-something.mp4 episode=3 episode.title="Full Episode Title"\fR
+.SS Extended Attribute Support
+.PP
+On supported systems,
+the tags in .\fB\fCfstags\fR are synchronised with the object's extended attributes.
+.PP
+By default the object's direct tag set
+is stored in the \fB\fCuser.cs.fstags\fR extended attribute
+in the same syntax as the tag portion of its entry in the \fB\fC\&.fstags\fR file.
+.PP
+If other extended attribute names are present
+in the \fB\fC[xattr]\fR section of the \fB\fC\&.fstagsrc\fR file
+then these attributes are also updated according to the tag values.
+For example, this \fB\fC[xattr]\fR section:
+.PP
+.RS
+.nf
+[xattr]
+user.dublincore.title = title
+user.dublincore.creator = author
+user.dublincore.subject = subject
+user.dublincore.description = description
+user.dublincore.publisher = publisher
+user.xdg.comment = comment
+user.xdg.origin.url = url
+user.xdg.publisher = publisher
+user.mime_type = mime_type
+.fi
+.RE
+.PP
+maintains the extended attributes named on the left
+from the tag values named on the right.
+.PP
+The reverse also holds.
+Just as tag updates are also synchronised
+to extended attributes on save as described,
+the extended attributes are read when a tag set is loaded,
+and merged if the tag is not already present.
+.PP
+A load/save sequence thus imports tag values from extended attributes
+and updates them, bringing both into alignment.
+.PP
+Support:
+presently this is limited to Linux filesystems with extended attribute support
+as Python's \fB\fCos.getxattr\fR and \fB\fCos.setxattr\fR functions
+are only defined on that platform.
+I've got a patch in progress to add support on MacOS,
+which also has extended attributes.
+.SH SUBCOMMANDS
+.SS autotag paths...
+.PP
+Recurse over the filesystem objects named by \fIpaths\fP
+and add tags to the tagsets based on rules defined
+in the \fB\fC~/.fstagsrc\fR configuration file.
+.PP
+Example:
+.PP
+.RS
+.nf
+% >>media/tv\-series/season\-01/tv\-series\-\-s01e01\-\-some\-title.mp4
+% fstags autotag media
+autotag 'tv\-series\-\-s01e01\-\-some\-title.mp4' + title_lc="tv\-series"
+autotag 'tv\-series\-\-s01e01\-\-some\-title.mp4' + season=1
+autotag 'tv\-series\-\-s01e01\-\-some\-title.mp4' + episode=1
+% cat media/tv\-series/season\-01/.fstags
+tv\-series\-\-s01e01\-\-some\-title.mp4 title_lc="tv\-series" season=1 episode=1
+.fi
+.RE
+.SS \fB\fCfind\fR [\fIoptions\fP\&...] \fIpath\fP \fItag_selectors\fP\&...
+.PP
+Recurse over the filesystem objects under \fIpath\fP
+reporting paths whose tags match all the specified \fItag_selector\fPs
+(see TAG SELECTOR below).
+.PP
+Options:
+* \fB\fC\-\-direct\fR:
+  only consider tags directly applied to a filesystem object,
+  ignoring tags from its ancestors.
+* \fB\fC\-\-for\-rsync\fR:
+  instead of listing the matching paths,
+  emit a list of 
+.BR rsync (1) 
+include/exclude patterns
+  suitable for use with the \fB\fC\-\-include\-from\fR option
+  which will cause 
+.BR rsync (1) 
+to only match the found files.
+  This can be used to drive an rsync based process
+  such as a copy or backup
+  based on the tags of the filesystem objects.
+* \fB\fC\-o\fR \fIoutput_format\fP:
+  specifed the output format as a Python formatted string.
+  The default is \fB\fC\&'{filepath}'\fR, producing a plain file listing.
+  See OUTPUT FORMAT* below.
+.SS \fB\fCls\fR [\fIoptions\fP\&...] [\fIpaths\fP\&...]
+.PP
+Recurse over the filesystem objects under \fIpaths\fP
+(default the current directory)
+listing paths and their tags.
+.PP
+Options:
+* \fB\fC\-\-direct\fR:
+  only report tags directly applied to a filesystem object,
+  ignoring tags from its ancestors.
+* \fB\fC\-o\fR \fIoutput_format\fP:
+  specifed the output format as a Python formatted string.
+  The default is \fB\fC\&'{filepath} {tags}'\fR\&.
+  See OUTPUT FORMAT* below.
+.SS \fB\fCmv\fR \fIpaths\fP\&... \fItargetdir\fP
+.PP
+Move files and their tags into \fItargetdir\fP\&.
+.SS \fB\fCtag\fR \fIpath\fP \fItag_modifier\fP\&...
+.PP
+Apply \fItag_modifiers\fP to \fIpath\fP\&.
+See TAG MODIFIER below.
+.SS \fB\fCtagpaths\fR \fItag_modifier\fP \fIpaths\fP\&...
+.PP
+Apply \fItag_modifier\fP to multiple \fIpaths\fP\&.
+See TAG MODIFIER below.
+.SH OUTPUT FORMAT
+.PP
+The \fB\fCfind\fR and \fB\fCls\fR subcommands accept a \fB\fC\-o\fR option
+to specify the output format.
+This is a Python formatted string accepting the following placeholders:
+* \fB\fC{basename}\fR: the file path basename
+* \fB\fC{filepath}\fR: the full file path
+* \fB\fC{filepath_encoded}\fR: the filepath as transcribed in a \fB\fC\&.fstags\fR file
+* \fB\fC{\fR\fItag_name\fP\fB\fC}\fR: the value of a tag
+.SH TAG MODIFIER
+.PP
+A \fItag_modifier\fP has the form:
+.PP
+.RS
+.nf
+[`\-`]*tag_name*[`=`*tag_value*]
+.fi
+.RE
+.PP
+A leading minus ('\fB\fC\-\fR\&') means the modifier removes the tag;
+if a \fItag_value\fP is provided
+then the tag will only be removed if its value matches \fItag_value\fP\&.
+.PP
+Without a leading minus the modifier added the tag.
+.SH TAG SELECTOR
+.PP
+A \fItag_selector\fP has the form:
+.PP
+.RS
+.nf
+[`\-`]*tag_name*[`=`*tag_value*]
+.fi
+.RE
+.PP
+A leading minus ('\fB\fC\-\fR\&') means the selector rejects objects with the tag,
+otherwise the object must possess that tag.
+The \fItag_name\fP is a dotted identifer accepting dashes,
+such as \fB\fCbackup\fR or \fB\fCmime_type\fR or \fB\fCauthorship.primary\-author\fR\&.
+If there is no \fB\fC=\fR\fItag_value\fP specified
+the selector tests for the presence if the tag
+otherwise it tests for the presence of the tag with the pecified \fItag_value\fP\&.
+.PP
+Example:
+.PP
+.RS
+.nf
+% >>media/tv\-series/season\-01/tv\-series\-\-s01e01\-\-some\-title.mp4
+% >>media/tv\-series/season\-01/tv\-series\-\-s01e02\-\-some\-other\-title.mp4
+% fstags find media season=1 episode=2
+media/tv\-series/season\-01/tv\-series\-\-s01e02\-\-some\-title.mp4
+.fi
+.RE
+.SH CONFIGURATION: ~/.fstagrsrc
+.PP
+Default operation may be altered with the \fB\fC~/.fstagsrc\fR file,
+which is a \fB\fC\&.ini\fR formatted file with the following sections:
+* \fB\fC[general]\fR: general settings
+* \fB\fC[xattr]\fR: extended attribute settings
+* \fB\fC[autotag]\fR: rules for autotagging files using regular expressions
+.PP
+See 
+.BR fstagsrc (5cs) 
+for details.
+.SH EXAMPLES
+.SH SEE ALSO
+.PP
+.BR fstags (5cs), 
+the format of the \fB\fC\&.fstags\fR file
+.PP
+.BR fstagsrc (5cs), 
+the format of the \fB\fC\&.fstagsrc\fR configuration file
+.PP
+.BR tagged-backup (1cs), 
+a multivolume histbackup based backup script
+using tags to identify the volume which should store particular files
+.SH AUTHOR
+.PP
+Cameron Simpson \[la]cs@cskk.id.au\[ra]

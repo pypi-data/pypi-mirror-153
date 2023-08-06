@@ -1,0 +1,585 @@
+.TH VT 5
+.SH NAME
+.PP
+vt \- vt data formats
+.SH DESCRIPTION
+.PP
+This manual entries describes the various data formats
+used to implement the vt Store.
+.SH ARCHIVE FILES (\fB\fC\&.vt\fR)
+.PP
+The vt data storage system has 2 distinct components:
+the block Store,
+where variable sized blocks are stored
+and indexed by their cryptographic hash codes,
+and the file tree,
+which is a directory and file tree structure whose content is also stored
+in the block Store.
+.PP
+Because the tree is stored in the block Store,
+provided one has access to the Store
+an entire and arbitrary file tree
+can be referenced simply
+with a hashcode reference to its top Block
+and a little annotation to indicate how to interpret the resulting data block
+(direct or indirect, as a file or a directory).
+Such a reference is a filesystem object reference
+as described in 
+.BR vt (1), 
+such as
+\fB\fCD{'vt2':meta:M{a:'o:rwx\-',m:1544937484.506546},block:B{hash:H{sha1:0f4ababec84c6744ffda4f20c2c2a9706a28ab2e},span:3912}}\fR\&.
+.PP
+File trees stored in the 
+.BR vt (1) 
+storage system
+have their top entries recorded in \fIarchive\fP\fB\fC\&.vt\fR files
+(so called because these files are also
+those updated by the \fB\fCvt pack\fR archiving command).
+Whenever such a tree is updated
+a new line is appended to the archive file
+with a timestamped filesystem object reference.
+.PP
+Each line in the archive has the form:
+.PP
+.RS
+.nf
+*iso\-timestamp* *unixtime* *filesystem\-object\-reference* [*comment*]
+.fi
+.RE
+.PP
+The \fIiso\-timestamp\fP is an ISO8601 human friendly timestamp
+such as \fB\fC2018\-12\-16T16:18:04.820552+11:00\fR\&.
+.PP
+The \fIunixtime\fP is a normal UNIX timestamp,
+a period in seconds since the epoch midnight 1 January 1970 GMT.
+.PP
+The \fIfilesystem\-object\-reference\fP
+is a filesystem object reference as described in 
+.BR vt (1), 
+such as
+\fB\fCD{'vt2':meta:M{a:'o:rwx\-',m:1544937484.506546},block:B{hash:H{sha1:0f4ababec84c6744ffda4f20c2c2a9706a28ab2e},span:3912}}\fR\&.
+.SH BINARY FORMATS
+.SS Basic Types
+.PP
+The block Stores and file tree
+are intended to be future proof
+and as such largely do not employ fixed width data formats
+such as 32 bit integers
+as these have inherent upper bounds.
+Instead,
+unsigned integer values are stored as extensible byte sequences
+and blocks of binary data are generally stored
+as length prefixed data.
+.TP
+\fB\fCbsuint\fR: byte serialised unsigned integer:
+a big endian byte encoding where continuation octets
+have their high bit set. The bits contributing to the value
+are in the low order 7 bits.
+.TP
+\fB\fCbsdata\fR: length prefixed data:
+a data block prefixed by its length as a \fB\fCbsuint\fR\&.
+.TP
+\fB\fCbsstring\fR: length prefixed \fB\fCutf\-8\fR text data:
+a \fB\fCbsdata\fR whose data block is the \fB\fCutf\-8\fR encoding of a string value.
+.TP
+\fB\fCbssfloat\fR: textual floating point value:
+a \fB\fCbsstring\fR containing the textual representation of a floaing point value.
+.SS Block Files (.vtd)
+.PP
+Block files with the \fB\fC\&.vtd\fR file extension
+are simple sequences of binary data blocks stored as:
+.PP
+.RS
+.nf
+block_record {
+  flags: bsuint;
+  zdata: bsdata;
+}
+.fi
+.RE
+.PP
+The \fB\fCflags\fR field holds a bit array of flags
+sufficient to define the flags which are set.
+Presently there is just one flag:
+.TP
+\fB\fC0x01\fR "COMPRESSED":
+if set then the \fB\fCzdata\fR field
+contains the zlib compressed form of the raw data;
+otherwise it contains the raw data directly.
+.SS Hashcodes
+.PP
+The primary index of the data blocks
+is that of their cryptographic hashcode.
+For future changes of hash function,
+hashcode data includes the hash function type
+so hashcodes are stored as:
+.PP
+.RS
+.nf
+hashcode_record {
+  hashtype: bsuint;
+  hashdata: byte[length];
+}
+.fi
+.RE
+.PP
+The \fB\fChashtype\fR is a \fB\fCbsuint\fR indicating the hash function in use.
+Presently the only hash function is SHA1, whose \fB\fChashtype\fR value is \fB\fC0\fR\&.
+.PP
+The \fB\fChashdata\fR is a direct binary dump of the hash value
+whose length is defined by the hash function.
+For a SHA1 hash value the \fB\fChashdata\fR is 20 bytes long.
+.SS Block References
+.PP
+A block reference comes in several forms as outlined in 
+.BR vt (1).
+
+The binary transcriptions of these forms are described below.
+.PP
+Every block reference is a \fB\fCbsdata\fR length prefixed record:
+.PP
+.RS
+.nf
+blockref_record {
+  length: bsuint;
+  blockref_data {
+    flags: bsuint;
+    span: bsuint;
+    type: bsuint;       // if required; default type==HASHCODE
+    type_flags: bsuint; // if required; default flags==0
+    switch type {
+      HASHCODE:
+        hashcode: hashcode_record;
+      RLE:
+        octet: byte;
+      LITERAL:
+        block_data: bsdata;
+      SUBBLOCK:
+        offset: bsuint;
+        super_block: blockref_record;
+    }
+  }
+}
+.fi
+.RE
+.PP
+\fB\fCflags\fR is a bit field holding the following flags:
+.TP
+\fB\fC0x01\fR "INDIRECT":
+if set, the block data consist of a sequence of \fB\fCblockref_record\fRs
+instead of the actual block data;
+the actual block data are comprised from the concatenation
+of the block data of the subblocks
+.TP
+\fB\fC0x02\fR "TYPED":
+if set, the \fB\fCtype\fR value is present to specify the block type;
+otherwise the \fB\fCtype\fR is the default value \fB\fCHASHCODE\fR\&.
+.TP
+\fB\fC0x04\fR "TYPE_FLAGS":
+if set, the \fB\fCtype_flags\fR value is present;
+otherwise the \fB\fCtype_flags\fR value is \fB\fC0\fR\&.
+.PP
+The \fB\fCtype\fR value has the following values:
+.TP
+\fB\fC0\fR "HASHCODE":
+a hashcode block, where a hashcode is provided
+which specifies the block data.
+The tail of the \fB\fCblockref_data\fR contains the \fB\fChashcode_record\fR\&.
+.TP
+\fB\fC1\fR "RLE":
+a run length encoded block.
+The tail of the \fB\fCblockref_data\fR is a single \fB\fCoctet\fR,
+which is repeated \fB\fCspan\fR times to construct the block data.
+.TP
+\fB\fC2\fR "LITERAL":
+a literal block;
+this is usually used where a hashcode record
+would exceed the size of the block data.
+The tail of the \fB\fCblockref_data\fR is the block data.
+.TP
+\fB\fC3\fR "SUBBLOCK":
+this block's data are a subspan of another block's data
+(this block's "superblock").
+The tail of the \fB\fCblockref_data\fR contains the \fB\fCoffset\fR
+of the block data within the superblock
+and a \fB\fCblockref_record\fR specifying the superblock.
+.SS Blockmap Files
+.PP
+Performing random access to the data within an indirect block
+can be expensive as an arbitrarily deep tree of indirection
+may be required.
+If it is expected that a block will be accessed in such a way
+it is possible to make a persistent index of the leaf block locations.
+.PP
+These indices are flat files containing records
+consisting of \fB\fC(offset,hashcode)\fR fields,
+being the offset of the leaf block within the top block
+and the hashcode of the leaf block in the index.
+The length of the leaf block can be computed from the leaf offset
+and the offset of the next leaf.
+Once the appropriate leaf block is found
+the following leaf blocks are immediately known
+from the following records
+making sequential file access from an arbitrary point
+very efficient.
+.PP
+Because these files are bisected on the \fB\fCoffset\fR to locate the relevant leaf
+the records need to be fixed length.
+Since the top block may be of arbitrary size
+the index is broken into distinct files each covering a range of offsets.
+The \fB\fCoffset\fR within the index record is the modulus of the real offset
+with respect to the span covered by an index file
+plus the base offset of the span covered by the file.
+.PP
+Bcause the hashcode of the top indirect block
+completely dictates its content,
+a blockmap index need only ever be constructed once per top block
+and may be kept persistently as a collection of blockmap files.
+.PP
+Blockmaps are therefore parameterised on 2 values:
+the size of the block spans covered by an individual blockmap file
+and the hashcode of the top block.
+As such,
+the blockmap files are kept in a directory tree whose internal stucture
+is composed of blockmap files whose pathnames have the form:
+.IP
+\fB\fCmapsize:\fR\fIspansize\fP\fB\fC/\fR\fIhashcodehex\fP\fB\fC\&.\fR\fIhashtype\fP\fB\fC/\fR\fIspanindex\fP\fB\fC\&.blockmap\fR
+.PP
+The use of such a structure allows vt systems
+using different blockmap span sizes and different hashcode functions
+to be accomodated side by side without conflict.
+.PP
+For example, this path:
+.IP
+\fB\fCmapsize:4294967296/06a86c1bb238cf58b34d8fe140b44818fd68728d.sha1/0.blockmap\fR
+.PP
+is a blockmap file for the first blockmap index
+of the top indirect block
+with SHA1 hashcode \fB\fC06a86c1bb238cf58b34d8fe140b44818fd68728d\fR
+using index spans of \fB\fC4294967296\fR
+(2**32, expressable with an unsigned 4 byte value in an index record).
+.PP
+If the top block spans more than 4294967296 bytes
+there will also be a \fB\fC\&.../1.blockmap\fR file
+and so on as required.
+.PP
+The current vt blockmap system uses blockmap records of the form:
+.PP
+.RS
+.nf
+blockmap_record {
+  offset: uint32be;
+  hashcode: hashdata;
+}
+.fi
+.RE
+.PP
+where \fB\fCuint32be\fR indicates a bigendian 32 bit unsigned integer
+and \fB\fChashdata\fR is the raw hashcode binary dump,
+so 20 bytes for a SHA1 hashcode.
+.SS DataDir Stores
+.PP
+The DataDir Store is the usual local block Store type.
+The on disc structure is as follow:
+.PP
+.RS
+.nf
+\&...store/
+  data/
+    uuid1.vtd
+    uuid2.vtd
+    ...
+  index\-hashtype\-state.sqlite
+  index\-hashtype.indextype
+.fi
+.RE
+.PP
+thus:
+.TP
+\fB\fCdata\fR:
+a subdirectory containing an arbitrary number of \fB\fC\&.vtd\fR block files
+which are usually named with UUIDs
+to arrange conflict free new file creation.
+.TP
+\fB\fCindex\-\fR\fIhashtype\fP\fB\fC\-state.sqlite\fR
+an SQLite3 database containing the mapping of the block data filenames
+to numeric \fB\fCfilenum\fR values and a scan offset indicating how much of each file
+has been scanned and thus has its content recorded in the block index file.
+\fIhashtype\fP indicates the hashcode function,
+presently \fB\fCsha1\fR for SHA1 hashcodes.
+.TP
+\fB\fCindex\-\fR\fIhashtype\fP\fB\fC\&.\fR\fIindextype\fP
+a fast binary mapping of raw hashcodes
+(such as the 20 byte SHA1 dump)
+to binary records of \fB\fC(offset,filenum)\fR
+both of which are \fB\fCbsuint\fR encoded.
+The corresponding \fB\fCblock_record\fR
+is located at \fB\fCoffset\fR within the block data file numbered \fB\fCfilenum\fR\&.
+Presently \fIhashtype\fP is \fB\fCsha1\fR
+and the \fIindextype\fP is one of \fB\fClmdb\fR, \fB\fCgdbm\fR and \fB\fCkyoto\fR
+depending on the availability of the LBDM, GDBM
+or KyotoCabinet libraries.
+.PP
+The block data files and the SQLite3 indices are portable.
+The \fB\fChashcode\fR \-> \fB\fC(offset,filenum)\fR indices are not portable.
+However, on a given machine
+multiple vt storage instances may share these files concurrently;
+steps are taken to avoid multiple instances trying to append
+to the same block data file;
+each will have its own at any given time.
+.SS Platonic Stores
+.PP
+A Platonic Store does not have data blocks added to it.
+Instead, it is an index to an ordinary directory tree
+with stable (or growing) data files within it
+such as a document archive, scientific dataset or media server tree.
+This is traversed regularly to maintain the index.
+As with a DataDir Store, each data file is assigned a distinct \fB\fCfilenum\fR
+which is used in the compact binary index.
+.PP
+This kind of Store is structured just like a DataDir Store
+except as follows:
+.PP
+The \fB\fCdata\fR directory does not contain block data \fB\fC\&.vtd\fR files
+but instead contains a symlink following directory tree
+or ordinary files
+whose contents are scanned for block boundary locations
+and each block indexed.
+Typically the \fB\fCdata\fR directory just contains a few symbolic links
+to preexisting external directory trees.
+.PP
+The \fB\fCindex\-\fR\fIhashtype\fP\fB\fC\&.\fR\fIindextype\fP index file
+maps to records of \fB\fC(offset,filenum,length)\fR
+all of which are \fB\fCbsuint\fR encoded.
+The corresponding raw block data with span \fB\fClength\fR
+are located at \fB\fCoffset\fR within the ordinary file numbered \fB\fCfilenum\fR\&.
+.SS Serial Protocol: General Structure
+.PP
+The serial protocol used to communicate between clients and Stores
+is built on the \fB\fCcs.packetstream\fR binary protocol,
+which uses variable sized packets,
+is bidirectional, asynchronous, and supports multiple logical channels.
+Each packet is either a request or a response to a request
+and each outstanding request has a distinct \fB\fCtag\fR value
+which is unique per channel.
+.PP
+All packets are \fB\fCbsdata\fR encoded and have the form:
+.PP
+.RS
+.nf
+packet_record {
+  length: bsuint;
+  packet_data {
+    tag: bsuint;
+    flags: bsuint;
+    channel: bsuint;  // optional field, default value `0`
+    rq_type: bsuint;  // only present in request packets
+    payload: byte[];  // the remainder of the packet_data
+  }
+}
+.fi
+.RE
+.PP
+The \fB\fCflags\fR field is a bitmap with the following predefined flags:
+.TP
+\fB\fC0x01\fR "HAS_CHANNEL":
+if set, the \fB\fCchannel\fR field is present to provide the channel number;
+otherwise the channel number is \fB\fC0\fR\&.
+.TP
+\fB\fC0x02\fR "IS_REQUEST":
+if set, the packet is a request packet
+and the \fB\fCrq_type\fR field is present to specify the request type;
+otherwise the packet is a response packet
+to an outstanding request.
+.PP
+After stripping off these 2 bit values,
+the remaining value is right shifted 2 bits
+and preserved as the protocol level flags field.
+.PP
+The payload field is arbirary protocol specific binary data.
+It may be empty.
+.PP
+However, the \fB\fCcs.packetstream.PacketConnection\fR class
+automatically handles the return values of the packet handler function
+in use by the protocol.
+When doing this it adds an additional \fB\fCflags\fR bit
+indicating success or failure
+to response packets as the low order bit,
+shifting the response\-provided flags up an additional position.
+So in responses there is an additional flag:
+.TP
+\fB\fC0x04\fR "IS_OK":
+if set the the request was correctly handled;
+otherwise there was some kind of server side failure.
+.PP
+As with the primary two flags
+this is also stripped off
+and the \fB\fCflags\fR value shifted down one further bit position.
+Thus the return from a client side request call is \fB\fC(ok,flags,payload)\fR
+where \fB\fCok\fR is a Boolean,
+\fB\fCflags\fR is any remaining flag values
+and \fB\fCpayload\fR is the packet's trailing bytes payload field.
+.PP
+On the server side
+\fB\fCcs.packetstream.PacketConnection\fR request handlers thus have 5 modes
+of return value at the Python level
+which translate to response packets as follows:
+.TP
+\fB\fCNone\fR:
+the response will be \fB\fCIS_OK\fR with no additional \fB\fCflags\fR
+and an empty \fB\fCpayload\fR
+.TP
+\fB\fCint\fR:
+the response will be \fB\fCIS_OK\fR with additional \fB\fCflags\fR
+provided by the \fB\fCint\fR return value
+and an empty \fB\fCpayload\fR
+.TP
+\fB\fCbytes\fR:
+the response will be \fB\fCIS_OK\fR with no additional \fB\fCflags\fR
+and the \fB\fCbytes\fR as the \fB\fCpayload\fR
+.TP
+\fB\fCstr\fR:
+the response will be \fB\fCIS_OK\fR with no additional \fB\fCflags\fR
+and the \fB\fCpayload\fR will be the \fB\fCstr\fR return value
+encoded as \fB\fCutf\-8\fR\&.
+.TP
+\fB\fC(int,bytes)\fR:
+the response will be \fB\fCIS_OK\fR with additional \fB\fCflags\fR
+provided by the \fB\fCint\fR return value
+and the \fB\fCbytes\fR as the \fB\fCpayload\fR
+.PP
+If a handler raises an exception
+a failure packet will be returned,
+with no \fB\fCIS_OK\fR flag, no additional \fB\fCflags\fR and an empty \fB\fCpayload\fR\&.
+.SS Serial Protocol: Store Specific Protocol
+.PP
+The \fB\fCcs.vt.stream\fR serial protocol
+is the \fB\fCcs.packetstream.PacketConnection\fR protocol
+with the following \fB\fCrq_type\fR values and associated values:
+.TP
+\fB\fC0\fR "ADD":
+add the \fB\fCpayload\fR bytes as a data block.
+The response \fB\fCpayload\fR is a \fB\fChashcode_record\fR
+containing the hashcode which indexes the data block.
+.TP
+\fB\fC1\fR "GET":
+fetch the data block whose hashcode is stored in the \fB\fCpayload\fR
+as a \fB\fChashcode_record\fR\&.
+The response \fB\fCpayload\fR is the data block bytes.
+.TP
+\fB\fC2\fR "CONTAINS":
+test whether the data block whose hashcode is stored in the \fB\fCpayload\fR
+as a \fB\fChashcode_record\fR is present in the Store.
+The response will be ok if the block is present.
+.TP
+\fB\fC3\fR "FLUSH":
+flush the Store to its backend substrates.
+.TP
+\fB\fC4\fR "HASHCODES":
+request the available data block hashcodes
+from a starting hashcode value:
+.PP
+.RS
+.nf
+hashcodes_request {
+  hashname: bsstring
+  start_hashcode: hashcode_record;  // present if "has_start_hashcode"
+  length: bsuint;
+}
+.fi
+.RE
+.IP
+The request \fB\fCflags\fR are
+\fB\fC0x01\fR "reverse" to return hashcodes in reverse,
+\fB\fC0x02\fR "after" to return hashcodes \fB\fC>start_hashcode\fR
+instead of \fB\fC>=start_hashcode\fR
+(or \fB\fC<start_hashcode\fR instead of \fB\fC<=start_hashcode\fR
+if the "reverse" flag is provided)
+and \fB\fC0x04\fR "has_start_hashcode" to indicate that a \fB\fCstart_hashcode\fR
+is provided, otherwise the hashcodes start from the lowest hashcode in the Store
+(or the highest hashcode if the "reverse" flag is provided).
+The \fB\fClength\fR is the number of hashcodes to return;
+the response may be short of there are insufficient hashcodes in the Store.
+.IP
+The response payload is the concatenation of the requested \fB\fChashcode_record\fR records.
+.TP
+\fB\fC5\fR "HASHCODES_HASH":
+request the hashcode of the available data block hashcodes
+from a starting hashcode value:
+.PP
+.RS
+.nf
+hashcodes_request {
+  hashname: bsstring
+  start_hashcode: hashcode_record;  // present if "has_start_hashcode"
+  length: bsuint;
+}
+.fi
+.RE
+.IP
+The request \fB\fCflags\fR are
+\fB\fC0x01\fR "reverse" to return hashcodes in reverse,
+\fB\fC0x02\fR "after" to return hashcodes \fB\fC>start_hashcode\fR
+instead of \fB\fC>=start_hashcode\fR
+(or \fB\fC<start_hashcode\fR instead of \fB\fC<=start_hashcode\fR
+if the "reverse" flag is provided)
+and \fB\fC0x04\fR "has_start_hashcode" to indicate that a \fB\fCstart_hashcode\fR
+is provided, otherwise the hashcodes start from the lowest hashcode in the Store
+(or the highest hashcode if the "reverse" flag is provided).
+The \fB\fClength\fR is the number of hashcodes to return;
+the response may be short of there are insufficient hashcodes in the Store.
+.IP
+The response payload is a \fB\fChashcode_record\fR
+containing the hashcode
+of the concatenation of the requested \fB\fChashcode_record\fR records.
+.TP
+\fB\fC6\fR "ARCHIVE_LAST":
+request the last archive entry of a named archive:
+.PP
+.RS
+.nf
+archive_last_request {
+  archive_name: bsstring
+}
+.fi
+.RE
+.IP
+The response will have \fB\fCflags==0\fR if there are no entries
+or \fB\fCflags==1\fR if there are entries.
+In the latter case the payload will consist of the entry timestamp
+as a \fB\fCbssfloat\fR with the UNIX time of the entry
+and the binary transcription of the directory.
+.TP
+\fB\fC7\fR "ARCHIVE_LIST":
+request all the archive entries of a named archive:
+.PP
+.RS
+.nf
+archive_list_request {
+  archive_name: bsstring
+}
+.fi
+.RE
+.IP
+The payload will be the concatenation of the archive entries
+transcribed as for "ARCHIVE_LAST".
+.TP
+\fB\fC8\fR "ARCHIVE_UPDATE":
+submit a new archive entry to append to a named archive:
+.PP
+.RS
+.nf
+archive_update_request {
+  archive_name: bsstring
+  when: bssfloat
+  dirent: binary_directory
+}
+.fi
+.RE
+.SH SEE ALSO
+.PP
+.BR vt (1), 
+the vt command line tool
+.SH AUTHOR
+.PP
+Cameron Simpson \[la]cs@cskk.id.au\[ra]
