@@ -1,0 +1,103 @@
+#!/bin/bash
+#
+# ipf    An Information Publishing Framework daemon
+#
+# chkconfig: 345 40 60
+# description: IPF is a framework for gathering and publishing information via workflows
+# processname: ipf_workflow
+
+# a unique name - the workflow file name is likely unique
+NAME=pbs_compute_periodic
+
+# pick one of the periodic workflows under $IPF_ETC_PATH/workflow
+WORKFLOW=glue2/${NAME}.json
+
+# specify a full path to the ipf_workflow program if you need to
+PROGRAM=ipf_workflow
+
+# change (or don't set) these if necessary - see ipf/paths.py
+export IPF_ETC_PATH=/etc/ipf
+export IPF_VAR_PATH=/var/ipf
+
+# change if you want to run as a different user
+IPF_USER=ipf
+
+PID_FILE=${IPF_VAR_PATH}/${NAME}.pid
+
+###################################################################
+##### Add any environment variables setup needed for this workflow here #####
+###################################################################
+
+
+
+check_running() {
+	RETVAL=1
+	if [ -f $PID_FILE ]; then
+	    PID=`cat $PID_FILE`
+	    if [ -n "`ps axf | grep ${PID} | grep -v grep`" ]; then
+	        # process from PID_FILE is running
+	    	RETVAL=0
+	    fi
+	fi
+	return $RETVAL
+}
+
+start() {
+        echo -n "Starting IPF workflow ${NAME}: "
+	check_running
+	if [ $RETVAL = 0 ]; then
+	    echo "IPF workflow is already running"
+	    return 1
+        fi
+        su $IPF_USER -s /bin/sh -c "$PROGRAM -d $WORKFLOW"
+        RETVAL=$?
+        echo
+        return $RETVAL
+}
+
+stop() {
+        echo -n "Shutting down IPF workflow ${NAME}: "
+	PID=`cat $PID_FILE`
+        pkill -9 -P $PID
+        RETVAL=$?
+        echo
+	[ $RETVAL -eq 0 ] && su $IPF_USER rm -f $PID_FILE
+        return $RETVAL
+}
+
+status() {
+        echo -n "Checking status of IPF workflow ${NAME}: "
+	if [ -f $PID_FILE ]; then
+	    PID=`cat $PID_FILE`
+            if [ -z "`ps axf | grep ${PID} | grep -v grep`" ]; then
+                echo "Process dead but pidfile exists"
+            else
+                echo "Running"
+            fi
+        else
+            echo "Service not running"
+        fi
+        RETVAL=$?
+        return $RETVAL
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: $prog {start|stop|status|restart}"
+        exit 1
+        ;;
+esac
+exit $RETVAL
