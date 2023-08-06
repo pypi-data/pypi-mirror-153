@@ -1,0 +1,25 @@
+from .model import GiosSensorEntityDescription as GiosSensorEntityDescription
+from _typeshed import Incomplete
+from homeassistant.components.sensor import SensorDeviceClass as SensorDeviceClass, SensorStateClass as SensorStateClass
+from homeassistant.const import CONCENTRATION_MICROGRAMS_PER_CUBIC_METER as CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+from typing import Final
+
+ATTRIBUTION: Final[str]
+CONF_STATION_ID: Final[str]
+DEFAULT_NAME: Final[str]
+SCAN_INTERVAL: Final[Incomplete]
+DOMAIN: Final[str]
+MANUFACTURER: Final[str]
+URL: str
+API_TIMEOUT: Final[int]
+ATTR_INDEX: Final[str]
+ATTR_STATION: Final[str]
+ATTR_C6H6: Final[str]
+ATTR_CO: Final[str]
+ATTR_NO2: Final[str]
+ATTR_O3: Final[str]
+ATTR_PM10: Final[str]
+ATTR_PM25: Final[str]
+ATTR_SO2: Final[str]
+ATTR_AQI: Final[str]
+SENSOR_TYPES: Final[tuple[GiosSensorEntityDescription, ...]]

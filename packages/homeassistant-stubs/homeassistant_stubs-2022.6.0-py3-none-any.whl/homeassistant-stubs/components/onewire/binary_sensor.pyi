@@ -1,0 +1,23 @@
+from .const import DEVICE_KEYS_0_3 as DEVICE_KEYS_0_3, DEVICE_KEYS_0_7 as DEVICE_KEYS_0_7, DEVICE_KEYS_A_B as DEVICE_KEYS_A_B, DOMAIN as DOMAIN, READ_MODE_BOOL as READ_MODE_BOOL
+from .onewire_entities import OneWireEntity as OneWireEntity, OneWireEntityDescription as OneWireEntityDescription
+from .onewirehub import OneWireHub as OneWireHub
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass as BinarySensorDeviceClass, BinarySensorEntity as BinarySensorEntity, BinarySensorEntityDescription as BinarySensorEntityDescription
+from homeassistant.config_entries import ConfigEntry as ConfigEntry
+from homeassistant.core import HomeAssistant as HomeAssistant
+from homeassistant.helpers.entity import EntityCategory as EntityCategory
+from homeassistant.helpers.entity_platform import AddEntitiesCallback as AddEntitiesCallback
+
+class OneWireBinarySensorEntityDescription(OneWireEntityDescription, BinarySensorEntityDescription):
+    def __init__(self, key, device_class, entity_category, entity_registry_enabled_default, entity_registry_visible_default, force_update, icon, name, unit_of_measurement, read_mode) -> None: ...
+
+DEVICE_BINARY_SENSORS: dict[str, tuple[OneWireBinarySensorEntityDescription, ...]]
+HOBBYBOARD_EF: dict[str, tuple[OneWireBinarySensorEntityDescription, ...]]
+
+def get_sensor_types(device_sub_type: str) -> dict[str, tuple[OneWireBinarySensorEntityDescription, ...]]: ...
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None: ...
+def get_entities(onewirehub: OneWireHub) -> list[OneWireBinarySensor]: ...
+
+class OneWireBinarySensor(OneWireEntity, BinarySensorEntity):
+    entity_description: OneWireBinarySensorEntityDescription
+    @property
+    def is_on(self) -> bool: ...
