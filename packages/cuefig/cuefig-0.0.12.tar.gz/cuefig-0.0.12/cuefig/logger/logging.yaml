@@ -1,0 +1,46 @@
+version: 1
+formatters:
+  default:
+    format: '%(asctime)s-%(levelname)-8s-%(name)-15s-%(pathname)s-%(lineno)s-%(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  tight:
+    format: '%(asctime)s-%(levelname)-6s-%(name)-6s-%(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  message:
+    format: '%(message)s'
+  mongo:
+    format: '%(asctime)s-%(levelname)-8s-%(message)s'
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: default
+    stream: ext://sys.stdout
+    level: DEBUG
+  file_handler: &file_handler
+    class: logging.handlers.TimedRotatingFileHandler
+    when: D
+    formatter: tight
+    filename: "main.log"
+    backupCount: 7
+    encoding: utf8
+    level: DEBUG
+  restart_handler:
+    class: logging.FileHandler
+    filename: "main.log"
+    mode: w
+    formatter: tight
+    encoding: utf8
+    level: DEBUG
+loggers:
+  logger: &logger
+    level: DEBUG
+    propagate: False
+    handlers: [ restart_handler ]
+  matplotlib:
+    level: OFF
+    propagate: False
+  torch:
+    <<: *logger
+root:
+  level: DEBUG
+  handlers: [ restart_handler ]
