@@ -1,0 +1,75 @@
+image: python:3.8
+
+stages:
+  - tests
+  - deploy
+
+before_script:
+  - mkdir -p .pip
+  - pip install -U pip
+  - pip --cache-dir=.pip --quiet install tox twine
+
+py39:
+  stage: tests
+  image: python:3.9
+  coverage: '/^TOTAL\s+\d+\s+\d+\s+(\d+\%)$/'
+  artifacts:
+    paths:
+      - openmodule/htmlcov
+  tags:
+    - docker
+  script:
+    - tox
+
+py38:
+  stage: tests
+  image: python:3.8
+  coverage: '/^TOTAL\s+\d+\s+\d+\s+(\d+\%)$/'
+  artifacts:
+    paths:
+      - openmodule/htmlcov
+  tags:
+    - docker
+  script:
+    - tox
+
+pypi openmodule:
+  dependencies: [ ]
+  stage: deploy
+  tags:
+    - docker
+  only:
+    refs:
+      - tags
+    variables:
+      - $CI_COMMIT_REF_NAME =~ /^v(\d+)(\.[\d\w]+)+?$/
+  variables:
+    TWINE_USERNAME: $PYPI_USERNAME
+    TWINE_PASSWORD: $PYPI_PASSWORD
+    PBR_VERSION: $CI_COMMIT_REF_NAME
+  script:
+    - '[[ -z $TWINE_USERNAME ]] && (echo "\$PYPI_USERNAME is not set" ; exit 1)'
+    - '[[ -z $TWINE_PASSWORD ]] && (echo "\$PYPI_PASSWORD is not set" ; exit 1)'
+    - python setup.py -q sdist bdist_wheel
+    - twine upload dist/*
+
+pypi openmodule_test:
+  dependencies: [ ]
+  stage: deploy
+  tags:
+    - docker
+  only:
+    refs:
+      - tags
+    variables:
+      - $CI_COMMIT_REF_NAME =~ /^v(\d+)(\.[\d\w]+)+?$/
+  variables:
+    TWINE_USERNAME: $PYPI_USERNAME
+    TWINE_PASSWORD: $PYPI_PASSWORD
+    PBR_VERSION: $CI_COMMIT_REF_NAME
+  script:
+    - '[[ -z $TWINE_USERNAME ]] && (echo "\$PYPI_USERNAME is not set" ; exit 1)'
+    - '[[ -z $TWINE_PASSWORD ]] && (echo "\$PYPI_PASSWORD is not set" ; exit 1)'
+    - cd openmodule_test
+    - python setup.py -q sdist bdist_wheel
+    - twine upload dist/*
