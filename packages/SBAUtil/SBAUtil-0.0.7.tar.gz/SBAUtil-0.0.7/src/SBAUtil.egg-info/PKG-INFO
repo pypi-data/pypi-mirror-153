@@ -1,0 +1,70 @@
+Metadata-Version: 2.1
+Name: SBAUtil
+Version: 0.0.7
+Summary: Semi-automatic Pipeline for Markerless Pose Estimation and Behavior classification of mouse.
+Home-page: https://github.com/webbdevv/braindecoding
+Author: Yiyang
+Author-email: yiyangzhou123@ucla.edu
+Project-URL: Bug Tracker, https://github.com/webbdevv/braindecoding
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# SBA
+
+Untility functions for interaction classifcation. The module provides functions for pre-SIMBA and post-SIMBA processing.
+
+# Installation
+
+```bash
+pip install SBAUtil
+```
+
+
+# Tutorial
+
+```python
+import SBA
+```
+
+Initalize the configuration file:
+```python
+SBA.initConfig('./',projectName = "newProject", experimenter = "Yiyang")
+```
+
+### dynamic cut
+
+[SIMBA gives error](https://github.com/sgoldenlab/simba/blob/master/docs/FAQ.md#3-i-get-a-qhull-eg-qh6154-or-6013-error-when-extracting-the-features) if the h5file input from DLC contains a portion where there is only one mouse.  `SBA.batch_dynamic_cropVideo` will 
+1. dynamically crop out this portion based on the given h5file from DLC.  
+2. modify the original DLC h5 file to match the extracted video.
+3. The new videos and new h5files can then be used for SIMBA analysis  
+
+```python
+SBA.batch_dynamic_cropVideo(config_path,videos,h5files,videoType="avi")
+```
+
+`videos`: The path to directory of the videos.
+
+`h5files`: The path to the directory of the DLC h5 outputs.
+
+
+### Post SIMBA processing
+
+`finalizeSimBaOutput` does the following:
+1. Simplify the final output from SIMBA. 
+2. Modify the frame number field so that it matches the original video. 
+
+
+```python
+SBA.finalizeSimBaOutput(config, simbaFiles, classifier ,destDir = None)
+```
+
+`config`: path to the SBA configuration file. 
+
+`simbaFiles`: path to the SIMBA output directory. It's by default in project_folder/csv/machine_results.
+
+`classifier`: list of strings containing the classifier names. For example, `["isInteraction"]` or `["Unilateral", "Reciprocal", "Passive"]`. 
+Make sure the spelling matches the names defined in the SIMBA model. 
