@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<title>ModelCraft</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="author" content="Paul Bond" />
+<meta name="description" content="Automated model building pipeline for X-ray crystallography" />
+<link rel="icon" href="img/modelcraft.png" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,700" />
+<link rel="stylesheet" href="css/normalize.min.css" />
+<link rel="stylesheet" href="css/milligram.min.css" />
+<link rel="stylesheet" href="css/custom.css" />
+
+<div class="container">
+    <img src="img/modelcraft.png" alt="Logo" class="logo">
+
+    <h1>ModelCraft</h1>
+    <h4>
+        An automated model building pipeline
+        for X-ray crystallography and cryo-EM
+    </h4>
+
+    <nav>
+        <ol>
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#usage">Usage</a></li>
+            <li><a href="#contents">ASU Contents Description</a></li>
+            <li><a href="#links">Links</a></li>
+            <li><a href="#citations">Citations</a></li>
+        </ol>
+    </nav>
+
+    <section id="installation">
+        <h2 class="heading">Installation</h2>
+        <p>ModelCraft can be installed using pip for Python 3.7 or newer, e.g.</p>
+        <pre><code>python3 -m pip install --user modelcraft</code></pre>
+        <p>
+            Refer to the
+            <a href="https://pip.pypa.io/en/stable/installing">pip documentation</a>
+            if pip is not installed.
+            ModelCraft also requires an installation of CCP4.
+            The CCP4 environment needs to be set up
+            so that programs such as Buccaneer and Refmac
+            can be called from the command line.
+        </p>
+    </section>
+    <section id="usage">
+        <h2 class="heading">Usage</h2>
+        <p>
+            The first argument must be either <code>xray</code> or <code>em</code>
+            for X-ray crystallography or cryo-EM.
+            The simplest execution for X-ray crystallography
+            requires only a description of the asymmetric unit contents
+            (see the next section)
+            and a reflection data file in MTZ format
+            (with observations, a free-R flag and starting phases).
+        </p>
+        <pre><code>modelcraft xray --contents contents.json --data data.mtz</code></pre>
+        <p>
+            Alternatively, a model can be provided (in PDB, mmCIF or mmJSON format),
+            which will be refined and used as a starting point
+            instead of starting from phases in the data file.
+        </p>
+        <pre><code>modelcraft xray --contents contents.json --data data.mtz --model model.cif</code></pre>
+        <p>
+            For cryo-EM, a map and a resolution must be provided instead of a reflection data file.
+        </p>
+        <pre><code>modelcraft em --contents contents.json --map map.mrc --resolution 2.5</code></pre>
+        <p>
+            The command line documentation
+            has more detailed information on individual arguments.
+        </p>
+        <pre><code>modelcraft xray --help
+modelcraft em --help</code></pre>
+    </section>
+
+    <section id="contents">
+        <h2 class="heading">ASU Contents Description</h2>
+        <p>
+            A description of the expected contents of the asymmetric unit
+            must be provided as a FASTA sequence file or a JSON file
+            using the <code>--contents</code> argument.
+            A sequence file is simpler,
+            but the JSON format has the following advantages:
+        </p>
+        <ul>
+            <li>Number of copies and stoichiometry can be specified
+                for a more accurate calculation of the solvent fraction.</li>
+            <li>Carbohydrates, ligands and buffers may be specified
+                in addition to protein, RNA and DNA.</li>
+            <li>Molecule types do not need to be guessed from
+                sequences (which may be ambiguous).</li>
+        </ul>
+        <p>
+            In order to create a JSON file it may be helpful
+            to start from the contents for an existing PDB entry.
+            The <code>modelcraft-contents</code> script
+            creates a contents JSON file for a released PDB entry.
+        </p>
+        <p>An example JSON file is shown below:</p>
+        <pre><code>{
+    "copies": 2,
+    "proteins": [
+        {
+            "sequence": "LPGECSVNVIPKMNLDKAKFFSGTWYETHYLDMDPQATEKFCFSFAPRESGGTVMEALYHFNVDSKV",
+            "stoichiometry": 1,
+            "modifications": ["M->MSE"]
+        },
+        {
+            "sequence": "GGG"
+        }
+    ],
+    "rnas": [
+        {
+            "sequence": "GGUAACUGUUACAGUUACC",
+            "stoichiometry": 2,
+            "modifications": ["1->GTP", "19->CCC"]
+        }
+    ],
+    "dnas": [],
+    "carbs": [
+        { "codes": { "NAG": 2 }, "stoichiometry": 1 },
+        { "codes": { "MAN": 1, "NAG": 2 }, "stoichiometry": 1 }
+    ],
+    "ligands": [
+        { "code": "HEM", "stoichiometry": 1 }
+    ],
+    "buffers": ["GOL", "NA", "CL"]
+}</code></pre>
+        <p>
+            The file has a list of <code>proteins</code>, <code>rnas</code>,
+            <code>dnas</code>, <code>carbs</code>, <code>ligands</code>,
+            and <code>buffers</code> that are in the crystal.
+            The only mandatory items are that each 
+            protein, RNA or DNA chain must have a <code>sequence</code>,
+            each carbohydrate must have a dictionary of <code>codes</code>
+            to specify the number of each sugar,
+            and each ligand must have a single <code>code</code>.
+        </p>
+        <p>
+            Each component (other than buffers) has a
+            <code>stoichiometry</code> parameter to specify the stoichiometry.
+            In the example above there are 2 RNA chains for each protein chain.
+            If the stoichiometry is not specified it is assumed to be 1.
+            There is also a <code>copies</code> parameter for the whole file
+            to specify how many copies of the contents are in the asymmetric unit.
+            If this value is not known the most likely number will be estimated.
+            The <code>modelcraft-copies</code> script can be used to
+            view the solvent fraction and probability for each number of copies
+            given a contents file and an MTZ file.
+            It is assumed that the number of ordered buffer molecules is unknown
+            so they are not included in the solvent calculation.
+        </p>
+        <p>
+            Finally, protein, RNA and DNA chains may have
+            a list of <code>modifications</code>,
+            e.g. <code>M->MSE</code> to specify that
+            all methionine residues are actually selenomethionine
+            or <code>1->GTP</code> to specify that
+            the residue 1 is guanosine triphosphate.
+        </p>
+        <p>
+            <b>Note:</b> ModelCraft does not yet build carbohydrates, ligands,
+            or modified residues (other than selenomethionine derivatives).
+            However, this is planned for the future
+            and inclusion of these components in the contents
+            allows for more accurate calculation of the solvent fraction
+            during density modification.
+        </p>
+    </section>
+
+    <section id="links">
+        <h2 class="heading">Links</h2>
+        <ul>
+            <li>
+                <a href="https://github.com/paulsbond/modelcraft">
+                    Source (latest)
+                </a>
+            </li>
+            <li>
+                <a href="https://github.com/paulsbond/modelcraft/releases">
+                    Source (releases)
+                </a>
+            </li>
+            <li>
+                <a href="https://github.com/paulsbond/modelcraft/issues">
+                    Issues (e.g. bugs and feature requests)
+                </a>
+            </li>
+            <li>
+                <a href="https://pypi.org/project/modelcraft/">
+                    PyPI (Python Package Index)
+                </a>
+            </li>
+        </ul>
+    </section>
+
+    <section id="citations">
+        <h2 class="heading">Citations</h2>
+        <dl>
+            <dt>ModelCraft</dt>
+            <dd>
+                P Bond.
+                <i>Next generation software for placing atoms into electron density maps.</i>
+                PhD thesis, University of York (2021)
+                <a href="https://etheses.whiterose.ac.uk/29044/">URL</a>
+            </dd>
+            <dt>Buccaneer</dt>
+            <dd>
+                K Cowtan.
+                <i>Acta Cryst. D</i>, <b>62</b>, 1002 (2006)
+                <a href="https://doi.org/10.1107/S0907444906022116">DOI</a>
+            </dd>
+            <dt>Coot</dt>
+            <dd>
+                P Emsley, B Lohkamp, WG Scott, K Cowtan.
+                <i>Acta Cryst. D</i>, <b>66</b>, 486 (2010)
+                <a href="https://doi.org/10.1107/S0907444910007493">DOI</a>
+            </dd>
+            <dt>Nautilus</dt>
+            <dd>
+                K Cowtan.
+                <i>IUCrJ</i>, <b>1</b>, 387 (2014)
+                <a href="https://doi.org/10.1107/S2052252514019290">DOI</a>
+            </dd>
+            <dt>Parrot</dt>
+            <dd>
+                K Cowtan.
+                <i>Acta Cryst. D</i>, <b>66</b>, 470 (2010)
+                <a href="https://doi.org/10.1107/S090744490903947X">DOI</a>
+            </dd>
+            <dt>Refmac</dt>
+            <dd>
+                O Kovalevskiy, RA Nicholls, F Long, A Carlon, GN Murshudov.
+                <i>Acta Cryst. D</i>, <b>74</b>, 215 (2018)
+                <a href="https://doi.org/10.1107/S2059798318000979">DOI</a>
+            </dd>
+            <dt>Sheetbend</dt>
+            <dd>
+                K Cowtan, S Metcalfe, P Bond.
+                <i>Acta Cryst. D</i>, <b>76</b>, 1192 (2020)
+                <a href="https://doi.org/10.1107/S2059798320013170">DOI</a>
+            </dd>
+        </dl>
+    </section>
+
+</div>
