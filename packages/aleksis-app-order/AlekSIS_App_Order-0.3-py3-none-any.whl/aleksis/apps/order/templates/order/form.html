@@ -1,0 +1,128 @@
+{% extends 'core/base.html' %}
+{% load i18n material_form %}
+
+{% block page_title %}
+  {{ object.title }}
+{% endblock %}
+{% block browser_title %}
+  {{ object.title }}
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    {% include "order/breadcrumbs.html" with step=1 %}
+
+    <form action="" method="post">
+      {% csrf_token %}
+
+      <h5>
+        <i class="material-icons left iconify small" data-icon="mdi:account-outline"></i>
+        {% trans "Personal data" %}
+      </h5>
+      {% if user.is_authenticated %}
+        <div class="alert primary">
+          <div>
+            <i class="material-icons left iconify" data-icon="mdi:information-outline"></i>
+            {% blocktrans %}
+              The personal data were imported automatically from your user account and are not changable in order to
+              verify your
+              identity.
+            {% endblocktrans %}
+          </div>
+        </div>
+      {% endif %}
+      {% form form=form %}{% endform %}
+
+      <h5>
+        <i class="material-icons left iconify small" data-icon="mdi:cart-outline"></i>
+        {% trans "Items" %}
+      </h5>
+      {% form form=formset.management_form %}{% endform %}
+
+      <table class="highlight">
+        <tr>
+          <th>{% trans "Count" %}</th>
+          <th>{% trans "Item" %}</th>
+          <th>{% trans "Price" %}</th>
+          <th>{% trans "Sum" %}</th>
+        </tr>
+        {% for item_form in formset %}
+          <tr>
+            <td style="width: 200px;" class="count-form">
+              {% form form=item_form %}{% endform %}
+            </td>
+            <td>
+              <strong>{{ item_form.instance.name }}</strong>
+              <p>{{ item_form.instance.notice|safe }}</p>
+            </td>
+            <td class="right-align">
+              <span class="price">{{ item_form.instance.price|floatformat:"2" }}</span> €
+            </td>
+            <td class="right-align">
+              <span class="sum">0,00</span> €
+            </td>
+          </tr>
+        {% endfor %}
+        <tr>
+          <td></td>
+          <th class="flow-text">
+            {% trans "Total" %}
+          </th>
+          <th colspan="2" class="right-align flow-text">
+            <span class="total">0,00</span> €
+          </th>
+        </tr>
+      </table>
+
+      <p>
+        <button type="submit" class="btn waves-effect waves-light green">
+          {% trans "Next step" %}
+          <i class="material-icons right iconify" data-icon="mdi:chevron-right"></i>
+        </button>
+      </p>
+    </form>
+
+    {{ object.help_text|safe }}
+
+    <script>
+        function formatEuro(val) {
+            return val.toLocaleString("de-DE", {minimumFractionDigits: 2});
+        }
+
+        function updateTotal() {
+            let total = 0;
+            $(".sum").each(function () {
+                total += parseFloat($(this).html().replace(",", "."));
+            })
+            if (total >= 0) {
+                $(".total").html(formatEuro(total));
+            }
+        }
+
+        function updateSum(o) {
+            let sumField = o.closest("tr").find(".sum");
+
+            let price = parseFloat(o.closest("tr").find(".price").html().replace(",", "."));
+            let count = parseInt(o.val());
+            let sum = price * count;
+
+            sum = sum >= 0 ? sum : 0;
+            sumField.html(formatEuro(sum));
+        }
+
+        function updateSums() {
+            $(".count-form input[type=number]").each(function () {
+                updateSum($(this));
+            })
+            updateTotal();
+        }
+
+        $(".count-form input[type=number]").change(function (e) {
+            updateSums();
+        });
+        $(document).ready(function () {
+            updateSums();
+        })
+    </script>
+  </div>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'core/base.html' %}
+{% load i18n material_form %}
+
+{% block page_title %}
+  {{ object }}
+{% endblock %}
+{% block browser_title %}
+  {{ object }}
+{% endblock %}
+
+{% block content %}
+  <a class="btn waves-effect waves-light" href="{% url "list_orders" %}">
+    <i class="material-icons left iconify" data-icon="mdi:chevron-left"></i> {% trans "Back" %}
+  </a>
+  <a class="btn waves-effect waves-light orange" href="{% url "edit_order" object.pk %}">
+    <i class="material-icons left iconify" data-icon="mdi:pencil-outline"></i> {% trans "Edit order" %}
+  </a>
+  <a class="btn waves-effect waves-light red" href="{% url "delete_order" object.pk %}">
+    <i class="material-icons left iconify" data-icon="mdi:delete-outline"></i> {% trans "Delete order" %}
+  </a>
+  <form action="" method="post" name="single-action">
+    <p>
+      {% if not object.paid %}
+        <button type="submit" class="btn waves-effect waves-light" value="yes" name="mark-as-paid">
+          <i class="material-icons left iconify" data-icon="mdi:currency-eur"></i> {% trans "Mark as paid" %}
+        </button>
+        <button type="submit" class="btn waves-effect waves-light" name="mark-as-paid-email" value="yes">
+          <i class="material-icons left iconify"
+             data-icon="mdi:currency-eur"></i> {% trans "Mark as paid and send pay confirmation" %}
+        </button>
+      {% endif %}
+    </p>
+  </form>
+  <table>
+    <tr>
+      <th>{% trans "Status" %}</th>
+      <td>
+        {% if order.submitted %}
+          <span class="chip green white-text">
+            <i class="material-icons left iconify" data-icon="mdi:email-fast-outline"></i>
+            {% trans "Submitted" %}
+          </span>
+          {% if order.confirmed %}
+            <span class="chip green white-text">
+              <i class="material-icons left iconify" data-icon="mdi:check"></i>
+              {% trans "Confirmed" %}</span>
+          {% else %}
+            <span class="chip red white-text">{% trans "Unconfirmed" %}</span>
+          {% endif %}
+          {% if order.paid %}
+            <span class="chip green white-text">
+              <i class="material-icons left iconify" data-icon="mdi:currency-eur"></i>
+              {% trans "Paid" %}
+            </span>
+          {% else %}
+            <span class="chip red white-text">{% trans "Unpaid" %}</span>
+          {% endif %}
+          {% if order.sent %}
+            <span class="chip green white-text">
+              <i class="material-icons left iconify" data-icon="mdi:truck"></i>
+              {% trans "Sent" %}
+            </span>
+          {% else %}
+            <span class="chip red white-text">{% trans "Not sent" %}</span>
+          {% endif %}
+        {% else %}
+          <span class="chip green white-text">{% trans "Not submitted" %}</span>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>{% trans "Full name" %}</th>
+      <td>{{ order.full_name }}</td>
+    </tr>
+    <tr>
+      <th>{% trans "Email" %}</th>
+      <td>
+        <a href="mailto:{{ order.email }}">{{ order.email }}</a>
+      </td>
+    </tr>
+
+    {% if order.processing_option.address_necessary %}
+      <tr>
+        <th>{% trans "Shipping address" %}</th>
+
+        <td>
+          {{ order.shipping_full_name }} <br/>
+          {{ order.second_address_row }} <br/>
+          {{ order.street }} {{ order.housenumber }}<br/>
+          {{ order.plz }} {{ order.place }}
+        </td>
+      </tr>
+    {% endif %}
+  </table>
+
+  <table>
+    <tr>
+      <th>{% trans "Count" %}</th>
+      <th>{% trans "Item" %}</th>
+      <th class="right-align">{% trans "Price" %}</th>
+      <th class="right-align">{% trans "Sum" %}</th>
+    </tr>
+    {% for item in order.items.all %}
+      <tr>
+        <td>{{ item.count }}</td>
+        <td>{{ item.item.name }}</td>
+        <td class="right-align">{{ item.item.price|floatformat:"2" }} €</td>
+        <td class="right-align">{{ item.total|floatformat:"2" }} €</td>
+      </tr>
+    {% endfor %}
+    <tr>
+      <td></td>
+      <td> + {{ order.processing_option.name }}</td>
+      <td colspan="2" style="text-align: right;">
+        {{ order.processing_price|floatformat:"2" }} €
+      </td>
+    </tr>
+    <tr class="sum-row">
+      <td></td>
+      <th>{% trans "Total" %}</th>
+      <th colspan="2" style="text-align: right;">
+        {{ order.total|floatformat:"2" }} €
+      </th>
+    </tr>
+  </table>
+{% endblock %}

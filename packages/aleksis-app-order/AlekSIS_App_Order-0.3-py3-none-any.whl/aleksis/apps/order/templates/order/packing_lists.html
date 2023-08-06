@@ -1,0 +1,55 @@
+{# -*- engine:django -*- #}
+
+{% extends 'core/base_print.html' %}
+
+{% load i18n static %}
+
+{% block browser_title %}{% blocktrans %}Print: Packing lists{% endblocktrans %}{% endblock %}
+{% block page_title %}{% blocktrans %}Packing list{% endblocktrans %}{% endblock %}
+
+{% block content %}
+  {% for order in object_list %}
+    <h6>{% trans "Ordered by" %}</h6>
+    <ul class="collection">
+      <li class="collection-item">
+        <strong>{% trans "Name" %}:</strong> {{ order.full_name }}
+      </li>
+      <li class="collection-item">
+        <strong>{% trans "Email" %}:</strong> {{ order.email }}
+      </li>
+    </ul>
+
+    {% if order.processing_option.address_necessary %}
+      <h6>{% trans "Shipping address" %}</h6>
+      <ul class="collection">
+        <li class="collection-item">
+          {{ order.shipping_full_name }} <br/>
+          {{ order.second_address_row }} <br/>
+          {{ order.street }} {{ order.housenumber }}<br/>
+          {{ order.plz }} {{ order.place }}
+        </li>
+      </ul>
+    {% endif %}
+
+    <h6>{% trans "Items" %}</h6>
+    <table>
+      <tr class="first">
+        <th>{% trans "Count" %}</th>
+        <th>{% trans "Item" %}</th>
+      </tr>
+      {% for item in order.items.all %}
+        <tr>
+          <td>{{ item.count }}</td>
+          <td>{{ item.item.name }}</td>
+        </tr>
+      {% endfor %}
+      <tr>
+        <td></td>
+        <td> + {{ order.processing_option.name }}</td>
+      </tr>
+    </table>
+    {% if not forloop.last %}
+      <div class="page-break">&nbsp;</div>
+    {% endif %}
+  {% endfor %}
+{% endblock %}
