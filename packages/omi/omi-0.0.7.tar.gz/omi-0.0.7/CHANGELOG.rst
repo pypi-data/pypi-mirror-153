@@ -1,0 +1,31 @@
+
+Changelog
+=========
+
+0.0.7 (2022-06-02)
+------------------
+
+* Add oem_structure module: Introcude support for multipe OEMetadata structure representations
+* add new Dialect for OEM v15
+* Full support (except for validation) for OEP-Metadata v1.5
+
+
+0.0.6 (2020-07-08)
+------------------
+
+* Fix compilation of null values
+* Fix parsing of lists
+
+
+0.0.5 (2020-05-12)
+------------------
+
+* Fixed compiler for None in date fields
+
+
+0.0.4 (2019-12-06)
+------------------
+
+* Improved documentation
+* Full support of OEP-Metadata 1.4
+* Support for optional fields in metadata strings
