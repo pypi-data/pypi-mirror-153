@@ -1,0 +1,127 @@
+Metadata-Version: 2.1
+Name: aws-cdk.triggers
+Version: 1.159.0
+Summary: Execute AWS Lambda functions during deployment
+Home-page: https://github.com/aws/aws-cdk
+Author: Amazon Web Services
+License: Apache-2.0
+Project-URL: Source, https://github.com/aws/aws-cdk.git
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: JavaScript
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Typing :: Typed
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved
+Classifier: Framework :: AWS CDK
+Classifier: Framework :: AWS CDK :: 1
+Requires-Python: ~=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+License-File: NOTICE
+Requires-Dist: aws-cdk.aws-lambda (==1.159.0)
+Requires-Dist: aws-cdk.core (==1.159.0)
+Requires-Dist: constructs (<4.0.0,>=3.3.69)
+Requires-Dist: jsii (<2.0.0,>=1.58.0)
+Requires-Dist: publication (>=0.0.3)
+
+# Triggers
+
+<!--BEGIN STABILITY BANNER-->---
+
+
+![cdk-constructs: Stable](https://img.shields.io/badge/cdk--constructs-stable-success.svg?style=for-the-badge)
+
+---
+<!--END STABILITY BANNER-->
+
+Triggers allows you to execute code during deployments. This can be used for a
+variety of use cases such as:
+
+* Self tests: validate something after a resource/construct been provisioned
+* Data priming: add initial data to resources after they are created
+* Preconditions: check things such as account limits or external dependencies
+  before deployment.
+
+## Usage
+
+The `TriggerFunction` construct will define an AWS Lambda function which is
+triggered *during* deployment:
+
+```python
+import aws_cdk.aws_lambda as lambda_
+import aws_cdk.triggers as triggers
+from aws_cdk.core import Stack
+
+# stack: Stack
+
+triggers.TriggerFunction(stack, "MyTrigger",
+    runtime=lambda_.Runtime.NODEJS_12_X,
+    handler="index.handler",
+    code=lambda_.Code.from_asset(__dirname + "/my-trigger")
+)
+```
+
+In the above example, the AWS Lambda function defined in `myLambdaFunction` will
+be invoked when the stack is deployed.
+
+## Trigger Failures
+
+If the trigger handler fails (e.g. an exception is raised), the CloudFormation
+deployment will fail, as if a resource failed to provision. This makes it easy
+to implement "self tests" via triggers by simply making a set of assertions on
+some provisioned infrastructure.
+
+## Order of Execution
+
+By default, a trigger will be executed by CloudFormation after the associated
+handler is provisioned. This means that if the handler takes an implicit
+dependency on other resources (e.g. via environment variables), those resources
+will be provisioned *before* the trigger is executed.
+
+In most cases, implicit ordering should be sufficient, but you can also use
+`executeAfter` and `executeBefore` to control the order of execution.
+
+The following example defines the following order: `(hello, world) => myTrigger => goodbye`.
+The resources under `hello` and `world` will be provisioned in
+parallel, and then the trigger `myTrigger` will be executed. Only then the
+resources under `goodbye` will be provisioned:
+
+```python
+from constructs import Construct, Node
+import aws_cdk.triggers as triggers
+
+# my_trigger: triggers.Trigger
+# hello: Construct
+# world: Construct
+# goodbye: Construct
+
+my_trigger.execute_after(hello, world)
+my_trigger.execute_before(goodbye)
+```
+
+Note that `hello` and `world` are construct *scopes*. This means that they can
+be specific resources (such as an `s3.Bucket` object) or groups of resources
+composed together into constructs.
+
+## Re-execution of Triggers
+
+By default, `executeOnHandlerChange` is enabled. This implies that the trigger
+is re-executed every time the handler function code or configuration changes. If
+this option is disabled, the trigger will be executed only once upon first
+deployment.
+
+In the future we will consider adding support for additional re-execution modes:
+
+* `executeOnEveryDeployment: boolean` - re-executes every time the stack is
+  deployed (add random "salt" during synthesis).
+* `executeOnResourceChange: Construct[]` - re-executes when one of the resources
+  under the specified scopes has changed (add the hash the CloudFormation
+  resource specs).
+
+
