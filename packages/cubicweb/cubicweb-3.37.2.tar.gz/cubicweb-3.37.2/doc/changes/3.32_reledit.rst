@@ -1,0 +1,46 @@
+Bug related to permissions for displaying reledit form
+======================================================
+
+Summary
+-------
+
+There was a bug in the computation of permissions for relations in the context of displaying reledit form. It has been fixed in version 3.32 of CubicWeb.
+
+Long description of the problem
+-------------------------------
+
+The method :file:`_should_edit_relation` who chooses if the reledit form must or not be displayed. This is computed through the method :file:`cubicweb.schema.CubicWebRelationSchema.has_perm`, which will (among others things) try to satisfy all RQL expressions for permissions.
+
+In the case of a project, we have this:
+
+.. code:: python
+
+    my_relation = SubjectRelation(
+        'MyEntity', cardinality='1*',
+        composite='object', inlined=True,
+        __permissions__=rperms('O'))
+
+where
+
+.. code:: python
+
+    def rperms(var, read=('managers', 'users')):
+        return {
+            'read': read,
+            'add': (
+                'managers',
+                RRQLExpression('U has_update_permission {}'.format(var))),
+            'delete': (
+                'managers',
+                RRQLExpression('U has_delete_permission {}'.format(var))),
+        }
+
+This expression will generate a RQL request like :file:`Any O,U WHERE U has_update_permission O, O eid %(o)s, U eid %(u)s` which will not be satisfied, because the eid of the object won't be given by reledit.
+
+In consequence, we have to find an other way to check permissions for reledit.
+
+Links on the development forge
+------------------------------
+
+- issue: <https://forge.extranet.logilab.fr/cubicweb/cubicweb/-/issues/324>
+- fix: <https://forge.extranet.logilab.fr/cubicweb/cubicweb/-/merge_requests/313>

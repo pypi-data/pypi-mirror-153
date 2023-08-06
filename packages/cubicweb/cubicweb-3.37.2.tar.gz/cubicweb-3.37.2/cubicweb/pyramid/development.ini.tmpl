@@ -1,0 +1,83 @@
+###
+# app configuration
+# http://docs.pylonsproject.org/projects/pyramid/en/latest/narr/environment.html
+###
+
+[app:main]
+use = egg:cubicweb#pyramid_main
+
+pyramid.reload_templates = true
+pyramid.debug_authorization = false
+pyramid.debug_notfound = false
+pyramid.debug_routematch = false
+pyramid.default_locale_name = en
+pyramid.includes =
+    cubicweb_%(cubename)s
+
+# By default, the toolbar only appears for clients from IP addresses
+# '127.0.0.1' and '::1'.
+# debugtoolbar.hosts = 127.0.0.1 ::1
+
+##
+# CubicWeb instance settings
+# http://cubicweb.readthedocs.io/en/latest/book/pyramid/settings/
+##
+cubicweb.instance = %(instance)s
+cubicweb.debug = true
+cubicweb.session.secret = %(session-secret)s
+cubicweb.auth.authtkt.persistent.secure = false
+cubicweb.auth.authtkt.persistent.secret = %(auth-authtkt-persistent-secret)s
+cubicweb.auth.authtkt.session.secure = false
+cubicweb.auth.authtkt.session.secret = %(auth-authtkt-session-secret)s
+
+###
+# wsgi server configuration
+###
+
+[server:main]
+use = egg:waitress#main
+listen = 127.0.0.1:6543 [::1]:6543
+
+###
+# logging configuration
+# https://docs.pylonsproject.org/projects/pyramid/en/latest/narr/logging.html
+###
+
+[loggers]
+keys = root, logilab, cubicweb, cubicweb_%(cubename)s
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = INFO
+handlers = console
+
+[logger_logilab]
+level = WARNING
+handlers = console
+qualname = logilab
+
+[logger_cubicweb]
+level = INFO
+handlers = console
+qualname = cubicweb
+
+[logger_cubicweb_%(cubename)s]
+level = DEBUG
+handlers = console
+qualname = cubicweb_%(cubename)s
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+class = logilab.common.logging_ext.ColorFormatter
+format = %%(asctime)s - (%%(name)s) %%(levelname)s: %%(message)s
+datefmt = %%Y-%%m-%%d %%H:%%M:%%S
