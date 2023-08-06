@@ -1,0 +1,77 @@
+{
+  "type": "record",
+  "name": "ExecutionRequestInput",
+  "namespace": "com.linkedin.pegasus2avro.execution",
+  "doc": "An request to execution some remote logic or action.\nTODO: Determine who is responsible for emitting execution request success or failure. Executor?",
+  "fields": [
+    {
+      "name": "task",
+      "type": "string",
+      "doc": "The name of the task to execute, for example RUN_INGEST"
+    },
+    {
+      "name": "args",
+      "type": {
+        "type": "map",
+        "values": "string"
+      },
+      "doc": "Arguments provided to the task"
+    },
+    {
+      "name": "executorId",
+      "type": "string",
+      "doc": "Advanced: specify a specific executor to route the request to. If none is provided, a \"default\" executor is used."
+    },
+    {
+      "name": "source",
+      "type": {
+        "type": "record",
+        "name": "ExecutionRequestSource",
+        "fields": [
+          {
+            "name": "type",
+            "type": "string",
+            "doc": "The type of the execution request source, e.g. INGESTION_SOURCE"
+          },
+          {
+            "name": "ingestionSource",
+            "type": [
+              "null",
+              "string"
+            ],
+            "doc": "The urn of the ingestion source associated with the ingestion request. Present if type is INGESTION_SOURCE",
+            "default": null,
+            "Relationship": {
+              "entityTypes": [
+                "dataHubIngestionSource"
+              ],
+              "name": "ingestionSource"
+            },
+            "Searchable": {
+              "fieldName": "ingestionSource",
+              "fieldType": "KEYWORD",
+              "queryByDefault": false
+            },
+            "java": {
+              "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+            }
+          }
+        ]
+      },
+      "doc": "Source which created the execution request"
+    },
+    {
+      "name": "requestedAt",
+      "type": "long",
+      "doc": "Time at which the execution request input was created",
+      "Searchable": {
+        "fieldName": "requestTimeMs",
+        "fieldType": "COUNT",
+        "queryByDefault": false
+      }
+    }
+  ],
+  "Aspect": {
+    "name": "dataHubExecutionRequestInput"
+  }
+}
