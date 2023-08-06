@@ -1,0 +1,177 @@
+Hosted files
+************
+
+Some resources have binary files, usually images, associated with
+them. The Launchpad web service exposes these files as resources that
+respond to GET, PUT, and DELETE. The files themselves are managed by a
+service-specific backend implementation.
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='cookbooks.dev')
+
+==============
+File resources
+==============
+
+A cookbook starts out with a link to a cover image, but no actual cover.
+
+    >>> from urllib.parse import quote
+    >>> greens_url = quote("/cookbooks/Everyday Greens")
+    >>> greens = webservice.get(greens_url).jsonBody()
+    >>> print(greens['cover_link'])
+    http://.../cookbooks/Everyday%20Greens/cover
+
+    >>> greens_cover = greens['cover_link']
+    >>> print(webservice.get(greens_cover))
+    HTTP/1.1 404 Not Found
+    ...
+
+We can upload a cover with PUT.
+
+    >>> print(webservice.put(greens_cover, 'image/png',
+    ...                      "Pretend this is an image file."))
+    HTTP/1.1 200 Ok
+    ...
+
+Once the cover has been uploaded, we can GET it. The resource acts
+as a dispatcher pointing to the externally-hosted mugshot on the public
+Internet.
+
+    >>> result = webservice.get(greens_cover)
+    >>> print(result)
+    HTTP/1.1 303 See Other
+    ...
+    Location: http://cookbooks.dev/.../filemanager/0
+    ...
+
+Files uploaded to the example web service are backed by a simple file
+manager that stores files and makes them available by number. A real
+web service will use some other scheme.
+
+This was the first file we ever uploaded, so it got the number
+zero. Here it is retrieved from the file manager.
+
+    >>> filemanager_url = result.getheader('location')
+    >>> response = webservice.get(filemanager_url)
+    >>> print(response)
+    HTTP/1.1 200 Ok
+    ...
+    Content-Type: image/png
+    ...
+    <BLANKLINE>
+    Pretend this is an image file.
+
+The simple file manager has some nice features like setting the
+Content-Disposition, Last-Modified, and ETag headers.
+
+    >>> print(response.getheader('Content-Disposition'))
+    attachment; filename="cover"
+
+Note that the name of the file is "cover", the same as the field
+whose value we set to the file. This is because we didn't specify a
+Content-Disposition header.
+
+    >>> response.getHeader('Last-Modified') is None
+    False
+
+    >>> etag = response.getheader('ETag')
+
+Make a second request using the ETag, and you'll get the response code 304
+("Not Modified").
+
+    >>> print(webservice.get(filemanager_url,
+    ...                      headers={'If-None-Match': etag}))
+    HTTP/1.1 304 Not Modified
+    ...
+
+PUT is also used to modify a hosted file. Here's one that provides a
+filename as part of Content-Disposition.
+
+    >>> print(webservice.put(greens_cover, 'image/png',
+    ...                      "Pretend this is another image file.",
+    ...                      {'Content-Disposition':
+    ...                       'attachment; filename="greens-cover.png"'}))
+    HTTP/1.1 200 Ok
+    ...
+
+The new cover is available at a different URL.
+
+    >>> result = webservice.get(greens_cover)
+    >>> print(result)
+    HTTP/1.1 303 See Other
+    ...
+    Location: http://cookbooks.dev/.../filemanager/1
+    ...
+
+When we GET that URL we see that the filename we provided is given
+back to us in the Content-Disposition header.
+
+    >>> filemanager_url = result.getheader('location')
+    >>> print(webservice.get(filemanager_url))
+    HTTP/1.1 200 Ok
+    ...
+    Content-Disposition: attachment; filename="greens-cover.png"
+    ...
+
+The example web service also defines a named operation for setting a
+cookbook's cover. There's no real point to this, but it's common for a
+real web service to define a more complex named operation that
+manipulates uploaded files.
+
+    >>> import io
+    >>> print(webservice.named_post(
+    ...     greens_url, 'replace_cover',
+    ...     cover=io.BytesIO(b'\x01\x02\r\n\x81\r\x82\n')))
+    HTTP/1.1 200 Ok
+    ...
+    >>> result = webservice.get(greens_cover)
+    >>> print(result)
+    HTTP/1.1 303 See Other
+    ...
+    Location: http://cookbooks.dev/devel/filemanager/2
+    ...
+    >>> filemanager_url = result.getheader('location')
+    >>> response = webservice.get(filemanager_url)
+    >>> response.body == b'\x01\x02\r\n\x81\r\x82\n'
+    True
+
+Deleting a cover (with DELETE) disables the redirect.
+
+    >>> print(webservice.delete(greens_cover))
+    HTTP/1.1 200 Ok
+    ...
+
+    >>> print(webservice.get(greens_cover))
+    HTTP/1.1 404 Not Found
+    ...
+
+==============
+Error handling
+==============
+
+You can't change a hosted file by PUTting to the URI of the entry that
+owns the file.
+
+    >>> greens['cover_link'] = 'http://google.com/logo.png'
+
+    >>> import simplejson
+    >>> print(webservice.put(greens_url, 'application/json',
+    ...     simplejson.dumps(greens)))
+    HTTP/1.1 400 Bad Request
+    ...
+    cover_link: To modify this field you need to send a PUT request to its
+    URI (http://.../cookbooks/Everyday%20Greens/cover).
+
+If a hosted file is read-only, the client won't be able to modify or
+delete it.
+
+   >>> url = '/recipes/1/prepared_image'
+   >>> print(webservice.put(url, 'application/x-tar-gz', 'fakefiledata'))
+   HTTP/1.1 405 Method Not Allowed...
+   Allow: GET
+   ...
+
+   >>> print(webservice.delete(url))
+   HTTP/1.1 405 Method Not Allowed...
+   Allow: GET
+   ...

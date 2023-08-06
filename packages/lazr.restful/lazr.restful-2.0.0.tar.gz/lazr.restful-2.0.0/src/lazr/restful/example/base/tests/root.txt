@@ -1,0 +1,205 @@
+Introduction
+************
+
+The service root (/[version]/) is a resource that responds to GET by
+describing the web service. The description is a JSON map full of
+links to the top-level web service objects.
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='cookbooks.dev')
+
+    >>> top_level_response = webservice.get("/")
+    >>> top_level_links = top_level_response.jsonBody()
+    >>> for key in sorted(top_level_links):
+    ...     print(key)
+    cookbooks_collection_link
+    dishes_collection_link
+    featured_cookbook_link
+    recipes_collection_link
+    resource_type_link
+    >>> print(top_level_links['cookbooks_collection_link'])
+    http://cookbooks.dev/devel/cookbooks
+
+    >>> print(top_level_links['resource_type_link'])
+    http://cookbooks.dev/devel/#service-root
+
+The client can explore the entire web service by following these links
+to other resources, and following the links served in those resources'
+JSON representations, and so on. If the client doesn't know the
+capabilities of a certain resource it can request a WADL
+representation of that resource (see the wadl.txt test) and find
+out.
+
+There is no XHTML representation available for the service root.
+
+    >>> print(webservice.get('/', 'application/xhtml+xml'))
+    HTTP/1.1 200 Ok
+    ...
+    Content-Type: application/json
+    ...
+
+Though web services in general support all HTTP methods, this
+particular resource supports only GET. Eventually it will also support
+HEAD and OPTIONS.
+
+    >>> for method in ['HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS']:
+    ...     print(webservice("/", method))
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET
+    ...
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET
+    ...
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET
+    ...
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET
+    ...
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET
+    ...
+
+Conditional GET
+===============
+
+The service root never changes except when the web service is
+upgraded. To avoid getting it more often than that, a client can store
+the value of the 'ETag' response header the first time it retrieves
+the service root.
+
+    >>> etag = top_level_response.getheader('ETag')
+    >>> etag is None
+    False
+
+The value of 'ETag' can be used in a subsequent request as the
+'If-None-Match' request header. If the client's old ETag matches the
+current ETag, the representation won't be served again.
+
+    >>> conditional_response = webservice.get(
+    ...     '/', headers={'If-None-Match' : etag})
+    >>> conditional_response.status
+    304
+    >>> print(conditional_response.body.decode('UTF-8'))
+    <BLANKLINE>
+
+    >>> conditional_response = webservice.get(
+    ...     '/', headers={'If-None-Match' : '"a-very-old-etag"'})
+    >>> conditional_response.status
+    200
+    >>> conditional_response.jsonBody()
+    OrderedDict(...)
+
+You can specify a number of etags in If-None-Match. You'll get a new
+representation only if *none* of them match:
+
+    >>> conditional_response = webservice.get(
+    ...     '/',
+    ...     headers={'If-None-Match' : '"a-very-old-etag", %s' %  etag})
+    >>> conditional_response.status
+    304
+
+    >>> conditional_response = webservice.get(
+    ...     '/',
+    ...     headers={'If-None-Match' : '"a-very-old-etag", "another-etag"'})
+    >>> conditional_response.status
+    200
+
+Top-level entry links
+=====================
+
+Most of the links at the top level are links to collections. But an
+especially important entry may also be given a link from the service
+root. The cookbook web service has a 'featured cookbook' which may
+change over time.
+
+    >>> print(top_level_links['featured_cookbook_link'])
+    http://.../cookbooks/featured
+
+Caching policy
+==============
+
+The service root resource is served with the Cache-Control header
+giving a configurable value for "max-age". An old version of the
+service root can be cached for a long time:
+
+    >>> response = webservice.get('/', api_version='1.0')
+    >>> print(response.getheader('Cache-Control'))
+    max-age=10000
+
+The latest version of the service root should be cached for less time.
+
+    >>> response = webservice.get('/', api_version='devel')
+    >>> print(response.getheader('Cache-Control'))
+    max-age=2
+
+Both the WADL and JSON representations of the service root are
+cacheable.
+
+    >>> wadl_type = 'application/vnd.sun.wadl+xml'
+    >>> response = webservice.get('/', wadl_type)
+    >>> print(response.getheader('Cache-Control'))
+    max-age=2
+
+The Date header is set along with Cache-Control so that the client can
+easily determine when the cache is stale.
+
+    >>> response.getheader('Date') is None
+    False
+
+Date and Cache-Control are set even when the request is a conditional
+request where the condition failed.
+
+    >>> etag = response.getheader('ETag')
+    >>> conditional_response = webservice.get(
+    ...     '/', wadl_type, headers={'If-None-Match' : etag})
+    >>> conditional_response.status
+    304
+    >>> print(conditional_response.getheader('Cache-Control'))
+    max-age=2
+    >>> conditional_response.getheader('Date') is None
+    False
+
+To avoid triggering a bug in httplib2, lazr.restful does not send the
+Cache-Control or Date headers to clients that identify as
+Python-httplib2.
+
+    # XXX leonardr 20100412
+    # bug=http://code.google.com/p/httplib2/issues/detail?id=97
+    >>> agent = 'Python-httplib2/$Rev: 259$'
+    >>> response = webservice.get(
+    ...     '/', wadl_type, headers={'User-Agent' : agent})
+    >>> print(response.getheader('Cache-Control'))
+    None
+    >>> print(response.getheader('Date'))
+    None
+
+If the client identifies as an agent _based on_ httplib2, we take a
+chance and send the Cache-Control headers.
+
+    >>> agent = "Custom client (%s)" % agent
+    >>> response = webservice.get(
+    ...     '/', wadl_type, headers={'User-Agent' : agent})
+    >>> print(response.getheader('Cache-Control'))
+    max-age=2
+    >>> response.getheader('Date') is None
+    False
+
+If the caching policy says not to cache the service root resource at
+all, the Cache-Control and Date headers are not present.
+
+    >>> from zope.component import getUtility
+    >>> from lazr.restful.interfaces import IWebServiceConfiguration
+    >>> policy = getUtility(IWebServiceConfiguration).caching_policy
+    >>> old_value = policy[-1]
+    >>> policy[-1] = 0
+
+    >>> response = webservice.get('/')
+    >>> print(response.getheader('Cache-Control'))
+    None
+    >>> response.getheader('Date') is None
+    True
+
+Cleanup.
+
+    >>> policy[-1] = old_value

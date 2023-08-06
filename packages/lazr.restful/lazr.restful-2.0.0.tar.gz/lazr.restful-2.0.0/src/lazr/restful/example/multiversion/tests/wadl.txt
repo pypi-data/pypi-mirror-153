@@ -1,0 +1,123 @@
+Multi-version WADL documents
+****************************
+
+A given version of the web service generates a WADL document which
+describes that version only. Let's go through the WADL documents for
+the different versions and see how they differ.
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='multiversion.dev')
+
+We'll start with a helper function that retrieves the WADL description
+for a given version of the key-value web service, and decomposes the
+top-level tags in the WADL document into a dictionary for easy access
+later. This works because all versions of the web service publish a
+single top-level collection and a single entry type, so the document's
+top-level structure is always the same.
+
+    >>> from lxml import etree
+    >>> from lxml.etree import _Comment
+    >>> def wadl_contents_for_version(version):
+    ...     """Parse the key-value service's WADL into a dictionary."""
+    ...     wadl = webservice.get(
+    ...         '/', media_type='application/vnd.sun.wadl+xml',
+    ...         api_version=version).body
+    ...     tree = etree.fromstring(wadl)
+    ...
+    ...     keys = ("service_doc version_doc base service_root "
+    ...             "service_root_json pair_collection pair_entry"
+    ...             "pair_full_json pair_diff_jaon pair_page pair_page_json"
+    ...             "hosted_file hosted_file_representation"
+    ...             ).split()
+    ...
+    ...     tags = [child for child in tree if not isinstance(child, _Comment)]
+    ...     contents = {}
+    ...     for i in range(0, len(keys)):
+    ...         contents[keys[i]] = tags[i]
+    ...     return contents
+
+Let's take a look at the differences. In 'beta', the 'by_value' method
+is not present at all.
+
+    >>> contents = wadl_contents_for_version('beta')
+    >>> print(contents['version_doc'].attrib['title'])
+    About version beta
+
+    >>> print(contents['base'].attrib['base'])
+    http://multiversion.dev/beta/
+
+    >>> pair_collection = contents['pair_collection']
+    >>> sorted([method.attrib['id'] for method in pair_collection])
+    ['key_value_pairs-get']
+
+As a side note, see that the service documentation and version
+documentation tags are empty, because this service's configuration
+doesn't specify that information:
+
+    >>> len(list(contents['service_doc']))
+    0
+    >>> len(list(contents['version_doc']))
+    0
+
+In '2.0', the by_value method is called 'byValue'.
+
+    >>> contents = wadl_contents_for_version('2.0')
+    >>> print(contents['version_doc'].attrib['title'])
+    About version 2.0
+    >>> print(contents['base'].attrib['base'])
+    http://multiversion.dev/2.0/
+
+    >>> pair_collection = contents['pair_collection']
+    >>> sorted([method.attrib['id'] for method in pair_collection])
+    ['key_value_pairs-byValue', 'key_value_pairs-get']
+
+In '3.0', the method changes its name to 'by_value'.
+
+    >>> contents = wadl_contents_for_version('3.0')
+    >>> print(contents['version_doc'].attrib['title'])
+    About version 3.0
+    >>> print(contents['base'].attrib['base'])
+    http://multiversion.dev/3.0/
+
+    >>> pair_collection = contents['pair_collection']
+    >>> sorted([method.attrib['id'] for method in pair_collection])
+    ['key_value_pairs-by_value', 'key_value_pairs-get']
+
+In 'trunk', the method disappears.
+
+    >>> contents = wadl_contents_for_version('trunk')
+    >>> print(contents['base'].attrib['base'])
+    http://multiversion.dev/trunk/
+
+    >>> pair_collection = contents['pair_collection']
+    >>> sorted([method.attrib['id'] for method in pair_collection])
+    ['key_value_pairs-get']
+
+total_size_link
+===============
+
+The version in which total_size_link is introduced is controlled by the
+first_version_with_total_size_link attribute of the web service configuration
+(IWebServiceConfiguration) utility.
+
+We'll configure the web service to begin including `total_size_link` values
+in version 3.0:
+
+    >>> from zope.component import getUtility
+    >>> from lazr.restful.interfaces import IWebServiceConfiguration
+    >>> config = getUtility(IWebServiceConfiguration)
+    >>> config.first_version_with_total_size_link = '3.0'
+
+Now if we request the WADL for 3.0 it will include a description of
+total_size_link.
+
+    >>> print(webservice.get('/', media_type='application/vnd.sun.wadl+xml',
+    ...     api_version='3.0').body.decode('UTF-8'))
+    <?xml version="1.0"?>...<wadl:param style="plain" name="total_size_link"...
+
+If we request an earlier version, total_size_link is not described.
+
+    >>> wadl = webservice.get('/', media_type='application/vnd.sun.wadl+xml',
+    ...     api_version='2.0').body.decode('UTF-8')
+    >>> 'total_size_link' in wadl
+    False

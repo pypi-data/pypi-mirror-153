@@ -1,0 +1,463 @@
+**********************************
+The in-memory representation cache
+**********************************
+
+Rather than having lazr.restful calculate a representation of an entry
+every time it's requested, you can register an object as the
+representation cache. String representations of entries are generated
+once and stored in the representation cache.
+
+lazr.restful works fine when there is no representation cache
+installed; in fact, this is the only test that uses one.
+
+    >>> from zope.component import getUtility
+    >>> from lazr.restful.interfaces import IRepresentationCache
+    >>> getUtility(IRepresentationCache)
+    ... # doctest: +IGNORE_EXCEPTION_MODULE_IN_PYTHON2
+    Traceback (most recent call last):
+    ...
+    zope.interface.interfaces.ComponentLookupError: ...
+
+DictionaryBasedRepresentationCache
+==================================
+
+A representation cache can be any object that implements
+IRepresentationCache, but for test purposes we'll be using a simple
+DictionaryBasedRepresentationCache. This object transforms the
+IRepresentationCache operations into operations on a Python dict-like
+object.
+
+    >>> from lazr.restful.simple import DictionaryBasedRepresentationCache
+    >>> dictionary = {}
+    >>> cache = DictionaryBasedRepresentationCache(dictionary)
+
+It's not a good idea to use a normal Python dict in production,
+because there's no limit on how large the dict can become. In a real
+situation you want something with an LRU implementation. That said,
+let's see how the DictionaryBasedRepresentationCache works.
+
+All IRepresentationCache implementations will cache a representation
+under a key derived from the object whose representation it is, the
+media type of the representation, and a web service version name.
+
+    >>> from lazr.restful.example.base.root import C4 as greens_object
+    >>> json = "application/json"
+    >>> print(cache.get(greens_object, json, "devel"))
+    None
+    >>> print(cache.get(greens_object, json, "devel", "missing"))
+    missing
+
+    >>> cache.set(greens_object, json, "devel", "This is the 'devel' value.")
+    >>> print(cache.get(greens_object, json, "devel"))
+    This is the 'devel' value.
+    >>> sorted(dictionary.keys())
+    ['http://cookbooks.dev/devel/cookbooks/Everyday%20Greens,application/json']
+
+This allows different representations of the same object to be stored
+for different versions.
+
+    >>> cache.set(greens_object, json, "1.0", "This is the '1.0' value.")
+    >>> print(cache.get(greens_object, json, "1.0"))
+    This is the '1.0' value.
+    >>> sorted(dictionary.keys())
+    ['http://cookbooks.dev/1.0/cookbooks/Everyday%20Greens,application/json',
+     'http://cookbooks.dev/devel/cookbooks/Everyday%20Greens,application/json']
+
+Deleting an object from the cache will remove all its representations.
+
+    >>> cache.delete(greens_object)
+    >>> sorted(dictionary.keys())
+    []
+    >>> print(cache.get(greens_object, json, "devel"))
+    None
+    >>> print(cache.get(greens_object, json, "1.0"))
+    None
+
+DO_NOT_CACHE
+------------
+
+Representation caches treat the constant object DO_NOT_CACHE
+specially. If key_for() returns DO_NOT_CACHE, the resulting
+object+type+version combination will not be cached at all.
+
+    >>> class TestRepresentationCache(DictionaryBasedRepresentationCache):
+    ...     def key_for(self, object, media_type, version):
+    ...         if (object == "Don't cache this."
+    ...             and version != "cache everything!"):
+    ...             return self.DO_NOT_CACHE
+    ...         return object + ',' + media_type + ',' + version
+
+    >>> test_dict = {}
+    >>> test_cache = TestRepresentationCache(test_dict)
+
+The key_for() implementation defined above will not cache a
+representation of the string "Don't cache this."
+
+    >>> test_cache.set("Cache this.", json, "1.0", "representation")
+    >>> test_cache.set("Don't cache this.", json, "1.0", "representation")
+    >>> for key in test_dict:
+    ...     print(key)
+    Cache this.,application/json,1.0
+
+...UNLESS the representation being cached is for the version "cache
+everything!"
+
+    >>> test_cache.set("Don't cache this.", json, "cache everything!",
+    ...                "representation")
+    >>> for key in sorted(test_dict.keys()):
+    ...     print(key)
+    Cache this.,application/json,1.0
+    Don't cache this.,application/json,cache everything!
+
+Even if an uncacheable value somehow gets into the cache, it's not
+retrievable.
+
+    >>> bad_key = "Don't cache this.,application/json,1.0"
+    >>> test_dict[bad_key] = "This representation should not be cached."
+    >>> print(test_cache.get("Don't cache this.", json, "1.0"))
+    None
+
+A representation cache
+======================
+
+Now let's register our DictionaryBasedRepresentationCache as the
+representation cache for this web service, and see how it works within
+lazr.restful.
+
+    >>> from zope.component import getSiteManager
+    >>> sm = getSiteManager()
+    >>> sm.registerUtility(cache, IRepresentationCache)
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='cookbooks.dev')
+
+When we retrieve a JSON representation of an entry, that
+representation is added to the cache.
+
+    >>> recipe_url = "/recipes/1"
+    >>> ignored = webservice.get(recipe_url)
+    >>> [the_only_key] = dictionary.keys()
+    >>> print(the_only_key)
+    http://cookbooks.dev/devel/recipes/1,application/json
+
+Note that the cache key incorporates the web service version name
+("devel") and the media type of the representation
+("application/json").
+
+Associated with the key is a string: the JSON representation of the object.
+
+    >>> import simplejson
+    >>> print(simplejson.loads(dictionary[the_only_key])['self_link'])
+    http://cookbooks.dev/devel/recipes/1
+
+If we get a representation of the same resource from a different web
+service version, that representation is stored separately.
+
+    >>> ignored = webservice.get(recipe_url, api_version="1.0")
+    >>> for key in sorted(dictionary.keys()):
+    ...     print(key)
+    http://cookbooks.dev/1.0/recipes/1,application/json
+    http://cookbooks.dev/devel/recipes/1,application/json
+
+    >>> key1 = "http://cookbooks.dev/1.0/recipes/1,application/json"
+    >>> key2 = "http://cookbooks.dev/devel/recipes/1,application/json"
+    >>> dictionary[key1] == dictionary[key2]
+    False
+
+Cache invalidation
+==================
+
+lazr.restful automatically invalidates the representation
+cache when certain changes happen that it knows about.
+
+For instance, when the client sends a PATCH request to modify an
+object, the modified representation is returned in preference to the
+previously cached representation.
+
+    >>> old_instructions = webservice.get(
+    ...     recipe_url, api_version='devel').jsonBody()['instructions']
+    >>> print(old_instructions)
+    You can always judge...
+    >>> response = webservice.patch(recipe_url, 'application/json',
+    ...     simplejson.dumps(dict(instructions="New instructions")),
+    ...     api_version='devel')
+    >>> print(response.status)
+    209
+    >>> print(response.jsonBody()['instructions'])
+    New instructions
+
+The modified representation is immediately available in the cache.
+
+    >>> from lazr.restful.example.base.root import RECIPES
+    >>> recipe = [recipe for recipe in RECIPES if recipe.id == 1][0]
+    >>> cached_representation = cache.get(recipe, json, 'devel')
+    >>> print(simplejson.loads(cached_representation)['instructions'])
+    New instructions
+
+Cleanup.
+
+    >>> recipe.instructions = old_instructions
+
+When the client invokes a named operation using POST, the object is
+always removed from the cache, because there's no way to know what the
+POST did.
+
+    >>> dictionary.clear()
+
+    >>> from lazr.restful.example.base.root import COOKBOOKS
+    >>> cookbook = [cookbook for cookbook in COOKBOOKS
+    ...             if cookbook.name == "Everyday Greens"][0]
+    >>> cache.set(cookbook, json, 'devel', "Sample value.")
+    >>> print(list(dictionary.keys())[0])
+    http://.../devel/cookbooks/Everyday%20Greens,application/json
+
+    >>> from urllib.parse import quote
+    >>> greens_url = quote("/cookbooks/Everyday Greens")
+    >>> ignore = webservice.named_post(
+    ...     greens_url, "replace_cover", cover="foo")
+    >>> print(len(dictionary.keys()))
+    0
+
+But unless the web service is the only way to manipulate a data set,
+you'll also need to come up with your own cache invalidation
+rules. Without those rules, other kinds of changes won't trigger cache
+invalidations, and your web service cache will grow stale.
+
+Let's signal a change to a recipe. Suppose someone changed that
+recipe, using a web application that has no connection to the web
+service except for a shared database. Let's further suppose that our
+ORM lets us detect the database change. What do we do when that change
+happens?
+
+To remove an object's representation from the cache, we pass it into
+the cache's delete() method.
+
+    >>> ignore = webservice.get(recipe_url, api_version='devel')
+    >>> print(cache.get(recipe, json, 'devel'))
+    {...}
+    >>> cache.delete(recipe)
+
+This deletes all the relevant representations.
+
+    >>> print(cache.get(recipe, json, 'devel'))
+    None
+    >>> list(dictionary)
+    []
+
+Data visibility
+===============
+
+Only full representations are added to the cache. If the
+representation you request includes a redacted field (because you
+don't have permission to see that field's true value), the
+representation is not added to the cache.
+
+    >>> greens = webservice.get(greens_url).jsonBody()
+    >>> print(greens['confirmed'])
+    tag:launchpad.net:2008:redacted
+
+    >>> list(dictionary)
+    []
+
+This means that if your entry resources typically contain data that's
+only visible to a select few users, you won't get much benefit out of
+a representation cache.
+
+What if a full representation is in the cache, and the user requests a
+representation that must be redacted? Let's put some semi-fake data in
+the cache and find out.
+
+    >>> import simplejson
+    >>> greens['name'] = "This comes from the cache; it is not generated."
+    >>> greens['confirmed'] = True
+    >>> cache.set(greens_object, json, 'devel', simplejson.dumps(greens))
+
+When we GET the corresponding resource, we get a representation that
+definitely comes from the cache, not the original data source.
+
+    >>> cached_greens = webservice.get(greens_url).jsonBody()
+    >>> print(cached_greens['name'])
+    This comes from the cache; it is not generated.
+
+But the redacted value is still redacted.
+
+    >>> print(cached_greens['confirmed'])
+    tag:launchpad.net:2008:redacted
+
+Cleanup: clear the cache.
+
+    >>> dictionary.clear()
+
+Unauthorized
+============
+
+When a client tries to fetch an object they lack permission to view,
+they get a 401 error.
+
+    >>> recipe_url ="/recipes/5"
+    >>> response = webservice.get(recipe_url)
+    >>> print(response.status)
+    401
+    >>> len(dictionary.keys())
+    0
+
+This happens even if the forbidden object has a cached representation.
+To demonstrate this, we'll temporarily make recipe #5 public and get
+its representation.
+
+    >>> from lazr.restful.example.base.root import C3_D2 as recipe
+    >>> recipe.private = False
+
+    >>> print(webservice.get("/recipes/5").jsonBody()['instructions'])
+    Without doubt the most famous...
+
+Now there's a representation in the cache.
+
+    >>> len(dictionary.keys())
+    1
+
+If we make the recipe private again, the client can no longer retrieve
+a representation, even though there's one in the cache. (This happens
+when an object's URL construction code raises an Unauthorized
+exception.)
+
+    >>> recipe.private = True
+    >>> response = webservice.get(recipe_url)
+    >>> print(response.status)
+    401
+
+Cleanup: clear the cache.
+
+    >>> dictionary.clear()
+
+Collections
+===========
+
+Collections are full of entries, and representations of collections
+are built from the cache if possible. We'll demonstrate this with the
+collection of recipes.
+
+First, we'll hack the cached representation of a single recipe.
+
+    >>> recipe = webservice.get("/recipes/1").jsonBody()
+    >>> recipe['instructions'] = "This representation is from the cache."
+    >>> [recipe_key] = dictionary.keys()
+    >>> dictionary[recipe_key] = simplejson.dumps(recipe)
+
+Now, we get the collection of recipes.
+
+    >>> recipes = webservice.get("/recipes").jsonBody()['entries']
+
+The fake instructions we put into an entry's cached representation are
+also present in the collection.
+
+    >>> for instructions in (
+    ...     sorted(recipe['instructions'] for recipe in recipes)):
+    ...     print(instructions)
+    A perfectly roasted chicken is...
+    Draw, singe, stuff, and truss...
+    ...
+    This representation is from the cache.
+
+To build the collection, lazr.restful had to generate representations
+of all the cookbook entries. As it generated each representation, it
+populated the cache.
+
+    >>> for key in sorted(dictionary.keys()):
+    ...     print(key)
+    http://cookbooks.dev/devel/recipes/1,application/json
+    http://cookbooks.dev/devel/recipes/2,application/json
+    http://cookbooks.dev/devel/recipes/3,application/json
+    http://cookbooks.dev/devel/recipes/4,application/json
+
+If we request the collection again, all the entry representations will
+come from the cache.
+
+    >>> for key in dictionary.keys():
+    ...     value = simplejson.loads(dictionary[key])
+    ...     value['instructions'] = "This representation is from the cache."
+    ...     dictionary[key] = simplejson.dumps(value)
+
+    >>> recipes = webservice.get("/recipes").jsonBody()['entries']
+    >>> for instructions in (
+    ...     sorted(recipe['instructions'] for recipe in recipes)):
+    ...     print(instructions)
+    This representation is from the cache.
+    This representation is from the cache.
+    This representation is from the cache.
+    This representation is from the cache.
+
+enable_server_side_representation_cache
+=======================================
+
+A configuration setting allows you to disable the cache without
+de-registering it. This is useful when you're debugging a cache
+implementation or a cache invalidation algorithm.
+
+    >>> from lazr.restful.interfaces import IWebServiceConfiguration
+    >>> config = getUtility(IWebServiceConfiguration)
+    >>> print(config.enable_server_side_representation_cache)
+    True
+
+Set this configuration value to False, and representations will not be
+served from the cache, even if present.
+
+    >>> config.enable_server_side_representation_cache = False
+    >>> recipes = webservice.get("/recipes").jsonBody()['entries']
+    >>> for instructions in (
+    ...     sorted(recipe['instructions'] for recipe in recipes)):
+    ...     print(instructions)
+    A perfectly roasted chicken is...
+    Draw, singe, stuff, and truss...
+    Preheat oven to...
+    You can always judge...
+
+New representations will not be added to the cache.
+
+    >>> before_keys = len(dictionary.keys())
+    >>> dishes = webservice.get("/dishes")
+    >>> len(dictionary.keys()) == before_keys
+    True
+
+The cache is still registered as a utility.
+
+    >>> print(getUtility(IRepresentationCache))
+    <lazr.restful.simple.DictionaryBasedRepresentationCache object ...>
+
+And it's still populated, as we can see by re-enabling it.
+
+    >>> config.enable_server_side_representation_cache = True
+    >>> recipes = webservice.get("/recipes").jsonBody()['entries']
+    >>> for instructions in (
+    ...     sorted(recipe['instructions'] for recipe in recipes)):
+    ...     print(instructions)
+    This representation is from the cache.
+    This representation is from the cache.
+    This representation is from the cache.
+    This representation is from the cache.
+
+Once re-enabled, new representations are once again added to the cache.
+
+    >>> dishes = webservice.get("/dishes")
+    >>> len(dictionary.keys()) > before_keys
+    True
+
+Cleanup
+=======
+
+De-register the cache.
+
+    >>> sm.registerUtility(None, IRepresentationCache)
+
+Of course, the hacks we made to the cached representations have no
+effect on the objects themselves. Once the hacked cache is gone, the
+representations look just as they did before.
+
+    >>> recipes = webservice.get("/recipes").jsonBody()['entries']
+    >>> for instructions in (
+    ...     sorted(recipe['instructions'] for recipe in recipes)):
+    ...     print(instructions)
+    A perfectly roasted chicken is...
+    Draw, singe, stuff, and truss...
+    Preheat oven to...
+    You can always judge...

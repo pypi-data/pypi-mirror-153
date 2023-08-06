@@ -1,0 +1,327 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    i18n_domain="lazr.restful">
+
+    <class class="lazr.restful.RedirectResource">
+        <allow interface='lazr.restful.interfaces.IHTTPResource' />
+    </class>
+
+    <class class="lazr.restful.CollectionResource">
+        <allow interface='lazr.restful.interfaces.ICollectionResource' />
+    </class>
+
+    <class class="lazr.restful.EntryFieldResource">
+        <allow interface='lazr.restful.interfaces.IEntryFieldResource' />
+    </class>
+
+    <class class="lazr.restful.EntryResource">
+        <allow interface='lazr.restful.interfaces.IEntryResource' />
+        <allow interface='lazr.restful.interfaces.IJSONPublishable' />
+    </class>
+
+    <subscriber for="zope.processlifetime.IProcessStarting"
+        handler="lazr.restful.metazcml.webservice_coherence_checks" />
+
+    <!--
+    XXX flacoste 2008/05/09 bug=185958:
+    Ideally, we would use webservice_error() to register the view,
+    but InvalidBatchSizeError is in lazr.batchnavigator and webservice_error()
+    can only be called from within a class definition.
+    -->
+    <adapter
+        for="lazr.batchnavigator.interfaces.InvalidBatchSizeError
+             lazr.restful.interfaces.IWebServiceLayer"
+        provides="zope.interface.Interface"
+        factory="lazr.restful.error.WebServiceExceptionView"
+        name="index.html"
+        />
+
+    <adapter factory="lazr.restful.publisher.browser_request_to_web_service_request" />
+
+    <adapter factory="lazr.restful.jsoncache.JSONRequestCache" />
+
+    <!-- TALES namespace for web service functions available through the
+         website. -->
+    <adapter
+        for="*"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WebLayerAPI"
+        name="webservice"
+        />
+
+    <adapter
+        factory="lazr.restful.tales.WebServiceRequestAPI"
+        name="webservicerequest"
+        />
+
+    <!-- TALES namespaces for WADL generation -->
+    <adapter
+        for="lazr.restful.interfaces.IHTTPResource"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlResourceAPI"
+        name="wadl"
+        />
+
+    <adapter
+        for="lazr.restful.interfaces.IServiceRootResource"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlServiceRootResourceAPI"
+        name="wadl"
+        />
+
+    <adapter
+        for="lazr.restful.interfaces.ITopLevelEntryLink"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlTopLevelEntryLinkAPI"
+        name="wadl"
+        />
+
+    <adapter
+        for="lazr.restful.interfaces.ICollectionResource"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlCollectionResourceAPI"
+        name="wadl"
+        />
+
+    <adapter
+        for="lazr.restful.interfaces.IEntryResource"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlEntryResourceAPI"
+        name="wadl"
+        />
+
+    <adapter
+        for="lazr.restful.interfaces.IByteStorageResource"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlByteStorageResourceAPI"
+        name="wadl"
+        />
+
+    <adapter
+        for="*"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlEntryAdapterAPI"
+        name="wadl_entry"
+        />
+
+    <adapter
+        for="zope.interface.interfaces.IInterface"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlEntryInterfaceAdapterAPI"
+        name="wadl_entry_interface"
+        />
+
+    <adapter
+        for="*"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlCollectionAdapterAPI"
+        name="wadl_collection"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IField"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlFieldAPI"
+        name="wadl"
+        />
+
+    <adapter
+        for="*"
+        provides="zope.traversing.interfaces.IPathAdapter"
+        factory="lazr.restful.tales.WadlOperationAPI"
+        name="wadl_operation"
+        />
+
+    <!-- Generic adapter for scoped collection -->
+    <adapter factory="lazr.restful.ScopedCollection" />
+
+    <adapter factory="lazr.restful.JSONItem" />
+    <adapter factory="lazr.restful.JSONDate" />
+
+    <!-- Adapter for URL generation -->
+    <adapter
+        provides="zope.traversing.browser.interfaces.IAbsoluteURL"
+        factory="lazr.restful._resource.EntryFieldURL"
+        />
+
+    <!-- Field resources -->
+    <adapter
+        for="lazr.restful.interfaces.IEntryField
+             zope.publisher.interfaces.http.IHTTPApplicationRequest"
+        provides="lazr.restful.interfaces.IHTTPResource"
+        factory="lazr.restful.EntryFieldResource"
+        />
+
+    <!-- Byte storage resources -->
+    <adapter
+        for="lazr.restful.interfaces.IByteStorage
+             zope.publisher.interfaces.http.IHTTPApplicationRequest"
+        provides="lazr.restful.interfaces.IHTTPResource"
+        factory="lazr.restful.ByteStorageResource"
+        />
+
+    <class class="lazr.restful.ByteStorageResource">
+        <allow interface='lazr.restful.interfaces.IByteStorageResource' />
+    </class>
+
+    <!-- IFieldMarshaller adapters -->
+    <adapter
+        for="zope.schema.interfaces.IField
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.SimpleFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IBool
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.BoolFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IFloat
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.FloatFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IInt
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.IntFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IDatetime
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.DateTimeFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IDate
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.DateFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IBytes
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.BytesFieldMarshaller"
+        />
+
+     <adapter
+        for="zope.schema.interfaces.IASCII
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.TextFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IText
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.TextFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IChoice
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.VocabularyLookupFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IChoice
+             zope.publisher.interfaces.http.IHTTPRequest
+             zope.schema.interfaces.IVocabularyTokenized"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.TokenizedVocabularyFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IChoice
+             zope.publisher.interfaces.http.IHTTPRequest
+             lazr.enum.IEnumeratedType"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.SimpleVocabularyLookupFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IObject
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.ObjectLookupFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.ICollection
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.AbstractCollectionFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.ISet
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.SetFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.schema.interfaces.IDict
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.DictFieldMarshaller"
+        />
+
+    <adapter
+        for="lazr.restful.interfaces.ICollectionField
+             zope.publisher.interfaces.http.IHTTPRequest"
+        provides="lazr.restful.interfaces.IFieldMarshaller"
+        factory="lazr.restful.marshallers.CollectionFieldMarshaller"
+        />
+
+    <adapter
+        for="zope.interface.Interface
+             lazr.restful.interfaces.IWebServiceClientRequest"
+        provides="zope.interface.Interface"
+        factory="lazr.restful.EntryHTMLView"
+        name="lazr.restful.EntryResource"
+        />
+
+    <adapter factory="lazr.restful.render_field_to_html" />
+
+    <!-- System Errors, and errors published to the web service using
+         annotations or the expose() method. -->
+    <adapter
+        for="zope.interface.common.interfaces.IException
+             lazr.restful.interfaces.IWebServiceLayer"
+        provides="zope.interface.Interface"
+        factory="lazr.restful.error.WebServiceExceptionView"
+        name="index.html"
+        />
+
+    <!-- Unauthorized -->
+    <adapter
+        for="zope.exceptions.IUnauthorized
+             lazr.restful.interfaces.IWebServiceLayer"
+        provides="zope.interface.Interface"
+        factory="lazr.restful.error.UnauthorizedView"
+        name="index.html"
+        />
+
+    <!-- NotFound -->
+    <adapter
+        for="zope.publisher.interfaces.NotFound
+             lazr.restful.interfaces.IWebServiceLayer"
+        provides="zope.interface.Interface"
+        factory="lazr.restful.error.NotFoundView"
+        name="index.html"
+        />
+
+</configure>

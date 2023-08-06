@@ -1,0 +1,93 @@
+Introduction
+************
+
+Some standard behavior is defined by the web service itself, not by
+the individual resources.
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='cookbooks.dev')
+
+Versioning
+==========
+
+lazr.restful allows you to publish multiple named versions of a web
+service, as well as a "development" version which includes changes you
+have yet to batch together into a named version. The default name of
+the development version is "devel".
+
+    >>> top_level_response = webservice.get(
+    ...     "/", api_version="devel").jsonBody()
+    >>> print(top_level_response['resource_type_link'])
+    http://cookbooks.dev/devel/#service-root
+
+The web service in examples/multiversion is devoted solely to testing
+the versioning code.
+
+Nonexistent resources
+=====================
+
+An attempt to access a nonexistent resource yields a 404 error.
+
+    >>> print(webservice.get("/no-such-resource"))
+    HTTP/1.1 404 Not Found
+    ...
+
+An attempt to access an existing resource without versioning the URL
+yields a 404 error.
+
+    >>> print(webservice.get("/cookbooks", api_version="/"))
+    HTTP/1.1 404 Not Found
+    ...
+
+    >>> print(webservice.get("/", api_version="/"))
+    HTTP/1.1 404 Not Found
+    ...
+
+Nonexistent methods
+===================
+
+An attempt to use an unsupported or nonexistent HTTP method on a
+resource yields a 405 error.
+
+    >>> print(webservice("/", method="COPY"))
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET
+    ...
+
+    >>> print(webservice.delete("/cookbooks"))
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET POST
+    ...
+
+    >>> from urllib.parse import quote
+    >>> print(webservice.delete(quote("/dishes/Roast chicken")))
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET PUT PATCH
+    ...
+
+    >>> print(webservice.delete(quote("/cookbooks/The Joy of Cooking")))
+    HTTP/1.1 405 Method Not Allowed...
+    Allow: GET PUT PATCH POST
+    ...
+
+Inappropriate media types
+=========================
+
+An attempt to PATCH a document with unsupported media type to a
+resource yields a 415 error.
+
+    >>> print(webservice.patch("/recipes/1", 'text/plain', "Foo"))
+    HTTP/1.1 415 Unsupported Media Type
+    ...
+
+The only supported media types are ones that begin with 'application/json'.
+
+    >>> print(webservice.patch("/recipes/1", 'application/json', "{}"))
+    HTTP/1.1 209 Content Returned
+    ...
+
+    >>> print(webservice.patch(
+    ...     "/recipes/1", 'application/json; charset=UTF-8', "{}"))
+    HTTP/1.1 209 Content Returned
+    ...
+

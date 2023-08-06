@@ -1,0 +1,158 @@
+****************
+Named operations
+****************
+
+Named operations have some special features that are too obscure to
+mention in the introductory doctest.
+
+total_size versus total_size_link
+---------------------------------
+
+In old versions of lazr.restful, named operations that return
+collections always send a 'total_size' containing the total size of a
+collection.
+
+    >>> from lazr.restful.testing.webservice import (
+    ...     pprint_collection,
+    ...     WebServiceCaller,
+    ...     )
+    >>> webservice = WebServiceCaller(domain='multiversion.dev')
+
+In the example web service, named operations always send 'total_size'
+up to version '2.0'.
+
+    >>> from zope.component import getUtility
+    >>> from lazr.restful.interfaces import IWebServiceConfiguration
+    >>> config = getUtility(IWebServiceConfiguration)
+    >>> print(config.first_version_with_total_size_link)
+    2.0
+
+When the 'byValue' operation is invoked in version 1.0, it always returns a
+total_size.
+
+    >>> def get_collection(version, op='byValue', value="bar", size=2):
+    ...     url = '/pairs?ws.op=%s&value=%s&ws.size=%s' % (op, value, size)
+    ...     return webservice.get(url, api_version=version).jsonBody()
+
+    >>> for key in sorted(get_collection('1.0')):
+    ...     print(key)
+    entries
+    next_collection_link
+    start
+    total_size
+
+The operation itself doesn't change between 1.0 and 2.0, but in
+version 2.0, the operation starts returning total_size_link.
+
+    >>> for key in sorted(get_collection('2.0')):
+    ...     print(key)
+    entries
+    next_collection_link
+    start
+    total_size_link
+
+The same happens in 3.0.
+
+    >>> for key in sorted(get_collection('3.0', 'by_value')):
+    ...     print(key)
+    entries
+    next_collection_link
+    start
+    total_size_link
+
+However, if the total size is easy to calculate (for instance, because
+all the results fit on one page), a total_size is returned instead of
+total_size_link.
+
+    >>> for key in sorted(get_collection('3.0', 'by_value', size=100)):
+    ...     print(key)
+    entries
+    start
+    total_size
+
+    >>> pprint_collection(get_collection('3.0', 'by_value', 'no-such-value'))
+    start: 0
+    total_size: 0
+    ---
+
+Mutators as named operations
+----------------------------
+
+Mutator methods (methods invoked when a field is modified) are
+annotated the same way as named operations, and in old versions of
+lazr.restful, they were actually published as named operations.
+
+In the example web service, mutator methods are published as named
+operations in the 'beta' and '1.0' versions.
+
+    >>> print(config.last_version_with_mutator_named_operations)
+    1.0
+
+If you look at the definition of IKeyValuePair in
+lazr.restful.example.multiversion.resources, you'll see that the
+'a_comment' field has two different mutators at different
+times. Sometimes there is no mutator, sometimes the mutator is
+'comment_mutator_1', and sometimes the mutator is
+'comment_mutator_2'. Before version '2.0', mutators are published as
+named operations; in version '2.0' and afterwards, they are not.
+
+This helper method makes it easy to invoke a given mutator in a given
+version.
+
+    >>> def call_mutator(version, op="comment_mutator_1"):
+    ...     url = '/pairs/foo'
+    ...     entity_body = "ws.op=%s&comment=value" % op
+    ...     body = webservice.post(
+    ...         url, 'application/x-www-form-urlencoded', entity_body,
+    ...         api_version=version)
+    ...     return body
+
+In version 'beta', the 'a_comment' field has no mutator at all.
+
+    >>> print(call_mutator("beta"))
+    HTTP/1.1 405 Method Not Allowed
+    ...
+
+    >>> print(call_mutator("beta", op="comment_mutator_2"))
+    HTTP/1.1 405 Method Not Allowed
+    ...
+
+In version '1.0', the 'comment_mutator_1' method is the mutator for
+'a_comment'. Because mutators are published as named operation in
+version '1.0', we can also invoke the mutator method directly.
+
+    >>> print(call_mutator("1.0", "comment_mutator_1"))
+    HTTP/1.1 200 Ok
+    ...
+
+'comment_mutator_2' still doesn't work, because it's not the mutator
+for 'a_comment' in version '1.0'.
+
+    >>> print(call_mutator("1.0", "comment_mutator_2"))
+    HTTP/1.1 400 Bad Request
+    ...
+
+Note that the response code is 400 ("Bad Request"), not 405 ("Method
+Not Allowed"). 405 means that the resource publishes no named POST
+operations at all. This resource does post one named POST operation
+('comment_mutator_1'), so 405 isn't appropriate.
+
+In version '2.0', the 'comment_mutator_1' method is still the mutator
+for 'a_comment', but mutators are no longer published as named
+operations, so we can no longer invoke the mutator method directly.
+
+    >>> print(call_mutator("2.0"))
+    HTTP/1.1 405 Method Not Allowed
+    ...
+
+Note that we're back to a 405 response code. That mutator was the only
+named POST operation on the key-value object, and now it's no longer
+published as a named operation.
+
+In version '3.0', the 'comment_mutator_2' method becomes the mutator
+for 'a_comment'. But since version '3.0' is after version '1.0', that
+method is not published as a named operation.
+
+    >>> print(call_mutator("3.0", "comment_mutator_2"))
+    HTTP/1.1 405 Method Not Allowed
+    ...

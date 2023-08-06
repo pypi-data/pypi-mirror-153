@@ -1,0 +1,42 @@
+Introduction
+************
+
+The WSGI example web service is just about the simplest web service
+imaginable. It publishes a collection of key-value pairs.
+
+You can get the root resource.
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='wsgidemo.dev')
+    >>> top_level_response = webservice.get("/")
+    >>> top_level_links = top_level_response.jsonBody()
+    >>> for key in sorted(top_level_links.keys()):
+    ...     print(key)
+    key_value_pairs_collection_link
+    resource_type_link
+
+You can get a collection resource.
+
+    >>> collection_resource = webservice.get("/pairs").jsonBody()
+    >>> links = sorted([entry['self_link']
+    ...                 for entry in collection_resource['entries']])
+    >>> for link in links:
+    ...     print(link)
+    http://wsgidemo.dev/1.0/1
+    http://wsgidemo.dev/1.0/foo
+
+You can get an entry resource.
+
+    >>> entry_resource = webservice.get("/pairs/1").jsonBody()
+    >>> for key in entry_resource:
+    ...     print(key)
+    self_link
+    resource_type_link
+    key
+    value
+    http_etag
+
+You can get a field resource.
+
+    >>> print(webservice.get("/pairs/foo/value").jsonBody())
+    bar

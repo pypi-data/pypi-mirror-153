@@ -1,0 +1,317 @@
+Multi-version web services
+**************************
+
+lazr.restful lets you publish two or more mutually incompatible
+web services from the same underlying code. This lets you improve your
+web service to take advantage of new features of lazr.restful, without
+sacrificing backwards compatibility.
+
+The web service in example/multiversion illustrates the multiversion
+features of lazr.restful.
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='multiversion.dev')
+
+The multiversion web service serves four named versions of the same
+web service: "beta", "1.0", "2.0", and "3.0". Once you make a request
+to the service root of a particular version, the web service only
+serves you links within that version.
+
+    >>> top_level_response = webservice.get(
+    ...     "/", api_version="beta").jsonBody()
+    >>> print(top_level_response['key_value_pairs_collection_link'])
+    http://multiversion.dev/beta/pairs
+
+    >>> top_level_response = webservice.get(
+    ...     "/", api_version="1.0").jsonBody()
+    >>> print(top_level_response['key_value_pairs_collection_link'])
+    http://multiversion.dev/1.0/pairs
+
+    >>> top_level_response = webservice.get(
+    ...     "/", api_version="2.0").jsonBody()
+    >>> print(top_level_response['key_value_pairs_collection_link'])
+    http://multiversion.dev/2.0/pairs
+
+    >>> top_level_response = webservice.get(
+    ...     "/", api_version="3.0").jsonBody()
+    >>> print(top_level_response['key_value_pairs_collection_link'])
+    http://multiversion.dev/3.0/pairs
+
+Like all web services, the multiversion service also serves a
+development version which tracks the current state of the web service,
+including all changes that have not yet been folded into a named
+version. The default name for the development version is "devel" (see
+example/base/tests/service.txt), but in this web service it's called
+"trunk".
+
+    >>> top_level_response = webservice.get(
+    ...     "/", api_version="trunk").jsonBody()
+    >>> print(top_level_response['key_value_pairs_collection_link'])
+    http://multiversion.dev/trunk/pairs
+
+All versions of the web service can be accessed through Ajax.
+
+    >>> from lazr.restful.testing.webservice import WebServiceAjaxCaller
+    >>> ajax = WebServiceAjaxCaller(domain='multiversion.dev')
+
+    >>> body = ajax.get('/', api_version="1.0").jsonBody()
+    >>> print(body['resource_type_link'])
+    http://multiversion.dev/1.0/#service-root
+
+    >>> body = ajax.get('/', api_version="trunk").jsonBody()
+    >>> print(body['resource_type_link'])
+    http://multiversion.dev/trunk/#service-root
+
+An attempt to access a nonexistent version yields a 404 error.
+
+    >>> print(webservice.get('/', api_version="no_such_version"))
+    HTTP/1.1 404 Not Found
+    ...
+
+Collections
+===========
+
+The web service presents a single collection of key-value pairs. In
+versions previous to 2.0, the collection omits key-value pairs where
+the value is None. In 2.0 and 3.0, all key-value pairs are published.
+
+    >>> from operator import itemgetter
+    >>> def show_pairs(version):
+    ...     body = webservice.get('/pairs', api_version=version).jsonBody()
+    ...     for entry in sorted(body['entries'], key=itemgetter('key')):
+    ...         print("%s: %s" % (entry['key'], entry['value']))
+
+    >>> show_pairs('beta')
+    1: 2
+    Also delete: me
+    Delete: me
+    foo: bar
+    foo2: bar
+    foo3: bar
+
+    >>> show_pairs('1.0')
+    1: 2
+    Also delete: me
+    Delete: me
+    foo: bar
+    foo2: bar
+    foo3: bar
+
+    >>> show_pairs('2.0')
+    1: 2
+    Also delete: me
+    Delete: me
+    Some: None
+    foo: bar
+    foo2: bar
+    foo3: bar
+
+    >>> show_pairs('3.0')
+    1: 2
+    Also delete: me
+    Delete: me
+    Some: None
+    foo: bar
+    foo2: bar
+    foo3: bar
+
+Entries
+=======
+
+Let's take a look at 'comment' and 'deleted', two fields with
+interesting properties.
+
+The 'comment' field is not modified directly, but by internal mutator
+methods which append some useless text to your comment.
+
+    >>> import simplejson
+    >>> def get_comment(version):
+    ...     response = webservice.get("/pairs/foo", api_version=version)
+    ...     return response.jsonBody()['comment']
+
+    >>> def change_comment(comment, version, get_comment_afterwards=True):
+    ...     ignored = webservice.patch(
+    ...         "/pairs/foo/", 'application/json',
+    ...         simplejson.dumps({"comment": comment}),
+    ...         api_version=version)
+    ...     if get_comment_afterwards:
+    ...         return get_comment(version)
+    ...     return None
+
+    >>> print(get_comment('1.0'))
+    <BLANKLINE>
+
+    >>> print(change_comment('I changed 1.0', '1.0'))
+    I changed 1.0 (modified by mutator #1)
+
+    >>> print(change_comment('I changed 2.0', '2.0'))
+    I changed 2.0 (modified by mutator #1)
+
+    >>> print(change_comment('I changed 3.0', '3.0'))
+    I changed 3.0 (modified by mutator #2)
+
+You can try to modify the 'comment' field from a version that doesn't
+publish that field, but lazr.restful will ignore your request.
+
+    >>> change_comment('I changed beta', 'beta', False)
+
+    >>> print(get_comment('1.0'))
+    I changed 3.0 (modified by mutator #2)
+
+A field called 'deleted' is published starting in version '3.0'. A
+comment field is called 'a_comment' in version 'beta' and 'comment' in
+all later versions.
+
+    >>> def show_fields(version):
+    ...     entry_body = webservice.get(
+    ...         '/pairs/foo', api_version=version).jsonBody()
+    ...     for key in entry_body:
+    ...         print(key)
+
+    >>> show_fields('beta')
+    self_link
+    resource_type_link
+    key
+    value
+    a_comment
+    http_etag
+
+    >>> show_fields('1.0')
+    self_link
+    resource_type_link
+    key
+    value
+    comment
+    http_etag
+
+    >>> show_fields('3.0')
+    self_link
+    resource_type_link
+    key
+    value
+    comment
+    deleted
+    http_etag
+
+In the 'beta' version, attempting to delete a key-value pair will
+result in a status code of 405 ("Method Not Available").
+
+    >>> response = webservice.delete('/pairs/Delete', api_version='beta')
+    >>> response.status
+    405
+
+As of '1.0', attempting to delete a key-value pair results in the
+key-value pair being totally removed from the web service.
+
+    >>> ignore = webservice.delete('/pairs/Delete', api_version='1.0')
+    >>> show_pairs('beta')
+    1: 2
+    Also delete: me
+    foo: bar
+    foo2: bar
+    foo3: bar
+
+In '3.0', deleting a key-value pair simply sets its 'deleted' field
+to True. (This is an abuse of the HTTP DELETE method, but it makes a
+good demo.)
+
+    >>> body = webservice.get(
+    ...         '/pairs/Also%20delete', api_version='3.0').jsonBody()
+    >>> body['deleted']
+    False
+
+    >>> ignore = webservice.delete('/pairs/Also%20delete', api_version='3.0')
+
+The "deleted" key-value pair is still visible in all versions:
+
+    >>> show_pairs('beta')
+    1: 2
+    Also delete: me
+    foo: bar
+    foo2: bar
+    foo3: bar
+
+And in a version which publishes the 'delete' field, we can check the
+key-value pair's value for that field.
+
+    >>> body = webservice.get(
+    ...         '/pairs/Also%20delete', api_version='3.0').jsonBody()
+    >>> body['deleted']
+    True
+
+Fields
+======
+
+If an entry field is not published in a certain version, the
+corresponding field resource does not exist for that version.
+
+    >>> print(webservice.get(
+    ...     '/pairs/foo/deleted', api_version='beta').body.decode('UTF-8'))
+    Object: <...>, name: ...'deleted'
+
+    >>> print(webservice.get(
+    ...     '/pairs/foo/deleted', api_version='3.0').jsonBody())
+    False
+
+Named operations
+================
+
+The collection of key-value pairs defines a named operation for
+finding pairs, given a value. This operation is present in some
+versions of the web service but not others. In some versions it's
+called "byValue"; in others, it's called "by_value".
+
+    >>> def show_value(version, op):
+    ...     url = '/pairs?ws.op=%s&value=bar' % op
+    ...     body = webservice.get(url, api_version=version).jsonBody()
+    ...     return body['entries'][0]['key']
+
+The named operation is not published at all in the 'beta' version of
+the web service.
+
+    >>> print(show_value("beta", 'byValue'))
+    Traceback (most recent call last):
+    ...
+    ValueError: No such operation: byValue
+
+    >>> print(show_value("beta", 'by_value'))
+    Traceback (most recent call last):
+    ...
+    ValueError: No such operation: by_value
+
+In the '1.0' and '2.0' versions, the named operation is published as
+'byValue'. 'by_value' does not work.
+
+    >>> print(show_value("1.0", 'byValue'))
+    foo
+
+    >>> print(show_value("2.0", 'byValue'))
+    foo
+    >>> print(show_value("2.0", 'by_value'))
+    Traceback (most recent call last):
+    ...
+    ValueError: No such operation: by_value
+
+In the '3.0' version, the named operation is published as
+'by_value'. 'byValue' does not work.
+
+    >>> print(show_value("3.0", "by_value"))
+    foo
+
+    >>> print(show_value("3.0", 'byValue'))
+    Traceback (most recent call last):
+    ...
+    ValueError: No such operation: byValue
+
+In the 'trunk' version, the named operation has been removed. Neither
+'byValue' nor 'by_value' work.
+
+    >>> print(show_value("trunk", 'byValue'))
+    Traceback (most recent call last):
+    ...
+    ValueError: No such operation: byValue
+
+    >>> print(show_value("trunk", 'by_value'))
+    Traceback (most recent call last):
+    ...
+    ValueError: No such operation: by_value

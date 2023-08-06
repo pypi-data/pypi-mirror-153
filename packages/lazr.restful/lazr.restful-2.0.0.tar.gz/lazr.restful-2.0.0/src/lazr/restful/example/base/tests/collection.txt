@@ -1,0 +1,347 @@
+Introduction
+************
+
+All collections published by a lazr.restful web service work pretty
+much the same way. This document illustrates the general features of
+collections, using the cookbook service's collections of cookbooks and
+authors as examples.
+
+    >>> from lazr.restful.testing.webservice import WebServiceCaller
+    >>> webservice = WebServiceCaller(domain='cookbooks.dev')
+
+==========================
+Collections and pagination
+==========================
+
+A collection responds to GET by serving one page of the objects in the
+collection.
+
+    >>> cookbooks_collection = webservice.get("/cookbooks").jsonBody()
+    >>> print(cookbooks_collection['resource_type_link'])
+    http://...#cookbooks
+    >>> cookbooks_collection['total_size']
+    7
+    >>> print(cookbooks_collection['next_collection_link'])
+    http://.../cookbooks?ws.size=5&memo=5&ws.start=5
+    >>> cookbooks_collection.get('prev_collection_link') is None
+    True
+
+    >>> from operator import itemgetter
+    >>> cookbooks_entries = sorted(
+    ...     cookbooks_collection['entries'], key=itemgetter('name'))
+    >>> len(cookbooks_entries)
+    5
+    >>> print(cookbooks_entries[0]['name'])
+    Everyday Greens
+    >>> print(cookbooks_entries[0]['self_link'])
+    http://.../cookbooks/Everyday%20Greens
+    >>> print(cookbooks_entries[-1]['name'])
+    The Joy of Cooking
+
+There are no XHTML representations available for collections.
+
+    >>> print(webservice.get('/cookbooks', 'application/xhtml+xml'))
+    HTTP/1.1 200 Ok
+    ...
+    Content-Type: application/json
+    ...
+
+You can get other pages of the collection by following links:
+
+    >>> result = webservice.get("/cookbooks?ws.start=5&ws.size=5")
+    >>> second_batch = result.jsonBody()
+    >>> 'next_collection_link' in second_batch
+    False
+
+    >>> cookbooks_entries = sorted(
+    ...     second_batch['entries'], key=itemgetter('name'))
+    >>> print(cookbooks_entries[0]['name'])
+    Construsions un repas
+
+You can also get a larger or smaller batch than the default:
+
+    >>> bigger_batch = webservice.get("/cookbooks?ws.size=20").jsonBody()
+    >>> len(bigger_batch['entries'])
+    7
+    >>> 'next_collection_link' in bigger_batch
+    False
+
+    >>> smaller_batch = webservice.get("/cookbooks?ws.size=2").jsonBody()
+    >>> len(smaller_batch['entries'])
+    2
+    >>> print(smaller_batch['next_collection_link'])
+    http://.../cookbooks?ws.size=2&memo=2&ws.start=2
+
+
+But requesting a batch size higher than the maximum configured value
+results in a 400 error.
+
+      >>> print(webservice.get("/cookbooks?ws.start=0&ws.size=1000"))
+      HTTP/1.1 400 Bad Request
+      ...
+      Content-Type: text/plain...
+      <BLANKLINE>
+      Maximum for "ws.size" parameter is ...
+
+A collection may be empty.
+
+    >>> from urllib.parse import quote
+    >>> url = quote("/cookbooks/Cooking Without Recipes/recipes")
+    >>> result = webservice.get(url)
+    >>> list(result.jsonBody()['entries'])
+    []
+
+==========
+Visibility
+==========
+
+There are two recipes in "James Beard's American Cookery", but one of
+them has been marked private. The private one is hidden from view in
+collections.
+
+    >>> url = quote("/cookbooks/James Beard's American Cookery/recipes")
+    >>> output = webservice.get(url).jsonBody()
+    >>> output['total_size']
+    2
+    >>> len(output['entries'])
+    1
+
+Why does total_size differ from the number of entries? The actual bugs
+are filtered against the security policy at a fairly high level, but
+the number of visible bugs comes from lower-level code that just looks
+at the underlying list.
+
+This is not an ideal solution--the numbers are off, and a batch may
+contain fewer than 'ws.size' entries--but it keeps unauthorized
+clients from seeing private data.
+
+==============
+Element lookup
+==============
+
+The elements of a collection can be looked up by unique identifier:
+
+    >>> from lazr.restful.testing.webservice import pprint_entry
+    >>> url = quote("/cookbooks/The Joy of Cooking")
+    >>> cookbook = webservice.get(url).jsonBody()
+    >>> pprint_entry(cookbook)
+    confirmed: 'tag:launchpad.net:2008:redacted'
+    copyright_date: '1995-01-01'
+    cover_link: 'http://.../cookbooks/The%20Joy%20of%20Cooking/cover'
+    cuisine: 'General'
+    description: ''
+    last_printing: None
+    name: 'The Joy of Cooking'
+    price: 20
+    recipes_collection_link: 'http://.../cookbooks/The%20Joy%20of%20Cooking/recipes'
+    resource_type_link: 'http://...#cookbook'
+    revision_number: 0
+    self_link: 'http://.../cookbooks/The%20Joy%20of%20Cooking'
+    web_link: 'http://exampleurl/'
+
+A collection may be scoped to an element:
+
+    >>> url = quote("/dishes/Roast chicken/recipes")
+    >>> result = webservice.get(url).jsonBody()
+    >>> print(result['resource_type_link'])
+    http://...#recipe-page-resource
+    >>> cookbooks_with_recipe = sorted(
+    ...     [r['cookbook_link'] for r in result['entries']])
+    >>> len(cookbooks_with_recipe)
+    3
+    >>> print(cookbooks_with_recipe[0])
+    http://.../cookbooks/James%20Beard%27s%20American%20Cookery
+    >>> print(cookbooks_with_recipe[-1])
+    http://.../cookbooks/The%20Joy%20of%20Cooking
+
+================
+Named operations
+================
+
+A collection may expose custom named operations in response to GET
+requests. A named operation may do anything consistent with the nature
+of a GET request, but it's usually used to serve search results. The
+custom operation to be invoked is named in the query string's
+'ws.op' argument. Here's a custom operation on the collection of
+cookbooks, called 'find_recipes'.
+
+    >>> import simplejson
+    >>> def search_recipes(text, vegetarian=False, start=0, size=2):
+    ...     args = ("&search=%s&vegetarian=%s&ws.start=%s&ws.size=%s" %
+    ...             (quote(text), simplejson.dumps(vegetarian), start, size))
+    ...     return webservice.get(
+    ...         "/cookbooks?ws.op=find_recipes&%s" % args).jsonBody()
+
+    >>> s_recipes = search_recipes("chicken")
+    >>> for instruction in sorted(
+    ...         r['instructions'] for r in s_recipes['entries']):
+    ...     print(instruction)
+    Draw, singe, stuff, and truss...
+    You can always judge...
+
+    >>> veg_recipes = search_recipes("chicken", True)
+    >>> veg_recipes['entries']
+    []
+
+A custom operation that returns a list of objects is paginated, just
+like a collection.
+
+    >>> print(s_recipes['next_collection_link'])
+    http://.../cookbooks?search=chicken&vegetarian=false&ws.op=find_recipes&ws.size=2&memo=2&ws.start=2
+
+    >>> s_recipes_batch_2 = search_recipes("chicken", start=2)
+    >>> for instruction in sorted(
+    ...         r['instructions'] for r in s_recipes_batch_2['entries']):
+    ...     print(instruction)
+    A perfectly roasted chicken is...
+
+Just as a collection may be empty, a custom operation may return an
+empty list of results:
+
+    >>> empty_collection = search_recipes("nosuchrecipe")
+    >>> [r['instructions'] for r in empty_collection['entries']]
+    []
+
+When an operation yields a collection of objects, the representation
+includes a link that yields the total size of the collection.
+
+    >>> print(s_recipes['total_size_link'])
+    http://.../cookbooks?search=chicken&vegetarian=false&ws.op=find_recipes&ws.show=total_size
+
+Sending a GET request to that link yields a JSON representation of the
+total size.
+
+   >>> print(webservice.get(s_recipes['total_size_link']).jsonBody())
+   3
+
+If the entire collection fits in a single 'page' of results, the
+'total_size_link' is not present; instead, lazr.restful provides the
+total size as a convenience to the client.
+
+   >>> full_list = search_recipes("chicken", size=100)
+   >>> len(full_list['entries'])
+   3
+   >>> full_list['total_size']
+   3
+   >>> full_list['total_size_link']
+   Traceback (most recent call last):
+   ...
+   KeyError: 'total_size_link'
+
+The same is true if the client requests the last page of a list.
+
+   >>> last_page = search_recipes("chicken", start=2, size=2)
+   >>> len(last_page['entries'])
+   1
+   >>> full_list['total_size']
+   3
+   >>> full_list['total_size_link']
+   Traceback (most recent call last):
+   ...
+   KeyError: 'total_size_link'
+
+Custom operations may have error handling. In this case, the error
+handling is in the validate() method of the 'search' field.
+
+    >>> print(webservice.get("/cookbooks?ws.op=find_recipes"))
+    HTTP/1.1 400 Bad Request
+    ...
+    search: Required input is missing.
+
+The error message may contain Unicode characters:
+
+    >>> from lazr.restful.testing.helpers import encode_response
+    >>> url = b"/cookbooks?ws.op=find_for_cuisine&cuisine=%E2%98%83"
+    >>> response = webservice.get(url)
+    >>> print(encode_response(response))
+    HTTP/1.1 400 Bad Request
+    ...
+    cuisine: Invalid value "\u2603". Acceptable values are:...
+
+If a named operation takes an argument that's a value for a vocabulary
+(such as Cuisine in the example web service), the client can specify
+the name of the value, just as they would when changing the value with
+a PUT or PATCH request.
+
+    >>> general_cookbooks = webservice.get(
+    ...     "/cookbooks?ws.op=find_for_cuisine&cuisine=General")
+    >>> print(general_cookbooks.jsonBody()['total_size'])
+    3
+
+POST operations
+===============
+
+A collection may also expose named operations in response to POST
+requests. These operations are usually factories. Here's a helper
+method that creates a new cookbook by invoking a factory operation on
+the collection of cookbooks.
+
+    >>> def create_cookbook(name, cuisine, copyright_date, price=12.34):
+    ...     date = copyright_date.isoformat()
+    ...     return webservice.named_post(
+    ...         "/cookbooks", "create", {},
+    ...         name=name, cuisine=cuisine,
+    ...         copyright_date=date, last_printing=date, price=price)
+
+    >>> print(webservice.get(quote('/cookbooks/The Cake Bible')))
+    HTTP/1.1 404 Not Found
+    ...
+
+    >>> from datetime import date
+    >>> print(create_cookbook("The Cake Bible", "Dessert", date(1988, 1, 1)))
+    HTTP/1.1 201 Created
+    ...
+    Location: http://.../cookbooks/The%20Cake%20Bible
+    ...
+
+    >>> print(webservice.get("/cookbooks/The%20Cake%20Bible"))
+    HTTP/1.1 200 Ok
+    ...
+
+POST operations can have custom validation. For instance, you can't
+create a cookbook with a name that's already in use. This exception is
+raised by the create() method itself.
+
+    >>> print(create_cookbook("The Cake Bible", "Dessert", date(1988, 1, 1)))
+    HTTP/1.1 409 Conflict
+    ...
+    A cookbook called "The Cake Bible" already exists.
+
+A POST request has no meaning unless it specifies a custom operation.
+
+    >>> print(webservice.post("/cookbooks", 'text/plain', ''))
+    HTTP/1.1 400 Bad Request
+    ...
+    No operation name given.
+
+You can't invoke a nonexistent operation:
+
+    >>> print(webservice.named_post("/cookbooks", "nosuchop", {}))
+    HTTP/1.1 400 Bad Request
+    ...
+    No such operation: nosuchop
+
+POST operations may involve text fields.  These are marshalled via a
+multipart/form-data request, which requires line breaks to be represented as
+CRLF.  The server turns these into Unix-style LF.
+
+    >>> def create_recipe(id, cookbook_link, dish_link, instructions,
+    ...                   private=False):
+    ...     return webservice.named_post(
+    ...         "/recipes", "createRecipe", {},
+    ...         id=id, cookbook=cookbook_link, dish=dish_link,
+    ...         instructions=instructions, private=private)
+
+    >>> cookbook_link = webservice.get(
+    ...     quote("/cookbooks/The Joy of Cooking")).jsonBody()["self_link"]
+    >>> dish_link = webservice.get(
+    ...     quote("/dishes/Roast chicken")).jsonBody()["self_link"]
+    >>> response = create_recipe(
+    ...     20, cookbook_link, dish_link,
+    ...     "Recipe\r\ncontaining\rsome\nline\r\n\r\nbreaks")
+    >>> response.status
+    201
+    >>> recipe = webservice.get(response.getHeader("Location")).jsonBody()
+    >>> recipe["instructions"]
+    'Recipe\ncontaining\nsome\nline\n\nbreaks'
+    >>> _ = webservice.delete(recipe["self_link"])
