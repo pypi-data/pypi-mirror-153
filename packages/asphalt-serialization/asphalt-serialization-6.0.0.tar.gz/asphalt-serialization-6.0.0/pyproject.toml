@@ -1,0 +1,108 @@
+[build-system]
+requires = [
+    "setuptools >= 61",
+    "setuptools_scm >= 6.4"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asphalt-serialization"
+description = "Serialization component for the Asphalt framework"
+readme = "README.rst"
+authors = [{name = "Alex Grönholm", email = "alex.gronholm@nextday.fi"}]
+license = {text = "Apache License 2.0"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "asphalt ~= 4.8",
+    "msgpack ~= 1.0; extra == 'msgpack' or extra == 'test' or extra == 'doc'",
+    "cbor2 ~= 5.0; extra == 'cbor' or extra == 'test' or extra == 'doc'",
+    "ruamel.yaml >= 0.15; extra == 'yaml' or extra == 'test' or extra == 'doc'",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/asphalt-framework/asphalt-serialization"
+
+[project.optional-dependencies]
+msgpack = []
+cbor = []
+yaml = []
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+]
+doc = [
+    "Sphinx >= 1.5",
+    "sphinx_rtd_theme",
+    "sphinx-autodoc-typehints >= 1.0.5",
+    "sphinxcontrib-asyncio >= 0.2.0",
+]
+
+[project.entry-points."asphalt.components"]
+serialization = "asphalt.serialization.component:SerializationComponent"
+
+[project.entry-points."asphalt.serialization.serializers"]
+cbor = "asphalt.serialization.serializers.cbor:CBORSerializer"
+json = "asphalt.serialization.serializers.json:JSONSerializer"
+msgpack = "asphalt.serialization.serializers.msgpack:MsgpackSerializer"
+pickle = "asphalt.serialization.serializers.pickle:PickleSerializer"
+yaml = "asphalt.serialization.serializers.yaml:YAMLSerializer"
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "dirty-tag"
+
+[tool.isort]
+skip_gitignore = true
+profile = "black"
+
+[tool.flake8]
+max-line-length = 88
+
+[tool.pytest.ini_options]
+addopts = "-rsx --tb=short"
+asyncio_mode = "strict"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.7"
+strict = true
+show_error_codes = true
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["asphalt.serialization"]
+relative_files = true
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py37, py38, py39, py310, py311, pypy3
+skip_missing_interpreters = true
+isolated_build = true
+
+[testenv]
+extras = test
+commands = python -m pytest {posargs}
+
+[testenv:docs]
+extras = doc
+commands = sphinx-build docs build/sphinx
+"""
