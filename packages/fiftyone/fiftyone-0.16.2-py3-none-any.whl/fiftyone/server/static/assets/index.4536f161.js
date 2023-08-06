@@ -1,0 +1,1 @@
+import{X as e,a as t,R as a}from"./vendor.b0739682.js";import{q as s,L as r}from"./index.0750e387.js";var o=({})=>{const o=e(s);return t.exports.useLayoutEffect((()=>{o(null)}),[]),a.createElement(r,null,"No dataset selected")};export{o as default};
