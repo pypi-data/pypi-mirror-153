@@ -1,0 +1,454 @@
+import unittest
+from datetime import datetime
+from time import sleep, time
+
+import pandas as pd
+import pytz
+from mock import MagicMock, patch
+from pandas.testing import assert_frame_equal
+
+from resdk.tables import RNATables
+
+
+class TestTables(unittest.TestCase):
+    def setUp(self):
+        self.resolwe = MagicMock()
+        self.resolwe.url = "https://server.com"
+
+        self.sample = MagicMock()
+        self.sample.id = 123
+        self.sample.name = "Sample123"
+        self.sample.modified = datetime(
+            2020, 11, 1, 12, 15, 0, 0, tzinfo=pytz.UTC
+        ).astimezone(pytz.timezone("Europe/Ljubljana"))
+        self.sample.descriptor_schema.schema = [
+            {"name": "PFS", "type": "basic:decimal:", "label": "P"}
+        ]
+        self.sample.descriptor = {"PFS": 1}
+
+        self.data = MagicMock()
+        self.data.id = 12345
+        self.data.sample.id = self.sample.id
+        self.data.process.slug = "process-slug"
+        self.data.output.__getitem__.side_effect = {
+            "species": "Homo sapiens",
+            "source": "ENSEMBL",
+            "exp_type": "TPM",
+        }.__getitem__
+
+        self.orange_data = MagicMock()
+        self.orange_data.id = 89
+        self.orange_data.files.return_value = ["table.tsv"]
+        self.orange_data.modified = datetime(
+            2020, 9, 1, 12, 15, 0, 0, tzinfo=pytz.UTC
+        ).astimezone(pytz.timezone("Europe/Ljubljana"))
+
+        self.collection = MagicMock()
+        self.collection.slug = "slug"
+        self.collection.name = "Name"
+        self.collection.samples.filter = self.web_request([self.sample])
+        self.collection.data.filter = self.web_request([self.data])
+        self.collection.resolwe = self.resolwe
+
+        self.relation = MagicMock()
+        self.relation.modified = datetime(
+            2020, 10, 1, 12, 15, 0, 0, tzinfo=pytz.UTC
+        ).astimezone(pytz.timezone("Europe/Ljubljana"))
+        self.relation.category = "Category"
+        self.relation.partitions = [
+            {"id": 1, "entity": 123, "position": None, "label": "L1"}
+        ]
+        self.collection.relations.filter = self.web_request([self.relation])
+        self.metadata_df = pd.DataFrame([[0]], index=[123], columns=["PFS"])
+
+        self.expressions_df = pd.DataFrame(
+            [[0, 1, 2], [1, 2, 3], [2, 3, 4]],
+            index=["0", "1", "2"],
+            columns=["ENSG001", "ENSG002", "ENSG003"],
+        )
+
+        self.gene_map = {"ENSG001": "GA", "ENSG002": "GB", "ENSG003": "GC"}
+
+    @staticmethod
+    def web_request(return_value):
+        def slow(*args, **kwargs):
+            sleep(0.1)
+            return return_value
+
+        return slow
+
+    @patch("resdk.tables.base.cache_dir_resdk", MagicMock(return_value="/tmp/resdk/"))
+    @patch("os.path.exists")
+    def test_init(self, exists_mock):
+        ct = RNATables(self.collection)
+
+        self.assertIs(ct.collection, self.collection)
+        self.assertEqual(ct.cache_dir, "/tmp/resdk/")
+        exists_mock.assert_called_with("/tmp/resdk/")
+
+        # using different cache dir
+        ct = RNATables(self.collection, cache_dir="/tmp/cache_dir/")
+        self.assertEqual(ct.cache_dir, "/tmp/cache_dir/")
+        exists_mock.assert_called_with("/tmp/cache_dir/")
+
+    def test_heterogeneous_collections(self):
+        """Test detecton of heterogeneous collections.
+
+        Check is done in __init__, so it is sufficient to initialize
+        RNATables with an appropriate collection.
+        """
+        # Different processes
+        data2 = MagicMock()
+        data2.id = 12345
+        data2.process.slug = "process-slug2"
+        data2.output.__getitem__.side_effect = {"source": "ENSEMBL"}.__getitem__
+        self.collection.data.filter = self.web_request([self.data, data2])
+
+        with self.assertRaisesRegex(ValueError, r"Expressions of all samples.*"):
+            RNATables(self.collection)
+
+        # Different source
+        data2 = MagicMock()
+        data2.id = 12345
+        data2.process.slug = "process-slug"
+        data2.output.__getitem__.side_effect = {"source": "GENCODE"}.__getitem__
+        self.collection.data.filter = self.web_request([self.data, data2])
+
+        with self.assertRaisesRegex(ValueError, r"Alignment of all samples.*"):
+            RNATables(self.collection)
+
+    @patch.object(RNATables, "_load_fetch")
+    def test_meta(self, load_mock):
+        load_mock.side_effect = self.web_request(self.metadata_df)
+
+        ct = RNATables(self.collection)
+        t = time()
+        meta = ct.meta
+        self.assertTrue(time() - t > 0.1)
+        self.assertIs(meta, self.metadata_df)
+        load_mock.assert_called_with(RNATables.META)
+
+        # use cache
+        t = time()
+        meta = ct.meta
+        self.assertTrue(time() - t < 0.1)
+        self.assertIs(meta, self.metadata_df)
+
+    @patch.object(RNATables, "_load_fetch")
+    def test_qc(self, load_mock):
+        qc_df = pd.DataFrame(
+            [[None, 30], [12, 42]],
+            index=["0", "1"],
+            columns=["total_read_count_raw", "total_read_count_trimmed"],
+        )
+        load_mock.side_effect = self.web_request(qc_df)
+
+        ct = RNATables(self.collection)
+        t = time()
+        meta = ct.meta
+        self.assertTrue(time() - t > 0.1)
+        self.assertIs(meta, qc_df)
+        load_mock.assert_called_with(RNATables.META)
+
+        # use cache
+        t = time()
+        meta = ct.meta
+        self.assertTrue(time() - t < 0.1)
+        self.assertIs(meta, qc_df)
+
+    @patch.object(RNATables, "_load_fetch")
+    def test_exp(self, load_mock):
+        load_mock.side_effect = self.web_request(self.expressions_df)
+
+        ct = RNATables(self.collection)
+        t = time()
+        exp = ct.exp
+        self.assertTrue(time() - t > 0.1)
+        self.assertIs(exp, self.expressions_df)
+        load_mock.assert_called_with(RNATables.EXP)
+        self.assertListEqual(ct.gene_ids, ["ENSG001", "ENSG002", "ENSG003"])
+
+        # use cache
+        t = time()
+        exp = ct.exp
+        self.assertTrue(time() - t < 0.1)
+        self.assertIs(exp, self.expressions_df)
+
+    @patch.object(RNATables, "_load_fetch")
+    def test_rc(self, load_mock):
+        load_mock.side_effect = self.web_request(self.expressions_df)
+
+        ct = RNATables(self.collection)
+        t = time()
+        rc = ct.rc
+        self.assertTrue(time() - t > 0.1)
+        self.assertIs(rc, self.expressions_df)
+        load_mock.assert_called_with(RNATables.RC)
+        self.assertListEqual(ct.gene_ids, ["ENSG001", "ENSG002", "ENSG003"])
+
+        # use cache
+        t = time()
+        rc = ct.rc
+        self.assertTrue(time() - t < 0.1)
+        self.assertIs(rc, self.expressions_df)
+
+    @patch.object(RNATables, "_mapping")
+    def test_id_to_symbol(self, mapping_mock):
+        mapping_mock.side_effect = self.web_request(self.gene_map)
+
+        ct = RNATables(self.collection)
+        with self.assertRaises(ValueError):
+            mapping = ct.id_to_symbol
+
+        ct = RNATables(self.collection)
+        ct.gene_ids = ["ENSG001", "ENSG002", "ENSG003"]
+        t = time()
+        mapping = ct.id_to_symbol
+        self.assertTrue(time() - t > 0.1)
+        mapping_mock.assert_called_with(
+            ["ENSG001", "ENSG002", "ENSG003"], "ENSEMBL", "Homo sapiens"
+        )
+        self.assertIs(mapping, self.gene_map)
+
+        # test if use case works
+        new_exp = self.expressions_df.rename(columns=ct.id_to_symbol)
+        self.assertListEqual(new_exp.columns.tolist(), ["GA", "GB", "GC"])
+
+        # use cache
+        t = time()
+        mapping = ct.id_to_symbol
+        self.assertTrue(time() - t < 0.1)
+        self.assertIs(mapping, self.gene_map)
+
+    @patch("resdk.tables.base.clear_cache_dir_resdk")
+    def test_clear_cache(self, clear_mock):
+        RNATables.clear_cache()
+        clear_mock.assert_called()
+
+    def test_metadata_version(self):
+        self.collection.samples.get = self.web_request(self.sample)
+        self.collection.relations.get = self.web_request(self.relation)
+        self.collection.data.get = self.web_request(self.orange_data)
+
+        ct = RNATables(self.collection)
+        version = ct._metadata_version
+        self.assertEqual(version, "2020-11-01T12:15:00Z")
+
+        # use cache
+        t = time()
+        version = ct._metadata_version
+        self.assertTrue(time() - t < 0.1)
+
+        self.collection.samples.get = MagicMock(side_effect=LookupError())
+        ct1 = RNATables(self.collection)
+        with self.assertRaises(ValueError):
+            version = ct1._metadata_version
+
+    def test_qc_version(self):
+        self.collection.data.filter = self.web_request([self.data])
+
+        ct = RNATables(self.collection)
+        version = ct._qc_version
+        self.assertEqual(version, str(hash(tuple([12345]))))
+
+        # use cache
+        t = time()
+        version = ct._qc_version
+        self.assertTrue(time() - t < 0.1)
+
+        self.collection.data.filter = self.web_request([])
+        ct1 = RNATables(self.collection)
+        with self.assertRaises(ValueError):
+            version = ct1._qc_version
+
+    def test_data_version(self):
+        ct = RNATables(self.collection)
+        version = ct._data_version
+        self.assertEqual(version, str(hash(tuple([12345]))))
+
+        # use cache
+        t = time()
+        version = ct._data_version
+        self.assertTrue(time() - t < 0.1)
+
+        self.collection.data.filter = MagicMock(return_value=[])
+        ct = RNATables(self.collection)
+        with self.assertRaises(ValueError):
+            version = ct._data_version
+
+    @patch("resdk.tables.base.cache_dir_resdk", MagicMock(return_value="/tmp/resdk/"))
+    @patch("resdk.tables.base.load_pickle")
+    @patch("resdk.tables.base.save_pickle")
+    @patch.object(RNATables, "_download_metadata")
+    @patch.object(RNATables, "_download_data")
+    def test_load_fetch(self, data_mock, meta_mock, save_mock, load_mock):
+        data_mock.return_value = self.expressions_df
+        meta_mock.return_value = self.metadata_df
+        load_mock.return_value = None
+
+        self.collection.samples.get = self.web_request(self.sample)
+        self.collection.relations.get = self.web_request(self.relation)
+        self.collection.data.get = self.web_request(self.orange_data)
+        ct = RNATables(self.collection)
+        data = ct._load_fetch(RNATables.META)
+        self.assertIs(data, self.metadata_df)
+        save_mock.assert_called_with(
+            self.metadata_df,
+            "/tmp/resdk/slug_meta_None_None_2020-11-01T12:15:00Z.pickle",
+        )
+
+        save_mock.reset_mock()
+        data = ct._load_fetch(RNATables.EXP)
+        self.assertIs(data, self.expressions_df)
+        data_mock.assert_called_with(RNATables.EXP)
+        save_mock.assert_called_with(
+            self.expressions_df,
+            f"/tmp/resdk/slug_exp_None_None_{str(hash((12345,)))}.pickle",
+        )
+
+        data_mock.reset_mock()
+        save_mock.reset_mock()
+        data = ct._load_fetch(RNATables.RC)
+        self.assertIs(data, self.expressions_df)
+        data_mock.assert_called_with(RNATables.RC)
+        save_mock.assert_called_with(
+            self.expressions_df,
+            f"/tmp/resdk/slug_rc_None_None_{str(hash((12345,)))}.pickle",
+        )
+
+        data_mock.reset_mock()
+        load_mock.return_value = self.expressions_df
+        data = ct._load_fetch(RNATables.EXP)
+        self.assertIs(data, self.expressions_df)
+        data_mock.assert_not_called()
+
+    def test_get_descriptors(self):
+        ct = RNATables(self.collection)
+        descriptors = ct._get_descriptors()
+
+        expected = pd.DataFrame([1], columns=["PFS"], index=[123], dtype=float)
+        expected.index.name = "sample_id"
+
+        assert_frame_equal(descriptors, expected)
+
+    def test_get_relations(self):
+        ct = RNATables(self.collection)
+        relations = ct._get_relations()
+
+        expected = pd.DataFrame(["L1"], columns=["Category"], index=[123])
+        expected.index.name = "sample_id"
+
+        assert_frame_equal(relations, expected)
+
+    def test_get_orange_object(self):
+        # Orange Data is found ad-hoc
+        self.collection.data.get = self.web_request(self.orange_data)
+        ct = RNATables(self.collection)
+        obj = ct._get_orange_object()
+        self.assertEqual(obj, self.orange_data)
+
+    def test_get_orange_data(self):
+        response = MagicMock()
+        response.content = b"mS#Sample ID\tCol1\n123\t42"
+        self.collection.resolwe.session.get.return_value = response
+        self.collection.data.get = self.web_request(self.orange_data)
+
+        ct = RNATables(self.collection)
+        orange_data = ct._get_orange_data()
+
+        expected = pd.DataFrame([42], columns=["Col1"], index=[123])
+        expected.index.name = "sample_id"
+
+        assert_frame_equal(orange_data, expected)
+
+    @patch.object(RNATables, "_get_descriptors")
+    @patch.object(RNATables, "_get_relations")
+    @patch.object(RNATables, "_get_orange_data")
+    def test_download_metadata(self, orange_mock, relations_mock, descriptors_mock):
+        descriptors_mock.return_value = self.metadata_df
+        relations_mock.return_value = pd.DataFrame(
+            [["A"]], index=[123], columns=["Replicate"]
+        )
+        orange_mock.return_value = pd.DataFrame(
+            [["X"]], index=[123], columns=["Clinical"]
+        )
+
+        ct = RNATables(self.collection)
+        meta = ct._download_metadata()
+
+        expected_content = [[0, "A", "X"]]
+        expected_columns = ["PFS", "Replicate", "Clinical"]
+        expected_meta = pd.DataFrame(
+            expected_content, columns=expected_columns, index=[123]
+        )
+        expected_meta.index.name = "sample_id"
+
+        assert_frame_equal(meta, expected_meta)
+
+    def test_get_data_uri(self):
+        self.data.files.return_value = ["exp_file.csv"]
+
+        ct = RNATables(self.collection)
+        file_url = ct._get_data_uri(self.data, RNATables.EXP)
+        self.assertEqual(file_url, "12345/exp_file.csv")
+
+        self.data.files.return_value = []
+        with self.assertRaises(LookupError):
+            file_url = ct._get_data_uri(self.data, RNATables.EXP)
+
+        self.data.files.return_value = ["exp_file1.csv", "exp_file2.csv"]
+        with self.assertRaises(LookupError):
+            file_url = ct._get_data_uri(self.data, RNATables.EXP)
+
+    @patch("resdk.tables.base.cache_dir_resdk", MagicMock(return_value="/tmp/resdk/"))
+    @patch("resdk.tables.rna.load_pickle")
+    @patch("resdk.tables.rna.save_pickle")
+    @patch.object(RNATables, "_download_mapping")
+    def test_mapping(self, download_mock, save_mock, load_mock):
+        load_mock.return_value = None
+        download_mock.return_value = self.gene_map
+
+        ct = RNATables(self.collection)
+        mapping = ct._mapping(
+            ["ENSG001", "ENSG002", "ENSG003"], "ENSEMBL", "Homo sapiens"
+        )
+        self.assertDictEqual(mapping, self.gene_map)
+        self.assertListEqual(
+            sorted(download_mock.call_args[0][0]), ["ENSG001", "ENSG002", "ENSG003"]
+        )
+        save_mock.assert_called_with(
+            self.gene_map, "/tmp/resdk/ENSEMBL_Homo sapiens.pickle", override=True
+        )
+
+        # download only missing values
+        download_mock.reset_mock()
+        load_mock.return_value = {"ENSG002": "GB", "ENSG003": "GC"}
+        mapping = ct._mapping(
+            ["ENSG001", "ENSG002", "ENSG003"], "ENSEMBL", "Homo sapiens"
+        )
+        self.assertDictEqual(mapping, self.gene_map)
+        self.assertListEqual(sorted(download_mock.call_args[0][0]), ["ENSG001"])
+
+    def test_download_mapping(self):
+        def create_feature(fid, name):
+            m = MagicMock(feature_id=fid)
+            # name can't be set on initialization
+            m.name = name
+            return m
+
+        self.resolwe.feature.filter.return_value = [
+            create_feature(fid, name) for fid, name in self.gene_map.items()
+        ]
+
+        ct = RNATables(self.collection)
+        mapping = ct._download_mapping(
+            ["ENSG001", "ENSG002", "ENSG003"], "ENSEMBL", "Homo sapiens"
+        )
+
+        self.resolwe.feature.filter.assert_called_once()
+        self.resolwe.feature.filter.assert_called_once_with(
+            source="ENSEMBL",
+            species="Homo sapiens",
+            feature_id__in=["ENSG001", "ENSG002", "ENSG003"],
+        )
+        self.assertDictEqual(mapping, self.gene_map)
