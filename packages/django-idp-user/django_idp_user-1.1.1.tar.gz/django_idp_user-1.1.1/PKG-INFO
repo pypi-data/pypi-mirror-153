@@ -1,0 +1,121 @@
+Metadata-Version: 2.1
+Name: django_idp_user
+Version: 1.1.1
+Summary: A Django app that handles the communication between the IDP and the products for the authorization of users.
+Home-page: https://github.com/CardoAI/django-idp-user
+Author: Mahmoud Al-Rawy, Euron Metaliaj, Klajdi Çaushi, Aleksandër Nasto, Andi Çuku, Klement Omeri
+Author-email: hello@cardoai.com
+License: MIT (X11)
+Platform: UNKNOWN
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Requires-Python: >=3.9
+License-File: LICENSE
+
+===============
+Django IDP User
+===============
+
+Quick start
+-----------
+
+1. Add "idp_user" to your INSTALLED_APPS setting like this::
+
+    INSTALLED_APPS = [
+        ...
+        'idp_user',
+    ]
+
+2. Add the settings of the app in settings.py like this::
+
+    APP_ENV = "development"/"staging"/"production"
+
+    AUTH_USER_MODEL = 'idp_user.User'
+
+    IDP_USER_APP = {
+        "APP_IDENTIFIER": "str",
+        "ROLES": "path.to.roles_choices",
+        "FAUST_APP_PATH": "backend.kafka_consumer.app",
+        "USE_REDIS_CACHE": True,
+        "IDP_URL": "idp_url",  # Optional
+        "INJECT_HEADERS_IN_DEV": False,
+        "APP_ENTITIES": {
+            "<entity_type>": {
+                "model_path": "<path.to.entity_type.model>",
+                "identifier_attr": "<field_name>",
+                "label_attr": "<field_name>",
+            }
+        },
+    }
+
+    REST_FRAMEWORK = {
+        'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema' / 'idp_user.schema_extensions.AutoSchemaWithRole',
+        'DEFAULT_AUTHENTICATION_CLASSES': (
+            'idp_user.auth.AuthenticationBackend',
+        ),
+    }
+
+    SPECTACULAR_SETTINGS = {
+        'DEFAULT_AUTHENTICATION_CLASSES': (
+            'idp_user.schema_extensions.BearerTokenScheme',
+        ),
+        'SERVE_AUTHENTICATION': ()
+    }
+
+    # Kafka Related
+    KAFKA_ARN = "<aws_kafka_arn>"
+    KAFKA_AWS_ACCESS_KEY_ID = "<access_key_id>"
+    KAFKA_AWS_SECRET_ACCESS_KEY = "<secret_access_key_id>"
+    AWS_S3_REGION_NAME = "<region_name>"
+
+3. Run ``python manage.py migrate`` to create the models.
+
+Settings Reference
+------------------
+
+* ``APP_IDENTIFIER``
+
+  * The app identifier, as defined in the IDP.
+
+* ``ROLES``
+
+  * The path to the roles choices.
+
+* ``FAUST_APP_PATH``
+
+  * The path to the Faust app.
+
+* ``IDP_URL``
+
+  * The URL of the IDP, used for local development, or when using the IDP as an Authentication Backend.
+
+* ``USE_REDIS_CACHE``
+
+  * If True, the cache will be used
+  * When developing locally, you can leave this as ``False``.
+
+* ``INJECT_HEADERS_IN_DEV``
+
+  * If True, the authentication headers will be injected in the response in development mode.
+  * Unless you want to setup an IDP server locally for testing purposes,
+    leave this as ``False`` when developing.
+
+* ``APP_ENTITIES``
+
+  * This dict links the AppEntityTypes declared on the IDP for this app to their actual models,
+    so that they can be used for authorization purposes. In the value dicts, the attributes that will be
+    used as the identifier and label are declared as well.
+
+
