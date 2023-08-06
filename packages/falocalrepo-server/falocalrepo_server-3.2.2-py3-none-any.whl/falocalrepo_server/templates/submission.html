@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<!--suppress HtmlDeprecatedAttribute, HtmlUnknownTarget, CssUnusedSymbol -->
+<html lang="en">
+<head>
+    <title>{{ title }} · {{ app }}</title>
+    <meta charset="utf-8">
+    <meta content="width=device-width,initial-scale=1,shrink-to-fit=no" name="viewport">
+    <meta content="ie=edge" http-equiv="x-ua-compatible">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" href="/touch-icon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png">
+    <link rel="stylesheet" href="/static/styles/style.css">
+    <style>
+        #file-container [data-scroll] {
+            transition: border-radius 250ms;
+        }
+
+        #file-container.sticky-top [data-scroll="1"] {
+            border-radius: .375rem;
+        }
+
+        #file-container.sticky-top ~ #button-sticky {
+            color: #fff;
+            background-color: #198754;
+            border-color: #198754
+        }
+
+        #file-container.sticky-top ~ #button-sticky:hover {
+            color: #fff;
+            background-color: #157347;
+            border-color: #146c43
+        }
+
+        #file-container.sticky-top ~ #button-sticky:focus {
+            color: #fff;
+            background-color: #157347;
+            border-color: #146c43;
+            box-shadow: 0 0 0 .25rem rgba(60, 153, 110, .5)
+        }
+
+        #file-container.sticky-top ~ #button-sticky.active {
+            color: #fff;
+            background-color: #146c43;
+            border-color: #13653f
+        }
+
+        #file-container.zoomed .fit-height {
+            max-height: none !important;
+        }
+
+        #file-container.sticky-top.zoomed .fit-height {
+            max-height: 100vh !important;
+        }
+
+        #file-container ~ #metadata .card {
+            height: 100%;
+        }
+
+        @media (min-width: 992px) {
+            #file-container.zoomed {
+                width: 100%;
+                margin-bottom: 1rem;
+            }
+
+            #file-container.zoomed ~ #metadata {
+                order: 2 !important
+            }
+
+            #file-container.zoomed ~ #metadata .card {
+                height: auto;
+            }
+
+            #file-container.zoomed ~ #description {
+                width: 66.66666667%;
+                margin-top: 0 !important;
+                order: 1 !important
+            }
+
+            #file-container.zoomed ~ #description .card {
+                height: 100%;
+            }
+
+            #file-container.zoomed ~ #description .card-body {
+                width: 100%;
+            }
+        }
+
+        .flash-container > ruffle-player {
+            max-width: 100% !important;
+        }
+    </style>
+</head>
+
+{% set data_scroll = false %}
+{% set file %}
+{% if submission.FILESAVED == 0 %}
+<div class="mt-1 mt-lg-5 pt-lg-5 text-center">
+    <span class="badge bg-danger">Submission has no file</span>
+</div>
+{% elif submission.FILESAVED == 1 %}
+{% set data_scroll = true %}
+<div class="text-center position-relative bg-body bg-opacity-75 mx-auto" id="thumbnail" style="width: fit-content">
+    <div class="mt-1 mb-2 mt-lg-5 pt-lg-5 error" hidden>
+        <span class="badge bg-danger">Thumbnail not found</span>
+    </div>
+    <div class="mt-2 mb-2 mt-lg-5 pt-lg-5 loading">
+        <span class="spinner spinner-border spinner-border-sm" role="status"></span>
+    </div>
+    <img class="img-fluid mx-auto fit-height zoom"
+         alt="" data-scroll="0"
+         src="/submission/{{ submission.ID }}/thumbnail/{{ "{0:010d}".format(submission.ID) }}-thumbnail.jpg"
+         onclick="const fc = document.getElementById('file-container'); if (fc.classList.contains('zoomed')) {fc.classList.remove('zoomed')} else {fc.classList.add('zoomed')}"
+         onload="document.querySelector('#thumbnail .error').hidden = document.querySelector('#thumbnail .loading').hidden = true; document.getElementById('button-sticky').hidden = this.hidden = document.querySelector('#thumbnail .thumbnail-badge').hidden = false"
+         onerror="document.querySelector('#thumbnail .loading').hidden = true; document.querySelector('#thumbnail .error').hidden = false"
+         hidden>
+    <div class="btn-toolbar mt-1 justify-content-center thumbnail-badge" hidden>
+        <span class="badge bg-warning">Thumbnail</span>
+    </div>
+</div>
+{% else %}
+{% for ext in submission.FILEEXT|map("lower") %}
+<div class="text-center position-relative bg-body bg-opacity-75 mx-auto"
+     id="file-{{ loop.index0 }}" style="width: fit-content" {{ "hidden" if not loop.first }}>
+    {% if ext in ["jpg", "jpeg", "png", "gif"] %}
+    {% set data_scroll = false %}
+    <div class="mt-1 mb-2 mt-lg-5 pt-lg-5 error" hidden>
+        <span class="badge bg-danger">Image not found</span>
+    </div>
+    <div class="mt-2 mb-2 mt-lg-5 pt-lg-5 loading">
+        <span class="spinner spinner-border spinner-border-sm" role="status"></span>
+    </div>
+    <img class="img-fluid mx-auto fit-height zoom"
+         alt="" data-scroll="0"
+         src="/submission/{{ submission.ID }}/file/{{ loop.index0 }}/{{ filenames_id[loop.index0] }}"
+         onclick="const fc = document.getElementById('file-container'); if (fc.classList.contains('zoomed')) {fc.classList.remove('zoomed')} else {fc.classList.add('zoomed')}"
+         onload="document.querySelector('#file-{{ loop.index0 }} .error').hidden = document.querySelector('#file-{{ loop.index0 }} .loading').hidden = true; this.hidden = false"
+         onerror="document.querySelector('#file-{{ loop.index0 }} .loading').hidden = true; document.querySelector('#file-{{ loop.index0 }} .error').hidden = false"
+         hidden>
+    {% elif ext in ["mp4", "mov", "webm", "ogg", "3gp"] %}
+    {% set data_scroll = false %}
+    <div class="mt-1 mb-2 mt-lg-5 pt-lg-5 error" hidden>
+        <span class="badge bg-danger">Video not found</span>
+    </div>
+    <div class="mt-2 mb-2 mt-lg-5 pt-lg-5 loading">
+        <span class="spinner spinner-border spinner-border-sm" role="status"></span>
+    </div>
+    <video class="mx-auto fit-height zoom d-block"
+           style="max-width: 100%" data-scroll="0"
+           src="/submission/{{ submission.ID }}/file/{{ loop.index0 }}/{{ filenames_id[loop.index0] }}"
+           poster="/submission/{{ submission.ID }}/thumbnail/"
+           preload="metadata"
+           onloadedmetadata="document.querySelector('#file-{{ loop.index0 }} .error').hidden = document.querySelector('#file-{{ loop.index0 }} .loading').hidden = true; this.hidden = false"
+           onerror="document.querySelector('#file-{{ loop.index0 }} .loading').hidden = true; document.querySelector('#file-{{ loop.index0 }} .error').hidden = false"
+           hidden controls>
+        <a class="btn btn-sm btn-primary mt-2"
+           href="/submission/{{ submission.ID }}/file/{{ loop.index0 }}/{{ filenames_id[loop.index0] }}">
+            {{ filenames[loop.index0]|title }}
+        </a>
+    </video>
+    {% elif ext in ["swf"] %}
+    <div class="flash-file">
+        <div class="mt-1 mb-2 mt-lg-5 pt-lg-5 error" hidden>
+            <span class="badge bg-danger">Ruffle error</span>
+        </div>
+        <div class="mt-2 mb-2 mt-lg-5 pt-lg-5 loading">
+            <span class="spinner spinner-border spinner-border-sm" role="status"></span>
+        </div>
+        <div class="fit-height mx-auto flash-container" hidden></div>
+    </div>
+    {% elif ext in ["txt"] %}
+    <div class="border rounded p-2 text-start font-monospace small overflow-scroll text-wrap fit-height bg-body">
+        <div class="col-12 text-center" style="min-height: 120px">
+            <span class="badge bg-danger error" style="margin-top: calc(60px - .5rem)" hidden>Thumbnail not found</span>
+            <span class="spinner spinner-border spinner-border-sm loading" role="status"
+                  style="margin-top: calc(60px - .5rem)"></span>
+            <img class="img-fluid rounded" src="/submission/{{ submission.ID }}/thumbnail/" alt=""
+                 onload="this.parentNode.querySelector('.loading').hidden = true; this.hidden = false"
+                 onerror="this.parentNode.querySelector('.loading').hidden = true; this.parentNode.querySelector('.error').hidden = false"
+                 hidden>
+        </div>
+        <div class="mt-2">
+            {% if files_text[loop.index0] %}
+            {% autoescape false %}{{ files_text[loop.index0].strip() }}{% endautoescape %}
+            {% else %}
+            <div class="text-center"><span class="badge bg-danger">No text</span></div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif ext in ["mp3", "wav", "mid"] %}
+    <div class="col-12 text-center" style="min-height: 120px">
+        <span class="badge bg-danger error" style="margin-top: calc(60px - .5rem)" hidden>Thumbnail not found</span>
+        <span class="spinner spinner-border spinner-border-sm loading" role="status"
+              style="margin-top: calc(60px - .5rem)"></span>
+        <img class="img-fluid rounded" src="/submission/{{ submission.ID }}/thumbnail/" alt=""
+             onload="this.parentNode.querySelector('.loading').hidden = true; this.hidden = false"
+             onerror="this.parentNode.querySelector('.loading').hidden = true; this.parentNode.querySelector('.error').hidden = false"
+             hidden>
+    </div>
+    <div class="mt-2">
+        <span class="badge bg-danger error" hidden>File not found</span>
+        <audio src="/submission/{{ submission.ID }}/file/{{ loop.index0 }}/{{ filenames_id[loop.index0] }}"
+               onerror="this.hidden = true; this.parentNode.querySelector('.error').hidden = false"
+               controls>
+            <a class="btn btn-sm btn-primary mt-2"
+               href="/submission/{{ submission.ID }}/file/{{ loop.index0 }}/{{ filenames_id[loop.index0] }}">
+                {{ filenames[loop.index0]|title }}
+            </a>
+        </audio>
+    </div>
+    {% else %}
+    <div class="col-12 text-center" style="min-height: 120px">
+        <span class="badge bg-danger error" style="margin-top: calc(60px - .5rem)" hidden>Thumbnail not found</span>
+        <span class="spinner spinner-border spinner-border-sm loading" role="status"
+              style="margin-top: calc(60px - .5rem)"></span>
+        <img class="img-fluid rounded" src="/submission/{{ submission.ID }}/thumbnail/" alt=""
+             onload="this.parentNode.querySelector('.loading').hidden = true; this.hidden = false"
+             onerror="this.parentNode.querySelector('.loading').hidden = true; this.parentNode.querySelector('.error').hidden = false"
+             hidden>
+    </div>
+    <a class="btn btn-sm btn-primary mt-2"
+       href="/submission/{{ submission.ID }}/file/{{ loop.index0 }}/{{ filenames_id[loop.index0] }}">
+        {{ filenames[loop.index0]|title }}
+    </a>
+    {% endif %}
+    {% if submission.FILEEXT|length > 1 %}
+        <div class="btn-toolbar mt-1 justify-content-center" style="height: 1.5rem">
+            <div class="btn-group btn-separator bg-body">
+                <button class="btn btn-xs btn-primary file-switcher-prev" onclick="prevSubmission()" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         class="bi bi-caret-left-fill" viewBox="0 0 16 16">
+                        <path d="m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-xs btn-primary" style="width: 4rem" disabled>
+                    <span class="file-switcher-count">1</span>/{{ submission.FILEEXT|length }}
+                </button>
+                <button class="btn btn-xs btn-primary file-switcher-next" onclick="nextSubmission()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         class="bi bi-caret-right-fill" viewBox="0 0 16 16">
+                        <path d="m12.14 8.753-5.482 4.796c-.646.566-1.658.106-1.658-.753V3.204a1 1 0 0 1 1.659-.753l5.48 4.796a1 1 0 0 1 0 1.506z"></path>
+                    </svg>
+                </button>
+            </div>
+            {% if ext not in ["jpg", "jpeg", "png", "gif"] %}
+                <button class="btn btn-xs btn-primary ms-1"
+                        style="max-height: 1.5rem"
+                        onclick="const fc = document.getElementById('file-container'); if (fc.classList.contains('zoomed')) {fc.classList.remove('zoomed')} else {fc.classList.add('zoomed')}">
+                    <i class="zoom"></i>
+                </button>
+            {% endif %}
+        </div>
+    {% elif ext in ["mp4", "mov", "webm", "ogg", "3gp"] %}
+        <div class="btn-toolbar mt-1 justify-content-center" style="height: 1.5rem">
+            <button class="btn btn-xs btn-primary"
+                    style="max-height: 1.5rem"
+                    onclick="const fc = document.getElementById('file-container'); if (fc.classList.contains('zoomed')) {fc.classList.remove('zoomed')} else {fc.classList.add('zoomed')}">
+                <i class="zoom"></i>
+            </button>
+        </div>
+    {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+{% endset %}
+
+<body class="mb-4" data-scroll="0">
+
+{% include "navbar.html" %}
+
+<div class="container mt-3 mt-lg-4">
+    <div class="row align-middle">
+        <div class="col-12 col-lg-8" style="z-index: 1 !important" id="file-container">{{ file }}</div>
+
+        <div class="col-12 col-lg-4 mt-3 mt-lg-0 mx-auto" id="metadata">
+            <div class="card">
+                <h2 class="card-header">{{ submission.TITLE }}</h2>
+                <div class="card-header d-lg-none text-center">
+                    <div class="btn-group btn-separator col-12 col-md-8" role="group">
+                        <a class="btn btn-sm btn-primary {{ "disabled" if not next }}" href="/submission/{{ next }}">
+                            Next
+                        </a>
+                        <a class="btn btn-sm btn-primary" href="/gallery/{{ submission.AUTHOR }}">Gallery</a>
+                        <a class="btn btn-sm btn-primary" href="/submissions/{{ submission.AUTHOR }}">All</a>
+                        <a class="btn btn-sm btn-primary" href="/scraps/{{ submission.AUTHOR }}">Scraps</a>
+                        <a class="btn btn-sm btn-primary {{ "disabled" if not prev }}" href="/submission/{{ prev }}">
+                            Prev
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <h6 class="col-4 card-title">Author</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary w-100 text-truncate"
+                               href="/user/{{ submission.AUTHOR }}">{{ submission.AUTHOR }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Date</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary text-truncate w-100"
+                               href="/search/submissions/?query=%40date%20{{ submission.DATE.strftime("%Y-%m-%d") }}">
+                                {{ submission.DATE.strftime("%Y-%m-%d %H:%M") }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Folder</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary w-100 text-truncate"
+                               href="/{{ submission.FOLDER }}/{{ submission.AUTHOR }}">
+                                {{ submission.FOLDER|title }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Type</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary w-100 text-truncate"
+                               href="/search/submissions/?query=%40type%20%22{{ submission.TYPE }}%22">
+                                {{ submission.TYPE|title }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Category</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary w-100 text-truncate"
+                               href="/search/submissions/?query=%40category%20%22{{ submission.CATEGORY }}%22">
+                                {{ submission.CATEGORY|title }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Species</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary w-100 text-truncate"
+                               href="/search/submissions/?query=%40species%20%22{{ submission.SPECIES }}%22">
+                                {{ submission.SPECIES|title }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Gender</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary w-100 text-truncate"
+                               href="/search/submissions/?query=%40gender%20%22{{ submission.GENDER }}%22">
+                                {{ submission.GENDER|title }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Rating</h6>
+                        <div class="col-8 card-text">
+                            <a class="btn btn-xs btn-primary w-100 text-truncate"
+                               href="/search/submissions/?query=%40rating%20%22{{ submission.RATING }}%22">
+                                {{ submission.RATING|title }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Tags</h6>
+                        <div class="col-8 card-text">
+                            {% for tag in submission.TAGS %}
+                                <a class="btn btn-xs btn-primary text-truncate"
+                                   href='/search/submissions/?query=%40tags%20%22%7C{{ tag }}%7C%22'>{{ tag }}</a>
+                            {% endfor %}
+                            {% if not submission.TAGS %}
+                                <span class="badge bg-danger w-100 text-truncate">No tags</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Favorites</h6>
+                        <div class="col-8 card-text">
+                            {% for user in submission.FAVORITE %}
+                                <a class="btn btn-xs btn-primary text-truncate"
+                                   href="/user/{{ user }}">{{ user }}</a>
+                            {% endfor %}
+                            {% if not submission.FAVORITE %}
+                                <span class="badge bg-danger w-100 text-truncate">No favorites</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <h6 class="col-4 card-title">Mentions</h6>
+                        <div class="col-8 card-text">
+                            {% for user in submission.MENTIONS %}
+                                <a class="btn btn-xs btn-primary text-truncate"
+                                   href="/user/{{ user }}">{{ user }}</a>
+                            {% endfor %}
+                            {% if not submission.MENTIONS %}
+                                <span class="badge bg-danger w-100 text-truncate">No mentions</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if comments %}
+                        <div class="row mt-1">
+                            <h6 class="col-4 card-title">Comments</h6>
+                            <div class="col-8 card-text">
+                                <span class="badge bg-info w-100 text-truncate">{{ comments|length }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-center">
+                    <div class="row text-center">
+                        <div class="btn-group btn-separator col-8 col-md-6 col-lg-8 ms-auto" role="group">
+                            <a class="btn btn-sm btn-secondary disabled">Download</a>
+                            <a class="btn btn-sm btn-primary {{ "disabled" if submission.FILESAVED < 2 }}"
+                               href="{{ "/submission/{0}/file/0/{1}".format(submission.ID, filenames_id[0]) if submission.FILEEXT|length < 2 else "/submission/{0}/files/{0:010d}.zip".format(submission.ID) }}"
+                               download>
+                                {{ "File" if submission.FILEEXT|length < 2 else "Files" }}
+                            </a>
+                            <a class="btn btn-sm btn-primary"
+                               href="/submission/{{ submission.ID }}/zip/submission-{{ "{0:010}".format(submission.ID) }}.zip">
+                                ZIP
+                            </a>
+                        </div>
+                        <div class="btn-group col-4 col-md-2 col-lg-4 me-auto">
+                            <a class="btn btn-sm btn-primary"
+                               href="https://www.furaffinity.net/view/{{ submission.ID }}">
+                                FA
+                            </a>
+                        </div>
+                        <div class="btn-group btn-separator col-12 mt-1 d-none d-lg-flex" role="group">
+                            <a class="btn btn-sm btn-primary {{ "disabled" if not next }}"
+                               href="/submission/{{ next }}">
+                                Next
+                            </a>
+                            <a class="btn btn-sm btn-primary" href="/gallery/{{ submission.AUTHOR }}">Gallery</a>
+                            <a class="btn btn-sm btn-primary" href="/submissions/{{ submission.AUTHOR }}">All</a>
+                            <a class="btn btn-sm btn-primary" href="/scraps/{{ submission.AUTHOR }}">Scraps</a>
+                            <a class="btn btn-sm btn-primary {{ "disabled" if not prev }}"
+                               href="/submission/{{ prev }}">
+                                Prev
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 mt-3" id="description">
+            <div class="card">
+                <div class="card-body col-12 col-lg-9 mx-auto">
+                    <div class="card-text text-wrap overflow-hidden">
+                        {% autoescape false %}{{ submission.DESCRIPTION }}{% endautoescape %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8 mt-3 mx-auto order-last" id="comments">
+            {% if comments %}{% include "comments.html" %}{% endif %}
+        </div>
+
+        {% set floating_buttons = 0 %}
+
+        {% if comments %}
+            <a href="#comments">
+                <button class="btn btn-secondary btn-circle position-fixed"
+                        style="right: .25rem; bottom: {{ "calc(.25rem" + (" + 45px + .25rem" * floating_buttons) + ")" }}; z-index: 1 !important;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
+                         viewBox="0 0 18 18">
+                        <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"></path>
+                        <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"></path>
+                    </svg>
+                </button>
+            </a>
+            {% set floating_buttons = floating_buttons + 1 %}
+        {% endif %}
+
+        {% if submission.FILESAVED %}
+            <button id="button-sticky"
+                    class="btn btn-secondary btn-circle position-fixed"
+                    style="right: .25rem; bottom: {{ "calc(.25rem" + (" + 45px + .25rem" * floating_buttons) + ")" }}; z-index: 1 !important;"
+                    onclick="const c = document.getElementById('file-container'); c.classList.contains('sticky-top') ? c.classList.remove('sticky-top') : c.classList.add('sticky-top')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="mb-1"
+                     viewBox="0 0 16 16">
+                    <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"></path>
+                    <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"></path>
+                </svg>
+            </button>
+            {% set floating_buttons = floating_buttons + 1 %}
+        {% endif %}
+    </div>
+</div>
+
+{% if submission.FILEEXT|length > 1 %}
+    <script>
+        let index = 0
+        const maxIndex =
+        {{ submission.FILEEXT|length - 1 }}
+
+        const prevSubmission = () => {
+            const fileCurrent = document.getElementById(`file-${index}`),
+                fileNext = document.getElementById(`file-${index - 1}`),
+                prevs = document.querySelectorAll(".file-switcher-prev"),
+                nexts = document.querySelectorAll(".file-switcher-next"),
+                counts = document.querySelectorAll(".file-switcher-count")
+            index -= 1
+            counts.forEach(count => count.innerText = String(index + 1))
+            prevs.forEach(prev => prev.disabled = index <= 0)
+            nexts.forEach(next => next.disabled = false)
+            if (fileCurrent) {
+                fileCurrent.hidden = true
+                fileCurrent.querySelectorAll("video").forEach((v) => v.pause())
+            }
+            if (fileNext) fileNext.hidden = false
+        }
+
+        const nextSubmission = () => {
+            const fileCurrent = document.getElementById(`file-${index}`),
+                fileNext = document.getElementById(`file-${index + 1}`),
+                prevs = document.querySelectorAll(".file-switcher-prev"),
+                nexts = document.querySelectorAll(".file-switcher-next"),
+                counts = document.querySelectorAll(".file-switcher-count")
+            index += 1
+            counts.forEach(count => count.innerText = String(index + 1))
+            prevs.forEach(prev => prev.disabled = false)
+            nexts.forEach(next => next.disabled = index >= maxIndex)
+            if (fileCurrent) {
+                fileCurrent.hidden = true
+                fileCurrent.querySelectorAll("video").forEach((v) => v.pause())
+            }
+            if (fileNext) fileNext.hidden = false
+        }
+    </script>
+{% endif %}
+
+{% if data_scroll %}
+    <script>
+        window.onscroll = () => {
+            document
+                .querySelectorAll("[data-scroll]")
+                .forEach((elem) =>
+                    elem.dataset.scroll = String(elem.getBoundingClientRect().top <= 1 ? 1 : 0))
+        }
+    </script>
+{% endif %}
+
+{% if submission.FILEEXT|map("lower")|select("swf") %}
+    <!--suppress JSUnresolvedFunction, JSUnusedLocalSymbols, JSUnresolvedVariable -->
+    <script>
+        window.RufflePlayer = window.RufflePlayer || {};
+        window.addEventListener("load", (event) => {
+            if (window.RufflePlayer.newest === undefined) return alert("Ruffle is not loaded")
+            document
+                .querySelectorAll("#file-container .flash-file")
+                .forEach((flashFile) => {
+                    const player = window.RufflePlayer.newest().createPlayer();
+                    player.config = {scale: "showAll"}
+                    flashFile.querySelector(".flash-container").appendChild(player);
+                    player.addEventListener("loadeddata", () => {
+                        flashFile.querySelector(".loading").hidden = true
+                        flashFile.querySelector(".flash-container").hidden = false
+                    })
+                    player.load("/submission/{{ submission.ID }}/file")
+                        .then()
+                        .catch((e) => {
+                            if (e !== undefined) console.error(e)
+                            flashFile.querySelector(`.loading`).hidden = true
+                            flashFile.querySelector(`.error`).hidden = false
+                            flashFile.querySelector(`.flash-container`).hidden = true
+                        });
+                })
+        });
+    </script>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+{% endif %}
+</body>
+</html>
