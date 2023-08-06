@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+"""
+This script checks that all terraform directories under the directory provided contain backend configs.
+
+Usage:
+    backend_check [options] PATHS...
+
+Arguments:
+    PATHS   Paths to check.
+
+Options:
+    -h, --help          Show this message and exit.
+    --version           Show the version.
+"""
+import concurrent.futures
+import os
+import sys
+
+from docopt import docopt
+
+from terrawrap.exceptions import NotTerraformConfigDirectory
+from terrawrap.utils.config import (
+    parse_backend_config_for_dir, find_wrapper_config_files,
+    parse_wrapper_configs
+)
+from terrawrap.utils.version import version_check
+from terrawrap.version import __version__
+
+
+def main():
+    version_check(current_version=__version__)
+    arguments = docopt(__doc__, version="Terrawrap %s" % __version__)
+
+    config_dirs = {
+        path if os.path.isdir(path) else os.path.dirname(path)
+        for path in arguments["PATHS"]
+    }
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures_to_dirs = {
+            executor.submit(
+                check_directory_for_backend,
+                dir_path=config_dir,
+            ): config_dir
+            for config_dir in config_dirs
+            if config_dir
+        }
+
+        config_dirs_without_terraform_backend = {
+            futures_to_dirs[future]
+            for future in concurrent.futures.as_completed(futures_to_dirs)
+            if not future.result()
+        }
+
+    if config_dirs_without_terraform_backend:
+        print("The following config directories do not have Terraform Backends defined:")
+        for config_dir in config_dirs_without_terraform_backend:
+            print("\t", config_dir)
+        print("\nPlease define a Terraform Backend: https://www.terraform.io/docs/backends/")
+        sys.exit(1)
+
+
+def check_directory_for_backend(dir_path: str) -> bool:
+    wrapper_config_files = find_wrapper_config_files(path=os.path.abspath(dir_path))
+    wrapper_config = parse_wrapper_configs(wrapper_config_files=wrapper_config_files)
+    # return True if backend_check is disabled for a directory
+    if not wrapper_config.backend_check:
+        return True
+
+    try:
+        backend_config = parse_backend_config_for_dir(dir_path)
+        return backend_config is not None
+    except NotTerraformConfigDirectory:
+        # Skip directories that don't contain terraform .tf files
+        return True
+
+
+if __name__ == '__main__':
+    main()

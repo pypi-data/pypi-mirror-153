@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+"""
+Terraform Wrapper Apply
+
+Usage:
+    tf_apply --pipeline=PIPELINE [--operation=OPERATION] [--parallel-jobs=NUM_JOBS] [--debug] [--print-only-changes]
+    tf_apply --version
+
+Options:
+
+    -h,--help                                   Display this message.
+    -p PIPELINE --pipeline=PIPELINE             Path to the pipeline file to execute.
+    -o OPERATION --operation=OPERATION          Which terraform command to run in the directories defined in
+                                                the pipeline file.
+                                                [default: plan]
+    -j NUM_JOBS --parallel-jobs=NUM_JOBS        The number of Terraform operations to run in parallel.
+                                                [default: 4].
+    -v,--debug                                  Turns on debug logging.
+    --print-only-changes                        Only print output for directories that have changes.
+    --version                                   Display the current version of Terraform Wrapper.
+"""
+
+from docopt import docopt
+
+from terrawrap.models.pipeline import Pipeline
+from terrawrap.utils.version import version_check
+from terrawrap.version import __version__
+from terrawrap.utils.path import get_absolute_path
+
+
+def handler():
+    version_check(current_version=__version__)
+    args = docopt(__doc__, version="Terrawrap %s" % __version__)
+
+    pipeline_file = get_absolute_path(args['--pipeline'])
+
+    operation = args['--operation'].strip()
+
+    try:
+        num_parallel = int(args['--parallel-jobs'])
+    except ValueError:
+        raise RuntimeError(
+            "Unable to parse number of parallel jobs, '%s' is not an integer." % args['--parallel-jobs']
+        )
+
+    pipeline = Pipeline(operation, pipeline_path=pipeline_file)
+
+    pipeline.execute(
+        num_parallel=num_parallel,
+        debug=args['--debug'],
+        print_only_changes=args['--print-only-changes'],
+    )
+
+
+if __name__ == "__main__":
+    handler()

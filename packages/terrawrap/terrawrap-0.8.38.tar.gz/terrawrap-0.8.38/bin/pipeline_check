@@ -1,0 +1,135 @@
+#!/usr/bin/env python
+"""
+This script checks that all terraform directories under the directory provided contain backend configs.
+
+Usage:
+    pipeline_check [options] [PATHS...]
+
+Arguments:
+    PATHS    If provided, this check is confined to the provided paths.
+
+Options:
+    -h, --help                      Show this message and exit.
+    --version                       Show the version.
+    --pipeline-dir PIPELINE_DIR     The directory that contains the pipeline files.
+    --config-dir CONFIG_DIR         The directory that contains the config directories.
+"""
+import os
+import csv
+
+from docopt import docopt
+
+from terrawrap.utils.config import find_wrapper_config_files, parse_wrapper_configs
+from terrawrap.utils.version import version_check
+from terrawrap.version import __version__
+
+
+def main():
+    version_check(current_version=__version__)
+    arguments = docopt(__doc__, version="Terrawrap %s" % __version__)
+
+    if os.path.isabs(arguments["--config-dir"]):
+        root_config_dir = arguments["--config-dir"]
+    else:
+        root_config_dir = os.path.join(os.getcwd(), arguments["--config-dir"])
+
+    project_root_dir = os.path.dirname(root_config_dir)
+
+    if os.path.isabs(arguments["--pipeline-dir"]):
+        pipeline_dir = arguments["--pipeline-dir"]
+    else:
+        pipeline_dir = os.path.join(os.getcwd(), arguments["--pipeline-dir"])
+
+    provided_directories = {
+        path if os.path.isdir(path) else os.path.dirname(path)
+        for path in arguments["PATHS"]
+    }
+
+    config_directories = set()
+
+    for current_dir, dirs, files in os.walk(root_config_dir, followlinks=True):
+        config_dir = current_dir[len(project_root_dir) + 1:]  # Remove root to make comparisons easier
+
+        if provided_directories and config_dir not in provided_directories:
+            continue
+
+        if ".terraform" in current_dir:
+            continue
+
+        if not any(entry.endswith(".tf") for entry in files):
+            continue
+
+        config_directories.add(config_dir)
+
+    duplicate_pipeline_directories = set()
+    pipeline_directories = set()
+    pipelines = os.listdir(pipeline_dir)
+
+    for pipeline in pipelines:
+        with open(os.path.join(pipeline_dir, pipeline), "r", encoding='utf-8') as pipeline_file:
+            csv_reader = csv.DictReader(pipeline_file)
+            for row in csv_reader:
+                directory = row['directory']
+                if provided_directories and directory not in provided_directories:
+                    continue
+
+                if directory in pipeline_directories:
+                    duplicate_pipeline_directories.add(directory)
+                else:
+                    pipeline_directories.add(directory)
+
+    config_directories_not_in_pipelines = config_directories - pipeline_directories
+
+    for config_dir in config_directories_not_in_pipelines.copy():
+        wrapper_config_files = find_wrapper_config_files(path=os.path.join(project_root_dir, config_dir))
+        wrapper_config = parse_wrapper_configs(wrapper_config_files=wrapper_config_files)
+        if not wrapper_config.pipeline_check:
+            config_directories_not_in_pipelines.remove(config_dir)
+
+    any_problems = False
+
+    if config_directories_not_in_pipelines:
+        any_problems = True
+        print("The following directories are not in pipelines:")
+        for directory in sorted(config_directories_not_in_pipelines):
+            print("\t%s" % directory)
+        print("")
+
+    pipeline_directories_not_in_config = pipeline_directories - config_directories
+
+    if pipeline_directories_not_in_config:
+        any_problems = True
+        print("The following directories are in pipelines but don't exist:")
+        for directory in sorted(pipeline_directories_not_in_config):
+            print("\t%s" % directory)
+        print("")
+
+    if duplicate_pipeline_directories:
+        any_problems = True
+        print("The following directories are duplicated across one or more pipelines:")
+        for directory in sorted(duplicate_pipeline_directories):
+            print("\t%s" % directory)
+        print("")
+
+    if any_problems:
+        print("Please update the pipeline files.")
+        exit(1)
+
+
+def parse_config_file(config_dir: str):
+    config_path = os.path.join(config_dir, ".tf_wrapper")
+    config = {}
+
+    if not os.path.exists(config_path):
+        return config
+
+    with open(os.path.join(config_path), "r", encoding='utf-8') as config_file:
+        for line in config_file.readlines():
+            key, value = line.lower().split("=", 1)
+            config[key.strip()] = value.strip()
+
+    return config
+
+
+if __name__ == '__main__':
+    main()
