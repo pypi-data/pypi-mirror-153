@@ -1,0 +1,246 @@
+{
+  "type": "record",
+  "name": "Operation",
+  "namespace": "com.linkedin.pegasus2avro.common",
+  "doc": "Operational info for an entity.",
+  "fields": [
+    {
+      "name": "timestampMillis",
+      "type": "long",
+      "doc": "The event timestamp field as epoch at UTC in milli seconds."
+    },
+    {
+      "name": "eventGranularity",
+      "type": [
+        "null",
+        {
+          "type": "record",
+          "name": "TimeWindowSize",
+          "namespace": "com.linkedin.pegasus2avro.timeseries",
+          "doc": "Defines the size of a time window.",
+          "fields": [
+            {
+              "name": "unit",
+              "type": {
+                "type": "enum",
+                "name": "CalendarInterval",
+                "symbols": [
+                  "SECOND",
+                  "MINUTE",
+                  "HOUR",
+                  "DAY",
+                  "WEEK",
+                  "MONTH",
+                  "QUARTER",
+                  "YEAR"
+                ]
+              },
+              "doc": "Interval unit such as minute/hour/day etc."
+            },
+            {
+              "name": "multiple",
+              "type": "int",
+              "doc": "How many units. Defaults to 1.",
+              "default": 1
+            }
+          ]
+        }
+      ],
+      "doc": "Granularity of the event if applicable",
+      "default": null
+    },
+    {
+      "name": "partitionSpec",
+      "type": [
+        {
+          "type": "record",
+          "name": "PartitionSpec",
+          "namespace": "com.linkedin.pegasus2avro.timeseries",
+          "doc": "Defines how the data is partitioned",
+          "fields": [
+            {
+              "name": "type",
+              "type": {
+                "type": "enum",
+                "name": "PartitionType",
+                "symbols": [
+                  "FULL_TABLE",
+                  "QUERY",
+                  "PARTITION"
+                ]
+              },
+              "default": "PARTITION"
+            },
+            {
+              "name": "partition",
+              "type": "string",
+              "doc": "String representation of the partition",
+              "TimeseriesField": {}
+            },
+            {
+              "name": "timePartition",
+              "type": [
+                "null",
+                {
+                  "type": "record",
+                  "name": "TimeWindow",
+                  "fields": [
+                    {
+                      "name": "startTimeMillis",
+                      "type": "long",
+                      "doc": "Start time as epoch at UTC."
+                    },
+                    {
+                      "name": "length",
+                      "type": "TimeWindowSize",
+                      "doc": "The length of the window."
+                    }
+                  ]
+                }
+              ],
+              "doc": "Time window of the partition if applicable",
+              "default": null
+            }
+          ]
+        },
+        "null"
+      ],
+      "doc": "The optional partition specification.",
+      "default": {
+        "partition": "FULL_TABLE_SNAPSHOT",
+        "type": "FULL_TABLE",
+        "timePartition": null
+      }
+    },
+    {
+      "name": "messageId",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "The optional messageId, if provided serves as a custom user-defined unique identifier for an aspect value.",
+      "default": null
+    },
+    {
+      "name": "actor",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "Actor who issued this operation.",
+      "default": null,
+      "TimeseriesField": {},
+      "java": {
+        "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+      }
+    },
+    {
+      "name": "operationType",
+      "type": {
+        "type": "enum",
+        "name": "OperationType",
+        "doc": "Enum to define the operation type when an entity changes.",
+        "symbols": [
+          "INSERT",
+          "UPDATE",
+          "DELETE",
+          "CREATE",
+          "ALTER",
+          "DROP",
+          "CUSTOM",
+          "UNKNOWN"
+        ],
+        "symbolDocs": {
+          "ALTER": "Asset was altered",
+          "CREATE": "Asset was created",
+          "CUSTOM": "Custom asset operation",
+          "DELETE": "Rows were deleted",
+          "DROP": "Asset was dropped",
+          "INSERT": "Rows were inserted",
+          "UPDATE": "Rows were updated"
+        }
+      },
+      "doc": "Operation type of change.",
+      "TimeseriesField": {}
+    },
+    {
+      "name": "customOperationType",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "A custom type of operation. Required if operationType is CUSTOM.",
+      "default": null,
+      "TimeseriesField": {}
+    },
+    {
+      "name": "numAffectedRows",
+      "type": [
+        "null",
+        "long"
+      ],
+      "doc": "How many rows were affected by this operation.",
+      "default": null,
+      "TimeseriesField": {}
+    },
+    {
+      "name": "affectedDatasets",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": "string"
+        }
+      ],
+      "doc": "Which other datasets were affected by this operation.",
+      "default": null,
+      "TimeseriesFieldCollection": {
+        "key": "datasetName"
+      }
+    },
+    {
+      "name": "sourceType",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "OperationSourceType",
+          "doc": "The source of an operation",
+          "symbols": [
+            "DATA_PROCESS",
+            "DATA_PLATFORM"
+          ],
+          "symbolDocs": {
+            "DATA_PLATFORM": "Rows were updated",
+            "DATA_PROCESS": "Provided by a Data Process"
+          }
+        }
+      ],
+      "doc": "Source Type",
+      "default": null,
+      "TimeseriesField": {}
+    },
+    {
+      "name": "customProperties",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": "string"
+        }
+      ],
+      "doc": "Custom properties",
+      "default": null
+    },
+    {
+      "name": "lastUpdatedTimestamp",
+      "type": "long",
+      "doc": "The time at which the operation occurred.",
+      "TimeseriesField": {}
+    }
+  ],
+  "Aspect": {
+    "name": "operation",
+    "type": "timeseries"
+  }
+}
