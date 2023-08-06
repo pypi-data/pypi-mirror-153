@@ -1,0 +1,79 @@
+# dialog specification schema version 2.0
+# discussed with Jose Robins and team 2021-02-03 at wed night mob programming
+-
+  state: __default__
+  nlp: spacy
+-
+  state: introduction
+  bot: 
+    - "So, you need to write a personal essay for your college application, huh?"
+    - "You're doing {teacher_names}'s assignment aren't you?"
+  next: uncooperative  # state to go to if the student responds in a way not indicated below under "next_condition"
+  next condition:
+    assignment confirmed:   # state to go to if 'yes' or 'ok' are entered.
+      - yes
+      - y
+      - true
+      - yup
+      - yes sir
+      - you got it
+      - yes, thank you
+      - perfect!
+      - roger
+      - ok
+    explain assignment:
+      - i think so
+      - i'm not sure
+      - maybe
+      - i can't remember
+    exit:
+      - exit
+      - done
+      - bye
+      - goodbye
+      - cya
+      - hasta
+      - I'm done
+-
+  state: assignment confirmed
+  bot: "Do you know what you’d like to write?"
+  next condition:
+    uncooperative:
+      - nope, and I don't care
+      - i hate this assignment
+      - i hate you
+      - go away
+      - i don't talk to bots
+      - f off
+    topic known:
+      - yes
+-
+  state: topic known
+  bot: "Excellent! Tell me more about it!"
+  next condition:
+    uncooperative:
+      - no
+    exit:
+      - exit
+      - quit
+- 
+  state: done
+  bot: "Congratulations {student_name}! Looks like you have a plan! I'll let {teacher_name} know you've leveled up on your personal essay writing skill."
+  next condition: null
+- 
+  state: exit
+  bot: "Goodbye {student_name}! Come back and chat any time you like!"
+  next condition: null
+-
+  state: uncooperative
+  bot: No worries. Come back any time you'd like to chat with me about your assignment.
+  next condition: null
+-
+  # optional defaults for this yml file
+  state: __default__
+  nlp:
+    __default__: use
+# - next condition: `null` causes the chatbot program to say goodbye and exit
+# - `yes`, `y`, `true` creates a default list of affirmative intents
+# If only a single next_condition intent string is found, additional intents are inferred:
+#    - if there is another list of intents that starts with a single intent string? use that 

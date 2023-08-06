@@ -1,0 +1,145 @@
+# dialog specification schema version 2.0
+# discussed with Jose Robins and team 2021-02-03 at wed night mob programming
+#
+# Additional features not yet discussed:
+#   - next condition: `null` causes the chatbot program to say goodbye and exit
+#   - `yes`, `y`, `true` creates a default list of affirmative intents
+# If only a single next_condition intent string is found, additional intents are inferred:
+#   - If there is another list of intents that starts with a single intent string? use that
+#   - state names and keywords (like next_condition) fall back to normalized version that remove spaces, underscores, and fold case to lowercase (like wiki_normalize_text but dont delete/ignore digits) 
+
+-
+  # optional defaults for this yml file
+  state: __default__
+  nlp:
+    __default__: KEYWORD #change to SPACY; PLAY WITH THIS A BIT - KEYWORD. 
+  version: 2.0  # added by Hobson 2021-03-14
+-
+  state: welcome_state
+  bot: 
+    - Would you like to improve your physical strength and resilience?
+  next_condition:
+    physical_resilience_exercise:
+      - "yes"
+-
+  state: physical_resilience_exercise
+  bot: 
+    - |-
+      Stand up and take 3 steps. 
+      Let me know when you're done.
+    - |-
+      Make your hands into fists. Raise them over your head as high as you can for 5 seconds.
+      Let me know when you're done.
+    - |-
+      Stand up and take 3 steps. Then make your hands into fists. Raise them over your head as high as you can for 5 seconds.
+      Let me know when you're done.
+  next_condition:
+    physical_resilience_done:
+      - I did it!
+      - done
+      - I'm done now
+      - I'm back
+      - ""
+    physical_resilience_exercise:
+      - What was that?
+      - What do you mean?
+      - Could you say that again?
+      - huh?
+    mental_resilience_welcome:
+      - I couldn't do it.
+      - I had trouble doing that.
+      - I failed.
+      - Sorry but I can't do that.
+-
+  state: physical_resilience_done
+  bot: 
+    - |-
+      Excellent! 
+      Studies show that getting up and moving or stretching, even for just 5 seconds, improves your mental flexibility and performance. 
+      A flexible body makes a flexible mind! This can help you do better on problem solving tasks and increase your confidence. 
+      You can do something like this before any stressful situation, like a presentation or interview, or difficult conversation.
+    - |-
+      Awesome! 
+      Getting up and moving or stretching, even for just 5 seconds, improves your mental flexibility. 
+      You will overcome challenges faster and better after exercises like this. 
+      So do something like this before any stressful situation, like a presentation or interview, and see how much better you feel!
+-
+  state: mental_resilience_welcome
+  bot:
+    - Would you like to improve your mental flexibility and confidence?
+  next_condition:
+    mental_resilience_exercise:
+      - "yes"
+-
+  state: mental_resilience_exercise
+  bot: 
+    - Snap your fingers exactly 50 times. Let me know whe you're done.
+    - |-
+      Count backwards from 100 by 7 ("100", "93", ...). 
+      Let me know when you're done.
+  next_condition:
+    mental_resilience_done:
+      - done
+-
+  state: mental_resilience_done
+  bot:
+    - |-
+      Your mind just got stronger! What a difference one minute can make.
+      The science behind mental resilience:
+      Will power is like a muscle. It gets stronger the more you use it.
+      When you tackle a tiny challenge without giving up, you increase your mental focus and determination. If you can complete one tiny challenge like this each day, you can get better and better at being a great human!
+    - |-
+      Your mind just got stronger! What a difference one minute can make.
+      Science tells us that will power is like a muscle. It gets stronger the more you use it.
+      Each time you tackle a challenge without giving up, you increase your mental focus and determination. 
+      Even if it's just a tiny challenge, you will increase your will power a tiny bit.
+      So if you can complete one tiny challenge like this each day, you can get better and better at being a great human and acting on your ideas and life priorities!
+-
+  state: pick_exploration_welcome
+  bot:
+    - |-
+      Pick One:
+
+      1. If you're inside, find a window and look out of it for a few moments. If you're outside, find a window and look in it.
+
+      OR
+      
+      2. Do a quick YouTube or Google image search for "baby [your favorite animal]."
+    
+      Which one did you do?
+    
+  next_condition:
+    pick_exploration_window_done:
+      - one
+      - "1"
+      - window
+      - outside
+      - indoors
+    pick_exploration_animal_done:
+      - two
+      - "2"
+      - animal
+      - baby animal
+      - baby cat
+      - kitten
+      - puppy
+      - dog
+      - cat
+      - favorite pet
+      - pets
+    exploration_done:
+      - done
+      - both
+      - doesn't matter
+-
+  state: exploration_done
+  bot:
+    - |-
+      Your spirit just got stronger!
+
+      The science behind emotional resilience:
+
+      Every time you provoke a positive emotion, you increase your creativity, stamina and will power. Curiosity and love are just two of the emotions you can learn to provoke anytime, anywhere. If you can do three tiny things a day that make you feel good, then you can get SuperBetter.
+
+
+
