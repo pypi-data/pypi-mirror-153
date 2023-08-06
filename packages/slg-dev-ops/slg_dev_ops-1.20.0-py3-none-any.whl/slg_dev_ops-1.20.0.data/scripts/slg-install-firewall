@@ -1,0 +1,39 @@
+#!python
+import subprocess
+import os
+import argparse
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    bools.add_argument('-o', dest='openssh', action='store_false',
+                       help='Not recommended to tick, will not allow SSH access')
+
+    bools.add_argument('-p', dest='http', action='store_false',
+                       help='Tick to turn off allowing http, on by default')
+    bools.add_argument('-s', dest='https', action='store_false',
+                       help='Tick to turn off allowing https, on by default')
+
+    args = parser.parse_args()
+
+    return args
+
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+
+    subprocess.run('sudo ufw enable', shell=True)
+    if args.openssh:
+        subprocess.run('sudo ufw allow OpenSSH', shell=True)
+
+    if args.http:
+        subprocess.run('sudo ufw allow 80', shell=True)
+    if args.https:
+        subprocess.run('sudo ufw allow 443', shell=True)
+
+    print('\n\n--------Your new configuration--------\n')
+    subprocess.run('sudo ufw status', shell=True)

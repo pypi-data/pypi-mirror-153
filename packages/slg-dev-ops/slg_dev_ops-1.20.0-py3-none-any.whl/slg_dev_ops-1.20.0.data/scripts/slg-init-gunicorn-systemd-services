@@ -1,0 +1,98 @@
+#!python
+import subprocess
+import os
+import argparse
+from argparse import RawTextHelpFormatter
+from logger_slg import init_logger
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
+
+    parser.add_argument('project_path', help='Absolute path to the directory the project is in')
+
+    parser.add_argument('-u', '--username', required=True, help='The user these files belong to')
+
+    parser.add_argument('-s', '--staging_project_path', required=True, help='Absolute path to the staging version of the project')
+
+    args = parser.parse_args()
+
+    return args
+
+
+if __name__ == '__main__':
+    logger = init_logger(
+        name=__name__,
+        log_path=f'/var/log/slg/{__file__.split("/")[-1]}.log'
+    )
+
+    args = get_arguments()
+    print(args)
+
+    gunicorn_production_service = f'''
+[Unit]
+Description=gunicorn daemon
+# Since systemd 235 reloading target can pass through
+Requires=gunicorn_production.socket
+After=network.target
+
+[Service]
+User={args.username}
+Group=www-data
+WorkingDirectory={args.project_path}
+ExecStart={args.project_path}/venv/bin/gunicorn --bind 127.0.0.1:5000 -w 1 wsgi:app --access-logfile {args.project_path}/gunicorn-access.log --error-logfile {args.project_path}/gunicorn-error.log
+
+[Install]
+WantedBy=multi-user.target
+'''
+
+    gunicorn_production_socket = f'''
+[Unit]
+Description=gunicorn socket
+
+[Socket]
+ListenStream=/run/gunicorn_production.sock
+
+[Install]
+WantedBy=sockets.target
+'''
+
+    gunicorn_staging_service = f'''
+[Unit]
+Description=gunicorn daemon
+# Since systemd 235 reloading target can pass through
+Requires=gunicorn_staging.socket
+After=network.target
+
+
+[Service]
+User={args.username}
+Group=www-data
+WorkingDirectory={args.staging_project_path}
+ExecStart={args.staging_project_path}/venv/bin/gunicorn --bind 127.0.0.1:5001 -w 1 wsgi:app --access-logfile {args.staging_project_path}/gunicorn-access.log --error-logfile {args.staging_project_path}/gunicorn-error.log
+
+[Install]
+WantedBy=multi-user.target
+'''
+
+    gunicorn_staging_socket = f'''
+[Unit]
+Description=gunicorn socket
+
+[Socket]
+ListenStream=/run/gunicorn_staging.sock
+
+[Install]
+WantedBy=sockets.target
+'''
+
+    with open('/etc/systemd/system/gunicorn_production.service', 'w') as f:
+        f.write(gunicorn_production_service)
+    with open('/etc/systemd/system/gunicorn_production.socket', 'w') as f:
+        f.write(gunicorn_production_socket)
+    with open('/etc/systemd/system/gunicorn_staging.service', 'w') as f:
+        f.write(gunicorn_staging_service)
+    with open('/etc/systemd/system/gunicorn_staging.socket', 'w') as f:
+        f.write(gunicorn_staging_socket)
+
+    logger.info('Gunicorn systemd services successfully written')

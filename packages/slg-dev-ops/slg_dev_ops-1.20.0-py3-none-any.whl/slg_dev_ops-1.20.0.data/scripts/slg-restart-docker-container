@@ -1,0 +1,118 @@
+#!python
+import subprocess
+import os
+import argparse
+from argparse import RawTextHelpFormatter
+from logger_slg import init_logger
+import yaml
+from pprint import pformat
+
+# this section is here because when we pass in a config file we also want to include those variables as potential arguments
+# and required=True in the argparse arguments would not allow that to happen.
+# So from now on I'm using these two sections to verify arguments are up to standard
+REQUIRED_ARGUMENTS = []
+SENSITIVE_ARGUMENTS = ['sudo_password'] # place any passwords or other sensitive arguments in here to not expose them in configuration printing
+SPECIAL_REQUIREMENTS = { # variable must return a truthy value for these lambda functions in order to proceed with running the script; follow the example requirements precedence for setting new requirements
+    'config_filepath': [
+        {
+            'name': 'Filepath is an absolute filepath',
+            'requirement': lambda value: value.startswith('/')
+        },
+    ]
+}
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    # REQUIRED string value
+    parser.add_argument('sudo_password', help='pass')
+
+    # REQUIRED string value
+    parser.add_argument('image', help='Docker image name')
+
+    # REQUIRED string value
+    parser.add_argument('container_name', help='Running container name')
+
+    # REQUIRED string value
+    parser.add_argument('tag', help="The new image tag")
+
+    # integer value
+    parser.add_argument('-p', '--port', type=int,
+                        help='Which port we should map 80 to')
+
+    parser.add_argument('-c', '--config_filepath', default='/home/steven/.config/slg/slg-restart-docker-container.yml',
+                        help='Filepath of the config file we are using')
+
+    args = parser.parse_args()
+
+    return args
+
+def build_true_configuration(args, config_filepath=None):
+    # arguments defined at the command line take precedence over config file variables
+    config = {}
+    if config_filepath:
+        config = read_config_file(config_filepath)
+
+    dict_args = args.__dict__
+    for arg in dict_args:
+        if dict_args[arg] is not None:
+            config[arg] = dict_args[arg]
+
+    return config
+
+def strip_sensitive_arguments(config):
+    return {k: v for k, v in config.items() if k not in SENSITIVE_ARGUMENTS}
+
+def guarantee_requirements_met(config):
+    # config is the config object after assigning arg values to the config file values
+
+    # first iterate over required arguments
+    for argument in REQUIRED_ARGUMENTS:
+        if not config.get(argument):
+            logger.error(f'\n\nRequired argument "{argument}" not found. Exiting...')
+            exit(0)
+
+    # then iterate over the special requirements
+    for argument in SPECIAL_REQUIREMENTS:
+        value = config.get(argument)
+        for requirement_obj in SPECIAL_REQUIREMENTS[argument]:
+            if not requirement_obj['requirement'](value):
+                logger.error(f'\n\nSpecial requirement "{requirement_obj["name"]}" was not met for the argument "{argument}". Exiting...')
+                exit(0)
+
+def read_config_file(filepath):
+    try:
+        with open(filepath, 'r') as stream:
+            try:
+                config = yaml.safe_load(stream)
+                return config
+            except yaml.YAMLError as exc:
+                print(exc)
+                logger.error('\n\nYAML Error. Exiting...')
+                exit(0)
+    except FileNotFoundError:
+        logger.exception('Config file not found. Proceeding with defaults')
+        return {}
+
+if __name__ == '__main__':
+    args = get_arguments()
+
+    try:
+        logger = init_logger(
+            name=__name__,
+            log_path=f'/var/log/slg/{__file__.split("/")[-1]}.log'
+        )
+        config = build_true_configuration(args, args.config_filepath)
+        guarantee_requirements_met(config)
+        sensitive_stripped_config = strip_sensitive_arguments(config)
+        logger.info(f'\nUsing configuration:\n\n{pformat(sensitive_stripped_config)}')
+
+        subprocess.run(f"echo {config.get('sudo_password')} | sudo -S docker stop {config.get('container_name')}", shell=True)
+        subprocess.run(f"echo {config.get('sudo_password')} | sudo -S docker rm {config.get('container_name')}", shell=True)
+        subprocess.run(f"echo {config.get('sudo_password')} | sudo -S docker run -p {config.get('port')}:80 --name {config.get('container_name')} -d {config.get('image')}:{config.get('tag')}", shell=True)
+
+    except:
+        logger.exception('An error occurred')

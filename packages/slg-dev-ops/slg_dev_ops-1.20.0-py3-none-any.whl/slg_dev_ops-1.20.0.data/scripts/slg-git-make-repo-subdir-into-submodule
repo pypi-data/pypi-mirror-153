@@ -1,0 +1,62 @@
+#!python
+import os
+import subprocess
+import argparse
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    # REQUIRED string value
+    parser.add_argument('submodule_name', help="The submodule repo's name on github. NOT THE DIRECTORY NAME (directory name is implicitly grabbed. This also assumes its already been created on github")
+
+    # get directory submodule name (doesn't have to be the repo name)
+    parser.add_argument('-n', '--new_dir_name', default="default", help="The output directory name if you want to name it something other than the submodules name")
+
+    # integer value
+    parser.add_argument('-u', '--username', default="slgotting",
+                        help="Username for github. SSH token required.")
+
+    args = parser.parse_args()
+
+    return args
+
+def main(args):
+    confirmation = input('This must be called from the subdirectory itself. Are you in the subdirectory and should we continue? (y/n) ')
+
+    another_confirmation = input('Also, the submodule repository needs to be created on github before we can begin. If you are ready to begin, type y and hit enter: ')
+    
+    if confirmation.lower() != 'y' or another_confirmation.lower() != 'y':
+        print("Ok let's abort.")
+        return
+    else:
+        subdir_path = os.getcwd()
+        subdir_name = subdir_path.split('/')[-1]
+        new_dir_name = args.new_dir_name if args.new_dir_name != "default" else subdir_name
+
+    
+        cmd = f'''
+            git init &&
+            git remote add origin git@github.com:{args.username}/{args.submodule_name}.git &&
+            git add . &&
+            git commit -m 'directory to submodule conversion' &&
+            git push -u origin master &&
+            cd .. &&
+            rm -rf {subdir_path} &&
+            git add {subdir_path} &&
+            git commit -m 'upgrading subdirectory {subdir_name} to submodule' &&
+            git submodule add git@github.com:{args.username}/{args.submodule_name}.git {new_dir_name} &&
+            git add {new_dir_name} &&
+            git commit -m '{subdir_name} successfully upgraded to submodule {args.submodule_name} in folder {new_dir_name}'
+        '''.replace('\n', '')
+        
+
+        subprocess.run(cmd, shell=True)
+    
+
+
+if __name__ == "__main__":
+    args = get_arguments()
+    main(args)

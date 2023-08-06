@@ -1,0 +1,94 @@
+#!python
+import subprocess
+import os
+import argparse
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+    bools = parser.add_argument_group()
+
+    parser.add_argument('domain_name', help='The domain name without www attached but with TLD attached, ie example.com')
+
+    parser.add_argument('project_name', help="The name of the project, or the repository's name")
+
+    parser.add_argument('-s', '--sub_domains', type=str, required=True,
+                        help='Comma separated list of all subdomains we should create ')
+
+    parser.add_argument('-u', '--username', type=str, required=True,
+                        help='The user calling this script. Since this is run as sudo it is necessary')
+
+    parser.add_argument('-e', '--email_address', type=str, required=True,
+                        help='The email address to point LetsEncrypt to, so we can run the script non-interactively')
+
+    parser.add_argument('-to', '--token', help='Digital ocean access token; Used in the event you want to add domain records to digital ocean.')
+
+    bools.add_argument('-a', '--add_domain_records', action='store_true',
+                    help='If you want to add the domain records to digital ocean')
+
+    bools.add_argument('-t', '--testing', action='store_true',
+                       help='If ticked, we will use the staging environment for letsencrypt and certbot')
+
+    args = parser.parse_args()
+
+    return args
+
+SERVER_CODE = lambda sub_domains, dn, tld: f'''
+server {{
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    root /var/www/html;
+    server_name {' '.join([f'{sub_d + "." if sub_d else ""}{dn}.{tld}' for sub_d in sub_domains])};
+}}
+'''
+
+def main(args):
+    try:
+        domain_name, top_level_domain = args.domain_name.split('.')
+    except ValueError:
+        print('Please only include the domain name and the top-level domain (ie example.com) in your domain name')
+        return
+
+    if args.add_domain_records and not args.token:
+        print('\nPlease add your digital ocean access token if you wish to add the domain records. Exiting... \n')
+        return
+
+    if not args.add_domain_records:
+        input("\nMake sure you've pointed the subdomains in your DNS provider to the IP of the server this is running on. \n\n\nPress enter to continue...")
+
+    username = args.username
+
+    # password = input('Enter sudo password for sudo commands: ')
+    # user_commands = f'''
+    #     echo {password} | sudo -S apt update &&
+    #     echo {password} | sudo -S apt-get install -y certbot &&
+    #     echo {password} | sudo -S apt-get install -y python3-certbot-nginx
+    # '''.replace('\t', '').replace('\n', '')
+    # subprocess.run(
+    #     user_commands, shell=True)
+
+    subprocess.run('sudo apt update', shell=True)
+    subprocess.run('sudo apt install -y certbot', shell=True)
+    subprocess.run('sudo apt install -y python3-certbot-nginx', shell=True)
+
+    with open(f'/etc/nginx/conf.d/{args.project_name}.conf', 'w+') as f:
+        f.write(SERVER_CODE(args.sub_domains.split(','), domain_name, top_level_domain))
+
+    subprocess.run('sudo nginx -t && sudo nginx -s reload', shell=True)
+
+    if os.path.exists("/etc/nginx/conf.d/default.conf"):
+        os.remove("/etc/nginx/conf.d/default.conf")
+    if os.path.exists("/etc/nginx/sites-enabled/default"):
+        os.remove("/etc/nginx/sites-enabled/default")
+
+    test = "--test-cert" if args.testing else ''
+    subdomain_flags = ' '.join([f'-d {sub_d + "." if sub_d else ""}{domain_name}.{top_level_domain}' for sub_d in args.sub_domains.split(',')])
+    subprocess.run(f'sudo certbot --nginx --non-interactive --agree-tos {test} --email {args.email_address} {subdomain_flags}', shell=True)
+
+    line="0 12 * * * /usr/bin/certbot renew --quiet"
+    subprocess.run(f'(crontab -u {username} -l; echo "{line}" ) | crontab -u {username} -', shell=True)
+
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+    main(args)

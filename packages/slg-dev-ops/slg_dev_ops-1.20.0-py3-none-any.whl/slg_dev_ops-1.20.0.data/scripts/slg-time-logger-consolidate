@@ -1,0 +1,111 @@
+#!python
+import json
+import argparse
+from argparse import RawTextHelpFormatter
+from logger_slg import init_logger
+import datetime
+import yaml
+from pprint import pformat
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
+
+    parser.add_argument('-i', '--input_filepath', default='/var/log/slg/time_log.json',
+                        help='Location of the time log were consolidating. Must be absolute path')
+
+    parser.add_argument('-c', '--config_filepath', default='/home/steven/.config/slg/time_log.yml',
+                        help='Filepath of the config file we are using')
+
+    parser.add_argument('-r', '--run_interval', type=int, default=5,
+                        help='How often this script runs (in minutes). Should be matched up with cron timing.')
+
+    args = parser.parse_args()
+
+    return args
+
+
+#########################
+### CONFIG OPTIONS
+#########################
+
+# DynamicPageTitles:
+#     StringToMatch: TagName
+#        INFO: tag name is the title to consolidate to if this string is found in the title
+
+
+def write_json(data: dict, filepath):
+    with open(filepath, 'w') as outfile:
+        json.dump(data, outfile)
+
+def read_json(filepath):
+    with open(filepath, 'r') as f:
+        output = json.load(f)
+    return output
+
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+    try:
+        logger = init_logger(
+            name=__name__,
+            log_path=f'/var/log/slg/{__file__.split("/")[-1]}.log'
+        )
+
+        # read the config file
+        try:
+            with open(args.config_filepath, "r") as stream:
+                try:
+                    config = yaml.safe_load(stream)
+                    logger.info(f'Using config:\n\n{pformat(config)}\n')
+                except yaml.YAMLError as exc:
+                    print(exc)
+        except FileNotFoundError:
+            logger.exception('Config file not found. Proceeding with defaults')
+
+        abs_filepath = args.input_filepath
+
+        directory = '/'.join(abs_filepath.split('/')[:-1])
+        filename = abs_filepath.split('/')[-1]
+        consolidated_filename = filename.split('.')[0] + '-consolidated.json'
+        consolidated_abs_filepath = directory + '/' + consolidated_filename
+
+        dt = datetime.datetime.now() - datetime.timedelta(minutes=args.run_interval)
+        date_ = dt.strftime('%Y-%m-%d')
+        time_ = dt.strftime('%H:%M:%S')
+
+        time_log = read_json(abs_filepath)
+
+        try:
+            existing_consolidated_log = read_json(consolidated_abs_filepath)
+        except FileNotFoundError:
+            existing_consolidated_log = {}
+
+        consolidated_time_log = existing_consolidated_log
+        if date_ not in consolidated_time_log:
+            consolidated_time_log[date_] = {}
+        consolidated_time_log[date_][time_] = {}
+
+        for date in time_log:
+            for open_window in time_log[date].values():
+
+                # handle if there are special key names
+                for string, tag in config.get('DynamicPageTitles', {}).items():
+                    if string in open_window:
+                        open_window = tag
+                        break
+
+                if open_window not in consolidated_time_log[date_][time_]:
+                    consolidated_time_log[date_][time_][open_window] = 1
+                else:
+                    consolidated_time_log[date_][time_][open_window] += 1
+
+
+        write_json(consolidated_time_log, consolidated_abs_filepath)
+
+        # clear the time_log after consolidating
+        write_json({}, abs_filepath)
+
+    except:
+        logger.exception('An error occurred')

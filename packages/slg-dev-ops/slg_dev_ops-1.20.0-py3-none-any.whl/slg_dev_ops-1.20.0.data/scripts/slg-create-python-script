@@ -1,0 +1,183 @@
+#!python
+import subprocess
+import os
+import argparse
+from logger_slg import init_logger
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    # REQUIRED string value
+    parser.add_argument('script_name', help="Name of the script")
+
+    parser.add_argument(
+        '-d', '--directory', default='$HOME/.local/bin/',
+        help='The location of where this script should go (default is $HOME/.local/bin')
+
+    # optional string value
+    parser.add_argument('-u', '--username', default="steven",
+                        help="Name of the user")
+
+    bools.add_argument(
+        '-nx', dest="make_executable", action="store_false",
+        help="By default, we make the script executable. Use this ticker to not make the script executable")
+
+    args = parser.parse_args()
+
+    return args
+
+
+TEMPLATE = lambda script_name: f"""#!/usr/bin/env python3
+import subprocess
+import os
+import argparse
+from argparse import RawTextHelpFormatter
+from logger_slg import init_logger
+import yaml
+from pprint import pformat
+
+# this section is here because when we pass in a config file we also want to include those variables as potential arguments
+# and required=True in the argparse arguments would not allow that to happen.
+# So from now on I'm using these two sections to verify arguments are up to standard
+REQUIRED_ARGUMENTS = []
+DYNAMIC_DEFAULTS = {{ # If an argument is defaulted to a derivative of a previous required argument, we can set a lambda of said required argument
+    'config_filepath': lambda username: f'/home/{{username}}/.config/slg/time_log.yml', # in this case, username is seen as the only required argument that was previously passed
+}}
+SENSITIVE_ARGUMENTS = [] # place any passwords or other sensitive arguments in here to not expose them in configuration printing
+SPECIAL_REQUIREMENTS = {{ # variable must return a truthy value for these lambda functions in order to proceed with running the script; follow the example requirements precedence for setting new requirements
+    'config_filepath': [
+        {{
+            'name': 'Filepath is an absolute filepath',
+            'requirement': lambda value: value.startswith('/')
+        }},
+    ]
+}}
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    # REQUIRED string value
+    parser.add_argument('arg', help='first argument')
+
+    # integer value
+    parser.add_argument('-m', '--max', default=136, type=int,
+                        help='')
+
+    # boolean (default=False; store_true means if ticked then args['true'] == True)
+    bools.add_argument('-t', dest='true', action='store_true',
+                       help='Do you want this to be true? If so, add it with -t')
+
+    # boolean (default=True; store_false means if ticked then args['false'] == False)
+    bools.add_argument('-f', dest='false', action='store_false',
+                       help='Do you want this to be false? If so, add it with -f')
+
+    parser.add_argument('-c', '--config_filepath', default='/home/steven/.config/slg/{script_name}.yml',
+                        help='Filepath of the config file we are using')
+
+    args = parser.parse_args()
+
+    return args
+
+def get_dynamic_default_arg(args, desired_arg):
+    parameters = DYNAMIC_DEFAULTS[desired_arg].__code__.co_varnames
+    parameter_values = [args[arg] for arg in parameters]
+    return DYNAMIC_DEFAULTS[desired_arg](*parameter_values)
+
+def build_true_configuration(args, config_filepath=None):
+    # arguments defined at the command line take precedence over config file variables
+    config = {{}}
+    if config_filepath:
+        config = read_config_file(config_filepath)
+
+    dict_args = var(args)
+    for arg in dict_args:
+        if dict_args[arg] is not None:
+            config[arg] = dict_args[arg]
+
+    # handle for dynamic defaults if no value is set
+    for arg in DYNAMIC_DEFAULTS:
+        if not config.get(arg):
+            config[arg] = get_dynamic_default_arg(config, arg)
+
+    return config
+
+def strip_sensitive_arguments(config):
+    return {{k: v for k, v in config.items() if k not in SENSITIVE_ARGUMENTS}}
+
+def guarantee_requirements_met(config):
+    # config is the config object after assigning arg values to the config file values
+
+    # first iterate over required arguments
+    for argument in REQUIRED_ARGUMENTS:
+        if not config.get(argument):
+            logger.error(f'\\n\\nRequired argument \\"{{argument}}\\" not found. Exiting...')
+            exit(0)
+
+    # then iterate over the special requirements
+    for argument in SPECIAL_REQUIREMENTS:
+        value = config.get(argument)
+        for requirement_obj in SPECIAL_REQUIREMENTS[argument]:
+            if not requirement_obj['requirement'](value):
+                logger.error(f'\\n\\nSpecial requirement \\"{{requirement_obj[\\"name\\"]}}\\" was not met for the argument \\"{{argument}}\\". Exiting...')
+                exit(0)
+
+def read_config_file(filepath):
+    try:
+        with open(filepath, 'r') as stream:
+            try:
+                config = yaml.safe_load(stream)
+                return config
+            except yaml.YAMLError as exc:
+                print(exc)
+                logger.error('\\n\\nYAML Error. Exiting...')
+                exit(0)
+    except FileNotFoundError:
+        logger.exception('Config file not found. Proceeding with defaults')
+        return {{}}
+
+if __name__ == '__main__':
+    args = get_arguments()
+
+    try:
+        logger = init_logger(
+            name=__name__,
+            log_path=f'/var/log/slg/{{__file__.split(\\"/\\")[-1]}}.log'
+        )
+        config = build_true_configuration(args, args.config_filepath)
+        guarantee_requirements_met(config)
+        sensitive_stripped_config = strip_sensitive_arguments(config)
+        logger.info(f'\\nUsing configuration:\\n\\n{{pformat(sensitive_stripped_config)}}')
+
+    except:
+        logger.exception('An error occurred')
+"""
+
+
+if __name__ == "__main__":
+    args = get_arguments()
+    script_name = args.script_name
+    logger = init_logger(
+        name=__name__,
+        log_path=f'/var/log/slg/{__file__.split("/")[-1]}.log',
+    )
+    try:
+        result = subprocess.check_output(f"sudo -u {args.username} echo \"{TEMPLATE(script_name)}\" > '{args.directory}/{script_name}'", shell=True)
+
+        # this line makes sure that it ran properly; otherwise it will error out quietly
+        logger.info(result)
+
+        if args.make_executable:
+            result = subprocess.check_output(
+                f"sudo -u {args.username} chmod u+x '{args.directory}/{script_name}'",
+                shell=True)
+            logger.info(result)
+
+        logger.info(f'Script "{script_name}" successfully created')
+    except:
+        logger.exception(f'Error occurred while creating script "{script_name}"')

@@ -1,0 +1,124 @@
+#!python
+import subprocess
+import os
+import argparse
+import time
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-f', '--full_filepath', help='Full filepath to the nginx conf file. Example: /etc/nginx/conf.d/example.conf', required=True)
+
+    parser.add_argument('-d', '--comma_separated_domains', help='Comma separated domains means no spaces are allowed. Example: example.com,www.example.com', required=True)
+
+    args = parser.parse_args()
+
+    return args
+
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+
+    print('\n\n-------\n')
+    print('This will update your nginx conf file with the default basic settings applicable to gunicorn with static files served by nginx.')
+    print('\n-------\n')
+
+    time.sleep(1)
+
+    domains = args.comma_separated_domains.split(',')
+    staging_domains = ' '.join([domain for domain in domains if domain.startswith('staging')])
+    domains = ' '.join([domain for domain in domains if not domain.startswith('staging')])
+
+    redirect_block_func = lambda domain: f'''
+    if ($host = {domain}) {{
+        return 301 https://$host$request_uri;
+    }} # managed by Certbot
+    '''
+
+    redirect_block = '\n'.join([redirect_block_func(domain) for domain in domains.split(' ')])
+    redirect_block += '\n'.join([redirect_block_func(domain) for domain in staging_domains.split(' ')])
+
+    for domain in domains.split(' '):
+        if len(domain.split('.')) == 2:
+            base_domain = domain
+
+
+    if 'base_domain' not in locals():
+        print('Error: Could not find base domain. Please input the primary domain (e.g. example.com). Exiting.')
+        exit(1)
+
+    conf_text = f'''
+upstream production_server {{
+    server unix:/run/gunicorn_production.sock fail_timeout=0;
+}}
+upstream staging_server {{
+    server unix:/run/gunicorn_staging.sock fail_timeout=0;
+}}
+
+server {{
+    server_name {domains};
+
+    listen [::]:443 ssl http2 ipv6only=on; # managed by Certbot
+    listen 443 ssl http2; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/{base_domain}/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/{base_domain}/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+    location /static/ {{
+        autoindex on;
+        root /var/www/html;
+        expires 7d;
+        access_log off;
+        add_header Cache-Control "public";
+    }}
+
+    location / {{
+        proxy_set_header X-Forwarded-Host $host:$server_port;
+        proxy_set_header X-Forwarded-Server $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_pass      http://production_server;
+    }}
+}}
+server {{
+    server_name {staging_domains};
+
+    listen 443 ssl http2; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/{base_domain}/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/{base_domain}/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+    location /static/ {{
+        autoindex on;
+        root /var/www-staging/html;
+        expires 5m;
+        access_log off;
+        add_header Cache-Control "public";
+    }}
+
+    location / {{
+        proxy_set_header X-Forwarded-Host $host:$server_port;
+        proxy_set_header X-Forwarded-Server $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_pass      http://staging_server;
+    }}
+}}
+server {{
+    {redirect_block}
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name {domains} {staging_domains};
+    return 404; # managed by Certbot
+}}
+'''
+
+    with open(args.full_filepath, 'w') as f:
+        f.write(conf_text)
+
+    print('\n\n-------')
+    print('Success!')
+    print('-------')

@@ -1,0 +1,78 @@
+#!python
+import subprocess
+import os
+import argparse
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+    bools = parser.add_argument_group()
+
+    parser.add_argument('domain_name', help='The domain name without www attached but with TLD attached, ie example.com')
+
+    parser.add_argument('project_name', help="The name of the project, or the repository's name")
+
+    parser.add_argument('-u', '--username', type=str, required=True,
+                        help='The user calling this script. Since this is run as sudo it is necessary')
+
+    parser.add_argument('-e', '--email_address', type=str, required=True,
+                        help='The email address to point LetsEncrypt to, so we can run the script non-interactively')
+
+    bools.add_argument('-t', '--testing', action='store_true',
+                       help='If ticked, we will use the staging environment for letsencrypt and certbot')
+
+    args = parser.parse_args()
+
+    return args
+
+SERVER_CODE = lambda dn, tld: f'''
+server {{
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    root /var/www/html;
+    server_name {dn}.{tld} www.{dn}.{tld} staging.{dn}.{tld};
+}}
+'''
+
+def main(args):
+    try:
+        domain_name, top_level_domain = args.domain_name.split('.')
+    except ValueError:
+        print('Please only include the domain name and the top-level domain (ie example.com) in your domain name')
+        return
+
+    username = args.username
+
+    # password = input('Enter sudo password for sudo commands: ')
+    # user_commands = f'''
+    #     echo {password} | sudo -S apt update &&
+    #     echo {password} | sudo -S apt-get install -y certbot &&
+    #     echo {password} | sudo -S apt-get install -y python3-certbot-nginx
+    # '''.replace('\t', '').replace('\n', '')
+    # subprocess.run(
+    #     user_commands, shell=True)
+
+    subprocess.run('sudo apt update', shell=True)
+    subprocess.run('sudo apt install -y certbot', shell=True)
+    subprocess.run('sudo apt install -y python3-certbot-nginx', shell=True)
+
+    with open(f'/etc/nginx/conf.d/{args.project_name}.conf', 'w+') as f:
+        f.write(SERVER_CODE(domain_name, top_level_domain))
+
+    subprocess.run('sudo nginx -t && sudo nginx -s reload', shell=True)
+
+    if os.path.exists("/etc/nginx/conf.d/default.conf"):
+        os.remove("/etc/nginx/conf.d/default.conf")
+    if os.path.exists("/etc/nginx/sites-enabled/default"):
+        os.remove("/etc/nginx/sites-enabled/default")
+
+    test = "--test-cert" if args.testing else ''
+    subprocess.run(f'sudo certbot --nginx --non-interactive --agree-tos {test} --email {args.email_address} -d {domain_name}.{top_level_domain} -d www.{domain_name}.{top_level_domain} -d staging.{domain_name}.{top_level_domain}', shell=True)
+
+    line="0 12 * * * /usr/bin/certbot renew --quiet"
+    subprocess.run(f'(crontab -u {username} -l; echo "{line}" ) | crontab -u {username} -', shell=True)
+
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+    main(args)
