@@ -1,0 +1,51 @@
+# This is a sample YAML file with configuration. The default configuration loader
+# will all files it finds by name. So, by convention, we just prefix config names with
+# two digit numbers. Again, by convention, lower numbers are set for default files,
+# higher numbers for environment specific files.
+#
+# You can safely remove/replace with your app configurations.
+
+sample_scalar_1: hello world
+sample_scalar_2: this should be overriden
+sample_list_1: [1, 2, 3]
+sample_env:
+  user: !env USER
+  secret_user: !env_secret USER
+  default_1: !env USER|foo
+  default_2: !env USER|null
+
+sample_reference:
+  # return value of a config self reference using dot notation
+  self_1: !ref sample_env.user
+
+  # names can be quoted using quotes, you need to quote the whole expression as well
+  self_2: !ref "'sample_expr'.expr_1"
+
+sample_expr:
+  # note: using expressions is very powerful but may pose a security risk as it can
+  # execute any kind of code. We recommend blacklisting this tag if your config
+  # may come from unsecure sources.
+
+  # simple expressions, evalutated using Python's eval rules.
+  expr_1: !expr 1 + 1
+
+  expr_2: !j2 user={{ c.sample_env.user }}
+
+  # using globals set by the plugins
+  expr_3: !expr env['USER']
+
+nested:
+  # in dev you should override those with a 21-db.local.yaml file
+  # in prod, you should override with a 90-db.yaml containing externally sourced
+  # credentials
+  foo: my_data
+  bar: my_other_data
+
+  # the SQLAlchemy URL to connect to the DB instance
+  composite: !j2 "composite:{{c.nested.foo}}:{{c.nested.bar}}"
+  secret: !j2_secret "composite:{{c.nested.foo}}:{{c.nested.bar}}"
+
+deep:
+  lvl1:
+    lvl2:
+      lvl3: this should be overriden
