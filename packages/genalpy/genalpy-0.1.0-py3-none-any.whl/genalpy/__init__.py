@@ -1,0 +1,1 @@
+from genalpy.genetic_algorithm import Solver
