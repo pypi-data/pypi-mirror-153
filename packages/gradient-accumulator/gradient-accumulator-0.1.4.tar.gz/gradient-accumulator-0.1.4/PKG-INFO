@@ -1,0 +1,110 @@
+Metadata-Version: 2.1
+Name: gradient-accumulator
+Version: 0.1.4
+Summary: Package for gradient accumulation in TensorFlow
+Home-page: https://github.com/andreped/GradientAccumulator
+Author: André Pedersen
+Author-email: andrped94@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# GradientAccumulator
+
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+![CI](https://github.com/andreped/GradientAccumulator/workflows/CI/badge.svg)
+[![GitHub Downloads](https://img.shields.io/github/downloads/andreped/GradientAccumulator/total?label=GitHub%20downloads&logo=github)](https://github.com/andreped/GradientAccumulator/releases)
+[![Pip Downloads](https://img.shields.io/pypi/dm/gradient-accumulator?label=pip%20downloads&logo=python)](https://pypi.org/project/gradient-accumulator/)
+[![DOI](https://zenodo.org/badge/498288524.svg)](https://zenodo.org/badge/latestdoi/498288524)
+
+This repo contains a TensorFlow 2 compatible implementation of accumulated gradients.
+
+The proposed implementation simply overloads the train_step of a given tf.keras.Model, to update correctly according to a user-specified number of accumulation steps. This enables gradient accumulation, which reduces memory consumption and enables usage of theoretically infinitely large batch size (among other things), at the cost of increased training runtime.
+
+Implementation is compatible with and have been tested against TF >= 2.2 and Python >= 3.6, and works cross-platform (Ubuntu, Windows, macOS).
+
+## Install
+
+Stable release from PyPI:
+```
+pip install gradient-accumulator
+```
+
+Or from source:
+```
+pip install git+https://github.com/andreped/GradientAccumulator
+```
+
+## Usage
+```
+from gradient_accumulator.GAModelWrapper import GAModelWrapper
+from tensorflow.keras.models import Model
+
+model = Model(...)
+model = GAModelWrapper(accum_steps=4, inputs=model.input, outputs=model.output)
+```
+
+Then simply use the `model` as you normally would!
+
+#### Mixed precision
+There has also been added experimental support for mixed precision:
+```
+from tensorflow.keras import mixed_precision
+
+mixed_precision.set_global_policy('mixed_float16')
+model = GAModelWrapper(accum_steps=4, mixed_precision=True, inputs=model.input, outputs=model.output)
+```
+
+## Disclaimer
+In theory, one should be able to get identical results for batch training and using gradient accumulation. However, in practice, one may observe a slight difference. One of the cause may be when operations are used (or layers/optimizer/etc) that update for each step, such as Batch Normalization. It is **not** recommended to use BN with GA, as BN would update too frequently. However, you could try to adjust the `momentum` of BN (see [here](https://keras.io/api/layers/normalization_layers/batch_normalization/)).
+
+It was also observed a small difference when using adaptive optimizers, which I believe might be due to how frequently they are updated. Nonetheless, for the optimizers, the difference was quite small, and one may approximate batch training quite well using our GA implementation, as rigorously tested [here](https://github.com/andreped/GradientAccumulator/tree/main/tests)).
+
+## TODOs:
+- [x] Add generic wrapper class for adding accumulated gradients to any optimizer
+- [x] Add CI to build wheel and test that it works across different python versions, TF versions, and operating systems.
+- [x] Add benchmarks to verfiy that accumulated gradients actually work as intended
+- [x] Add class_weight support
+- [x] GAModelWrapper gets expected identical results to batch training!
+- [x] Test method for memory leaks
+- [x] Add multi-input/-output architecture support
+- [x] Add mixed precision support
+- [ ] Add wrapper class for BatchNormalization layer, similar as done for optimizers
+- [ ] Add proper multi-GPU support
+
+## Acknowledgements
+This implementation is based on the implementation presented in [this thread](https://stackoverflow.com/a/66524901) on stack overflow.
+
+This repository serves as an open solution for everyone to use, until TF/Keras integrates a proper solution into their framework(s).
+
+## Troubleshooting
+Overloading of `train_step` method of tf.keras.Model was introduced in TF 2.2, hence, this code is compatible with TF >= 2.2.
+
+Also, note that TF depends on different python versions. If you are having problems getting TF working, try a different TF version or python version.
+
+For TF 1, I suggest using the AccumOptimizer implementation in the [H2G-Net repository](https://github.com/andreped/H2G-Net/blob/main/src/utils/accum_optimizers.py#L139) instead, which wraps the optimizer instead of overloading the train_step of the Model itself (new feature in TF2).
+
+## How to cite
+If you use this package in your research, please, cite this reference:
+```
+@software{andre_pedersen_2022_6615019,
+  author       = {André Pedersen},
+  title        = {andreped/GradientAccumulator: v0.1.3},
+  month        = jun,
+  year         = 2022,
+  publisher    = {Zenodo},
+  version      = {v0.1.3},
+  doi          = {10.5281/zenodo.6615019},
+  url          = {https://doi.org/10.5281/zenodo.6615019}
+}
+```
+
+
