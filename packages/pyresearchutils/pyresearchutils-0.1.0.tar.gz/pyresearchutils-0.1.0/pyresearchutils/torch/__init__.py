@@ -1,0 +1,1 @@
+from pyresearchutils.torch.working_device import get_working_device, update_device
