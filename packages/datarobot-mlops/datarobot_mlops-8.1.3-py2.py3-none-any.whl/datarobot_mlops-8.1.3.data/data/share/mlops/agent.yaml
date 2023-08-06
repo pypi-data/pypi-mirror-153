@@ -1,0 +1,70 @@
+# This file contains configuration for the MLOps agent
+# Items marked "Must be configured" must be set. Other settings can use the defaults set below.
+
+# Required. URL to the DataRobot MLOps service.
+mlopsUrl: "http://localhost:80"
+
+# Required. DataRobot API token.
+apiToken: "<MLOPS_API_TOKEN>"
+
+# When true, the agent runs once and then exits.
+runOnce: false
+
+# When true, the agent will not report metrics to the MLOps service.
+dryRun: false
+
+# When true, verify SSL certificates when connecting to DR app. When false, SSL verification will not be
+# performed. It is highly recommended to keep this config variable as true.
+verifySSL: true
+
+# When true, start a REST serve. This will provide several API endpoints
+serverMode: false
+
+# The port to use for the above REST server
+serverPort: 8080
+
+# Path to write agent stats
+statsPath: "/tmp/tracking-agent-stats.json"
+
+# Prediction Environment served by this agent.
+# Events and errors not specific to a single deployment are reported against this Prediction Environment.
+predictionEnvironmentId: "<PE_ID_FROM_DATAROBOT_UI>"
+
+# HTTP client timeout (in milliseconds).
+httpTimeout: 20000
+
+# Number of times the agent will retry sending a request to the MLOps service after it receives a failure.
+httpRetry: 3
+
+# Number of concurrent http request, default=1 -> synchronous mode; > 1 -> asynchronous
+httpConcurrentRequest: 1
+
+# Number of HTTP Connections to establish with the MLOps service, Default: 1
+numMLOpsConnections: 1
+
+# Channel configurations for each type (FS_SPOOL, etc.).
+# This configures the locations of the message buffers.
+# Note that the spoolDirectoryPath must match the MLOPS_SPOOLER_DIR_PATH used by the MLOps library.
+channelConfigs:
+  - type: "FS_SPOOL"
+    details: {name: "fileSpooler1", spoolDirectoryPath: "/tmp/data1"}
+  - type: "SQS_SPOOL"
+    details: {name: "sqsSpool", queueName: "<your AWS SQS queue name>"}
+
+# Number of threads that the agent will launch to process data records.
+agentThreadPoolSize: 4
+
+# Maximum number of records each thread will process per fetchNewDataFreq interval.
+agentMaxRecordsTask: 10
+
+# Maximum number of records to aggregate before sending to MMM
+agentMaxAggregatedRecords: 500
+
+# A timeout for pending records before aggregating and submitting
+agentPendingRecordsTimeoutMs: 2500
+
+# Aggregator overwrites per type
+aggregatorOverwrites:
+  - type: "FEATURE_DATA"
+    agentMaxAggregatedRecords: 1000
+    agentPendingRecordsTimeoutMs: 30000
