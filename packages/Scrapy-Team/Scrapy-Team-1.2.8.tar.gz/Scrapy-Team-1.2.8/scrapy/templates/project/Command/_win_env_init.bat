@@ -1,0 +1,2 @@
+python -m venv _factory_venv && .\_factory_venv\Scripts\activate && python.exe -m pip install --upgrade pip && ^
+pip list | findstr requests && spip uninstall requests fitz -y & pip install -r .\requirements.txt -i https://pypi.org/simple

@@ -1,0 +1,54 @@
+import scrapy
+from scrapy.xcc_items.factoryitems import FactoryCatergoryItem
+from pypinyin import lazy_pinyin
+import logging
+
+class $classname(scrapy.Spider):
+    # 爬虫目录爬虫 三级情况
+    name = '$name'
+    # start_urls = ['https://www.futureelectronics.cn/(eg.)'] #<---更改部分
+
+    def parse(self, response):
+        brand_name_en = '' #<---品牌英文名
+        brand_id = 'someint' #<---品牌id
+        item = FactoryCatergoryItem()
+        item['sources'] = 'Manufacturers'
+        categories = response.xpath("//div[@class='sub-navigation-section col-sm-3']") #<---更改部分 匹配多个一级目录单元
+        for Categories_first in categories:
+            Categories_first_name = Categories_first.xpath("./div[@class='sub-cat']/a/text()").extract_first() #首层分类名称 #<---更改部分
+            Categories_first_url = Categories_first.xpath("./div[@class='sub-cat']/a/@href").extract_first() #<---更改部分
+            item['url'] = 'https://www.futureelectronics.cn'+( Categories_first_url if Categories_first_url is not None else '') #<---更改部分
+            item['category_name'] = Categories_first_name 
+            item['category_id'] = brand_name_en + '_' + ''.join(lazy_pinyin(Categories_first_name)) #<---更改部分 Categories_first_name为英文或者中文拼音
+            item['p_category_id'] = ''
+            item['p_category_name'] = ''
+            item['level'] = 1
+            item['brand_id'] = brand_id
+            logging.info(str(item))
+            yield item
+
+            for Categories_sec in Categories_first.xpath("./ul[@class ='sub-navigation-list has-title']/li"): #<---更改部分
+                Categories_sec_name = Categories_sec.xpath("./a/text()").extract_first() #二层分类名称 #<---更改部分
+                Categories_sec_url = Categories_sec.xpath("./a/@href").extract_first() #二层分类url #<---更改部分
+                item['url'] = 'https://www.futureelectronics.cn'+(Categories_sec_url if Categories_sec_url is not None else '') #<---更改部分
+                item['category_name'] = Categories_sec_name
+                item['category_id'] = brand_name_en + '_' + ''.join(lazy_pinyin(Categories_sec_name)) #<---更改部分 Categories_first_name为英文或者中文拼音
+                item['p_category_id'] = brand_name_en + '_' + ''.join(lazy_pinyin(Categories_first_name)) #<---更改部分 Categories_first_name为英文或者中文拼音
+                item['p_category_name'] = Categories_first_name
+                item['level'] = 2
+                item['brand_id'] = brand_id
+                logging.info(str(item))
+                yield item
+
+                for Categories_third in Categories_sec.xpath("./ul[@class='nav__link--3-level']/li"):
+                    Categories_third_name = Categories_third.xpath("./a/text()").extract_first() #三层分类名称 <---更改部分
+                    Categories_third_url = Categories_third.xpath("./a/@href").extract_first()   #三层分类url <---更改部分
+                    item['url'] = 'https://www.futureelectronics.cn'+(Categories_third_url if Categories_third_url is not None else '') #<---更改部分
+                    item['category_name'] = Categories_third_name
+                    item['category_id'] =  brand_name_en + '_' + ''.join(lazy_pinyin(Categories_third_name)) #<---更改部分 Categories_first_name为英文或者中文拼音
+                    item['p_category_name'] = Categories_sec_name
+                    item['p_category_id'] = brand_name_en + '_' + ''.join(lazy_pinyin(Categories_sec_name)) #<---更改部分 Categories_first_name为英文或者中文拼音
+                    item['level'] = 3
+                    item['brand_id'] = brand_id
+                    logging.info(str(item))
+                    yield item
