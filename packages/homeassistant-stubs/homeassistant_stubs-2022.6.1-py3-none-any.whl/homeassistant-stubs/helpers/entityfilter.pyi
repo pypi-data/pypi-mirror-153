@@ -1,0 +1,45 @@
+import re
+from _typeshed import Incomplete
+from collections.abc import Callable as Callable
+from homeassistant.const import CONF_DOMAINS as CONF_DOMAINS, CONF_ENTITIES as CONF_ENTITIES, CONF_EXCLUDE as CONF_EXCLUDE, CONF_INCLUDE as CONF_INCLUDE
+from homeassistant.core import split_entity_id as split_entity_id
+
+CONF_INCLUDE_DOMAINS: str
+CONF_INCLUDE_ENTITY_GLOBS: str
+CONF_INCLUDE_ENTITIES: str
+CONF_EXCLUDE_DOMAINS: str
+CONF_EXCLUDE_ENTITY_GLOBS: str
+CONF_EXCLUDE_ENTITIES: str
+CONF_ENTITY_GLOBS: str
+
+class EntityFilter:
+    empty_filter: Incomplete
+    config: Incomplete
+    _include_e: Incomplete
+    _exclude_e: Incomplete
+    _include_d: Incomplete
+    _exclude_d: Incomplete
+    _include_eg: Incomplete
+    _exclude_eg: Incomplete
+    _filter: Incomplete
+    def __init__(self, config: dict[str, list[str]]) -> None: ...
+    def explicitly_included(self, entity_id: str) -> bool: ...
+    def explicitly_excluded(self, entity_id: str) -> bool: ...
+    def __call__(self, entity_id: str) -> bool: ...
+
+def convert_filter(config: dict[str, list[str]]) -> EntityFilter: ...
+
+BASE_FILTER_SCHEMA: Incomplete
+FILTER_SCHEMA: Incomplete
+
+def convert_include_exclude_filter(config: dict[str, dict[str, list[str]]]) -> EntityFilter: ...
+
+INCLUDE_EXCLUDE_FILTER_SCHEMA_INNER: Incomplete
+INCLUDE_EXCLUDE_BASE_FILTER_SCHEMA: Incomplete
+INCLUDE_EXCLUDE_FILTER_SCHEMA: Incomplete
+
+def _glob_to_re(glob: str) -> re.Pattern[str]: ...
+def _test_against_patterns(patterns: list[re.Pattern[str]], entity_id: str) -> bool: ...
+def _convert_globs_to_pattern_list(globs: Union[list[str], None]) -> list[re.Pattern[str]]: ...
+def generate_filter(include_domains: list[str], include_entities: list[str], exclude_domains: list[str], exclude_entities: list[str], include_entity_globs: Union[list[str], None] = ..., exclude_entity_globs: Union[list[str], None] = ...) -> Callable[[str], bool]: ...
+def _generate_filter_from_sets_and_pattern_lists(include_d: set[str], include_e: set[str], exclude_d: set[str], exclude_e: set[str], include_eg: list[re.Pattern[str]], exclude_eg: list[re.Pattern[str]]) -> Callable[[str], bool]: ...
