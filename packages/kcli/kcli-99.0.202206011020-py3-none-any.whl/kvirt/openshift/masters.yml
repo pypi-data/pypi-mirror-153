@@ -1,0 +1,63 @@
+{% for num in range(0, masters|int) %}
+{% if master_macs and master_macs|length >= masters|int %}
+{% set net0 = {"name": network, "mac": master_macs[num]} %}
+{% else %}
+{% set net0 = network %}
+{% endif %}
+{% if extra_master_networks %}
+{% set extra_networks = extra_master_networks %}
+{% endif %}
+{% if extra_master_disks %}
+{% set extra_disks = extra_master_disks %}
+{% endif %}
+{% if flavor_master != None %}
+{% set flavor = flavor_master %}
+{% endif %}
+
+{{ cluster }}-master-{{ num }}:
+ domain: {{ domain }} 
+ image: {{ image }}
+ pool: {{ pool or config_pool }}
+ enableroot: false 
+ flavor: {{ flavor }}
+ keys: {{ keys }}
+ numcpus: {{ master_numcpus | default(numcpus, numcpus) }}
+ memory: {{ master_memory | default(memory, memory) }}
+ autostart: {{ autostart }}
+{% if kvm_forcestack %}
+ cmdline: {{ 'ip=dhcp6' if ':' in api_ip else 'ip=dhcp' }}
+{% endif %}
+{% if kubevirt_api_service %}
+ reservedns: true
+{% endif %}
+ nets: {{ [net0] + extra_networks }}
+ disks: {{ [disk_size] + extra_disks }}
+ files:
+  - path: /etc/NetworkManager/dispatcher.d/99-forcedns
+    origin: 99-forcedns
+    mode: 755
+  - path: /etc/kubernetes/manifests/coredns.yml
+    origin: staticpods/coredns.yml
+  - path: /etc/kubernetes/Corefile
+    origin: Corefile
+{% if mdns %}
+  - path: /etc/kubernetes/manifests/mdns.yml
+    origin: staticpods/mdns.yml
+  - path: /etc/kubernetes/config.hcl.templ
+    origin: config.hcl.templ
+{% endif %}
+{% if (mdns and workers > 0) or kubevirt_api_service %}
+  - path: /etc/kubernetes/manifests/haproxy.yml
+    origin: staticpods/haproxy.yml
+  - path: /etc/kubernetes/haproxy.cfg
+    origin: haproxy.cfg{{ '.kubevirt' if kubevirt_api_service else '' }}
+  - path: /etc/sysctl.d/nonlocalbind.conf
+    origin: nonlocalbind.conf
+{% endif %}
+{% if not kubevirt_api_service %}
+  - path: /etc/kubernetes/manifests/keepalived.yml
+    origin: staticpods/keepalived.yml
+  - path: /etc/kubernetes/keepalived.conf
+    origin: keepalived.conf
+{% endif %}
+{% endfor %}
