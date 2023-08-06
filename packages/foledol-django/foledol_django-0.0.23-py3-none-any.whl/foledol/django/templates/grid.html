@@ -1,0 +1,195 @@
+{% extends base %}
+{% load form_extras %}
+{% load custom %}
+
+{% block content %}
+
+    <script>
+        function group_by(query) {
+            open2("{{ group_by_url }}?" + query)
+        }
+        function condition_add(condition_group_id) {
+            document.getElementById('condition_group_id').value = condition_group_id;
+            document.getElementById('action').value = '';
+            document.getElementById('form').action = "{% url 'django:condition_create' %}";
+            document.getElementById('form').submit();
+        }
+        function condition_group_add(condition_group_id, type) {
+            document.getElementById('condition_group_id').value = condition_group_id;
+            document.getElementById('action').value = 'condition_group_add_' + type;
+            document.getElementById('form').submit();
+        }
+        function condition_group_switch(condition_group_id) {
+            document.getElementById('condition_group_id').value = condition_group_id;
+            document.getElementById('action').value = 'condition_group_switch';
+            document.getElementById('form').submit();
+        }
+        function condition_group_delete(condition_group_id) {
+            document.getElementById('condition_group_id').value = condition_group_id;
+            document.getElementById('action').value = 'condition_group_delete';
+            document.getElementById('form').submit();
+        }
+        function condition_group_move_up(condition_group_id) {
+            document.getElementById('condition_group_id').value = condition_group_id;
+            document.getElementById('action').value = 'condition_group_move_up';
+            document.getElementById('form').submit();
+        }
+        function condition_group_move_dw(condition_group_id) {
+            document.getElementById('condition_group_id').value = condition_group_id;
+            document.getElementById('action').value = 'condition_group_move_dw';
+            document.getElementById('form').submit();
+        }
+        function condition_move_up(condition_id) {
+            document.getElementById('condition_id').value = condition_id;
+            document.getElementById('action').value = 'condition_move_up';
+            document.getElementById('form').submit();
+        }
+        function condition_move_dw(condition_id) {
+            document.getElementById('condition_id').value = condition_id;
+            document.getElementById('action').value = 'condition_move_dw';
+            document.getElementById('form').submit();
+        }
+
+        function copy_grid_to_clipboard(url) {
+
+            url = url + '?copy';
+
+            //sort = document.getElementById('sort').value;
+            //if (sort != '')
+            //    url = url + '&sort=' + sort
+
+            //search = document.getElementById('search').value;
+            //if (search != '')
+            //    url = url + '&search=' + search
+
+            //filter_key = document.getElementById('filter_key').value;
+            //if (filter_key != '')
+            //    url = url + '&filter_key=' + filter_key
+
+            $.ajax({
+                url: url,
+                dataType: 'text',
+                async: false,
+                processData: false,
+                contentType: false,
+                type: 'GET',
+                success: function(data) {
+                    navigator.clipboard.writeText(data);
+                }
+            });
+        }
+    </script>
+
+    <form id="form" method="post">
+        {% csrf_token %}
+        <input type="hidden" id="action" name="action" value="{{action}}"/>
+        <input type="hidden" name="path" value="{{path}}"/>
+        <input type="hidden" name="back" value="{{back}}"/>
+        <input type="hidden" name="edit" value="{{edit}}"/>
+        <input type="hidden" id="sort" name="sort" value="{{sort}}"/>
+        <input type="hidden" name="grid_id" value="{{grid.id}}"/>
+        <input type="hidden" id="condition_id" name="condition_id" value=""/>
+        <input type="hidden" id="condition_group_id" name="condition_group_id" value=""/>
+
+        {% include "components/banners.html" %}
+
+        {% if not read_only %}
+
+        <div class="panel panel-default">
+            <div class="panel-body">
+                {% include "components/field_text_short.html" with field=form|field:'name' %}
+
+                <div class="form-group">
+                    <div class="col-sm-4">
+                        <label>Table</label>
+                    </div>
+                    <div class="col-sm-8">
+                        {% if grid %}
+                            {% for key, grid_table in tables.items %}
+                                {% if table == key %}
+                                <input name="table"
+                                       class="form-control"
+                                       type="text"
+                                       value="{{grid_table.label}}"
+                                       disabled/>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                        <select name="table" class="form-control">
+                            {% for key, grid_table in tables.items %}
+                            <option value="{{key}}" {% if table == key %}selected{% endif %}>{{grid_table.label}}</option>
+                            {% endfor %}
+                        </select>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if grid_filters %}
+                <div class="form-group">
+                    <div class="col-sm-4">
+                        <label>Recherche</label>
+                    </div>
+                    <div class="col-sm-8">
+                        <select name="filter" class="form-control">
+                            {% for grid_filter in grid_filters %}
+                            <option value="{{grid_filter.code}}" {% if filter == grid_filter.code %}selected{% endif %}>{{grid_filter.name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% include "components/field_text_area_short.html" with field=form|field:'filter_by' %}
+
+                {% include "components/field_text_short.html" with field=form|field:'comment' %}
+
+                {% include "components/field_check_short.html" with field=form|field:'group_by' %}
+                {% include "components/field_check_short.html" with field=form|field:'distinct' %}
+                {% include "components/field_check_short.html" with field=form|field:'show_on_home' %}
+
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-default" onclick="go_back('{{ back }}')">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                {% if grid %}
+                <button type="button" class="btn btn-primary" onclick="send('clone')">Dupliquer</button>
+                {% if user.is_staff %}
+                <button type="button" class="btn btn-danger" onclick="open2('{% url 'django:grid_delete' grid.id %}')">Supprimer</button>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if action == 'update' %}
+
+        {% include "components/table.html" with table=table_columns no_paginate=True %}
+
+        {% endif %}
+
+        {% include "components/grid_condition_group.html" %}
+
+        <br/>
+
+        {% if condition_as_str %}
+        <div>{{condition_as_str}}</div>
+        <br/>
+        {% endif %}
+
+        {% endif %}
+
+        {% if action == 'update' %}
+
+        {% if read_only %}
+            <div style="margin-top: 15px; margin-bottom: 10px; color: #2a437d;">{{grid.name}}</div>
+            {% if grid.comment %}
+            <div style="margin-bottom: 10px; color: #a0a0a0;">{{grid.comment}}</div>
+            {% endif %}
+        {% endif %}
+
+        {% include "components/grid.html" with columns=columns rows=rows fields=fields %}
+
+        {% endif %}
+
+    </form>
+
+{% endblock %}
