@@ -1,0 +1,101 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "setuptools_scm>=3.4",
+    # Ideally those would be optional...
+    "cython>=0.29,<0.30",
+    "fastrlock>=0.7,<0.9"
+]
+build-backend = "setuptools.build_meta"
+
+
+############
+# Manifest #
+############
+[tool.check-manifest]
+ignore = ["src/antidote/_internal/scm_version.py"]
+
+
+##########
+# Pytest #
+##########
+[tool.pytest.ini_options]
+markers = ["compiled_only"]
+
+
+############
+# Coverage #
+############
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.paths]
+source = [
+    "src/",
+    ".tox/py*/lib/python*/site-packages/",
+    ".tox/pypy*/site-packages"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "# pragma: no cover",
+    "if TYPE_CHECKING:$",
+    "^\\s*\\.\\.\\.$"
+]
+
+
+###########
+# PyRight #
+###########
+[tool.pyright]
+include = [
+    "src",
+    "tests/lib",
+]
+exclude = [
+    "tests/lib/test_constants.py",
+    "tests/lib/test_lazy.py",
+    "tests/lib/test_factory.py",
+    "tests/lib/test_implementation.py",
+    "tests/lib/test_service.py",
+]
+pythonVersion = "3.7"
+pythonPlatform = "All"
+typeCheckingMode = "strict"
+
+# Python code is doing a lot of isinstance to actually verify typing
+reportUnnecessaryIsInstance = false
+# Doesn't work well with metaclasses
+# FIXME: to be removed ones no metaclasses are used ??
+reportSelfClsParameterName = false
+# Yes we have cycles, it's not great but if tests are passing it means it works.
+reportImportCycles = false
+# We're using our own internal APIs which we're trying to hide as much as possible
+reportPrivateUsage = false
+# some cast / ignores are for MyPy.
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUnnecessaryCast = "warning"
+
+
+########
+# Mypy #
+########
+[tool.mypy]
+files = [
+    "src",
+    "tests/lib/interface",
+    "tests/lib/injectable",
+    "tests/lib/lazy"
+]
+python_version = "3.7"
+strict = true
+
+
+#########
+# Black #
+#########
+[tool.black]
+line-length = 100
+target-version = ['py37']
+
