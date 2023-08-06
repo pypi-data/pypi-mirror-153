@@ -1,0 +1,457 @@
+﻿{% extends "layout.html" %}
+
+{% load static %}
+
+{% block head %}
+  <title>{% if job.id > 0 %}{{ form.ReleaseName.value }}{% else %}Upload{% endif %} - PtpUploader</title>
+  <script src="{% static "script/jquery-3.6.0.min.js" %}"></script>
+  <script defer src="{% static "script/select2.min.js" %}"></script>
+  <link href="{% static "script/select2.min.css" %}" rel="stylesheet" type="text/css" />
+  <link href="{% static "script/ui.fancytree.min.css" %}" rel="stylesheet">
+  <script defer src="{% static "script/jquery.fancytree-all-deps.min.js" %}"></script>
+  <script defer src="{% static "script/jquery-ui.min.js" %}"></script>
+  <link rel="stylesheet" href="{% static "script/jquery-confirm.min.css" %}"/>
+  <script defer src="{% static "script/jquery-confirm.min.js" %}"></script>
+  <link rel="stylesheet" href="{% static "script/jquery.contextMenu.min.css" %}"/>
+  <script defer src="{% static "script/jquery.contextMenu.min.js" %}"></script>
+  <script defer src="{% static "script/jquery.ui.position.min.js" %}"></script>
+  <link rel="stylesheet" type="text/css" href="{% static "script/bulma.min.css" %}"/>
+  <script>
+   function FinishSkipDuplicateCheckingAjaxCall(torrentId, uploadedAgo) {
+     $("html").removeClass('busy');
+     $("#id_DuplicateCheckCanIgnore").val(torrentId);
+     $("#SkipDuplicateCheckingButton").val(torrentId);
+     $("#SkipDuplicateCheckingMessage").html("(Last upload was " + uploadedAgo + ")");
+
+     if (torrentId <= 0) {
+       alert("Error!");
+       $("#SkipDuplicateCheckingButton").attr("checked", false);
+     }
+   }
+
+   $(function() {
+     $(".show_images").click(function() {
+       console.log("#" + $(this).data("target"));
+       $("#" + $(this).data("target")).toggle();
+       if ($(this).text() == "Show") {
+         $(this).text("Hide");
+       } else {
+         $(this).text("Show");
+       }
+     });
+     $("#id_Subtitles").select2({
+       width: '80%'
+     });
+     $("#id_Tags").select2({
+       width: '80%',
+       placeholder: '---'
+     });
+
+     $("#ConvertComparisonCode").click(function() {
+       var releaseNotes = $("#ReleaseNotes");
+
+       var text = releaseNotes.val().replace(/<b>/gi, "");
+       text = text.replace(/<\/b>/gi, "");
+       text = text.replace(/<font.*?>/gi, "");
+       text = text.replace(/<\/font>/gi, "");
+       text = text.replace(/<br>/gi, "\n");
+       text = text.replace(/&nbsp;/gi, " ");
+       // E.g.: <a href="http://www.imagebam.com/image/50a6ce137826241" target="_blank"><img id="ncode_imageresizer_container_1" src="http://thumbnails43.imagebam.com/13783/50a6ce137826241.jpg" alt="" onload="NcodeImageResizer.createOn(this);" border="0"></a>
+       text = text.replace(/<a.*?href="(.+?)".*?><img.*?src="(.+?)".*?>.*?<\/a>/gi, "[url=$1][img]$2[/img][/url]");
+
+       releaseNotes.val(text);
+     });
+
+     // Skip duplicate checking
+     $("#SkipDuplicateCheckingButton").click(function() {
+       if ($(this).is(":checked")) {
+         $("html").addClass('busy');
+
+         $.ajax({
+           url: "{% url "jobs_get_latest" %}",
+           dataType: "json",
+           data: {
+             "PtpOrImdbLink": $("#id_ImdbId").val()
+           },
+           success: function(data) {
+             if (data.Result == "OK")
+               FinishSkipDuplicateCheckingAjaxCall(data.TorrentId, data.UploadedAgo);
+             else
+               FinishSkipDuplicateCheckingAjaxCall(0, "");
+           },
+           error: function() {
+             FinishSkipDuplicateCheckingAjaxCall(0, "");
+           }
+         });
+       } else {
+         $("#SkipDuplicateCheckingMessage").html("");
+       }
+     });
+     // Torrent file uploading.
+     $('#DirectorySelectorToggle').click(function() {
+       $.confirm({
+         // theme: "material",
+         title: "Select File",
+         content: "<div id='tree'></div>",
+         escape: true,
+         useBootstrap: false,
+         // boxWidth: 480,
+         onContentReady: function(){
+           $("#tree").fancytree({
+             clickFolderMode: 4, // 1:activate, 2:expand, 3:activate and expand, 4:activate (dblclick expands
+             debugLevel: 4, // 0:quiet, 1:errors, 2:warnings, 3:infos, 4:debug
+             keyboard: false, // Support keyboard navigation
+             selectMode: 1, // 1:single, 2:multi, 3:multi-hier
+             tabindex: "", // Whole tree behaves as one single control
+             source: {url: "{% url "local_dir" %}", cache: false},
+             lazyLoad: function(event, data){
+               var node = data.node;
+               // Load child nodes via Ajax GET
+               data.result = {
+                 url: "/ajax/localdir",
+                 data: {mode: "children", dir: node.key},
+                 cache: false
+               };
+             },
+             icon: function(event, data) {
+               if (data.node.icon) { return 'static/'+data.node.icon+'.png'; }
+             },
+           });
+         },
+         onAction: function(btnName){
+           var tree = $.ui.fancytree.getTree("#tree"),
+               selNode = tree.getActiveNode();
+           if( btnName === "ok" ) {
+             $('#id_LocalFile').val(selNode.key);
+           }
+         }
+       });
+     });
+   });
+  </script>
+{% endblock %}
+
+{% block body %}
+  {% if job.id > 0 and not job.CanEdited %}
+    <div class="column">
+      <h2 style="color: red; font-weight: bold;">The job is currently running and can't be edited!</h2>
+      {% if job.StopBeforeUploading %}
+        <p>This job will be stopped before uploading.</p>
+      {% endif %}
+      <p>
+    </div>
+  {% endif %}
+
+  <div class="column">
+    <form action="" enctype="multipart/form-data" method="post" id="resume_table">
+      {{ form.errors }}
+      {% csrf_token %}
+      <table id="editjob_table" class="border" border="0" cellpadding="3" cellspacing="1">
+        <tbody>
+          {% if job.id > 0 %}
+            <tr>
+              <td class="label">Release name</td>
+              <td>
+                {{ form.ReleaseName }}
+                {% if job.IsReleaseNameEditable %}
+                  <input id="release_name" name="release_name" size="60" type="text" value="{{ job.ReleaseName }}" title="The specified release name will be the name of the directory in the torrent uploaded to PTP. (Not supported yet on CG.)"/>
+                {% else %}
+                  {{ job.ReleaseName }}
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="label">Release source</td>
+              <td>
+                {% if job.SourceIcon %}
+                  {% if job.SourceUrl %}
+                    <a href="{{ job.SourceUrl }}" {{ settings.OpenJobPageLinksInNewTab|safe }}><img src={{ job.SourceIcon }}></a>
+                  {% else %}
+                    <img src={{ job.SourceIcon }}/>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="label">Status</td>
+              <td>{{ job.Status }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td class="label">Upload a torrent file</td>
+              <td>
+                {{ form.RawFile }}
+              </td>
+            </tr>
+            <tr>
+              <td class="label">Or specify a torrent page link</td>
+              <td>
+                {{ form.TorrentLink }}
+              </td>
+            </tr>
+            <tr>
+              <td class="label">Or select an existing file or folder</td>
+              <td>
+                {{ form.LocalFile }}
+                <input type="button" id="DirectorySelectorToggle" value="Browse..." title="Directory selector.">
+              </td>
+            </tr>
+            <tr>
+              <td class="label">Release name</td>
+              <td>
+                <input id="release_name" name="release_name" size="60" type="text" title="The specified release name will be the name of the directory in the torrent uploaded to PTP. (Not supported yet on CG.)">
+              </td>
+            </tr>
+          {% endif %}
+
+          {{ form.Trumpable.as_hidden }}
+          <tr>
+            <td class="label">Included files</td>
+            <td>
+              <input type="button" id="IncludedFilesToggle" value="Select">
+              <input id="IncludedFilesCustomizedList" name="IncludedFilesCustomizedList" type="hidden" value="{{ job.IncludedFilesCustomizedList }}">
+              <div id="IncludedFilesDialog">
+                <div id="IncludedFilesTree"></div>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Make torrent without directory</td>
+            <td>
+              {{ form.ForceDirectorylessSingleFileTorrent }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Type</td>
+            <td>
+              {{ form.Type }}
+            </td>
+          </tr>
+
+          <tr id="imdb_tr">
+            <td class="label">IMDb or PTP link</td>
+            <td>
+              {{ form.ImdbId }}
+              {% if form.PtpId.value %}
+                <a href="https://passthepopcorn.me/torrents.php?id={{form.PtpId.value}}{% if form.PtpTorrentId.value%}&torrentid={{form.PtpTorrentId.value}}{% endif %}" target="_blank"><img src="{% static "ptp.ico" %}" title="Movie page on PTP" style="vertical-align: middle"></a>
+              {% endif %}
+            </td>
+          </tr>
+
+          <tr id="title_tr">
+            <td class="label">Title</td>
+            <td>
+              {{ form.Title }}
+              {{ form.Year }}
+            </td>
+          </tr>
+
+          <tr id="year_tr">
+          </tr>
+
+          <tr id="artist_tr">
+            <td class="label">Director(s)</td>
+            <td id="artistfields">
+              {{ form.Directors }}
+            </td>
+          </tr>
+
+          <tr id="coverart_tr">
+            <td class="label">Cover Art Image</td>
+            <td>
+              {{ form.CoverArtUrl }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">YouTube link</td>
+            <td>
+              {{ form.YouTubeId }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Special release title</td>
+            <td>
+              {{ form.RemasterTitle }}
+              {{ form.RemasterYear }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Personal rip</td>
+            <td>
+              {{ form.PersonalRip }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Scene</td>
+            <td>
+              {{ form.SceneRelease }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Special release (not main movie)</td>
+            <td>
+              {{ form.SpecialRelease}}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Codec</td>
+            <td>
+              {{ form.Codec }}
+              <span id="other_codec_span">
+                {{ form.CodecOther }}
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Container</td>
+            <td>
+              {{ form.Container }}
+              <span id="other_container_span">
+                {{ form.ContainerOther }}
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Resolution</td>
+            <td>
+              {{ form.ResolutionType }}
+              <span id="other_resolution_span">
+                {{ form.Resolution }}
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Source</td>
+            <td>
+              {{ form.Source }}
+              <span id="other_source_span">
+                {{ form.SourceOther }}
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Subtitle</td>
+            <td class="dark-select2">
+              {{ form.Subtitles }}
+            </td>
+          </tr>
+          <tr>
+            <td class="label">
+              Trumpable
+            </td>
+            <td>
+              {{ form.TrumpableNoEnglish }}
+              <label for="TrumpableForNoEnglishSubtitles">Trumpable for no English subtitles</label>
+              <br/>
+              {{ form.TrumpableHardSubs }}
+              <label for="TrumpableForHardcodedSubtitles">Trumpable for hard-coded subtitles</label>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Tags</td>
+            <td>
+              {{ form.Tags }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Synopsis</td>
+            <td>
+              {{ form.MovieDescription }}
+            </td>
+          </tr>
+          {% if job.Screenshots %}
+            <tr>
+              <td class="label">Screenshots</td>
+              <td>
+                {% for file, links in job.Screenshots.items %}
+                  <button type="button" data-target="{{forloop.counter0}}_images" class="show_images">Show</button>{{file}}
+                  <span id="{{forloop.counter0}}_images" style="display:none;"><br/>{{links|safe}}</span>
+                {% endfor %}
+              </td>
+            </tr>
+          {% endif %}
+          <tr>
+            <td class="label">Release Description
+              <br>
+              <br>
+              <input type="button" id="ConvertComparisonCode" value="Convert comparison code" title="You can convert HTML source of an image comparison (obtained by View selection source and copy&paste) to BBCode.">
+              <br>
+              <br>
+              <label title="If checked then screens won't be taken, the ones listed in the release notes will be used.">
+                {{ form.OverrideScreenshots }} Override screens
+              </label>
+            </td>
+            <td>
+              {{ form.ReleaseNotes }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Checking</td>
+            <td>
+              {{ form.ForceUpload }}
+              <label for="id_ForceUpload">Skip adult tag, series checking and rip specification checking</label>
+              <br/>
+              <input type="checkbox" id="SkipDuplicateCheckingButton" name="SkipDuplicateCheckingButton" value="{{ job.SkipDuplicateCheckingButton }}" title="The existing torrents (at the time of the button press) will be ignored at the duplicate checking."
+	             {% if job.SkipDuplicateCheckingButton > 0 %}
+                     checked
+                     {% endif %}
+              >
+              <label for="SkipDuplicateCheckingButton">Skip duplicate checking</label>
+              <span id="SkipDuplicateCheckingMessage"></span>
+              {{ form.DuplicateCheckCanIgnore }}
+            </td>
+          </tr>
+
+          <tr>
+            <td class="label">Start immediately</td>
+            <td>
+              <input id="StartImmediately" name="StartImmediately" type="checkbox" title="If this is set then the job will be the next processed job and the download will start regardless the number of maximum parallel downloads set for the source."
+	             {% if job.StartImmediately %}
+	             checked
+	             {% endif %}
+              >
+            </td>
+          </tr>
+
+          {% if job.id > 0 %}
+            {% if job.CanEdited %}
+              <tr>
+                <td colspan="2" style="text-align: center; border: none;">
+                  <br/><br/>
+                  <input class="is-primary button is-dark is-light" id="post" name="post" type="submit" value="Resume">
+                  <input class="is-primary button" id="post" name="post_stop_before" type="submit" value="Resume but stop before uploading" title="The job will be stopped after everything has completed and the only remaining thing to do is the uploading to PTP.">
+                  <input class="is-danger button" id="post" name="delete" type="submit" value="Delete">
+                  <br/><br/><br/>
+                </td>
+              </tr>
+            {% endif %}
+          {% else %}
+            <tr>
+              <td colspan="2" style="text-align: center; border: none;">
+                <br/><br/>
+                <input class="is-primary button is-dark is-light" id="post" name="post" type="submit" value="Upload">
+                <input class="is-primary button" id="post" name="post_stop_before" type="submit" value="Upload but stop before uploading" title="The job will be stopped after everything has completed and the only remaining thing to do is the uploading to PTP.">
+                <br/><br/><br/>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+{% endblock %}
