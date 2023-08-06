@@ -1,0 +1,92 @@
+{% load static i18n any_js sass_tags %}
+{% get_current_language as LANGUAGE_CODE %}
+
+
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <base href="{{ BASE_URL }}" />
+
+  {% include "core/partials/meta.html" %}
+
+  <title>
+    {% block no_browser_title %}
+      {% block browser_title %}{% endblock %} —
+    {% endblock %}
+    {{ SITE_PREFERENCES.general__title }}
+  </title>
+
+  {% include_css "material-design-icons" %}
+  {% include_css "Roboto100" %}
+  {% include_css "Roboto300" %}
+  {% include_css "Roboto400" %}
+  {% include_css "Roboto500" %}
+  {% include_css "Roboto700" %}
+  {% include_css "Roboto900" %}
+  {% include_css "paper-css" %}
+  <link rel="stylesheet" href="{% sass_src 'public/style.scss' %}"/>
+  <link rel="stylesheet" href="{% static "print.css" %}"/>
+  {% if landscape %}
+    <link rel="stylesheet" href="{% static 'print_landscape.css' %}"/>
+  {% endif %}
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="A4 {% if landscape %}landscape{% endif %} print-body">
+<main class="sheet infinite">
+  <div style="margin-top: -10mm;"></div>
+
+  <table class="print-layout-table">
+    <thead>
+    <tr class="no-border">
+      <td class="print-layout-td">
+        <div class="header-space">&nbsp;</div>
+      </td>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr class="no-border">
+      <td class="print-layout-td">
+        <div class="content">
+          <header>
+            <div id="print-header" class="row">
+              <div class="col s6 logo">
+                {% static "img/aleksis-banner.svg" as aleksis_banner %}
+                <img src="{% firstof SITE_PREFERENCES.theme__logo.url aleksis_banner %}" alt="Logo"
+                     id="print-logo"/>
+              </div>
+              <div class="col s6 right-align">
+                <h5>{% block page_title %}{% endblock %}</h5>
+                {% now "DATETIME_FORMAT" %}
+              </div>
+            </div>
+          </header>
+
+          {% block content %}{% endblock %}
+
+          <footer>
+            <div class="left">
+              {{ SITE_PREFERENCES.school__name }}
+            </div>
+
+            <div class="right">
+              {% trans "Powered by AlekSIS®" %}
+            </div>
+          </footer>
+        </div>
+      </td>
+    </tr>
+    </tbody>
+
+    <tfoot>
+    <tr class="no-border">
+      <td class="print-layout-td">
+        <div class="footer-space">&nbsp;</div>
+      </td>
+    </tr>
+    </tfoot>
+  </table>
+</main>
+</body>
+</html>

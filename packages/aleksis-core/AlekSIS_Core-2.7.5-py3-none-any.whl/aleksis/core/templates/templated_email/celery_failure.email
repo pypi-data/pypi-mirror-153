@@ -1,0 +1,50 @@
+{% extends "templated_email/base.email" %}
+{% load i18n %}
+
+{% block subject_content %}{% blocktrans with task_name=task_name %}Celery task {{ task_name }} failed!{% endblocktrans %}{% endblock %}
+
+{% block plain_content %}
+{% blocktrans with task_name=task_name %}the celery task {{ task_name }} failed with following information:{% endblocktrans %}
+
+  * {% trans "Task" %}: {{ task_name }}
+  * {% trans "Task ID" %}: {{ task_id }}
+  * {% trans "Raised exception" %}: {{ exception }}
+  * {% trans "Positional arguments" %}:
+    {% for arg in args %}- {{ arg }}
+    {% endfor %}
+  * {% trans "Keyword arguments" %}:
+    {% for key, value in kwargs.items %}- {{ key }}: {{ value }}
+    {% endfor %}
+{{ traceback }}{% endblock %}
+
+{% block html_content %}
+  <p>
+    {% blocktrans with task_name=task_name %}
+      the celery task {{ task_name }} failed with following information:
+    {% endblocktrans %}
+  </p>
+
+  <ul>
+      <li>{% trans "Task" %}: {{ task_name }}</li>
+      <li>{% trans "Task ID" %}: {{ task_id }}</li>
+      <li>{% trans "Raised exception" %}: {{ exception }}</li>
+      <li>{% trans "Positional arguments" %}:
+        <ol>
+          {% for arg in args %}
+            <li>{{ arg }}</li>
+          {% endfor %}
+        </ol>
+      </li>
+      <li>{% trans "Keyword arguments" %}:
+        <ul>
+          {% for key, value in kwargs.items %}
+            <li>{{ key }}: {{ value }}</li>
+          {% endfor %}
+        </ul>
+      </li>
+  </ul>
+
+  <code>
+    {{ traceback|linebreaksbr }}
+  </code>
+{% endblock %}

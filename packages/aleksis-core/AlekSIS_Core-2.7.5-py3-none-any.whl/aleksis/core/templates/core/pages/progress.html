@@ -1,0 +1,63 @@
+{% extends "core/base.html" %}
+{% load i18n static %}
+
+{% block browser_title %}
+  {{ title }}
+{% endblock %}
+{% block page_title %}
+  {{ title }}
+{% endblock %}
+
+{% block content %}
+
+  <div class="container">
+    <div class="row">
+      <div class="progress center">
+        <div class="indeterminate" style="width: 0;" id="progress-bar"></div>
+      </div>
+      <h6 class="center">
+        {{ progress.title }}
+      </h6>
+    </div>
+    <div class="row">
+      <noscript>
+        <div class="alert warning">
+          <p>
+            <i class="material-icons left">warning</i>
+            {% blocktrans %}
+              Without activated JavaScript the progress status can't be updated.
+            {% endblocktrans %}
+          </p>
+        </div>
+      </noscript>
+    
+      <div id="messages"></div>
+
+      <div id="result-box" style="display: none;">
+        <div class="alert" id="result-alert">
+          <div>
+            <i class="material-icons left" id="result-icon">check_circle</i>
+            <p id="result-text"></p>
+          </div>
+        </div>
+
+        {% url "index" as index_url %}
+        <a class="btn waves-effect waves-light" href="{{ back_url|default:index_url }}">
+          <i class="material-icons left">arrow_back</i>
+          {% trans "Go back" %}
+        </a>
+        {% if additional_button %}
+          <a class="btn waves-effect waves-light" href="{{ additional_button.href }}" id="result-button" style="display: none;">
+            <i class="material-icons left">{{ additional_button.icon|default:"" }}</i>
+            {{ additional_button.caption }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {{ progress|json_script:"progress_options" }}
+  <script src="{% static "js/helper.js" %}"></script>
+  <script src="{% static "celery_progress/celery_progress.js" %}"></script>
+  <script src="{% static "js/progress.js" %}"></script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "templated_email/base.email" %}
+{% load i18n %}
+
+{% block subject_content %}{% trans "New notification for" %} {{ notification_user }}{% endblock %}
+
+{% block plain_greeting %}{% blocktrans with notification_user=notification_user %}Hello {{ notification_user }},{% endblocktrans %}{% endblock %}
+
+{% block plain_content %}
+{% trans "we got a new notification for you:" %}
+
+{{ notification.title }}
+
+{{ notification.description }}{% if notification.link %}
+
+{% trans "More information" %} → {{ notification.link }}{% endif %}
+
+{% blocktrans with trans_sender=notification.sender trans_created_at=notification.created %}Sent by {{ trans_sender }} at {{ trans_created_at }}{% endblocktrans %}
+{% endblock %}
+
+{% block html_greeting %}<p>{% blocktrans with notification_user=notification_user %}Hello {{ notification_user }},{% endblocktrans %}</p>{% endblock %}
+
+{% block html_content %}
+    <p>{% trans "we got a new notification for you:" %}</p>
+
+    <blockquote>
+        <h5>{{ notification.title }}</h5>
+        <p>{{ notification.description|linebreaks }}</p>
+        {% if notification.link %}
+            <a href="{{ notification.link }}">{% trans "More information" %} →</a>
+        {% endif %}
+    </blockquote>
+
+    <p>
+        {% blocktrans with trans_sender=notification.sender trans_created_at=notification.created %}
+            Sent by {{ trans_sender }} at {{ trans_created_at }}
+        {% endblocktrans %}
+    </p>
+{% endblock %}

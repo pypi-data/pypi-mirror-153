@@ -1,0 +1,30 @@
+{# -*- engine:django -*- #}
+
+{% load i18n %}
+
+
+<form action="{% url 'set_language' %}" method="post" class="language-form">
+  {% csrf_token %}
+  <input name="next" type="hidden" value="{{ request.get_full_path }}">
+
+  {% get_current_language as LANGUAGE_CODE %}
+  {% get_language_info_list for request.site.preferences.internationalisation__languages as languages %}
+
+  {# Select #}
+  <div class="input-field language-field">
+    <span>{% trans "Language" %}</span>
+    <select name="language">
+      {% for language in languages %}
+        <option value="{{ language.code }}" {% if language.code == LANGUAGE_CODE %}
+                selected {% endif %}>{{ language.name_local }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {# Submit button (only visible if JS isn't activated #}
+  <p class="language-submit-p">
+    <button type="submit" class="btn-flat waves-effect waves-light white-text">
+      {% trans "Select language" %}
+    </button>
+  </p>
+</form>

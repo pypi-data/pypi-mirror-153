@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% load i18n material_form %}
+
+{% block browser_title %}
+  {% trans "Preferences" %}
+{% endblock %}
+{% block page_title %}
+  {% if registry_name == "site" %}
+    {% blocktrans %}Site preferences{% endblocktrans %}
+  {% elif registry_name == "person" and instance == request.user.person %}
+    {% blocktrans %}My preferences{% endblocktrans %}
+  {% else %}
+    {% blocktrans with instance=instance %}Preferences for {{ instance }}{% endblocktrans %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="row">
+    {% include "dynamic_preferences/sections.html" with registry=registry sections=registry.sections active_section=section %}
+  </div>
+  <div class="row">
+    <form action="" enctype="multipart/form-data" method="post">
+      {% csrf_token %}
+      {% form form=form %}{% endform %}
+      {% include "core/partials/save_button.html" with caption=_("Save preferences") %}
+    </form>
+  </div>
+
+  {{ form.media.js }}
+{% endblock %}

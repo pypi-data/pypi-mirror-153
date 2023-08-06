@@ -1,0 +1,127 @@
+{# -*- engine:django -*- #}
+{% extends "core/base.html" %}
+{% load i18n %}
+
+
+{% block browser_title %}{% blocktrans %}About AlekSIS®{% endblocktrans %}{% endblock %}
+{% block page_title %}{% blocktrans %}AlekSIS® – The Free School Information System{% endblocktrans %}{% endblock %}
+
+{% block content %}
+
+  <div class="row">
+    <div class="col s12">
+      <div class="card">
+        <div class="card-content">
+          <span class="card-title">{% blocktrans %}About AlekSIS{% endblocktrans %}</span>
+          <p>
+            {% blocktrans %}
+              This platform is powered by AlekSIS®, a web-based school information system (SIS) which can be used
+              to manage and/or publish organisational artifacts of educational institutions. AlekSIS is free software and
+              can be used by anyone.
+            {% endblocktrans %}
+          </p>
+          <p>
+            {% blocktrans %}
+              AlekSIS® is a registered trademark of the AlekSIS open source project, represented by Teckids e.V.
+            {% endblocktrans %}
+          </p>
+        </div>
+        <div class="card-action">
+          <a class="" href="https://aleksis.org/">{% trans "Website of AlekSIS" %}</a>
+          <a class="" href="https://edugit.org/AlekSIS/">{% trans "Source code" %}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col s12">
+      <div class="card">
+        <div class="card-content">
+          <span class="card-title">{% trans "Licence information" %}</span>
+          <p>
+            {% blocktrans %}
+              The core and the official apps of AlekSIS are licenced under the EUPL, version 1.2 or later. For licence
+              information from third-party apps, if installed, refer to the respective components below. The
+              licences are marked like this:
+            {% endblocktrans %}
+          </p>
+          <br/>
+          <p>
+            <span class="chip green white-text">{% trans "Free/Open Source Licence" %}</span>
+            <span class="chip orange white-text">{% trans "Other Licence" %}</span>
+          </p>
+        </div>
+        <div class="card-action">
+          <a href="https://eupl.eu">{% trans "Full licence text" %}</a>
+          <a href="https://joinup.ec.europa.eu/collection/eupl/guidelines-users-and-developers">{% trans "More information about the EUPL" %}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    {% for app_config in app_configs %}
+      <div class="col s12 m12 l6">
+        <div class="card " id="{{ app_config.name }}">
+          <div class="card-content">
+            {% if app_config.get_licence.1.isFsfLibre %}
+              <span class="chip green white-text right">Free Software</span>
+            {% elif app_config.get_licence.1.isOsiApproved %}
+              <span class="chip green white-text right">Open Source</span>
+            {% endif %}
+
+            <span class="card-title">{{ app_config.get_name }} <small>{{ app_config.get_version }}</small></span>
+
+            {% if app_config.get_copyright %}
+              <p>
+                {% for holder in app_config.get_copyright %}
+                  Copyright © {{ holder.0 }}
+
+                  {% if holder.2 %}
+                    <a href="mailto:{{ holder.2 }}">{{ holder.1 }}</a>
+                  {% else %}
+                    {{ holder.1 }}
+                  {% endif %}
+
+                  <br/>
+                {% endfor %}
+              </p>
+              <br/>
+            {% endif %}
+
+            {% if app_config.get_licence %}
+              {% with licence=app_config.get_licence %}
+                <p>
+                  {% blocktrans with licence=licence.0 %}
+                    This app is licenced under {{ licence }}.
+                  {% endblocktrans %}
+                </p>
+                <br/>
+                <p>
+                  {% for l in licence.2 %}
+                    <a class="chip white-text {% if l.isOsiApproved or l.isFsfLibre %}green{% else %}orange{% endif %}"
+                       href="{{ l.url }}">
+                      {{ l.name }}
+                    </a>
+                  {% endfor %}
+                </p>
+              {% endwith %}
+            {% endif %}
+          </div>
+          {% if app_config.get_urls %}
+            <div class="card-action">
+              {% for url_name, url in app_config.get_urls.items %}
+                <a href="{{ url }}">{{ url_name }}</a>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      {% if forloop.counter|divisibleby:2 %}
+        </div>
+        <div class="row">
+      {% endif %}
+    {% endfor %}
+    </div>
+
+{% endblock %}

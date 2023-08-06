@@ -1,0 +1,70 @@
+{% extends 'core/base.html' %}
+{% load i18n static dashboard any_js %}
+
+{% block browser_title %}
+  {% if not default_dashboard %}
+    {% trans "Edit dashboard" %}
+  {% else %}
+    {% trans "Edit default dashboard" %}
+  {% endif %}
+{% endblock %}
+{% block page_title %}
+  {% if not default_dashboard %}
+    {% trans "Edit dashboard" %}
+  {% else %}
+    {% trans "Edit default dashboard" %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="alert primary">
+    <p>
+      <i class="material-icons left">info</i>
+      {% if not default_dashboard %}
+        {% blocktrans %}
+          On this page you can arrange your personal dashboard. You can drag any items from "Available widgets" to "Your
+          Dashboard" or change the order by moving the widgets. After you have finished, please don't forget to click on
+          "Save".
+        {% endblocktrans %}
+      {% else %}
+        {% blocktrans %}
+          On this page you can arrange the default dashboard which is shown when a user doesn't arrange his own
+          dashboard. You can drag any items from "Available widgets" to "Default Dashboard" or change the order
+          by moving the widgets. After you have finished, please don't forget to click on "Save".
+        {% endblocktrans %}
+      {% endif %}
+    </p>
+  </div>
+
+  <form action="" method="post" id="order-form">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    {% for form in formset %}
+      {{ form.as_p }}
+    {% endfor %}
+    {% include "core/partials/save_button.html" %}
+  </form>
+
+  <h2>{% trans "Available widgets" %}</h2>
+  <div class="row card-panel grey lighten-3" id="not-used-widgets">
+    {% for widget in not_used_widgets %}
+      {% include "core/partials/edit_dashboard_widget.html" %}
+    {% endfor %}
+  </div>
+
+  <h2>
+    {% if not default_dashboard %}
+      {% trans "Your dashboard" %}
+    {% else %}
+      {% trans "Default dashboard" %}
+    {% endif %}
+  </h2>
+
+  <div class="row card-panel grey lighten-3" id="widgets">
+    {% for widget in widgets %}
+      {% include "core/partials/edit_dashboard_widget.html" %}
+    {% endfor %}
+  </div>
+
+  <script src="{% static "js/edit_dashboard.js" %}"></script>
+{% endblock %}

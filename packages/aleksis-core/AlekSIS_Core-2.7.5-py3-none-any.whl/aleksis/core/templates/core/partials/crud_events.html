@@ -1,0 +1,32 @@
+{% load i18n data_helpers %}
+
+<div class="collection">
+  {% for version in obj.versions %}
+    <div class="collection-item">
+      <div class="left" style="margin-right: 10px;">
+        {% if forloop.first %}
+          <i class="material-icons">add_circle</i>
+        {% else %}
+          <i class="material-icons">edit</i>
+        {% endif %}
+      </div>
+      <strong>
+        {{ version.0.revision.get_comment }}
+        {% trans "Changed by" %} {% firstof version.0.revision.user.person _("Unknown") %}
+      </strong>
+      <div class="right">
+        {{ version.0.revision.date_created }}
+      </div>
+      {% if version.1 %}
+        <ul>
+          {% for field, change in version.1.items %}
+            {% verbose_name version.0.content_type.app_label version.0.content_type.model field as verbose_name %}
+            <li>
+              {{ verbose_name }}: <s>{{ change.0 }}</s> → {{ change.1 }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>

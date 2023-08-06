@@ -1,0 +1,63 @@
+{# -*- engine:django -*- #}
+
+{% load menu_generator data_helpers %}
+
+{% get_menu "NAV_MENU_CORE" as core_menu %}
+
+<ul class="collapsible collapsible-accordion">
+
+  {% for item in core_menu %}
+    {% if not item.submenu %}
+      <li class="{% if item.selected %} active {% endif %}">
+        <a class="truncate" {% if item.new_tab %} target="_blank" {% endif %} href="{{ item.url }}">
+          {% if item.icon_class %}
+            <i class="{{ item.icon_class }}"></i>
+          {% elif item.icon %}
+            <i class="material-icons">{{ item.icon }}</i>
+          {% endif %}
+          {{ item.name }}
+          {% build_badge item as badge %}
+          {% if badge %}
+            <span class="new badge sidenav-badge"> {{ badge }}</span>
+          {% endif %}
+        </a>
+      </li>
+    {% endif %}
+    {% if item.submenu %}
+      <li class="bold {% if item.selected %} active {% endif %}">
+        <a class="collapsible-header waves-effect waves-primary truncate" {% if item.new_tab %} target="_blank" {% endif %} href="{{ item.url|default:"#" }}">
+          {% if item.icon_class %}
+            <i class="{{ item.icon_class }}"></i>
+          {% elif item.icon %}
+            <i class="material-icons">{{ item.icon }}</i>
+          {% endif %}
+          {{ item.name }}
+          {% build_badge item as badge %}
+          {% if badge %}
+            <span class="new badge sidenav-badge"> {{ badge }}</span>
+          {% endif %}
+        </a>
+        <div class="collapsible-body">
+          <ul>
+            {% for menu in item.submenu %}
+              <li class="{% if menu.selected %} active {% endif %}">
+                <a class="truncate" href="{{ menu.url }}">
+                  {% if menu.icon_class %}
+                    <i class="{{ menu.icon_class }}"></i>
+                  {% elif menu.icon %}
+                    <i class="material-icons">{{ menu.icon }}</i>
+                  {% endif %}
+                  {{ menu.name }}
+                  {% build_badge item as badge %}
+                  {% if badge %}
+                    <span class="new badge sidenav-badge"> {{ badge }}</span>
+                  {% endif %}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </li>
+    {% endif %}
+  {% endfor %}
+</ul>

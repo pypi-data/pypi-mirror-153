@@ -1,0 +1,166 @@
+{# -*- engine:django -*- #}
+{% extends "core/base.html" %}
+{% load i18n %}
+
+{% block browser_title %}{% blocktrans %}System status{% endblocktrans %}{% endblock %}
+
+{% block page_title %}{% blocktrans %}System status{% endblocktrans %}{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-content">
+      <span class="card-title"> {% blocktrans %}System checks{% endblocktrans %}</span>
+
+      {# Maintenance mode #}
+      <div class="row">
+        {% if maintenance_mode %}
+          <a class="btn-flat btn-flat-medium right waves-effect waves-red no-padding"
+             href="{% url 'maintenance_mode_off' %}"><i
+                  class="material-icons small red-text center">power_settings_new</i></a>
+          <div>
+            <p class="flow-text">{% blocktrans %}Maintenance mode enabled{% endblocktrans %}</p>
+            <p class="grey-text">
+              {% blocktrans %}
+                Only admin and visitors from internal IPs can access thesite.
+              {% endblocktrans %}
+            </p>
+          </div>
+          <span class="badge badge-danger mdi mdi-power"><a href="{% url 'maintenance_mode_off' %}"></a></span>
+        {% else %}
+          <a class="btn-flat btn-flat-medium right waves-effect waves-green no-padding"
+             href="{% url 'maintenance_mode_on' %}"><i
+                  class="material-icons small green-text center">power_settings_new</i></a>
+          <div>
+            <p class="flow-text">{% blocktrans %}Maintenance mode disabled{% endblocktrans %}</p>
+            <p class="grey-text">{% blocktrans %}Everyone can access the site.{% endblocktrans %}</p>
+          </div>
+        {% endif %}
+      </div>
+
+      {# Debug mode #}
+      <div class="row">
+        {% if DEBUG %}
+          <i class="material-icons small red-text right">power_settings_new</i>
+          <div>
+            <p class="flow-text">{% blocktrans %}Debug mode enabled{% endblocktrans %}</p>
+            <p class="grey-text">
+              {% blocktrans %}
+                The web server throws back debug information on errors. Do not use in production!
+              {% endblocktrans %}</p>
+          </div>
+        {% else %}
+          <i class="material-icons small green-text right">power_settings_new</i>
+          <div>
+            <p class="flow-text">{% blocktrans %}Debug mode disabled{% endblocktrans %}</p>
+            <p class="grey-text">
+              {% blocktrans %}
+                Debug mode is disabled. Default error pages are displayed on errors.
+              {% endblocktrans %}
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Health checks #}
+  <div class="card">
+    <div class="card-content">
+      <span class="card-title"> {% blocktrans %}System health checks{% endblocktrans %}</span>
+
+      <table>
+        <thead>
+          <tr>
+
+            <th colspan="2">{% trans "Service" %}</th>
+            <th>{% trans "Status" %}</th>
+            <th>{% trans "Time taken" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for plugin in plugins %}
+            <tr>
+              <td>
+                <a class="tooltipped" data-position="top" data-tooltip="{{ plugin.pretty_status }}">
+                {% if plugin.status %}
+                  <i class="material-icons green-text" aria-hidden="true" title="{{ plugin.pretty_status }}">check</i>
+                {% else %}
+                  <i class="material-icons red-text" aria-hidden="true" title="{{ plugin.pretty_status }}">warning</i>
+                {% endif %}
+                </a>
+              </td>
+              <td>{{ plugin.identifier }}</td>
+              <td>
+                {{ plugin.pretty_status }}
+              </td>
+              <td>{{ plugin.time_taken|floatformat:4 }} {% trans "seconds" %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if tasks %}
+    <div class="card">
+      <div class="card-content">
+        <span class="card-title"> {% blocktrans %}Celery task results{% endblocktrans %}</span>
+
+        <table>
+          <thead>
+            <tr>
+              <th>{% trans "Task" %}</th>
+              <th>{% trans "ID" %}</th>
+              <th>{% trans "Date done" %}</th>
+              <th>{% trans "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in tasks %}
+              {% if task != None %}
+                <tr>
+                  <td>{{ task.task_name }}</td>
+                  <td>{{ task.task_id }}</td>
+                  <td>{{ task.date_done }}</td>
+                  <td>
+                    {% if task.status == "PENDING" %}
+                      <a class="tooltipped" data-position="top"
+                      data-tooltip="{{ task.status }}">
+                        <i class="material-icons orange-text">hourglass_empty</i>
+                      </a>
+                    {% elif task.status == "STARTED" %}
+                      <a class="tooltipped" data-position="top"
+                      data-tooltip="{{ task.status }}">
+                        <i class="material-icons orange-text">directions_run</i>
+                      </a>
+                    {% elif task.status == "SUCCESS" %}
+                      <a class="tooltipped" data-position="top"
+                      data-tooltip="{{ task.status }}">
+                        <i class="material-icons green-text">done</i>
+                      </a>
+                    {% elif task.status == "FAILURE" %}
+                      <a class="tooltipped" data-position="top"
+                      data-tooltip="{{ task.status }}">
+                        <i class="material-icons red-text">error</i>
+                      </a>
+                    {% elif task.status == "RETRY" %}
+                      <a class="tooltipped" data-position="top"
+                      data-tooltip="{{ task.status }}">
+                        <i class="material-icons orange-text">hourglass_full</i>
+                      </a>
+                    {% elif task.status == "REVOKED" %}
+                      <a class="tooltipped" data-position="top"
+                      data-tooltip="{{ task.status }}">
+                        <i class="material-icons red-text">clear</i>
+                      </a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

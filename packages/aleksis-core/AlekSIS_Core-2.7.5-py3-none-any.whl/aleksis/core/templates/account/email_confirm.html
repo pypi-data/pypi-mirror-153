@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+
+{% load i18n material_form account %}
+
+{% block browser_title %}{% trans "Confirm" %}{% endblock %}
+{% block page_title %}{% trans "Confirm" %}{% endblock %}
+
+{% block content %}
+  {% if confirmation %}
+    {% user_display confirmation.email_address.user as user_display %}
+    <p class="flow-text">
+      {% blocktrans with confirmation.email_address.email as email %}Please confirm that <a href="mailto:{{ email }}">{{ email }}</a> is an e-mail address for user {{ user_display }}.{% endblocktrans %}
+    </p>
+    <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+      {% csrf_token %}
+      {% form form=form %}{% endform %}
+      {% trans "Confirm" as caption %}
+      {% include "core/partials/save_button.html" with caption=caption icon="how_to_reg" %}
+    </form>
+  {% else %}
+    {% url "account_email" as email_url %}
+    <div class="alert warning">
+      <p>
+        <i class="material-icons left">warning</i>
+        {% blocktrans %}This e-mail confirmation link expired or is invalid. Please <a href="{{ email_url }}">issue a new e-mail confirmation request</a>.{% endblocktrans %}
+      </p>
+    </div>
+  {% endif %}
+
+{% endblock %}
