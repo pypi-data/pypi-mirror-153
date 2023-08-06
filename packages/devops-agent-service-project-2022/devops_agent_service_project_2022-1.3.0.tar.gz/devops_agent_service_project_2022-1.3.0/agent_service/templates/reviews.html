@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <title>Company Reviews</title>
+    <meta charset="UTF-8" />
+    <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+
+    <style>
+      .rounded-lg {
+        border-radius: 1rem;
+      }
+
+      .background {
+        background: rgb(70, 205, 255);
+        background: linear-gradient(
+          90deg,
+          rgba(70, 205, 255, 1) 0%,
+          rgba(200, 243, 255, 1) 45%,
+          rgba(200, 243, 255, 1) 55%,
+          rgba(70, 205, 255, 1) 100%
+        );
+      }
+
+      .title-container {
+        width: 50%;
+        background-color: rgba(255, 255, 255, 0.4);
+        border-bottom: 3px inset lightgrey;
+      }
+
+      .header {
+        color: #6e8eff;
+        background: rgb(255, 255, 255);
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 1) 15%,
+          rgba(255, 255, 255, 1) 85%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        height: 100%;
+        width: 60%;
+        margin-left: 20%;
+        margin-right: 20%;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 1) 20%,
+          rgba(255, 255, 255, 1) 80%,
+          rgba(255, 255, 255, 0) 100%
+        );
+      }
+
+      .btn-color {
+        color: #fff;
+        background: rgb(4, 169, 249);
+        vertical-align: middle;
+        border: none;
+      }
+
+      .btn-color:hover {
+        color: #fff;
+        outline: none;
+        background: #6e8eff;
+      }
+
+      .container-card {
+        border-top: 1px outset lightgrey;
+        border-bottom: 2px inset lightgrey;
+        border-left: 1px outset lightgrey;
+        border-right: 1px inset lightgrey;
+        height: 90%;
+        vertical-align: middle;
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+
+      .icon {
+        color: #6e8eff;
+        width: 16px;
+      }
+	  
+	  table {
+		width: 98%;
+		height: 98%;
+		margin: auto:
+	  }
+	  
+	  tr {
+		border-bottom: 2px outset rgb(4, 169, 249);
+	  }
+	  
+	  th {
+	  	min-height: 50px;
+		text-align: center;
+	  }
+	  
+	  td {
+	  	min-height: 50px;
+		text-align: center;
+	  }
+    </style>
+  </head>
+  <body class="background">
+    <div class="row mb-4">
+      <div class="col-lg-12 mx-auto text-center title-container">
+        <h1 class="display-4 header">Company Reviews</h1>
+      </div>
+    </div>
+	<div style="min-width: 100%;">
+		<button
+			id="logout"
+			class="btn btn-color btn-block shadow-sm"
+			style="max-width: 100px; margin-left: 90%;"
+        >
+			Logout
+		</button>
+	</div>
+	
+    <br />
+
+    <div class="row">
+      <div class="col-lg-7 mx-auto" style="height: 90%">
+        <div class="bg-white rounded-lg shadow-sm p-5 container-card">
+          <div>
+			<table id="table">
+				<tr>
+					<th>Comment</th>
+					<th>Payment Review</th>
+					<th>Interview Review</th>
+				</tr>
+			</table>
+			<input type="hidden" id="company_id" value="{{ company_id }}">
+          </div>
+		  <hr>
+		  <span id="links" style="margin: auto; display: flex;">
+			<span id="prev" style="flex: 50%;"></span>
+			<span id="next" style="flex: 50%; text-align:right;"></span>
+		  </span>
+  		  <hr>
+		  <div style="margin: auto;">
+			  <input
+				type="button"
+				class="button btn-color btn-block shadow-sm"
+				style="margin: auto; max-width: 115px; height: 37px"
+				onclick="window.location.href='/view/api/companies';"
+				value="Companies"
+			  />
+		  </div>
+        </div>
+      </div>
+    </div>
+    <script>
+	  let response = null;
+
+	  function handleSuccess(res) {
+        response = res;
+
+		const mytable = document.getElementById("table");
+		
+		if (mytable.hasChildNodes()) {
+			while (mytable.children.length > 1) {
+				mytable.removeChild(mytable.lastChild);
+			}
+		}
+		
+        response.results.forEach(r => {
+			let nr = document.createElement("tr");
+			const keys = ["text_comment", "payment_review", "interview_review"];
+			keys.forEach((key) => {
+				let cell = document.createElement("td");
+				cell.innerText = r[key];
+				nr.appendChild(cell);
+			})
+			mytable.appendChild(nr);
+		});
+		
+		const prev_links = document.getElementById("prev");
+		if (prev_links.hasChildNodes()) {
+			while (prev_links.children.length > 0) {
+				prev_links.removeChild(prev_links.lastChild);
+			}
+		}
+
+		const next_links = document.getElementById("next");
+		if (next_links.hasChildNodes()) {
+			while (next_links.children.length > 0) {
+				next_links.removeChild(next_links.lastChild);
+			}
+		}
+			
+		if (response.links.prev) {
+			let prev = document.createElement("input");
+			prev.setAttribute("class", "button btn-color shadow-sm");
+			prev.setAttribute("style", "text-align: center; max-width: 115px; height: 37px;");
+			prev.onclick = function() {
+				$.ajax({
+					url: "/api" + response.links.prev,
+					headers: {"Authorization": localStorage.getItem("Authorization")},
+					type: "GET",
+					contentType: "application/json",
+					success: function (r2) {
+					  handleSuccess(r2);
+					},
+					error: function (r2) {
+					  alert(r2.responseText);
+					},
+				});
+			};
+			prev.setAttribute("value", "Previous");
+			prev_links.appendChild(prev);
+		}
+		if (response.links.next) {
+			let next = document.createElement("input");
+			next.setAttribute("class", "button btn-color shadow-sm");
+			next.setAttribute("style", "text-align: center; max-width: 115px; height: 37px;");
+			next.onclick = function() {
+				$.ajax({
+					url: "/api" + response.links.next,
+					headers: {"Authorization": localStorage.getItem("Authorization")},
+					type: "GET",
+					contentType: "application/json",
+					success: function (r3) {
+					  handleSuccess(r3);
+					},
+					error: function (r3) {
+					  alert(r3.responseText);
+					},
+				});
+			};
+			next.setAttribute("value", "Next");
+			next_links.appendChild(next);
+		}
+	  }
+
+	  function Init(){
+	  	const company_id = document.getElementById("company_id").value;
+
+		$.ajax({
+          url: "/api/companies/" + company_id + "/review",
+		  headers: {"Authorization": localStorage.getItem("Authorization")},
+          type: "GET",
+          success: function (res) {
+			handleSuccess(res);
+          },
+          error: function (res) {
+            alert(res.responseText);
+          },
+        });
+	  }
+	  
+      $(document).ready(function () {
+  		Init();
+
+		$("#logout").click(function (e) {
+			e.preventDefault();
+			localStorage.removeItem("Authorization");
+			window.location.href='/';
+        });
+      });
+    </script>
+  </body>
+</html>
