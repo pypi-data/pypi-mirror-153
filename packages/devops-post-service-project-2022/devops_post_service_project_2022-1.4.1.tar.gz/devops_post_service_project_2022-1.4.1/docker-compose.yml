@@ -1,0 +1,62 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - dislinkt
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - dislinkt
+    ports:
+      - 29092:29092
+
+  post_service:
+    build: .
+    environment:
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      DB_CONTAINER_NAME: post_container
+      DB_PORT: 27017
+      DB_NAME: post
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 9092
+      KAFKA_NOTIFICATIONS_TOPIC: notifications
+      KAFKA_EVENTS_TOPIC: events
+      JWT_SECRET: jwt_secret
+      JWT_ALGORITHM: HS256
+    networks:
+      - dislinkt
+    ports:
+      - 8010:8010
+
+  post_service_db:
+    image: mongo
+    container_name: 'post_container'
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=post
+    networks:
+      - dislinkt
+    volumes:
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./mongo-volume:/data/db
+    ports:
+      - '27017-27019:27017-27019'
+
+networks:
+  dislinkt:
+
+volumes:
+  mongo-volume:
