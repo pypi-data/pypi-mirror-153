@@ -1,0 +1,37 @@
+#!groovy
+
+node {
+    stage('Checkout') {
+        deleteDir()
+        checkout scm
+    }
+
+    stage ('Run tests') {
+        timeout(time: 12, unit: 'HOURS') {
+            withCredentials([string(credentialsId: 'proxymap', variable: 'PROXYMAP')]) {
+                sh 'podman run --rm -v $PWD:/work --userns=keep-id docker.io/python:3.10-bullseye /work/tests/modules/testall.sh'
+            }
+        }
+    }
+
+    stage('Report') {
+        junit 'junit.xml'
+        publishCoverage calculateDiffForChangeRequests: true,
+            sourceFileResolver: sourceFiles('STORE_LAST_BUILD'),
+            adapters: [
+                coberturaAdapter('coverage.xml')
+            ]
+    }
+
+    stage('Allure Report') {
+        copyArtifacts filter: 'allure-history.zip', optional: true,
+            projectName: JOB_NAME, selector: lastWithArtifacts()
+        if (fileExists('allure-history.zip')) {
+            unzip dir: 'allure-data', quiet: true, zipFile: 'allure-history.zip'
+            sh 'rm -f allure-history.zip'
+        }
+        sh 'podman run --rm -v $PWD:/work --userns=keep-id docker.io/tobix/allure-cli generate allure-data'
+        zip archive: true, dir: 'allure-report', glob: 'history/**', zipFile: 'allure-history.zip'
+        publishHTML reportDir: 'allure-report', reportFiles: 'index.html', reportName: 'Allure Report'
+    }
+}
