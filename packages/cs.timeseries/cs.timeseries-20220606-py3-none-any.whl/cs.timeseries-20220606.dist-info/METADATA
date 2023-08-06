@@ -1,0 +1,464 @@
+Metadata-Version: 2.1
+Name: cs.timeseries
+Version: 20220606
+Summary: Efficient portable machine native columnar storage of time series data for double float and signed 64-bit integers.
+Home-page: https://bitbucket.org/cameron_simpson/css/commits/all
+Author: Cameron Simpson
+Author-email: Cameron Simpson <cs@cskk.id.au>
+License: GNU General Public License v3 or later (GPLv3+)
+Project-URL: URL, https://bitbucket.org/cameron_simpson/css/commits/all
+Keywords: python3
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python :: 3
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Description-Content-Type: text/markdown
+Requires-Dist: arrow
+Requires-Dist: cs.binary (>=20220605)
+Requires-Dist: cs.buffer (>=20210316)
+Requires-Dist: cs.cmdutils (>=20220606)
+Requires-Dist: cs.configutils (>=20220430)
+Requires-Dist: cs.context (>=20220227)
+Requires-Dist: cs.csvutils (>=20220606)
+Requires-Dist: cs.deco (>=20220327)
+Requires-Dist: cs.fs (>=20220530)
+Requires-Dist: cs.fstags (>=20220606)
+Requires-Dist: cs.lex (>=20220227)
+Requires-Dist: cs.logutils (>=20220531)
+Requires-Dist: cs.pfx (>=20220523)
+Requires-Dist: cs.progress (>=20211208)
+Requires-Dist: cs.py.modules (>=20220606)
+Requires-Dist: cs.resources (>=20220429)
+Requires-Dist: cs.result (>=20220311)
+Requires-Dist: cs.upd (>=20220606)
+Requires-Dist: icontract
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: typeguard
+Provides-Extra: pandas
+Requires-Dist: pandas ; extra == 'pandas'
+
+Efficient portable machine native columnar storage of time series data
+for double float and signed 64-bit integers.
+
+*Latest release 20220606*:
+Initial PyPI release.
+
+The core purpose is to provide time series data storage; there
+are assorted convenience methods to export arbitrary subsets
+of the data for use by other libraries in common forms, such
+as dataframes or series, numpy arrays and simple lists.
+There are also some simple plot methods for plotting graphs.
+
+Three levels of storage are defined here:
+- `TimeSeriesFile`: a single file containing a binary list of
+  float64 or signed int64 values
+- `TimeSeriesPartitioned`: a directory containing multiple
+  `TimeSeriesFile` files, each covering a separate time span
+  according to a supplied policy, for example a calendar month
+- `TimeSeriesDataDir`: a directory containing multiple
+  `TimeSeriesPartitioned` subdirectories, each for a different
+  time series, for example one subdirectory for grid voltage
+  and another for grid power
+
+Together these provide a hierarchy for finite sized files storing
+unbounded time series data for multiple parameters.
+
+On a personal basis, I use this as efficient storage of time
+series data from my solar inverter, which reports in a slightly
+clunky time limited CSV format; I import those CSVs into
+time series data directories which contain the overall accrued
+data; see my `cs.splink` module which is built on this module.
+
+## Function `array_byteswapped(ary)`
+
+Context manager to byteswap the `array.array` `ary` temporarily.
+
+## Class `ArrowBasedTimespanPolicy(TimespanPolicy, icontract._metaclass.DBC, HasEpochMixin, TimeStepsMixin)`
+
+A `TimespanPolicy` based on an Arrow format string.
+
+See the `raw_edges` method for the specifics of how these are defined.
+
+## Function `deduce_type_bigendianness(typecode: str) -> bool`
+
+Deduce the native endianness for `typecode`,
+an array/struct typecode character.
+
+## Class `Epoch(Epoch, builtins.tuple, TimeStepsMixin)`
+
+The basis of time references with a starting UNIX time, the
+`epoch` and the `step` defining the width of a time slot.
+
+## Function `get_default_timezone_name()`
+
+Return the default timezone name.
+
+## Class `HasEpochMixin(TimeStepsMixin)`
+
+A `TimeStepsMixin` with `.start` and `.step` derive from `self.epoch`.
+
+## Function `main(argv=None)`
+
+Run the command line tool for `TimeSeries` data.
+
+## Function `plot_events(ax, events, value_func, *, start=None, stop=None, **scatter_kw)`
+
+Plot `events`, an iterable of objects with `.unixtime` attributes
+such as an `SQLTagSet`, on an existing set of axes `ax`.
+
+Parameters:
+* `ax`: axes on which to plot
+* `events`: an iterable of objects with `.unixtime` attributes
+* `value_func`: a callable to compute the y-axis value from an event
+* `start`: optional start UNIX time, used to crop the events plotted
+* `stop`: optional stop UNIX time, used to crop the events plotted
+Other keyword parameters are passed to `Axes.scatter`.
+
+## Function `plotrange(*da, **dkw)`
+
+A decorator for plotting methods with optional `start` and `stop`
+leading positional parameters and an optional `figure` keyword parameter.
+
+The decorator parameters `needs_start` and `needs_stop`
+may be set to require non-`None` values for `start` and `stop`.
+
+If `start` is `None` its value is set to `self.start`.
+If `stop` is `None` its value is set to `self.stop`.
+
+The decorated method is then called as:
+
+    func(self, start, stop, *a, **kw)
+
+where `*a` and `**kw` are the additional positional and keyword
+parameters respectively, if any.
+
+## Function `print_figure(figure_or_ax, imgformat=None, file=None)`
+
+Print `figure_or_ax` to a file.
+
+Parameters:
+* `figure_or_ax`: a `matplotlib.figure.Figure` or an object
+  with a `.figure` attribute such as a set of `Axes`
+* `imgformat`: optional output format; if omitted use `'sixel'`
+  if `file` is a terminal, otherwise `'png'`
+* `file`: the output file, default `sys.stdout`
+
+## Function `save_figure(figure_or_ax, imgpath: str, force=False)`
+
+Save a `Figure` to the file `imgpath`.
+
+Parameters:
+* `figure_or_ax`: a `matplotlib.figure.Figure` or an object
+  with a `.figure` attribute such as a set of `Axes`
+* `imgpath`: the filesystem path to which to save the image
+* `force`: optional flag, default `False`: if true the `imgpath`
+  will be written to even if it exists
+
+## Function `saved_figure(figure_or_ax, dir=None, ext=None)`
+
+Context manager to save a `Figure` to a file and yield the file path.
+
+Parameters:
+* `figure_or_ax`: a `matplotlib.figure.Figure` or an object
+  with a `.figure` attribute such as a set of `Axes`
+* `dir`: passed to `tempfile.TemporaryDirectory`
+* `ext`: optional file extension, default `'png'`
+
+## Function `struct_format(typecode, bigendian)`
+
+Return a `struct` format string for the supplied `typecode` and big endianness.
+
+## Class `TimePartition(TimePartition, builtins.tuple, TimeStepsMixin)`
+
+A `namedtuple` for a slice of time with the following attributes:
+* `epoch`: the reference `Epoch`
+* `name`: the name for this slice
+* `offset0`: the epoch offset of the start time (`self.start`)
+* `steps`: the number of time slots in this partition
+
+These are used by `TimespanPolicy` instances to express the partitions
+into which they divide time.
+
+## Class `TimeSeries(cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, HasEpochMixin, TimeStepsMixin)`
+
+Common base class of any time series.
+
+## Function `timeseries_from_path(tspath: str, epoch: Union[cs.timeseries.Epoch, Tuple[Union[int, float], Union[int, float]], int, float, NoneType] = None, typecode=None)`
+
+Turn a time series filesystem path into a time series:
+* a file: a `TimeSeriesFile`
+* a directory holding `.csts` files: a `TimeSeriesPartitioned`
+* a directory: a `TimeSeriesDataDir`
+
+## Class `TimeSeriesBaseCommand(cs.cmdutils.BaseCommand)`
+
+Abstract base class for command line interfaces to `TimeSeries` data files.
+
+Command line usage:
+
+    Usage: timeseriesbase subcommand [...]
+      Subcommands:
+        fetch ...
+          Fetch raw data files from the primary source to a local spool.
+          To be implemented in subclasses.
+        help [-l] [subcommand-names...]
+          Print the full help for the named subcommands,
+          or for all subcommands if no names are specified.
+          -l  Long help even if no subcommand-names provided.
+        import ...
+          Import data into the time series.
+          To be implemented in subclasses.
+        info
+          Report information.
+        plot [-f] [-o imgpath.png] [--show] days [{glob|fields}...]
+          Plot the most recent days of data from the time series at tspath.
+          Options:
+          -f              Force. -o will overwrite an existing image file.
+          -o imgpath.png  File system path to which to save the plot.
+          --show          Show the image in the GUI.
+          --stacked       Stack the plot lines/areas.
+          glob|fields     If glob is supplied, constrain the keys of
+                          a TimeSeriesDataDir by the glob.
+
+## Class `TimeSeriesCommand(TimeSeriesBaseCommand, cs.cmdutils.BaseCommand)`
+
+Command line interface to `TimeSeries` data files.
+
+Command line usage:
+
+    Usage: timeseries [-s ts-step] tspath subcommand...
+        -s ts-step  Specify the UNIX time step for the time series,
+                    used if the time series is new and checked otherwise.
+        tspath      The filesystem path to the time series;
+                    this may refer to a single .csts TimeSeriesFile, a
+                    TimeSeriesPartitioned directory of such files, or
+                    a TimeSeriesDataDir containing partitions for
+                    multiple keys.
+      Subcommands:
+        dump
+          Dump the contents of tspath.
+        fetch ...
+          Fetch raw data files from the primary source to a local spool.
+          To be implemented in subclasses.
+        help [-l] [subcommand-names...]
+          Print the full help for the named subcommands,
+          or for all subcommands if no names are specified.
+          -l  Long help even if no subcommand-names provided.
+        import csvpath datecol[:conv] [import_columns...]
+          Import data into the time series.
+          csvpath   The CSV file to import.
+          datecol[:conv]
+                    Specify the timestamp column and optional
+                    conversion function.
+                    "datecol" can be either the column header name
+                    or a numeric column index counting from 0.
+                    If "conv" is omitted, the column should contain
+                    a UNIX seconds timestamp.  Otherwise "conv"
+                    should be either an identifier naming one of
+                    the known conversion functions or an "arrow.get"
+                    compatible time format string.
+          import_columns
+                    An optional list of column names or their derived
+                    attribute names. The default is to import every
+                    numeric column except for the datecol.
+        info
+          Report infomation about the time series stored at tspath.
+        plot [-f] [-o imgpath.png] [--show] days [{glob|fields}...]
+          Plot the most recent days of data from the time series at tspath.
+          Options:
+          -f              Force. -o will overwrite an existing image file.
+          -o imgpath.png  File system path to which to save the plot.
+          --show          Show the image in the GUI.
+          --stacked       Stack the plot lines/areas.
+          glob|fields     If glob is supplied, constrain the keys of
+                          a TimeSeriesDataDir by the glob.
+        test [testnames...]
+          Run some tests of functionality.
+
+## Class `TimeSeriesDataDir(TimeSeriesMapping, builtins.dict, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, cs.fs.HasFSPath, cs.configutils.HasConfigIni, HasEpochMixin, TimeStepsMixin)`
+
+A directory containing a collection of `TimeSeriesPartitioned` subdirectories.
+
+## Class `TimeSeriesFile(TimeSeries, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, HasEpochMixin, TimeStepsMixin, cs.fs.HasFSPath)`
+
+A file containing a single time series for a single data field.
+
+This provides easy access to a time series data file.
+The instance can be indexed by UNIX time stamp for time based access
+or its `.array` property can be accessed for the raw data.
+
+Read only users can just instantiate an instance.
+Read/write users should use the instance as a context manager,
+which will automatically rewrite the file with the array data
+on exit.
+
+Note that the save-on-close is done with `TimeSeries.flush()`
+which ony saves if `self.modified`.
+Use of the `__setitem__` or `pad_to` methods set this flag automatically.
+Direct access via the `.array` will not set it,
+so users working that way for performance should update the flag themselves.
+
+The data file itself has a header indicating the file data big endianness,
+the datum type and the time type (both `array.array` type codes).
+Following these are the start and step sizes in the time type format.
+This is automatically honoured on load and save.
+
+*Method `TimeSeriesFile.__init__(self, fspath: str, typecode: Optional[str] = None, *, epoch: Union[cs.timeseries.Epoch, Tuple[Union[int, float], Union[int, float]], int, float, NoneType] = None, fill=None, fstags=None)`*:
+Prepare a new time series stored in the file at `fspath`
+containing machine data for the time series values.
+
+Parameters:
+* `fspath`: the filename of the data file
+* `typecode` optional expected `array.typecode` value of the data;
+  if specified and the data file exists, they must match;
+  if not specified then the data file must exist
+  and the `typecode` will be obtained from its header
+* `start`: the UNIX epoch time for the first datum
+* `step`: the increment between data times
+* `time_typecode`: the type of the start and step times;
+  inferred from the type of the start time value if unspecified
+* `fill`: optional default fill values for `pad_to`;
+  if unspecified, fill with `0` for `'q'`
+  and `float('nan') for `'d'`
+
+If `start` or `step` are omitted the file's fstags will be
+consulted for their values.
+This class does not set these tags (that would presume write
+access to the parent directory or its `.fstags` file)
+when a `TimeSeriesFile` is made by a `TimeSeriesPartitioned` instance
+it sets these flags.
+
+## Class `TimeSeriesFileHeader(cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin, HasEpochMixin, TimeStepsMixin)`
+
+The binary data structure of the `TimeSeriesFile` file header.
+
+This is 24 bytes long and consists of:
+* the 4 byte magic number, `b'csts'`
+* the file bigendian marker, a `struct` byte order indicator
+  with a value of `b'>'` for big endian data
+  or `b'<'` for little endian data
+* the datum typecode, `b'd'` for double float
+  or `b'q'` for signed 64 bit integer
+* the time typecode, `b'd'` for double float
+  or `b'q'` for signed 64 bit integer
+* a pad byte, value `b'_'`
+* the start UNIX time, a double float or signed 64 bit integer
+  according to the time typecode and bigendian flag
+* the step size, a double float or signed 64 bit integer
+  according to the time typecode and bigendian flag
+
+In addition to the header values tnd methods this also presents:
+* `datum_type`: a `BinarySingleStruct` for the binary form of a data value
+* `time_type`:  a `BinarySingleStruct` for the binary form of a time value
+
+## Class `TimeSeriesMapping(builtins.dict, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, HasEpochMixin, TimeStepsMixin)`
+
+A group of named `TimeSeries` instances, indexed by a key.
+
+This is the basis for `TimeSeriesDataDir`.
+
+## Class `TimeSeriesPartitioned(TimeSeries, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, HasEpochMixin, TimeStepsMixin, cs.fs.HasFSPath)`
+
+A collection of `TimeSeries` files in a subdirectory.
+We have one of these for each `TimeSeriesDataDir` key.
+
+This class manages a collection of files
+named by the partition from a `TimespanPolicy`,
+which dictates which partition holds the datum for a UNIX time.
+
+*Method `TimeSeriesPartitioned.__init__(self, dirpath: str, typecode: str, *, epoch: Union[cs.timeseries.Epoch, Tuple[Union[int, float], Union[int, float]], int, float, NoneType] = None, policy, fstags: Optional[cs.fstags.FSTags] = None)`*:
+Initialise the `TimeSeriesPartitioned` instance.
+
+Parameters:
+* `dirpath`: the directory filesystem path,
+  known as `.fspath` within the instance
+* `typecode`: the `array` type code for the data
+* `epoch`: the time series `Epoch`
+* `policy`: the partitioning `TimespanPolicy`
+
+The instance requires a reference epoch
+because the `policy` start times will almost always
+not fall on exact multiples of `epoch.step`.
+The reference allows for reliable placement of times
+which fall within `epoch.step` of a partition boundary.
+For example, if `epoch.start==0` and `epoch.step==6` and a
+partition boundary came at `19` due to some calendar based
+policy then a time of `20` would fall in the partion left
+of the boundary because it belongs to the time slot commencing
+at `18`.
+
+If `epoch` or `typecode` are omitted the file's
+fstags will be consulted for their values.
+The `start` parameter will further fall back to `0`.
+This class does not set these tags (that would presume write
+access to the parent directory or its `.fstags` file)
+when a `TimeSeriesPartitioned` is made by a `TimeSeriesDataDir`
+instance it sets these flags.
+
+## Class `TimespanPolicy(icontract._metaclass.DBC, HasEpochMixin, TimeStepsMixin)`
+
+A class implementing a policy allocating times to named time spans.
+
+The `TimeSeriesPartitioned` uses these policies
+to partition data among multiple `TimeSeries` data files.
+
+Probably the most important methods are:
+* `span_for_time`: return a `TimePartition` from a UNIX time
+* `span_for_name`: return a `TimePartition` a partition name
+
+*Method `TimespanPolicy.__init__(self, epoch: Union[cs.timeseries.Epoch, Tuple[Union[int, float], Union[int, float]], int, float])`*:
+Initialise the policy.
+
+## Class `TimespanPolicyAnnual(ArrowBasedTimespanPolicy, TimespanPolicy, icontract._metaclass.DBC, HasEpochMixin, TimeStepsMixin)`
+
+A annual time policy.
+PARTITION_FORMAT = 'YYYY'
+ARROW_SHIFT_PARAMS = {'years': 1}
+
+## Class `TimespanPolicyDaily(ArrowBasedTimespanPolicy, TimespanPolicy, icontract._metaclass.DBC, HasEpochMixin, TimeStepsMixin)`
+
+A daily time policy.
+PARTITION_FORMAT = 'YYYY-MM-DD'
+ARROW_SHIFT_PARAMS = {'days': 1}
+
+## Class `TimespanPolicyMonthly(ArrowBasedTimespanPolicy, TimespanPolicy, icontract._metaclass.DBC, HasEpochMixin, TimeStepsMixin)`
+
+A monthly time policy.
+PARTITION_FORMAT = 'YYYY-MM'
+ARROW_SHIFT_PARAMS = {'months': 1}
+
+## Class `TimespanPolicyWeekly(ArrowBasedTimespanPolicy, TimespanPolicy, icontract._metaclass.DBC, HasEpochMixin, TimeStepsMixin)`
+
+A weekly time policy.
+PARTITION_FORMAT = 'W'
+ARROW_SHIFT_PARAMS = {'weeks': 1}
+
+## Class `TimespanPolicyYearly(ArrowBasedTimespanPolicy, TimespanPolicy, icontract._metaclass.DBC, HasEpochMixin, TimeStepsMixin)`
+
+A annual time policy.
+PARTITION_FORMAT = 'YYYY'
+ARROW_SHIFT_PARAMS = {'years': 1}
+
+## Class `TimeStepsMixin`
+
+Methods for an object with `start` and `step` attributes.
+
+## Function `type_of(typecode: str) -> type`
+
+Return the type associated with `array` `typecode`.
+This supports the types in `SUPPORTED_TYPECODES`: `int` and `float`.
+
+## Function `typecode_of(type_) -> str`
+
+Return the `array` typecode for the type `type_`.
+This supports the types in `SUPPORTED_TYPECODES`: `int` and `float`.
+
+# Release Log
+
+
+
+*Release 20220606*:
+Initial PyPI release.
