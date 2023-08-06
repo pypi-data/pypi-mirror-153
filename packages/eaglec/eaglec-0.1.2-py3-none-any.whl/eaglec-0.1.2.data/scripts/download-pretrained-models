@@ -1,0 +1,43 @@
+#!python
+
+import subprocess, os, eaglec, zipfile, sys
+
+def download_and_unzip(root_folder, subfolder, link):
+
+    root_folder = os.path.join(os.path.split(eaglec.__file__)[0], 'data', root_folder)
+    if not os.path.exists(root_folder):
+        os.mkdir(root_folder)
+        
+    outzip = os.path.join(root_folder, '{0}.zip'.format(subfolder))
+    command = ['wget', '-O', outzip, '-L', link]
+    subprocess.check_call(' '.join(command), shell=True)
+    with zipfile.ZipFile(outzip, 'r') as zip_ref:
+        zip_ref.extractall(root_folder)
+    
+    os.remove(outzip)
+
+# download models for bulk contact maps
+weblinks = {
+    '5M-10M': 'https://www.dropbox.com/s/zcir6ivvwe928yv/5M-10M.zip?dl=0',
+    '10M-50M': 'https://www.dropbox.com/s/2tgpdx0gxcocly5/10M-50M.zip?dl=0',
+    '50M-100M': 'https://www.dropbox.com/s/iqx2aen7f7ho5cl/50M-100M.zip?dl=0',
+    '100M-200M': 'https://www.dropbox.com/s/xecmw05bohm0wz2/100M-200M.zip?dl=0',
+    '200M-300M': 'https://www.dropbox.com/s/jwieemwuursedul/200M-300M.zip?dl=0',
+    '300M-800M': 'https://www.dropbox.com/s/gemmlqw17f72d5c/300M-800M.zip?dl=0'
+}
+for subfolder in weblinks:
+    download_and_unzip('bulk', subfolder, weblinks[subfolder])
+
+# download models for scHiC maps
+weblinks = {
+    '100K-250K': 'https://www.dropbox.com/s/me40isx7cozgiz0/100K-250K.zip?dl=0',
+    '250K-500K': 'https://www.dropbox.com/s/4bh1koyy9br5uqg/250K-500K.zip?dl=0',
+    '500K-750K': 'https://www.dropbox.com/s/sr5aojkq9xknq2m/500K-750K.zip?dl=0',
+    '750K-1M': 'https://www.dropbox.com/s/4tqdykzkxeec91w/750K-1M.zip?dl=0',
+    '1M-3M': 'https://www.dropbox.com/s/e5m9j91shxq8qqq/1M-3M.zip?dl=0',
+    '3M-5M': 'https://www.dropbox.com/s/s2x5aqengau3cs2/3M-5M.zip?dl=0',
+    '5M-10M': 'https://www.dropbox.com/s/9mmizzob3hbz6gu/5M-10M.zip?dl=0',
+    '10M-20M': 'https://www.dropbox.com/s/e85j322auuhqr36/10M-20M.zip?dl=0'
+}
+for subfolder in weblinks:
+    download_and_unzip('single-cells', subfolder, weblinks[subfolder])
