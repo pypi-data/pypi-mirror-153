@@ -1,0 +1,113 @@
+Metadata-Version: 2.1
+Name: compendium
+Version: 0.1.2.post3
+Summary: Simple layered configuraion tool
+Home-page: https://github.com/kuwv/python-compendium
+License: Apache-2.0
+Keywords: configuration,configuration management
+Author: Jesse P. Johnson
+Author-email: jpj6652@gmail.com
+Requires-Python: >=3.6.2,<4.0.0
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Provides-Extra: xml
+Requires-Dist: anytree (>=2.8.0,<3.0.0)
+Requires-Dist: dpath (>=2.0.1,<3.0.0)
+Requires-Dist: ruamel.yaml (>=0.16.10,<0.17.0)
+Requires-Dist: tomlkit (>=0.7.0,<0.8.0)
+Requires-Dist: xmltodict (>=0.12.0,<0.13.0); extra == "xml"
+Project-URL: Documentation, https://kuwv.github.io/python-compendium
+Description-Content-Type: text/markdown
+
+# Compendium
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Build Status](https://travis-ci.org/kuwv/python-compendium.svg?branch=master)](https://travis-ci.org/kuwv/python-compendium)
+[![codecov](https://codecov.io/gh/kuwv/python-compendium/branch/master/graph/badge.svg)](https://codecov.io/gh/kuwv/python-compendium)
+
+## Overview
+
+Compendium is a simple configuration management tool. It has the capability to manage configuration files writen in JSON, TOML, XML and YAML. Settings from these configuration files can then be managed easily with the help of dpath.
+
+## Documentation
+
+https://kuwv.github.io/python-compendium/
+
+### Install
+
+`pip install compendium`
+
+### Manage multiple configurations
+
+```python
+>>> from tempfile import NamedTemporaryFile
+>>> from textwrap import dedent
+
+>>> from compendium.config_manager import ConfigManager
+
+>>> try:
+...     file1 = NamedTemporaryFile(mode='wt', suffix='.toml')
+...     _ = file1.write(
+...         dedent(
+...             """\
+...             [default]
+...             foo = "bar"
+...             foo2 = "bar2"
+...             """
+...         )
+...     )
+...     _ = file1.seek(0)
+...
+...     file2 = NamedTemporaryFile(mode='wt', suffix='.toml')
+...     _ = file2.write(
+...         dedent(
+...             """\
+...             [example.settings]
+...             foo = "baz"
+...             """
+...         )
+...     )
+...     _ = file2.seek(0)
+...
+...     cfg = ConfigManager(name='app', filepaths=[file1.name, file2.name])
+...     cfg.lookup('/example/settings/foo', '/default/foo')
+...     cfg.lookup('/default/foo2')
+... finally:
+...     file1.close()
+...     file2.close()
+'baz'
+'bar2'
+
+```
+
+### Search settings
+
+```python
+result = cfg.search('/servers/**/ip')
+```
+
+### Create settings
+
+```python
+cfg.create('/test', 'test')
+```
+
+### Update settings
+
+```python
+cfg.set('/owner/name', 'Tom Waits')
+```
+
+### Delete settings
+
+```python
+cfg.delete('/owner/name')
+```
+
