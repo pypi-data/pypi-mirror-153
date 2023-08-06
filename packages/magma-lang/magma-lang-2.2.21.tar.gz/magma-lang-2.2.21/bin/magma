@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+import os, sys, getopt
+from magma import compile, set_mantle_target
+
+def usage():
+    print('usage: magma [-b board] [-o outputformat] file\n', file=sys.stderr)
+    print('Options', file=sys.stderr)
+    print('-h          help', file=sys.stderr)
+    print('-b board    (icestick, goboard, hx8kboard) ', file=sys.stderr)
+    print('-o format   (verilog [default], coreir, coreir-verilog, firrtl, blif) ', file=sys.stderr)
+    print('-m mantle   (verilog [default], coreir, lattice)', file=sys.stderr)
+    print('-t top      (top circuit module, main [default])', file=sys.stderr)
+    print('-d dir      (build directory [default=build])', file=sys.stderr)
+    sys.exit(1)
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'b:o:m:t:d:')
+except Exception as e:
+    print(e, file=sys.stderr)
+    usage()
+
+sys.path.append(os.path.dirname(os.path.realpath(args[0])))
+
+boards  = ['icestick', 'goboard', 'hx8kboard', 'tinyfpga', 'upduino']
+boards += ['papilioone']
+boards += ['papiliopro', 'xula2', 'mojo']
+boards += ['zed', 'trenz']
+boards += ['de0nano']
+boards += ['gpdevboard']
+
+board = None
+target = None
+outputformat = 'verilog'
+top_circuit = 'main'
+build = 'build'
+for o, a in opts:
+    if o == '-h':
+        usage()
+    elif o == '-b':
+        if a not in boards:
+            usage()
+        board = a
+    elif o == '-o':
+        if a not in ['verilog', 'coreir', 'coreir-verilog', 'firrtl', 'blif']:
+            usage()
+        outputformat = a
+    elif o == '-m':
+        if a not in ['ice40', 'spartan3', 'spartan6', 'kintex7', 'cyclone4', 'greenpak4']:
+            usage()
+        target = a
+    elif o == '-t':
+        top_circuit = a
+    elif o == '-d':
+        build = a
+
+if not target and board:
+    if board in ['icestick', 'goboard', 'hx8kboard', 'tinyfpga', 'upduino']:
+        target = 'ice40'
+    elif board == 'de0nano':
+        target = 'cyclone4'
+    elif board == 'papilioone':
+        target = 'spartan3'
+    elif board in ['papiliopro', 'xula2', 'mojo']:
+        target = 'spartan6'
+    elif board in ['zed', 'trenz']:
+        target = 'kintex7'
+    elif board == 'gpdevboard':
+        target = 'greenpak4'
+
+if target:
+    os.environ['MANTLE_TARGET'] = target
+    set_mantle_target(target)
+
+# Add CWD to PYTHONPATH so Python can find the input file
+sys.path.append(os.getcwd())
+
+name = os.path.basename(args[0])
+name = os.path.splitext(name)[0]
+
+main = getattr(__import__(name), top_circuit)
+
+mainv = os.path.join(build,name)
+print(mainv, outputformat)
+
+compile(mainv, main, output=outputformat)
