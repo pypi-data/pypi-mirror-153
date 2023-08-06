@@ -1,0 +1,78 @@
+jobs:
+- job:
+  displayName: ubuntu-20.04-38
+  pool:
+    vmImage: 'ubuntu-20.04'
+  strategy:
+    matrix:
+      Python39:
+        python.version: '3.9'
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: conda create --yes --quiet --name bw2
+    displayName: Create Anaconda environment
+
+  - bash: |
+      source activate bw2
+      conda install --yes -c defaults -c conda-forge -c cmutel -c cmutel/label/dev -c haasad --name bw2 python=$PYTHON_VERSION numpy scipy psutil requests lxml bw2data=4.0.DEV11 bw2calc=2.0.dev3 unidecode xlsxwriter tqdm xlrd bw_processing matrix_utils openpyxl bw_migrations mrio_common_metadata pytest pytest-azurepipelines pytest-cov
+    displayName: Install Anaconda packages
+
+  - bash: |
+      source activate bw2
+      pytest -vv --cov=bw2io
+    displayName: pytest
+
+- job:
+  displayName: macOS-10.14-39
+  pool:
+    vmImage: 'macOS-10.14'
+  strategy:
+    matrix:
+      Python39:
+        python.version: '3.9'
+
+  steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  - bash: conda create --yes --quiet --name bw2
+    displayName: Create Anaconda environment
+
+  - bash: |
+      source activate bw2
+      conda install --yes -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=$PYTHON_VERSION numpy scipy psutil requests lxml pytest bw2data=4.0.DEV11 bw2calc=2.0.dev3 unidecode xlsxwriter tqdm xlrd openpyxl bw_processing matrix_utils bw_migrations mrio_common_metadata pytest-azurepipelines pytest-cov
+    displayName: Install Anaconda packages
+
+  - bash: |
+      source activate bw2
+      pytest -vv --cov=bw2io
+    displayName: pytest
+
+- job:
+  displayName: vs2017-win2016-39
+  pool:
+    vmImage: 'vs2017-win2016'
+  strategy:
+    matrix:
+      Python39:
+        python.version: '3.9'
+
+  steps:
+  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+    displayName: Add conda to PATH
+
+  - script: conda create --yes --quiet --name bw2
+    displayName: Create Anaconda environment
+
+  - script: |
+      call activate bw2
+      conda install --yes -c defaults -c conda-forge -c cmutel -c haasad --name bw2 python=%PYTHON_VERSION% numpy scipy psutil requests lxml pytest bw2data=4.0.DEV11 bw2calc=2.0.dev3 unidecode xlrd xlsxwriter tqdm openpyxl bw_processing matrix_utils bw_migrations mrio_common_metadata pytest pytest-azurepipelines pytest-cov pip
+    displayName: Install Anaconda packages
+
+  - script: |
+      call activate bw2
+      pytest -vv --cov=bw2io
+    displayName: pytest
