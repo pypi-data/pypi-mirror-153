@@ -1,0 +1,1981 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "COBBLER" "1" "Jun 03, 2022" "3.3" "Cobbler"
+.SH NAME
+cobbler \- Cobbler CLI Documentation
+.sp
+This page contains a description for commands which can be used from the CLI.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+We are currently developing a new CLI which is independent from the server.
+This document redirects you to the new documentation once the new CLI is ready.
+.UNINDENT
+.UNINDENT
+.SH GENERAL PRINCIPLES
+.sp
+This should just be a brief overview. For the detailed explanations please refer to
+\fI\%Readthedocs\fP\&.
+.SS Distros, Profiles and Systems
+.sp
+Cobbler has a system of inheritance when it comes to managing the information you want to apply to a certain system.
+.SS Images
+.SS Repositories
+.SS Management Classes
+.SS Deleting configuration entries
+.sp
+If you want to remove a specific object, use the remove command with the name that was used to add it.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cobbler distro|profile|system|repo|image|mgmtclass|package|file|menu remove \-\-name=string
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Editing
+.sp
+If you want to change a particular setting without doing an \fBadd\fP again, use the \fBedit\fP command, using the same name
+you gave when you added the item. Anything supplied in the parameter list will overwrite the settings in the existing
+object, preserving settings not mentioned.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cobbler distro|profile|system|repo|image|mgmtclass|package|file|menu edit \-\-name=string [parameterlist]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Copying
+.sp
+Objects can also be copied:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cobbler distro|profile|system|repo|image|mgmtclass|package|file|menu copy \-\-name=oldname \-\-newname=newname
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Renaming
+.sp
+Objects can also be renamed, as long as other objects don\(aqt reference them.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cobbler distro|profile|system|repo|image|mgmtclass|package|file|menu rename \-\-name=oldname \-\-newname=newname
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH CLI-COMMANDS
+.sp
+Short Usage: \fBcobbler command [subcommand] [\-\-arg1=value1] [\-\-arg2=value2]\fP
+.sp
+Long Usage:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cobbler <distro|profile|system|repo|image|mgmtclass|package|file|menu> ... [add|edit|copy|get\-autoinstall*|list|remove|rename|report] [options|\-\-help]
+cobbler <aclsetup|buildiso|import|list|mkloaders|replicate|report|reposync|sync|validate\-autoinstalls|version|signature|hardlink> [options|\-\-help]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler distro
+.sp
+This first step towards configuring what you want to install is to add a distribution record to Cobbler\(aqs configuration.
+.sp
+If there is an rsync mirror, DVD, NFS, or filesystem tree available that you would rather \fBimport\fP instead, skip down
+to the documentation about the \fBimport\fP command. It\(aqs really a lot easier to follow the import workflow \-\- it only
+requires waiting for the mirror content to be copied and/or scanned. Imported mirrors also save time during install
+since they don\(aqt have to hit external install sources.
+.sp
+If you want to be explicit with distribution definition, however, here\(aqs how it works:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler distro add \-\-name=string \-\-kernel=path \-\-initrd=path [\-\-kernel\-options=string] [\-\-kernel\-options\-post=string] [\-\-autoinstall\-meta=string] [\-\-arch=i386|x86_64|ppc|ppc64|ppc64le|arm64] [\-\-breed=redhat|debian|suse] [\-\-template\-files=string]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+arch
+T}	T{
+Sets the architecture for the PXE bootloader and also controls how Koan\(aqs \fB\-\-replace\-self\fP option
+will operate.
+.sp
+The default setting (\fBstandard\fP) will use \fBpxelinux\fP\&.
+.sp
+\fBx86\fP and \fBx86_64\fP effectively do the same thing as standard.
+.sp
+If you perform a \fBcobbler import\fP, the arch field will be auto\-assigned.
+T}
+_
+T{
+autoinstall\-
+meta
+T}	T{
+This is an advanced feature that sets automatic installation template variables to substitute, thus
+enabling those files to be treated as templates. Templates are powered using Cheetah and are
+described further along in this manpage as well as on the Cobbler Wiki.
+.sp
+Example: \fB\-\-autoinstall\-meta=\(dqfoo=bar baz=3 asdf\(dq\fP
+.sp
+See the section on \(dqKickstart Templating\(dq for further information.
+T}
+_
+T{
+boot\-files
+T}	T{
+TFTP Boot Files (Files copied into tftpboot beyond the kernel/initrd).
+T}
+_
+T{
+boot\-loaders
+T}	T{
+Boot loader space delimited list (Network installation boot loaders).
+Valid options for list items are <<inherit>>, \fIgrub\fP, \fIpxe\fP, \fIipxe\fP\&.
+T}
+_
+T{
+breed
+T}	T{
+Controls how various physical and virtual parameters, including kernel arguments for automatic
+installation, are to be treated. Defaults to \fBredhat\fP, which is a suitable value for Fedora and
+CentOS as well. It means anything Red Hat based.
+.sp
+There is limited experimental support for specifying \(dqdebian\(dq, \(dqubuntu\(dq, or \(dqsuse\(dq, which treats the
+automatic installation template file as a preseed/autoyast file format and changes the kernel
+arguments appropriately. Support for other types of distributions is possible in the future. See the
+Wiki for the latest information about support for these distributions.
+.sp
+The file used for the answer file, regardless of the breed setting, is the value used for
+\fB\-\-autoinstall\fP when creating the profile.
+T}
+_
+T{
+comment
+T}	T{
+Simple attach a description (Free form text) to your distro.
+T}
+_
+T{
+fetchable\-files
+T}	T{
+Fetchable Files (Templates for tftp or wget/curl)
+T}
+_
+T{
+\fBinitrd\fP
+T}	T{
+An absolute filesystem path to a initrd image.
+T}
+_
+T{
+\fBkernel\fP
+T}	T{
+An absolute filesystem path to a kernel image.
+T}
+_
+T{
+kernel\-options
+T}	T{
+Sets kernel command\-line arguments that the distro, and profiles/systems depending on it, will use.
+To remove a kernel argument that may be added by a higher Cobbler object (or in the global
+settings), you can prefix it with a \fB!\fP\&.
+.sp
+Example: \fB\-\-kernel\-options=\(dqfoo=bar baz=3 asdf !gulp\(dq\fP
+.sp
+This example passes the arguments \fBfoo=bar baz=3 asdf\fP but will make sure \fBgulp\fP is not passed
+even if it was requested at a level higher up in the Cobbler configuration.
+T}
+_
+T{
+kernel\-options\-
+post
+T}	T{
+This is just like \fB\-\-kernel\-options\fP, though it governs kernel options on the installed OS, as
+opposed to kernel options fed to the installer. The syntax is exactly the same. This requires some
+special snippets to be found in your automatic installation template in order for this to work.
+Automatic installation templating is described later on in this document.
+.sp
+Example: \fBnoapic\fP
+T}
+_
+T{
+mgmt\-classes
+T}	T{
+Management Classes (Management classes for external config management).
+T}
+_
+T{
+\fBname\fP
+T}	T{
+A string identifying the distribution, this should be something like \fBrhel6\fP\&.
+T}
+_
+T{
+os\-version
+T}	T{
+Generally this field can be ignored. It is intended to alter some hardware setup for virtualized
+instances when provisioning guests with Koan. The valid options for \fB\-\-os\-version\fP vary depending
+on what is specified for \fB\-\-breed\fP\&. If you specify an invalid option, the error message will
+contain a list of valid OS versions that can be used. If you don\(aqt know the OS version or it does
+not appear in the list, omitting this argument or using \fBother\fP should be perfectly fine. If you
+don\(aqt encounter any problems with virtualized instances, this option can be safely ignored.
+T}
+_
+T{
+owners
+T}	T{
+Users with small sites and a limited number of admins can probably ignore this option. All Cobbler
+objects (distros, profiles, systems, and repos) can take a \-\-owners parameter to specify what
+Cobbler users can edit particular objects.This only applies to the Cobbler WebUI and XML\-RPC
+interface, not the \(dqcobbler\(dq command line tool run from the shell. Furthermore, this is only
+respected by the \fBauthz_ownership\fP module which must be enabled in \fB/etc/cobbler/modules.conf\fP\&.
+The value for \fB\-\-owners\fP is a space separated list of users and groups as specified in
+\fB/etc/cobbler/users.conf\fP\&. For more information see the users.conf file as well as the Cobbler
+Wiki. In the default Cobbler configuration, this value is completely ignored, as is \fBusers.conf\fP\&.
+T}
+_
+T{
+redhat\-
+management\-key
+T}	T{
+Management Classes (Management classes for external config management).
+T}
+_
+T{
+remote\-boot\-
+kernel
+T}	T{
+A URL pointing to the installation initrd of a distribution. If the bootloader has this support,
+it will directly download the kernel from this URL, instead of the directory of the TFTP client.
+Note: The kernel (or initrd below) will still be copied into the image directory of the TFTP server.
+The above kernel parameter is still needed (e.g. to build iso images, etc.).
+The advantage of letting the boot loader retrieve the kernel/initrd directly is the support of
+changing/updated distributions. E.g. openSUSE Tumbleweed is updated on the fly and if Cobbler would
+copy/cache the kernel/initrd in the TFTP directory, you would get a \(dqkernel does not match
+distribution\(dq (or similar) error when trying to install.
+T}
+_
+T{
+remote\-boot\-
+initrd
+T}	T{
+See remote\-boot\-kernel above.
+T}
+_
+T{
+template\-files
+T}	T{
+This feature allows Cobbler to be used as a configuration management system. The argument is a space
+delimited string of \fBkey=value\fP pairs. Each key is the path to a template file, each value is the
+path to install the file on the system. This is described in further detail on the Cobbler Wiki and
+is implemented using special code in the post install. Koan also can retrieve these files from a
+Cobbler server on demand, effectively allowing Cobbler to function as a lightweight templated
+configuration management system.
+T}
+_
+.TE
+.SS Cobbler profile
+.sp
+A profile associates a distribution to additional specialized options, such as a installation automation file. Profiles
+are the core unit of provisioning and at least one profile must exist for every distribution to be provisioned. A
+profile might represent, for instance, a web server or desktop configuration. In this way, profiles define a role to be
+performed.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler profile add \-\-name=string \-\-distro=string [\-\-autoinstall=path] [\-\-kernel\-options=string] [\-\-autoinstall\-meta=string] [\-\-name\-servers=string] [\-\-name\-servers\-search=string] [\-\-virt\-file\-size=gigabytes] [\-\-virt\-ram=megabytes] [\-\-virt\-type=string] [\-\-virt\-cpus=integer] [\-\-virt\-path=string] [\-\-virt\-bridge=string] [\-\-server] [\-\-parent=profile] [\-\-filename=string]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Arguments are the same as listed for distributions, save for the removal of \(dqarch\(dq and \(dqbreed\(dq, and with the additions
+listed below:
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+autoinstall
+T}	T{
+Local filesystem path to a automatic installation file, the file must reside under
+\fB/var/lib/cobbler/templates\fP
+T}
+_
+T{
+autoinstall\-meta
+T}	T{
+Automatic Installation Metadata (Ex: \fIdog=fang agent=86\fP).
+T}
+_
+T{
+boot\-files
+T}	T{
+TFTP Boot Files (Files copied into tftpboot beyond the kernel/initrd).
+T}
+_
+T{
+boot\-loaders
+T}	T{
+Boot loader space delimited list (Network installation boot loaders).
+Valid options for list items are <<inherit>>, \fIgrub\fP, \fIpxe\fP, \fIipxe\fP\&.
+T}
+_
+T{
+comment
+T}	T{
+Simple attach a description (Free form text) to your distro.
+T}
+_
+T{
+dhcp\-tag
+T}	T{
+DHCP Tag (see description in system).
+T}
+_
+T{
+\fBdistro\fP
+T}	T{
+The name of a previously defined Cobbler distribution. This value is required.
+T}
+_
+T{
+enable\-ipxe
+T}	T{
+Enable iPXE? (Use iPXE instead of PXELINUX for advanced booting options)
+T}
+_
+T{
+enable\-menu
+T}	T{
+Enable PXE Menu? (Show this profile in the PXE menu?)
+T}
+_
+T{
+fetchable\-files
+T}	T{
+Fetchable Files (Templates for tftp or wget/curl)
+T}
+_
+T{
+filename
+T}	T{
+This parameter can be used to select the bootloader for network boot. If specified, this must
+be a path relative to the TFTP servers root directory. (e.g. grub/grubx64.efi)
+For most use cases the default bootloader is correct and this can be omitted
+T}
+_
+T{
+menu
+T}	T{
+This is a way of organizing profiles and images in an automatically generated boot menu for
+\fIgrub\fP, \fIpxe\fP and \fIipxe\fP boot loaders. Menu created with \fBcobbler menu add\fP command.
+T}
+_
+T{
+\fBname\fP
+T}	T{
+A descriptive name. This could be something like \fBrhel5webservers\fP or \fBf9desktops\fP\&.
+T}
+_
+T{
+name\-servers
+T}	T{
+If your nameservers are not provided by DHCP, you can specify a space separated list of
+addresses here to configure each of the installed nodes to use them (provided the automatic
+installation files used are installed on a per\-system basis). Users with DHCP setups should not
+need to use this option. This is available to set in profiles to avoid having to set it
+repeatedly for each system record.
+T}
+_
+T{
+name\-servers\-search
+T}	T{
+You can specify a space separated list of domain names to configure each of the installed nodes
+to use them as domain search path. This is available to set in profiles to avoid having to set
+it repeatedly for each system record.
+T}
+_
+T{
+next\-server
+T}	T{
+To override the Next server.
+T}
+_
+T{
+owners
+T}	T{
+Users with small sites and a limited number of admins can probably ignore this option. All
+objects (distros, profiles, systems, and repos) can take a \-\-owners parameter to specify what
+Cobbler users can edit particular objects.This only applies to the Cobbler WebUI and XML\-RPC
+interface, not the \(dqcobbler\(dq command line tool run from the shell. Furthermore, this is only
+respected by the \fBauthz_ownership\fP module which must be enabled in
+\fB/etc/cobbler/modules.conf\fP\&. The value for \fB\-\-owners\fP is a space separated list of users
+and groups as specified in \fB/etc/cobbler/users.conf\fP\&.
+For more information see the users.conf file as well as the Cobbler
+Wiki. In the default Cobbler configuration, this value is completely ignored, as is
+\fBusers.conf\fP\&.
+T}
+_
+T{
+parent
+T}	T{
+This is an advanced feature.
+.sp
+Profiles may inherit from other profiles in lieu of specifying \fB\-\-distro\fP\&. Inherited profiles
+will override any settings specified in their parent, with the exception of
+\fB\-\-autoinstall\-meta\fP (templating) and \fB\-\-kernel\-options\fP (kernel options), which will be
+blended together.
+.sp
+Example: If profile A has \fB\-\-kernel\-options=\(dqx=7 y=2\(dq\fP, B inherits from A, and B has
+\fB\-\-kernel\-options=\(dqx=9 z=2\(dq\fP, the actual kernel options that will be used for B are
+\fBx=9 y=2 z=2\fP\&.
+.sp
+Example: If profile B has \fB\-\-virt\-ram=256\fP and A has \fB\-\-virt\-ram=512\fP, profile B will use
+the value 256.
+.sp
+Example: If profile A has a \fB\-\-virt\-file\-size=5\fP and B does not specify a size, B will use
+the value from A.
+T}
+_
+T{
+proxy
+T}	T{
+Proxy URL.
+T}
+_
+T{
+redhat\-
+management\-key
+T}	T{
+Management Classes (Management classes for external config management).
+T}
+_
+T{
+repos
+T}	T{
+This is a space delimited list of all the repos (created with \fBcobbler repo add\fP and updated
+with \fBcobbler reposync\fP)that this profile can make use of during automated installation. For
+example, an example might be \fB\-\-repos=\(dqfc6i386updates fc6i386extras\(dq\fP if the profile wants to
+access these two mirrors that are already mirrored on the Cobbler server. Repo management is
+described in greater depth later in the manpage.
+T}
+_
+T{
+server
+T}	T{
+This parameter should be useful only in select circumstances. If machines are on a subnet that
+cannot access the Cobbler server using the name/IP as configured in the Cobbler settings file,
+use this parameter to override that servername. See also \fB\-\-dhcp\-tag\fP for configuring the
+next server and DHCP information of the system if you are also using Cobbler to help manage
+your DHCP configuration.
+T}
+_
+T{
+template\-files
+T}	T{
+This feature allows Cobbler to be used as a configuration management system. The argument is a
+space delimited string of \fBkey=value\fP pairs. Each key is the path to a template file, each
+value is the path to install the file on the system. This is described in further detail on
+the Cobbler Wiki and is implemented using special code in the post install. Koan also can
+retrieve these files from a Cobbler server on demand, effectively allowing Cobbler to function
+as a lightweight templated configuration management system.
+T}
+_
+T{
+virt\-auto\-boot
+T}	T{
+(Virt\-only) Virt Auto Boot (Auto boot this VM?).
+T}
+_
+T{
+virt\-bridge
+T}	T{
+(Virt\-only) This specifies the default bridge to use for all systems defined under this
+profile. If not specified, it will assume the default value in the Cobbler settings file, which
+as shipped in the RPM is \fBxenbr0\fP\&. If using KVM, this is most likely not correct. You may
+want to override this setting in the system object. Bridge settings are important as they
+define how outside networking will reach the guest. For more information on bridge setup, see
+the Cobbler Wiki, where there is a section describing Koan usage.
+T}
+_
+T{
+virt\-cpus
+T}	T{
+(Virt\-only) How many virtual CPUs should Koan give the virtual machine? The default is 1. This
+is an integer.
+T}
+_
+T{
+virt\-disk\-driver
+T}	T{
+(Virt\-only) Virt Disk Driver Type (The on\-disk format for the virtualization disk).
+Valid options are <<inherit>>, \fIraw\fP, \fIqcow2\fP, \fIqed\fP, \fIvdi\fP, \fIvmdk\fP
+T}
+_
+T{
+virt\-file\-size
+T}	T{
+(Virt\-only) How large the disk image should be in Gigabytes. The default is 5. This can be a
+comma separated list (ex: \fB5,6,7\fP) to allow for multiple disks of different sizes depending
+on what is given to \fB\-\-virt\-path\fP\&. This should be input as a integer or decimal value without
+units.
+T}
+_
+T{
+virt\-path
+T}	T{
+(Virt\-only) Where to store the virtual image on the host system. Except for advanced cases,
+this parameter can usually be omitted. For disk images, the value is usually an absolute path
+to an existing directory with an optional filename component. There is support for specifying
+partitions \fB/dev/sda4\fP or volume groups \fBVolGroup00\fP, etc.
+.sp
+For multiple disks, separate the values with commas such as \fBVolGroup00,VolGroup00\fP or
+\fB/dev/sda4,/dev/sda5\fP\&. Both those examples would create two disks for the VM.
+T}
+_
+T{
+virt\-ram
+T}	T{
+(Virt\-only) How many megabytes of RAM to consume. The default is 512 MB. This should be input
+as an integer without units.
+T}
+_
+T{
+virt\-type
+T}	T{
+(Virt\-only) Koan can install images using either Xen paravirt (\fBxenpv\fP) or QEMU/KVM
+(\fBqemu\fP). Choose one or the other strings to specify, or values will default to attempting to
+find a compatible installation type on the client system(\(dqauto\(dq). See the \(dqKoan\(dq manpage for
+more documentation. The default \fB\-\-virt\-type\fP can be configured in the Cobbler settings file
+such that this parameter does not have to be provided. Other virtualization types are
+supported, for information on those options (such as VMware), see the Cobbler Wiki.
+T}
+_
+.TE
+.SS Cobbler system
+.sp
+System records map a piece of hardware (or a virtual machine) with the Cobbler profile to be assigned to run on it. This
+may be thought of as choosing a role for a specific system.
+.sp
+Note that if provisioning via Koan and PXE menus alone, it is not required to create system records in Cobbler, though
+they are useful when system specific customizations are required. One such customization would be defining the MAC
+address. If there is a specific role intended for a given machine, system records should be created for it.
+.sp
+System commands have a wider variety of control offered over network details. In order to use these to the fullest
+possible extent, the automatic installation template used by Cobbler must contain certain automatic installation
+snippets (sections of code specifically written for Cobbler to make these values become reality). Compare your automatic
+installation templates with the stock ones in /var/lib/cobbler/templates if you have upgraded, to make sure
+you can take advantage of all options to their fullest potential. If you are a new Cobbler user, base your automatic
+installation templates off of these templates.
+.sp
+Read more about networking setup at: \fI\%https://cobbler.readthedocs.io/en/release28/4_advanced/advanced%20networking.html\fP
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler system add \-\-name=string \-\-profile=string [\-\-mac=macaddress] [\-\-ip\-address=ipaddress] [\-\-hostname=hostname] [\-\-kernel\-options=string] [\-\-autoinstall\-meta=string] [\-\-autoinstall=path] [\-\-netboot\-enabled=Y/N] [\-\-server=string] [\-\-gateway=string] [\-\-dns\-name=string] [\-\-static\-routes=string] [\-\-power\-address=string] [\-\-power\-type=string] [\-\-power\-user=string] [\-\-power\-pass=string] [\-\-power\-id=string]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Adds a Cobbler System to the configuration. Arguments are specified as per \(dqprofile add\(dq with the following changes:
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+autoinstall
+T}	T{
+While it is recommended that the \fB\-\-autoinstall\fP parameter is only used within for the
+\(dqprofile add\(dq command, there are limited scenarios when an install base switching to Cobbler
+may have legacy automatic installation files created on aper\-system basis (one automatic
+installation file for each system, nothing shared) and may not want to immediately make use of
+the Cobbler templating system. This allows specifying a automatic installation file for use on
+a per\-system basis. Creation of a parent profile is still required. If the automatic
+installation file is a filesystem location, it will still be treated as a Cobbler template.
+T}
+_
+T{
+autoinstall\-meta
+T}	T{
+Automatic Installation Metadata (Ex: \fIdog=fang agent=86\fP).
+T}
+_
+T{
+boot\-files
+T}	T{
+TFTP Boot Files (Files copied into tftpboot beyond the kernel/initrd).
+T}
+_
+T{
+boot\-loaders
+T}	T{
+Boot loader space delimited list (Network installation boot loaders).
+Valid options for list items are <<inherit>>, \fIgrub\fP, \fIpxe\fP, \fIipxe\fP\&.
+T}
+_
+T{
+comment
+T}	T{
+Simple attach a description (Free form text) to your distro.
+T}
+_
+T{
+dhcp\-tag
+T}	T{
+If you are setting up a PXE environment with multiple subnets/gateways, and are using Cobbler
+to manage a DHCP configuration, you will probably want to use this option. If not, it can be
+ignored.
+.sp
+By default, the dhcp tag for all systems is \(dqdefault\(dq and means that in the DHCP template
+files the systems will expand out where $insert_cobbler_systems_definitions is found in the
+DHCP template. However, you may want certain systems to expand out in other places in the DHCP
+config file. Setting \fB\-\-dhcp\-tag=subnet2\fP for instance, will cause that system to expand out
+where $insert_cobbler_system_definitions_subnet2 is found, allowing you to insert directives
+to specify different subnets (or other parameters) before the DHCP configuration entries for
+those particular systems.
+.sp
+This is described further on the Cobbler Wiki.
+T}
+_
+T{
+dns\-name
+T}	T{
+If using the DNS management feature (see advanced section \-\- Cobbler supports auto\-setup of
+BIND and dnsmasq), use this to define a hostname for the system to receive from DNS.
+.sp
+Example: \fB\-\-dns\-name=mycomputer.example.com\fP
+.sp
+This is a per\-interface parameter. If you have multiple interfaces, it may be different for
+each interface, for example, assume a DMZ / dual\-homed setup.
+T}
+_
+T{
+enable\-ipxe
+T}	T{
+Enable iPXE? (Use iPXE instead of PXELINUX for advanced booting options)
+T}
+_
+T{
+fetchable\-files
+T}	T{
+Fetchable Files (Templates for tftp or wget/curl)
+T}
+_
+T{
+filename
+T}	T{
+This parameter can be used to select the bootloader for network boot. If specified, this must
+be a path relative to the TFTP servers root directory. (e.g. grub/grubx64.efi)
+For most use cases the default bootloader is correct and this can be omitted
+T}
+_
+T{
+gateway and netmask
+T}	T{
+If you are using static IP configurations and the interface is flagged \fB\-\-static=1\fP, these
+will be applied.
+.sp
+Netmask is a per\-interface parameter. Because of the way gateway is stored on the installed OS,
+gateway is a global parameter. You may use \fB\-\-static\-routes\fP for per\-interface customizations
+if required.
+T}
+_
+T{
+hostname
+T}	T{
+This field corresponds to the hostname set in a systems \fB/etc/sysconfig/network\fP file. This
+has no bearing on DNS, even when manage_dns is enabled. Use \fB\-\-dns\-name\fP instead for that
+feature.
+.sp
+This parameter is assigned once per system, it is not a per\-interface setting.
+T}
+_
+T{
+interface
+T}	T{
+By default flags like \fB\-\-ip\fP, \fB\-\-mac\fP, \fB\-\-dhcp\-tag\fP, \fB\-\-dns\-name\fP, \fB\-\-netmask\fP,
+\fB\-\-virt\-bridge\fP, and \fB\-\-static\-routes\fP operate on the first network interface defined for
+a system (eth0).
+However, Cobbler supports an arbitrary number of interfaces. Using \fB\-\-interface=eth1\fP for
+instance, will allow creating and editing of a second interface.
+.sp
+Interface naming notes:
+.sp
+Additional interfaces can be specified (for example: eth1, or any name you like, as long as it
+does not conflict with any reserved names such as kernel module names) for use with the edit
+command. Defining VLANs this way is also supported, of you want to add VLAN 5 on interface
+eth0, simply name your interface eth0.5.
+.sp
+Example:
+.sp
+cobbler system edit \-\-name=foo \-\-ip\-address=192.168.1.50 \-\-mac=AA:BB:CC:DD:EE:A0
+.sp
+cobbler system edit \-\-name=foo \-\-interface=eth0 \-\-ip\-address=10.1.1.51 \-\-mac=AA:BB:CC:DD:EE:A1
+.sp
+cobbler system report foo
+.sp
+Interfaces can be deleted using the \-\-delete\-interface option.
+.sp
+Example:
+.sp
+cobbler system edit \-\-name=foo \-\-interface=eth2 \-\-delete\-interface
+T}
+_
+T{
+interface\-type,
+interface\-master,
+bonding\-opts,
+bridge\-opts
+T}	T{
+One of the other advanced networking features supported by Cobbler is NIC bonding, bridging
+and BMC. You can use this to bond multiple physical network interfaces to one single logical
+interface to reduce single points of failure in your network, to create bridged interfaces for
+things like tunnels and virtual machine networks, or to manage BMC interface by DHCP.
+Supported values for the \fB\-\-interface\-type\fP parameter are \(dqbond\(dq, \(dqbond_slave\(dq, \(dqbridge\(dq,
+\(dqbridge_slave\(dq,\(dqbonded_bridge_slave\(dq and \(dqbmc\(dq. If one of the \(dq_slave\(dq options is specified,
+you also need to define the master\-interface for this bond using
+\fB\-\-interface\-master=INTERFACE\fP\&. Bonding and bridge options for the master\-interface may be
+specified using \fB\-\-bonding\-opts=\(dqfoo=1 bar=2\(dq\fP or \fB\-\-bridge\-opts=\(dqfoo=1 bar=2\(dq\fP\&.
+.sp
+Example:
+.INDENT 0.0
+.TP
+.B cobbler system edit \-\-name=foo 
+\-\-interface=eth0 \-\-mac=AA:BB:CC:DD:EE:00 \-\-interface\-type=bond_slave \-\-interface\-master=bond0
+.TP
+.B cobbler system edit \-\-name=foo 
+\-\-interface=eth1 \-\-mac=AA:BB:CC:DD:EE:01 \-\-interface\-type=bond_slave \-\-interface\-master=bond0
+.TP
+.B cobbler system edit \-\-name=foo 
+\-\-interface=bond0 \-\-interface\-type=bond \-\-bonding\-opts=\(dqmode=active\-backup miimon=100\(dq \-\-ip\-address=192.168.0.63 \-\-netmask=255.255.255.0 \-\-gateway=192.168.0.1 \-\-static=1
+.UNINDENT
+.sp
+More information about networking setup is available at
+\fI\%https://github.com/cobbler/cobbler/wiki/Advanced\-networking\fP
+.sp
+To review what networking configuration you have for any object, run \(dqcobbler system report\(dq
+at any time:
+.sp
+Example:
+.sp
+cobbler system report \-\-name=foo
+T}
+_
+T{
+if\-gateway
+T}	T{
+If you are using static IP configurations and have multiple interfaces, use this to define
+different gateway for each interface.
+.sp
+This is a per\-interface setting.
+T}
+_
+T{
+ip\-address,
+ipv6\-address
+T}	T{
+If Cobbler is configured to generate a DHCP configuration (see advanced section), use this
+setting to define a specific IP for this system in DHCP. Leaving off this parameter will
+result in no DHCP management for this particular system.
+.sp
+Example: \fB\-\-ip\-address=192.168.1.50\fP
+.sp
+If DHCP management is disabled and the interface is labelled \fB\-\-static=1\fP, this setting will
+be used for static IP configuration.
+.sp
+Special feature: To control the default PXE behavior for an entire subnet, this field can also
+be passed in using CIDR notation. If \fB\-\-ip\fP is CIDR, do not specify any other arguments
+other than \fB\-\-name\fP and \fB\-\-profile\fP\&.
+.sp
+When using the CIDR notation trick, don\(aqt specify any arguments other than \fB\-\-name\fP and
+\fB\-\-profile\fP, as they won\(aqt be used.
+T}
+_
+T{
+kernel\-options
+T}	T{
+Sets kernel command\-line arguments that the distro, and profiles/systems depending on it, will
+use. To remove a kernel argument that may be added by a higher Cobbler object (or in the global
+settings), you can prefix it with a \fB!\fP\&.
+.sp
+Example: \fB\-\-kernel\-options=\(dqfoo=bar baz=3 asdf !gulp\(dq\fP
+.sp
+This example passes the arguments \fBfoo=bar baz=3 asdf\fP but will make sure \fBgulp\fP is not
+passed even if it was requested at a level higher up in the Cobbler configuration.
+T}
+_
+T{
+kernel\-options\-post
+T}	T{
+This is just like \fB\-\-kernel\-options\fP, though it governs kernel options on the installed OS,
+as opposed to kernel options fed to the installer. The syntax is exactly the same. This
+requires some special snippets to be found in your automatic installation template in order
+for this to work. Automatic installation templating is described later on in this document.
+.sp
+Example: \fBnoapic\fP
+T}
+_
+T{
+mac,
+mac\-address
+T}	T{
+Specifying a mac address via \fB\-\-mac\fP allows the system object to boot directly to a specific
+profile via PXE, bypassing Cobbler\(aqs PXE menu. If the name of the Cobbler system already looks
+like a mac address, this is inferred from the system name and does not need to be specified.
+.sp
+MAC addresses have the format AA:BB:CC:DD:EE:FF. It\(aqs highly recommended to register your MAC
+addresses in Cobbler if you\(aqre using static addressing with multiple interfaces, or if you are
+using any of the advanced networking features like bonding, bridges or VLANs.
+.sp
+Cobbler does contain a feature (enabled in /etc/cobbler/settings.yaml) that can automatically
+add new system records when it finds profiles being provisioned on hardware it has seen before.
+This may help if you do not have a report of all the MAC addresses in your datacenter/lab
+configuration.
+T}
+_
+T{
+mgmt\-classes
+T}	T{
+Management Classes (Management classes for external config management).
+T}
+_
+T{
+mgmt\-parameters
+T}	T{
+Management Parameters which will be handed to your management application.
+(Must be valid YAML dictionary)
+T}
+_
+T{
+\fBname\fP
+T}	T{
+The system name works like the name option for other commands.
+.sp
+If the name looks like a MAC address or an IP, the name will implicitly be used for either
+\fB\-\-mac\fP or \fB\-\-ip\fP of the first interface, respectively. However, it\(aqs usually better to
+give a descriptive name \-\- don\(aqt rely on this behavior.
+.sp
+A system created with name \(dqdefault\(dq has special semantics. If a default system object exists,
+it sets all undefined systems to PXE to a specific profile. Without a \(dqdefault\(dq system name
+created, PXE will fall through to local boot for unconfigured systems.
+.sp
+When using \(dqdefault\(dq name, don\(aqt specify any other arguments than \fB\-\-profile\fP, as they won\(aqt
+be used.
+T}
+_
+T{
+name\-servers
+T}	T{
+If your nameservers are not provided by DHCP, you can specify a space separated list of
+addresses here to configure each of the installed nodes to use them (provided the automatic
+installation files used are installed on a per\-system basis). Users with DHCP setups should not
+need to use this option. This is available to set in profiles to avoid having to set it
+repeatedly for each system record.
+T}
+_
+T{
+name\-servers\-search
+T}	T{
+You can specify a space separated list of domain names to configure each of the installed nodes
+to use them as domain search path. This is available to set in profiles to avoid having to set
+it repeatedly for each system record.
+T}
+_
+T{
+netboot\-enabled
+T}	T{
+If set false, the system will be provisionable through Koan but not through standard PXE.
+This will allow the system to fall back to default PXE boot behavior without deleting the
+Cobbler system object. The default value allows PXE. Cobbler contains a PXE boot loop
+prevention feature (pxe_just_once, can be enabled in /etc/cobbler/settings.yaml) that can
+automatically trip off this value after a system gets done installing. This can prevent
+installs from appearing in an endless loop when the system is set to PXE first in the BIOS
+order.
+T}
+_
+T{
+next\-server
+T}	T{
+To override the Next server.
+T}
+_
+T{
+owners
+T}	T{
+Users with small sites and a limited number of admins can probably ignore this option. All
+objects (distros, profiles, systems, and repos) can take a \-\-owners parameter to specify what
+Cobbler users can edit particular objects.This only applies to the Cobbler WebUI and XML\-RPC
+interface, not the \(dqcobbler\(dq command line tool run from the shell. Furthermore, this is only
+respected by the \fBauthz_ownership\fP module which must be enabled in
+\fB/etc/cobbler/modules.conf\fP\&. The value for \fB\-\-owners\fP is a space separated list of users
+and groups as specified in \fB/etc/cobbler/users.conf\fP\&.
+For more information see the users.conf file as well as the Cobbler
+Wiki. In the default Cobbler configuration, this value is completely ignored, as is
+\fBusers.conf\fP\&.
+T}
+_
+T{
+power\-address,
+power\-type,
+power\-user,
+power\-pass,
+power\-id,
+power\-options,
+power\-identity\-file
+T}	T{
+Cobbler contains features that enable integration with power management for easier
+installation, reinstallation, and management of machines in a datacenter environment. These
+parameters are described online at \fIpower\-management\fP\&. If you have a power\-managed
+datacenter/lab setup, usage of these features may be something you are interested in.
+T}
+_
+T{
+\fBprofile\fP
+T}	T{
+The name of Cobbler profile the system will inherite its properties.
+T}
+_
+T{
+proxy
+T}	T{
+Proxy URL.
+T}
+_
+T{
+redhat\-
+management\-key
+T}	T{
+Management Classes (Management classes for external config management).
+T}
+_
+T{
+repos\-enabled
+T}	T{
+If set true, Koan can reconfigure repositories after installation. This is described further
+on the Cobbler Wiki,https://github.com/cobbler/cobbler/wiki/Manage\-yum\-repos.
+T}
+_
+T{
+static
+T}	T{
+Indicates that this interface is statically configured. Many fields (such as gateway/netmask)
+will not be used unless this field is enabled.
+.sp
+This is a per\-interface setting.
+T}
+_
+T{
+static\-routes
+T}	T{
+This is a space delimited list of ip/mask:gateway routing information in that format.
+Most systems will not need this information.
+.sp
+This is a per\-interface setting.
+T}
+_
+T{
+virt\-auto\-boot
+T}	T{
+(Virt\-only) Virt Auto Boot (Auto boot this VM?).
+T}
+_
+T{
+virt\-bridge
+T}	T{
+(Virt\-only) This specifies the default bridge to use for all systems defined under this
+profile. If not specified, it will assume the default value in the Cobbler settings file, which
+as shipped in the RPM is \fBxenbr0\fP\&. If using KVM, this is most likely not correct. You may
+want to override this setting in the system object. Bridge settings are important as they
+define how outside networking will reach the guest. For more information on bridge setup, see
+the Cobbler Wiki, where there is a section describing Koan usage.
+T}
+_
+T{
+virt\-cpus
+T}	T{
+(Virt\-only) How many virtual CPUs should Koan give the virtual machine? The default is 1. This
+is an integer.
+T}
+_
+T{
+virt\-disk\-driver
+T}	T{
+(Virt\-only) Virt Disk Driver Type (The on\-disk format for the virtualization disk).
+Valid options are <<inherit>>, \fIraw\fP, \fIqcow2\fP, \fIqed\fP, \fIvdi\fP, \fIvmdk\fP
+T}
+_
+T{
+virt\-file\-size
+T}	T{
+(Virt\-only) How large the disk image should be in Gigabytes. The default is 5. This can be a
+comma separated list (ex: \fB5,6,7\fP) to allow for multiple disks of different sizes depending
+on what is given to \fB\-\-virt\-path\fP\&. This should be input as a integer or decimal value without
+units.
+T}
+_
+T{
+virt\-path
+T}	T{
+(Virt\-only) Where to store the virtual image on the host system. Except for advanced cases,
+this parameter can usually be omitted. For disk images, the value is usually an absolute path
+to an existing directory with an optional filename component. There is support for specifying
+partitions \fB/dev/sda4\fP or volume groups \fBVolGroup00\fP, etc.
+.sp
+For multiple disks, separate the values with commas such as \fBVolGroup00,VolGroup00\fP or
+\fB/dev/sda4,/dev/sda5\fP\&. Both those examples would create two disks for the VM.
+T}
+_
+T{
+virt\-ram
+T}	T{
+(Virt\-only) How many megabytes of RAM to consume. The default is 512 MB. This should be input
+as an integer without units.
+T}
+_
+T{
+virt\-type
+T}	T{
+(Virt\-only) Koan can install images using either Xen paravirt (\fBxenpv\fP) or QEMU/KVM
+(\fBqemu\fP). Choose one or the other strings to specify, or values will default to attempting to
+find a compatible installation type on the client system(\(dqauto\(dq). See the \(dqKoan\(dq manpage for
+more documentation. The default \fB\-\-virt\-type\fP can be configured in the Cobbler settings file
+such that this parameter does not have to be provided. Other virtualization types are
+supported, for information on those options (such as VMware), see the Cobbler Wiki.
+T}
+_
+.TE
+.SS Cobbler repo
+.sp
+Repository mirroring allows Cobbler to mirror not only install trees (\(dqcobbler import\(dq does this for you) but also
+optional packages, 3rd party content, and even updates. Mirroring all of this content locally on your network will
+result in faster, more up\-to\-date installations and faster updates. If you are only provisioning a home setup, this will
+probably be overkill, though it can be very useful for larger setups (labs, datacenters, etc).
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler repo add \-\-mirror=url \-\-name=string [\-\-rpmlist=list] [\-\-creatrepo\-flags=string] [\-\-keep\-updated=Y/N] [\-\-priority=number] [\-\-arch=string] [\-\-mirror\-locally=Y/N] [\-\-breed=yum|rsync|rhn] [\-\-mirror_type=baseurl|mirrorlist|metalink]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+apt\-components
+T}	T{
+Apt Components (apt only) (ex: main restricted universe)
+T}
+_
+T{
+apt\-dists
+T}	T{
+Apt Dist Names (apt only) (ex: precise precise\-updates)
+T}
+_
+T{
+arch
+T}	T{
+Specifies what architecture the repository should use. By default the current system arch (of the
+server) is used,which may not be desirable. Using this to override the default arch allows
+mirroring of source repositories(using \fB\-\-arch=src\fP).
+T}
+_
+T{
+breed
+T}	T{
+Ordinarily Cobbler\(aqs repo system will understand what you mean without supplying this parameter,
+though you can set it explicitly if needed.
+T}
+_
+T{
+comment
+T}	T{
+Simple attach a description (Free form text) to your distro.
+T}
+_
+T{
+createrepo\-flags
+T}	T{
+Specifies optional flags to feed into the createrepo tool, which is called when
+\fBcobbler reposync\fP is run for the given repository. The defaults are \fB\-c cache\fP\&.
+T}
+_
+T{
+keep\-updated
+T}	T{
+Specifies that the named repository should not be updated during a normal \(dqcobbler reposync\(dq. The
+repo may still be updated by name. The repo should be synced at least once before disabling this
+feature. See \(dqcobbler reposync\(dq below.
+T}
+_
+T{
+\fBmirror\fP
+T}	T{
+The address of the yum mirror. This can be an \fBrsync://\fP\-URL, an ssh location, or a \fBhttp://\fP
+or \fBftp://\fP mirror location. Filesystem paths also work.
+.sp
+The mirror address should specify an exact repository to mirror \-\- just one architecture and just
+one distribution. If you have a separate repo to mirror for a different arch, add that repo
+separately.
+.sp
+Here\(aqs an example of what looks like a good URL:
+.INDENT 0.0
+.IP \(bu 2
+\fBrsync://yourmirror.example.com/fedora\-linux\-core/updates/6/i386\fP (for rsync protocol)
+.IP \(bu 2
+\fBhttp://mirrors.kernel.org/fedora/extras/6/i386/\fP (for http)
+.IP \(bu 2
+\fBuser@yourmirror.example.com/fedora\-linux\-core/updates/6/i386\fP  (for SSH)
+.UNINDENT
+.sp
+Experimental support is also provided for mirroring RHN content when you need a fast local mirror.
+The mirror syntax for this is \fB\-\-mirror=rhn://channel\-name\fP and you must have entitlements for
+this to work. This requires the Cobbler server to be installed on RHEL 5 or later. You will also
+need a version of \fByum\-utils\fP equal or greater to 1.0.4.
+T}
+_
+T{
+mirror\-locally
+T}	T{
+When set to \fBN\fP, specifies that this yum repo is to be referenced directly via automatic
+installation files and not mirrored locally on the Cobbler server. Only \fBhttp://\fP and \fBftp://\fP
+mirror urls are supported when using \fB\-\-mirror\-locally=N\fP, you cannot use filesystem URLs.
+T}
+_
+T{
+\fBname\fP
+T}	T{
+This name is used as the save location for the mirror. If the mirror represented, say, Fedora
+Core 6 i386 updates, a good name would be \fBfc6i386updates\fP\&. Again, be specific.
+.sp
+This name corresponds with values given to the \fB\-\-repos\fP parameter of \fBcobbler profile add\fP\&.
+If a profile has a \fB\-\-repos\fP\-value that matches the name given here, that repo can be
+automatically set up during provisioning (when supported) and installed systems will also use the
+boot server as a mirror (unless \fByum_post_install_mirror\fP is disabled in the settings file). By
+default the provisioning server will act as a mirror to systems it installs, which may not be
+desirable for laptop configurations, etc.
+.sp
+Distros that can make use of yum repositories during automatic installation include FC6 and later,
+RHEL 5 and later, and derivative distributions.
+.sp
+See the documentation on \fBcobbler profile add\fP for more information.
+T}
+_
+T{
+.INDENT 0.0
+.TP
+.B owners           | Users with small sites and a limited number of admins can probably ignore this option. All
+.nf
+objects (distros, profiles, systems, and repos) can take a \-\-owners parameter to specify what
+Cobbler users can edit particular objects.This only applies to the Cobbler WebUI and XML\-RPC
+interface, not the \(dqcobbler\(dq command line tool run from the shell. Furthermore, this is only
+respected by the \fBauthz_ownership\fP module which must be enabled in
+\fB/etc/cobbler/modules.conf\fP\&. The value for \fB\-\-owners\fP is a space separated list of users
+and groups as specified in \fB/etc/cobbler/users.conf\fP\&.
+For more information see the users.conf file as well as the Cobbler
+Wiki. In the default Cobbler configuration, this value is completely ignored, as is
+\fBusers.conf\fP\&.
+.fi
+.sp
+.UNINDENT
+T}
+_
+T{
+.INDENT 0.0
+.TP
+.B priority         | Specifies the priority of the repository (the lower the number, the higher the priority), which
+.nf
+applies to installed machines using the repositories that also have the yum priorities plugin
+installed. The default priority for the plugins 99, as is that of all Cobbler mirrored
+repositories.
+.fi
+.sp
+.UNINDENT
+T}
+_
+T{
+proxy            | Proxy URL.
+T}
+_
+T{
+.INDENT 0.0
+.TP
+.B rpm\-list         | By specifying a space\-delimited list of package names for \fB\-\-rpm\-list\fP, one can decide to mirror
+.nf
+only a part of a repo (the list of packages given, plus dependencies). This may be helpful in
+conserving time/space/bandwidth. For instance, when mirroring FC6 Extras, it may be desired to
+mirror just Cobbler and Koan, and skip all of the game packages. To do this, use
+\fB\-\-rpm\-list=\(dqcobbler koan\(dq\fP\&.
+
+This option only works for \fBhttp://\fP and \fBftp://\fP repositories (as it is powered by
+yumdownloader). It will be ignored for other mirror types, such as local paths and \fBrsync://\fP
+mirrors.
+.fi
+.sp
+.UNINDENT
+T}
+_
+T{
+yumopts
+T}	T{
+Sets values for additional yum options that the repo should use on installed systems. For instance
+if a yum plugin takes a certain parameter \(dqalpha\(dq and \(dqbeta\(dq, use something like
+\fB\-\-yumopts=\(dqalpha=2 beta=3\(dq\fP\&.
+T}
+_
+.TE
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler repo autoadd
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Add enabled yum repositories from \fBdnf repolist \-\-enabled\fP list. The repository names are generated using the
+<repo id>\-<releasever>\-<arch> pattern (ex: fedora\-32\-x86_64). Existing repositories with such names are not overwritten.
+.SS Cobbler image
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler image
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler mgmtclass
+.sp
+Management classes allows Cobbler to function as an configuration management system. Cobbler currently supports the
+following resource types:
+.INDENT 0.0
+.IP 1. 3
+Packages
+.IP 2. 3
+Files
+.UNINDENT
+.sp
+Resources are executed in the order listed above.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler mgmtclass add \-\-name=string \-\-comment=string [\-\-packages=list] [\-\-files=list]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+class\-name
+T}	T{
+Class Name (Actual Class Name (leave blank to use the name field)).
+T}
+_
+T{
+comment
+T}	T{
+A comment that describes the functions of the management class.
+T}
+_
+T{
+files
+T}	T{
+Specifies a list of file resources required by the management class.
+T}
+_
+T{
+\fBname\fP
+T}	T{
+The name of the mgmtclass. Use this name when adding a management class to a system, profile, or distro.
+To add a mgmtclass to an existing system use something like
+(\fBcobbler system edit \-\-name=\(dqmadhatter\(dq \-\-mgmt\-classes=\(dqhttp mysql\(dq\fP).
+T}
+_
+T{
+packages
+T}	T{
+Specifies a list of package resources required by the management class.
+T}
+_
+.TE
+.SS Cobbler package
+.sp
+Package resources are managed using \fBcobbler package add\fP
+.sp
+Actions:
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+install
+T}	T{
+Install the package. [Default]
+T}
+_
+T{
+uninstall
+T}	T{
+Uninstall the package.
+T}
+_
+.TE
+.sp
+Attributes:
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+installer
+T}	T{
+Which package manager to use, valid options [rpm|yum].
+T}
+_
+T{
+\fBname\fP
+T}	T{
+Cobbler object name.
+T}
+_
+T{
+version
+T}	T{
+Which version of the package to install.
+T}
+_
+.TE
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler package add \-\-name=string \-\-comment=string [\-\-action=install|uninstall] \-\-installer=string [\-\-version=string]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler file
+.sp
+Actions:
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+create
+T}	T{
+Create the file. [Default]
+T}
+_
+T{
+remove
+T}	T{
+Remove the file.
+T}
+_
+.TE
+.sp
+Attributes:
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+group
+T}	T{
+The group owner of the file.
+T}
+_
+T{
+mode
+T}	T{
+Permission mode (as in chmod).
+T}
+_
+T{
+\fBname\fP
+T}	T{
+Name of the cobbler file object
+T}
+_
+T{
+\fBpath\fP
+T}	T{
+The path for the file.
+T}
+_
+T{
+template
+T}	T{
+The template for the file.
+T}
+_
+T{
+user
+T}	T{
+The user for the file.
+T}
+_
+.TE
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler file add \-\-name=string \-\-comment=string [\-\-action=string] \-\-mode=string \-\-group=string \-\-owner=string \-\-path=string [\-\-template=string]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler menu
+.sp
+By default, Cobbler builds a single\-level boot menu for profiles and images. To simplify navigation through a large number
+of OS boot items, you can create \fImenu\fP objects and place any number of submenus, profiles, and images there. The menu is
+hierarchical, to indicate the nesting of one submenu in another, you can use the \fIparent\fP property. If the \fIparent\fP property
+for a submenu, or the \fImenu\fP property for a profile or images are not set or have an empty value, then the corresponding
+element will be displayed in the top\-level menu. If a submenu does not have descendants in the form of profiles or images,
+then such a submenu will not be displayed in the boot menu.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler menu add \-\-name=string [\-\-display\-name=string] [\-\-parent=string]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+display\-name
+T}	T{
+This is a human\-readable name to display in the boot menu.
+T}
+_
+T{
+\fBname\fP
+T}	T{
+This name can be used as a \fI\-\-parent\fP for a submenu, or as a \fI\-\-menu\fP for a profile or image.
+T}
+_
+T{
+parent
+T}	T{
+This value can be set to indicate the nesting of this submenu in another.
+T}
+_
+.TE
+.SS Cobbler aclsetup
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler aclsetup
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler buildiso
+.sp
+This command may not behave like you expect it without installing additional dependencies and configuration. The in
+depth explanation can be found at \fI\%Building ISOs\fP\&.
+.TS
+center;
+|l|l|.
+_
+T{
+Name
+T}	T{
+Description
+T}
+_
+T{
+iso
+T}	T{
+Output ISO to this file. If the file exists it will be truncated to zero before.
+T}
+_
+T{
+profiles
+T}	T{
+Use these profiles only for information collection.
+T}
+_
+T{
+systems
+T}	T{
+(net\-only) Use these systems only for information collection.
+T}
+_
+T{
+tempdir
+T}	T{
+Working directory for building the ISO. The default value is set in the settings file.
+T}
+_
+T{
+distro
+T}	T{
+Used to detect the architecture of the ISO you are building. Specifies also the used Kernel and
+Initrd.
+T}
+_
+T{
+standalone
+T}	T{
+(offline\-only) Creates a standalone ISO with all required distribution files but without any added
+repositories.
+T}
+_
+T{
+airgapped
+T}	T{
+(offline\-only) Implies \-\-standalone but additionally includes repo files for disconnected system
+installations.
+T}
+_
+T{
+source
+T}	T{
+(offline\-only) Used with \-\-standalone or \-\-airgapped to specify a source for the distribution files.
+T}
+_
+T{
+exclude\-dns
+T}	T{
+(net\-only) Prevents addition of name server addresses to the kernel boot options.
+T}
+_
+T{
+xorriso\-opts
+T}	T{
+Extra options for xorriso.
+T}
+_
+.TE
+.sp
+Example: The following command builds a single ISO file for all profiles and systems present under the distro \fItest\fP\&.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler buildiso \-\-distro=test
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler import
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+When running Cobbler via systemd, you cannot mount the ISO to \fB/tmp\fP or a sub\-folder of it because we are using the
+option \fIPrivate Temporary Directory\fP, to enhance the security of our application.
+.UNINDENT
+.UNINDENT
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler import
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler list
+.sp
+This list all the names grouped by type. Identically to \fBcobbler report\fP there are subcommands for most of the other
+Cobbler commands. (Currently: distro, profile, system, repo, image, mgmtclass, package, file)
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler list
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler replicate
+.sp
+Cobbler can replicate configurations from a master Cobbler server. Each Cobbler server is still expected to have a
+locally relevant \fB/etc/cobbler/cobbler.conf\fP and \fBmodules.conf\fP, as these files are not synced.
+.sp
+This feature is intended for load\-balancing, disaster\-recovery, backup, or multiple geography support.
+.sp
+Cobbler can replicate data from a central server.
+.sp
+Objects that need to be replicated should be specified with a pattern, such as \fB\-\-profiles=\(dqwebservers* dbservers*\(dq\fP
+or \fB\-\-systems=\(dq*.example.org\(dq\fP\&. All objects matched by the pattern, and all dependencies of those objects matched by
+the pattern (recursively) will be transferred from the remote server to the central server. This is to say if you intend
+to transfer \fB*.example.org\fP and the definition of the systems have not changed, but a profile above them has changed,
+the changes to that profile will also be transferred.
+.sp
+In the case where objects are more recent on the local server, those changes will not be overridden locally.
+.sp
+Common data locations will be rsync\(aqed from the master server unless \fB\-\-omit\-data\fP is specified.
+.sp
+To delete objects that are no longer present on the master server, use \fB\-\-prune\fP\&.
+.sp
+\fBWarning\fP: This will delete all object types not present on the remote server from the local server, and is recursive.
+If you use prune, it is best to manage Cobbler centrally and not expect changes made on the slave servers to be
+preserved. It is not currently possible to just prune objects of a specific type.
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler replicate \-\-master=cobbler.example.org [\-\-distros=pattern] [\-\-profiles=pattern] [\-\-systems=pattern] [\-\-repos\-pattern] [\-\-images=pattern] [\-\-prune] [\-\-omit\-data]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler report
+.sp
+This lists all configuration which Cobbler can obtain from the saved data. There are also \fBreport\fP subcommands for
+most of the other Cobbler commands (currently: distro, profile, system, repo, image, mgmtclass, package, file, menu).
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler report \-\-name=[object\-name]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+\-\-name=[object\-name]
+.sp
+Optional parameter which filters for object with the given name.
+.SS Cobbler reposync
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler reposync [\-\-only=ONLY] [\-\-tries=TRIES] [\-\-no\-fail]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Cobbler reposync is the command to use to update repos as configured with \fBcobbler repo add\fP\&. Mirroring can
+take a long time, and usage of cobbler reposync prior to usage is needed to ensure provisioned systems have the
+files they need to actually use the mirrored repositories. If you just add repos and never run \fBcobbler reposync\fP,
+the repos will never be mirrored. This is probably a command you would want to put on a crontab, though the
+frequency of that crontab and where the output goes is left up to the systems administrator.
+.sp
+For those familiar with dnf’s reposync, cobbler’s reposync is (in most uses) a wrapper around the \fBdnf reposync\fP
+command. Please use \fBcobbler reposync\fP to update cobbler mirrors, as dnf’s reposync does not perform all required steps.
+Also cobbler adds support for rsync and SSH locations, where as dnf’s reposync only supports what dnf supports
+(http/ftp).
+.sp
+If you ever want to update a certain repository you can run:
+\fBcobbler reposync \-\-only=\(dqreponame1\(dq ...\fP
+.sp
+When updating repos by name, a repo will be updated even if it is set to be not updated during a regular reposync
+operation (ex: \fBcobbler repo edit –name=reponame1 –keep\-updated=0\fP).
+Note that if a cobbler import provides enough information to use the boot server as a yum mirror for core packages,
+cobbler can set up automatic installation files to use the cobbler server as a mirror instead of the outside world. If
+this feature is desirable, it can be turned on by \fBsetting yum_post_install_mirror\fP to \fBTrue\fP in
+\fB/etc/cobbler/settings.yaml\fP (and running \fBcobbler sync\fP). You should not use this feature if machines are
+provisioned on a different VLAN/network than production, or if you are provisioning laptops that will want to acquire
+updates on multiple networks.
+.sp
+The flags \fB\-\-tries=N\fP (for example, \fB\-\-tries=3\fP) and \fB\-\-no\-fail\fP should likely be used when putting re\-posync on a
+crontab. They ensure network glitches in one repo can be retried and also that a failure to synchronize one repo does
+not stop other repositories from being synchronized.
+.SS Cobbler sync
+.sp
+The sync command is very important, though very often unnecessary for most situations. It\(aqs primary purpose is to force
+a rewrite of all configuration files, distribution files in the TFTP root, and to restart managed services. So why is it
+unnecessary? Because in most common situations (after an object is edited, for example), Cobbler executes what is known
+as a \(dqlite sync\(dq which rewrites most critical files.
+.sp
+When is a full sync required? When you are using \fBmanage_dhcpd\fP (Managing DHCP) with systems that use static leases.
+In that case, a full sync is required to rewrite the \fBdhcpd.conf\fP file and to restart the dhcpd service.
+.sp
+Cobbler sync is used to repair or rebuild the contents \fB/tftpboot\fP or \fB/var/www/cobbler\fP when something has changed
+behind the scenes. It brings the filesystem up to date with the configuration as understood by Cobbler.
+.sp
+Sync should be run whenever files in \fB/var/lib/cobbler\fP are manually edited (which is not recommended except for the
+settings file) or when making changes to automatic installation files. In practice, this should not happen often, though
+running sync too many times does not cause any adverse effects.
+.sp
+If using Cobbler to manage a DHCP and/or DNS server (see the advanced section of this manpage), sync does need to be run
+after systems are added to regenerate and reload the DHCP/DNS configurations. If you want to trigger the DHCP/DNS
+regeneration only and do not want a complete sync, you can use \fBcobbler sync \-\-dhcp\fP or \fBcobbler sync \-\-dns\fP or the
+combination of both.
+.sp
+\fBcobbler sync \-\-systems\fP is used to only write specific systems (must exists in backend storage) to the TFTP folder.
+The expected pattern is a comma separated list of systems e.g. \fBsys1.internal,sys2.internal,sys3.internal\fP\&.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Please note that at least once a full sync has to be run beforehand.
+.UNINDENT
+.UNINDENT
+.sp
+The sync process can also be kicked off from the web interface.
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler sync
+$ cobbler sync [\-\-systems=sys1.internal,sys2.internal,sys3.internal]
+$ cobbler sync [\-\-dns]
+$ cobbler sync [\-\-dhcp]
+$ cobbler sync [\-\-dns \-\-dhcp]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler validate\-autoinstalls
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler validate\-autoinstalls
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler version
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler version
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler signature
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler signature
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler hardlink
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler hardlink
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Cobbler mkloaders
+.sp
+This command is used for generating UEFI bootable GRUB 2 bootloaders. This command has no options and is configured via
+the settings file of Cobbler. If available on the operating system Cobbler is running on, then this also generates
+bootloaders for different architectures then the one of the system.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This command should be executed every time the bootloader modules are being updated, running it more
+frequently does not help, running it less frequently will cause the bootloader to be possibly vulnerable.
+.UNINDENT
+.UNINDENT
+.sp
+Example:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ cobbler mkloaders
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH EXIT_STATUS
+.sp
+Cobbler\(aqs command line returns a zero for success and non\-zero for failure.
+.SH ADDITIONAL HELP
+.sp
+We have a Gitter Channel and you also can ask questions as GitHub issues. The IRC Channel on Freenode (#cobbler) is not
+that active but sometimes there are people who can help you.
+.sp
+The way we would prefer are GitHub issues as they are easily searchable.
+.SH AUTHOR
+Jörgen Maas
+.SH COPYRIGHT
+2022, Enno Gotthold
+.\" Generated by docutils manpage writer.
+.

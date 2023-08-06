@@ -1,0 +1,1619 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "COBBLER.CONF" "5" "Jun 03, 2022" "3.3" "Cobbler"
+.SH NAME
+cobbler.conf \- Cobbler Configuration File Documentation
+.sp
+There are two main settings files which are located per default at \fB/etc/cobbler/\fP:
+.INDENT 0.0
+.IP \(bu 2
+The file \fBsettings.yaml\fP is following \fI\%YAML\fP specification.
+.IP \(bu 2
+The file \fBmodules.conf\fP is following
+\fI\%INI\fP specification.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Since we are cleaning a lot of tech\-debt this may change over time. We are trying to find the balance which
+format is the best for us to handle in the code and the best for admins to handle in the config files.
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+If you are using \fBallow_dynamic_settings\fP or \fBauto_migrate_settings\fP, then the comments in the YAML
+file will vanish after the first change due to the fact that PyYAML doesn\(aqt support comments
+(\fI\%Source\fP)
+.UNINDENT
+.UNINDENT
+.sp
+There are additional configuration file locations which need to follow the YAML Syntax. These are loaded from the
+\fBinclude\fP directory in the \fBsettings.yaml\fP file. Any key specified in one of these files overwrites values from the
+main file.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+When using \fBallow_dynamic_settings\fP the values are only persisted in the file \fBsettings.yaml\fP\&. This
+may lead to a non expected behaviour after \fBcobblerd\fP restarts. This is a
+\fI\%known issue\fP\&.
+.UNINDENT
+.UNINDENT
+.SH UPDATES TO THE YAML-SETTINGS-FILE
+.SS Starting with 3.3.3
+.INDENT 0.0
+.IP \(bu 2
+\fBdefault_virt_file_size\fP is now a float as intended.
+.IP \(bu 2
+We added the \fBproxies\fP key for first\-level Uyuni & SUSE Manager support. It is optional, so you can
+ignore it if you don\(aqt run one of the two solutions or a derivative of it.
+.UNINDENT
+.SS Starting with 3.3.2
+.INDENT 0.0
+.IP \(bu 2
+After community feedback we changed the default of the auto\-migration to be disabled. It can be re\-enabled via the
+already known methods \fBcobbler\-settings\fP\-Tool, the settings file key \fBauto_migrate_settings\fP and the Daemon flag.
+We have decided to not change the flag for existing installations.
+.UNINDENT
+.SS Starting with 3.3.1
+.INDENT 0.0
+.IP \(bu 2
+There is a new setting \fBbootloaders_shim_location\fP\&. For details please refer to the appropriate section below.
+.UNINDENT
+.SS Starting with 3.3.0
+.INDENT 0.0
+.IP \(bu 2
+The setting \fBenable_gpxe\fP was replaced with \fBenable_ipxe\fP\&.
+.IP \(bu 2
+The \fBsettings.d\fP directory (\fB/etc/cobbler/settings.d/\fP) was deprecated and will be removed in the future.
+.IP \(bu 2
+There is a new CLI tool called \fBcobbler\-settings\fP which can be used to validate and migrate settings files from
+differente versions and to modify keys in the current settings file. Have a look at the migration matrix in the next
+paragraph to see the supported migration paths.
+Furthermore the auto migration feature can be enabled or disabled.
+.IP \(bu 2
+A new settings auto migration feature was implemented which automatically updates the settings when installing a new
+version. A backup of the old settings file will be created in the same folder beforehand.
+.UNINDENT
+.SS Starting with 3.2.1
+.INDENT 0.0
+.IP \(bu 2
+We require the extension \fB\&.yaml\fP on our settings file to indicate the format of the file to editors and comply to
+standards of the YAML specification.
+.IP \(bu 2
+We require the usage of booleans in the format of \fBTrue\fP and \fBFalse\fP\&. If you have old integer style booleans with
+\fB1\fP and \fB0\fP this is fine but you may should convert them as soon as possible. We may decide in a future version to
+enforce our new way in a stricter manner. Automatic conversion is only done on a best\-effort/available\-resources
+basis.
+.IP \(bu 2
+We enforce the types of values to the keys. Additional unexpected keys will throw errors. If you have those used in
+Cobbler please report this in our issue tracker. We have decided to go this way to be able to rely on the existence
+of the values. This gives us the freedom to write fewer access checks to the settings without losing stability.
+.UNINDENT
+.SH MIGRATION MATRIX
+.TS
+center;
+|l|l|l|l|l|l|l|l|l|l|l|l|l|l|.
+_
+T{
+To/From
+T}	T{
+<2.8.5
+T}	T{
+2.8.5
+T}	T{
+3.0.0
+T}	T{
+3.0.1
+T}	T{
+3.1.0
+T}	T{
+3.1.1
+T}	T{
+3.1.2
+T}	T{
+3.2.0
+T}	T{
+3.2.1
+T}	T{
+3.3.0
+T}	T{
+3.3.1
+T}	T{
+3.3.2
+T}	T{
+3.3.3
+T}
+_
+T{
+2.8.5
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.0.0
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.0.1
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.1.0
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.1.1
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.1.2
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.2.0
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.2.1
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.3.0
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.3.1
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+T{
+3.3.2
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}	T{
+\-\-
+T}
+_
+T{
+3.3.3
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+x
+T}	T{
+o
+T}
+_
+T{
+main
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}	T{
+\-\-
+T}
+_
+.TE
+.sp
+\fBLegend\fP: x: supported, o: same version, \-: not supported
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Downgrades are not supported!
+.UNINDENT
+.UNINDENT
+.SH SETTINGS.YAML
+.SS auto_migrate_settings
+.sp
+If \fBTrue\fP Cobbler will auto migrate the settings file after upgrading from older versions. The current settings
+are backed up in the same folder before the upgrade.
+.sp
+default: \fBTrue\fP
+.SS allow_duplicate_hostnames
+.sp
+If \fBTrue\fP, Cobbler will allow insertions of system records that duplicate the \fB\-\-dns\-name\fP information of other
+system records. In general, this is undesirable and should be left False.
+.sp
+default: \fBFalse\fP
+.SS allow_duplicate_ips
+.sp
+If \fBTrue\fP, Cobbler will allow insertions of system records that duplicate the IP address information of other system
+records. In general, this is undesirable and should be left False.
+.sp
+default: \fBFalse\fP
+.SS allow_duplicate_macs
+.sp
+If \fBTrue\fP, Cobbler will allow insertions of system records that duplicate the mac address information of other system
+records. In general, this is undesirable.
+.sp
+default: \fBFalse\fP
+.SS allow_dynamic_settings
+.sp
+If \fBTrue\fP, Cobbler will allow settings to be changed dynamically without a restart of the \fBcobblerd\fP daemon. You can
+only change this variable by manually editing the settings file, and you MUST restart \fBcobblerd\fP after changing it.
+.sp
+default: \fBFalse\fP
+.SS always_write_dhcp_entries
+.sp
+Always write DHCP entries, regardless if netboot is enabled.
+.sp
+default: \fBFalse\fP
+.SS anamon_enabled
+.sp
+By default, installs are \fInot\fP set to send installation logs to the Cobbler server. With \fBanamon_enabled\fP, automatic
+installation templates may use the \fBpre_anamon\fP snippet to allow remote live monitoring of their installations from
+the Cobbler server. Installation logs will be stored under \fB/var/log/cobbler/anamon/\fP\&.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This does allow an XML\-RPC call to send logs to this directory, without authentication, so enable only if you
+are ok with this limitation.
+.UNINDENT
+.UNINDENT
+.sp
+default: \fBFalse\fP
+.SS auth_token_expiration
+.sp
+How long the authentication token is valid for, in seconds.
+.sp
+default: \fB3600\fP
+.SS authn_pam_service
+.sp
+If using authn_pam in the \fBmodules.conf\fP, this can be configured to change the PAM service authentication will be
+tested against.
+.sp
+default: \fB\(dqlogin\(dq\fP
+.SS autoinstall
+.sp
+If no autoinstall template is specified to profile add, use this template.
+.sp
+default: \fBdefault.ks\fP
+.SS autoinstall_snippets_dir
+.sp
+This is a directory of files that Cobbler uses to make templating easier. See the Wiki for more information. Changing
+this directory should not be required.
+.sp
+default: \fB/var/lib/cobbler/snippets\fP
+.SS autoinstall_templates_dir
+.sp
+This is a directory of files that Cobbler uses to make templating easier. See the Wiki for more information. Changing
+this directory should not be required.
+.sp
+default: \fB/var/lib/cobbler/templates\fP
+.SS bind_chroot_path
+.sp
+Set to path of bind chroot to create bind\-chroot compatible bind configuration files.
+.sp
+default: \fB\(dq\(dq\fP
+.SS bind_master
+.sp
+Set to the ip address of the master bind DNS server for creating secondary bind configuration files.
+.sp
+default: \fB127.0.0.1\fP
+.SS bind_zonefile_path
+.sp
+Set to path where zonefiles of bind/named server are located.
+.sp
+default: \fB\(dq@@bind_zonefiles@@\(dq\fP
+.SS boot_loader_conf_template_dir
+.sp
+Location of templates used for boot loader config generation.
+.sp
+default: \fB\(dq/etc/cobbler/boot_loader_conf\(dq\fP
+.SS bootloaders_dir
+.sp
+TODO
+.SS bootloaders_shim_folder
+.sp
+This \fI\%Python Glob\fP will be responsible for finding the installed shim
+folder. If you haven\(aqt have shim installed this bootloader link will be skipped. If the Glob is not precise enough a
+message will be logged and the link will also be skipped.
+.sp
+default: Depending on your distro. See values below.
+.INDENT 0.0
+.IP \(bu 2
+(open)SUSE: \fB\(dq/usr/share/efi/*/\(dq\fP
+.IP \(bu 2
+Debian/Ubuntu: \fB\(dq/usr/lib/shim/\(dq\fP
+.IP \(bu 2
+CentOS/Fedora: \fB\(dq/boot/efi/EFI/*/\(dq\fP
+.UNINDENT
+.SS bootloaders_shim_file
+.sp
+This is a \fI\%Python Regex\fP which is responsible to find exactly a single
+match in all files found by the Python Glob in \fBbootloaders_shim_folder\fP\&. If more or fewer files are found a message
+will be logged.
+.sp
+default: Depending on your distro. See values below.
+.INDENT 0.0
+.IP \(bu 2
+(open)SUSE: \fB\(dqshim\e.efi\(dq\fP
+.IP \(bu 2
+Debian/Ubuntu: \fB\(dqshim*.efi.signed\(dq\fP
+.IP \(bu 2
+CentOS/Fedora: \fB\(dqshim*.efi\(dq\fP
+.UNINDENT
+.SS grub2_mod_dir
+.sp
+TODO
+.SS syslinux_dir
+.sp
+TODO
+.SS bootloaders_modules
+.sp
+TODO
+.SS bootloaders_formats
+.SS grubconfig_dir
+.sp
+The location where Cobbler searches for GRUB configuration files.
+.sp
+default: \fB/var/lib/cobbler/grub_config\fP
+.SS build_reporting_*
+.sp
+Email out a report when Cobbler finishes installing a system.
+.INDENT 0.0
+.IP \(bu 2
+enabled: Set to \fBtrue\fP to turn this feature on
+.IP \(bu 2
+email: Which addresses to email
+.IP \(bu 2
+ignorelist: TODO
+.IP \(bu 2
+sender: Optional
+.IP \(bu 2
+smtp_server: Used to specify another server for an MTA.
+.IP \(bu 2
+subject: Use the default subject unless overridden.
+.UNINDENT
+.sp
+defaults:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+build_reporting_enabled: false
+build_reporting_sender: \(dq\(dq
+build_reporting_email: [ \(aqroot@localhost\(aq ]
+build_reporting_smtp_server: \(dqlocalhost\(dq
+build_reporting_subject: \(dq\(dq
+build_reporting_ignorelist: [ \(dq\(dq ]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS buildisodir
+.sp
+Used for caching the intermediate files for ISO\-Building. You may want to use a SSD, a tmpfs or something which does not
+persist across reboots and can be easily thrown away but is also fast.
+.sp
+default: \fB/var/cache/cobbler/buildiso\fP
+.SS cheetah_import_whitelist
+.sp
+Cheetah\-language autoinstall templates can import Python modules. while this is a useful feature, it is not safe to
+allow them to import anything they want. This whitelists which modules can be imported through Cheetah. Users can expand
+this as needed but should never allow modules such as subprocess or those that allow access to the filesystem as Cheetah
+templates are evaluated by \fBcobblerd\fP as code.
+.INDENT 0.0
+.TP
+.B default:
+.INDENT 7.0
+.IP \(bu 2
+\fBrandom\fP
+.IP \(bu 2
+\fBre\fP
+.IP \(bu 2
+\fBtime\fP
+.IP \(bu 2
+\fBnetaddr\fP
+.UNINDENT
+.UNINDENT
+.SS client_use_https
+.sp
+If set to \fBTrue\fP, all commands to the API (not directly to the XML\-RPC server) will go over HTTPS instead of plain
+text. Be sure to change the \fBhttp_port\fP setting to the correct value for the web server.
+.sp
+default: \fBFalse\fP
+.SS client_use_localhost
+.sp
+If set to \fBTrue\fP, all commands will be forced to use the localhost address instead of using the above value which can
+force commands like \fBcobbler sync\fP to open a connection to a remote address if one is in the configuration and would
+traceback.
+.sp
+default: \fBFalse\fP
+.SS cobbler_master
+.sp
+Used for replicating the Cobbler instance.
+.sp
+default: \fB\(dq\(dq\fP
+.SS convert_server_to_ip
+.sp
+Convert hostnames to IP addresses (where possible) so DNS isn\(aqt a requirement for various tasks to work correctly.
+.sp
+default: \fBFalse\fP
+.SS createrepo_flags
+.sp
+Default \fBcreaterepo_flags\fP to use for new repositories.
+.sp
+default: \fB\(dq\-c cache \-s sha\(dq\fP
+.SS default_name_*
+.sp
+Configure all installed systems to use these name servers by default unless defined differently in the profile. For DHCP
+configurations you probably do \fBnot\fP want to supply this.
+.sp
+defaults:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+default_name_servers: []
+default_name_servers_search: []
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS default_ownership
+.sp
+if using the \fBauthz_ownership\fP module, objects created without specifying an owner are assigned to this owner and/or
+group.
+.INDENT 0.0
+.TP
+.B default:
+.INDENT 7.0
+.IP \(bu 2
+\fBadmin\fP
+.UNINDENT
+.UNINDENT
+.SS default_password_crypted
+.sp
+Cobbler has various sample automatic installation templates stored in \fB/var/lib/cobbler/templates/\fP\&. This
+controls what install (root) password is set up for those systems that reference this variable. The factory default is
+\(dqcobbler\(dq and Cobbler check will warn if this is not changed. The simplest way to change the password is to run
+\fBopenssl passwd \-1\fP and put the output between the \fB\(dq\(dq\fP\&.
+.sp
+default: \fB\(dq$1$mF86/UHC$WvcIcX2t6crBz2onWxyac.\(dq\fP
+.SS default_template_type
+.sp
+The default template type to use in the absence of any other detected template. If you do not specify the template
+with \fB#template=<template_type>\fP on the first line of your templates/snippets, Cobbler will assume try to use the
+following template engine to parse the templates.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Over time we will try to deprecate and remove Cheetah3 as a template engine. It is hard to package and there
+are fewer guides then with Jinja2. Making the templating independent of the engine is a task which complicates
+the code. Thus, please try to use Jinja2. We will try to support a seamless transition on a best\-effort basis.
+.UNINDENT
+.UNINDENT
+.sp
+Current valid values are: \fBcheetah\fP, \fBjinja2\fP
+.sp
+default: \fB\(dqcheetah\(dq\fP
+.SS default_virt_bridge
+.sp
+For libvirt based installs in Koan, if no virt\-bridge is specified, which bridge do we try? For EL 4/5 hosts this should
+be \fBxenbr0\fP, for all versions of Fedora, try \fBvirbr0\fP\&. This can be overridden on a per\-profile basis or at the Koan
+command line though this saves typing to just set it here to the most common option.
+.sp
+default: \fBxenbr0\fP
+.SS default_virt_disk_driver
+.sp
+The on\-disk format for the virtualization disk.
+.sp
+default: \fBraw\fP
+.SS default_virt_file_size
+.sp
+Use this as the default disk size for virt guests (GB).
+.sp
+default: \fB5.0\fP
+.SS default_virt_ram
+.sp
+Use this as the default memory size for virt guests (MB).
+.sp
+default: \fB512\fP
+.SS default_virt_type
+.sp
+If Koan is invoked without \fB\-\-virt\-type\fP and no virt\-type is set on the profile/system, what virtualization type
+should be assumed?
+.sp
+Current valid values are:
+.INDENT 0.0
+.IP \(bu 2
+\fBxenpv\fP
+.IP \(bu 2
+\fBxenfv\fP
+.IP \(bu 2
+\fBqemu\fP
+.IP \(bu 2
+\fBvmware\fP
+.UNINDENT
+.sp
+\fBNOTE\fP: this does not change what \fBvirt_type\fP is chosen by import.
+.sp
+default: \fBxenpv\fP
+.SS enable_ipxe
+.sp
+Enable iPXE booting? Enabling this option will cause Cobbler to copy the \fBundionly.kpxe\fP file to the TFTP root
+directory, and if a profile/system is configured to boot via iPXE it will chain load off \fBpxelinux.0\fP\&.
+.sp
+default: \fBFalse\fP
+.SS enable_menu
+.sp
+Controls whether Cobbler will add each new profile entry to the default PXE boot menu. This can be over\-ridden on a
+per\-profile basis when adding/editing profiles with \fB\-\-enable\-menu=False/True\fP\&. Users should ordinarily leave this
+setting enabled unless they are concerned with accidental reinstall from users who select an entry at the PXE boot
+menu. Adding a password to the boot menus templates may also be a good solution to prevent unwanted reinstallations.
+.sp
+default: \fBTrue\fP
+.SS http_port
+.sp
+Change this port if Apache is not running plain text on port 80. Most people can leave this alone.
+.sp
+default: \fB80\fP
+.SS include
+.sp
+Include other configuration snippets with this regular expression. This is a list of folders.
+.sp
+default: \fB[ \(dq/etc/cobbler/settings.d/*.settings\(dq ]\fP
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Will be deprecated in future releases.
+.UNINDENT
+.UNINDENT
+.SS iso_template_dir
+.sp
+Folder to search for the ISO templates. These will build the boot\-menu of the built ISO.
+.sp
+default: \fB/etc/cobbler/iso\fP
+.SS jinja2_includedir
+.sp
+This is a directory of files that Cobbler uses to include files into Jinja2 templates. Per default this settings is
+commented out.
+.sp
+default: \fB/var/lib/cobbler/jinja2\fP
+.SS kernel_options
+.sp
+Kernel options that should be present in every Cobbler installation. Kernel options can also be applied at the
+distro/profile/system level.
+.sp
+default: \fB{}\fP
+.SS ldap_*
+.sp
+Configuration options if using the authn_ldap module. See the Wiki for details. This can be ignored if you are not
+using LDAP for WebUI/XML\-RPC authentication.
+.sp
+defaults:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+ldap_server: \(dqldap.example.com\(dq
+ldap_base_dn: \(dqDC=example,DC=com\(dq
+ldap_port: 389
+ldap_tls: true
+ldap_anonymous_bind: true
+ldap_search_bind_dn: \(aq\(aq
+ldap_search_passwd: \(aq\(aq
+ldap_search_prefix: \(aquid=\(aq
+ldap_tls_cacertdir: \(aq\(aq
+ldap_tls_cacertfile: \(aq\(aq
+ldap_tls_certfile: \(aq\(aq
+ldap_tls_keyfile: \(aq\(aq
+ldap_tls_reqcert: \(aqhard\(aq
+ldap_tls_cipher_suite: \(aq\(aq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS bind_manage_ipmi
+.sp
+When using the Bind9 DNS server, you can enable or disable if the BMCs should receive own DNS entries.
+.sp
+default: \fBFalse\fP
+.SS manage_dhcp
+.sp
+Set to \fBTrue\fP to enable Cobbler\(aqs DHCP management features. The choice of DHCP management engine is in
+\fB/etc/cobbler/modules.conf\fP\&.
+.sp
+default: \fBTrue\fP
+.SS manage_dhcp_v4
+.sp
+Set to \fBtrue\fP to enable DHCP IPv6 address configuration generation. This currently only works with manager.isc DHCP
+module (isc dhcpd6 daemon). See \fB/etc/cobbler/modules.conf\fP whether this isc module is chosen for dhcp generation.
+.sp
+default: \fBFalse\fP
+.SS manage_dhcp_v6
+.sp
+Set to \fBtrue\fP to enable DHCP IPv6 address configuration generation. This currently only works with manager.isc DHCP
+module (isc dhcpd6 daemon). See \fB/etc/cobbler/modules.conf\fP whether this isc module is chosen for dhcp generation.
+.sp
+default: \fBFalse\fP
+.SS manage_dns
+.sp
+Set to \fBTrue\fP to enable Cobbler\(aqs DNS management features. The choice of DNS management engine is in
+\fB/etc/cobbler/modules.conf\fP\&.
+.sp
+default: \fBFalse\fP
+.SS manage_*_zones
+.sp
+If using BIND (named) for DNS management in \fB/etc/cobbler/modules.conf\fP and \fBmanage_dns\fP is enabled (above), this
+lists which zones are managed. See \fI\%DNS configuration management\fP for more information.
+.sp
+defaults:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+manage_forward_zones: []
+manage_reverse_zones: []
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS manage_genders
+.sp
+Whether or not to manage the genders file. For more information on that visit:
+\fI\%github.com/chaos/genders\fP
+.sp
+default: \fBFalse\fP
+.SS manage_rsync
+.sp
+Set to \fBTrue\fP to enable Cobbler\(aqs RSYNC management features.
+.sp
+default: \fBFalse\fP
+.SS manage_tftpd
+.sp
+Set to \fBTrue\fP to enable Cobbler\(aqs TFTP management features. The choice of TFTP management engine is in
+\fB/etc/cobbler/modules.conf\fP\&.
+.sp
+default: \fBTrue\fP
+.SS mgmt_*
+.sp
+Cobbler has a feature that allows for integration with config management systems such as Puppet. The following
+parameters work in conjunction with \fB\-\-mgmt\-classes\fP and are described in further detail at
+\fI\%Configuration Management Integrations\fP\&.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mgmt_classes: []
+mgmt_parameters:
+    from_cobbler: true
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS next_server_v4
+.sp
+If using Cobbler with \fBmanage_dhcp_v4\fP, put the IP address of the Cobbler server here so that PXE booting guests can find
+it. If you do not set this correctly, this will be manifested in TFTP open timeouts.
+.sp
+default: \fB127.0.0.1\fP
+.SS next_server_v6
+.sp
+If using Cobbler with \fBmanage_dhcp_v6\fP, put the IP address of the Cobbler server here so that PXE booting guests can find
+it. If you do not set this correctly, this will be manifested in TFTP open timeouts.
+.sp
+default: \fB::1\fP
+.SS nsupdate_enabled
+.sp
+This enables or disables the replacement (or removal) of records in the DNS zone for systems created (or removed) by
+Cobbler.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+There are additional settings needed when enabling this. Due to the limited number of resources, this won\(aqt
+be done until 3.3.0. Thus please expect to run into troubles when enabling this setting.
+.UNINDENT
+.UNINDENT
+.sp
+default: \fBFalse\fP
+.SS nsupdate_log
+.sp
+The logfile to document what records are added or removed in the DNS zone for systems.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The functionality this settings is related to is currently not tested due to tech\-debt. Please use it with
+caution. This note will be removed once we were able to look deeper into this functionality of Cobbler.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+Required: No
+.IP \(bu 2
+Default: \fB/var/log/cobbler/nsupdate.log\fP
+.UNINDENT
+.SS nsupdate_tsig_algorithm
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The functionality this settings is related to is currently not tested due to tech\-debt. Please use it with
+caution. This note will be removed once we were able to look deeper into this functionality of Cobbler.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+Required: No
+.IP \(bu 2
+Default: \fBhmac\-sha512\fP
+.UNINDENT
+.SS nsupdate_tsig_key
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The functionality this settings is related to is currently not tested due to tech\-debt. Please use it with
+caution. This note will be removed once we were able to look deeper into this functionality of Cobbler.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+Required: No
+.IP \(bu 2
+Default: \fB[]\fP
+.UNINDENT
+.SS power_management_default_type
+.sp
+Settings for power management features. These settings are optional. See \fI\%Power Management\fP to learn more.
+.sp
+Choices (refer to the \fI\%fence\-agents project\fP for a complete list):
+.INDENT 0.0
+.IP \(bu 2
+apc_snmp
+.IP \(bu 2
+bladecenter
+.IP \(bu 2
+bullpap
+.IP \(bu 2
+drac
+.IP \(bu 2
+ether_wake
+.IP \(bu 2
+ilo
+.IP \(bu 2
+integrity
+.IP \(bu 2
+ipmilan
+.IP \(bu 2
+ipmilanplus
+.IP \(bu 2
+lpar
+.IP \(bu 2
+rsa
+.IP \(bu 2
+virsh
+.IP \(bu 2
+wti
+.UNINDENT
+.sp
+default: \fBipmilanplus\fP
+.SS proxies
+.sp
+This key is used by Uyuni (or one of its derivatives) for the Proxy scenario. More information can be found
+\fI\%here\fP
+.sp
+Cobbler only evaluates this if the key has a list of strings as value. An empty list means you don\(aqt have any proxies
+configured in your Uyuni setup.
+.sp
+default: \fB[]\fP
+.SS proxy_url_ext
+.sp
+External proxy which is used by the following commands: \fBreposync\fP, \fBsignature update\fP
+.sp
+defaults:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+http: http://192.168.1.1:8080
+https: https://192.168.1.1:8443
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS proxy_url_int
+.sp
+Internal proxy which is used by systems to reach Cobbler for kickstarts.
+.sp
+e.g.: \fBproxy_url_int: http://10.0.0.1:8080\fP
+.sp
+default: \fB\(dq\(dq\fP
+.SS puppet_auto_setup
+.sp
+If enabled, this setting ensures that puppet is installed during machine provision, a client certificate is generated
+and a certificate signing request is made with the puppet master server.
+.sp
+default: \fBFalse\fP
+.SS puppet_parameterized_classes
+.sp
+Choose whether to enable puppet parameterized classes or not. Puppet versions prior to 2.6.5 do not support parameters.
+.sp
+default: \fBTrue\fP
+.SS puppet_server
+.sp
+Choose a \fB\-\-server\fP argument when running puppetd/puppet agent during autoinstall.
+.sp
+default: \fB\(aqpuppet\(aq\fP
+.SS puppet_version
+.sp
+Let Cobbler know that you\(aqre using a newer version of puppet. Choose version 3 to use: \(aqpuppet agent\(aq; version 2 uses
+status quo: \(aqpuppetd\(aq.
+.sp
+default: \fB2\fP
+.SS puppetca_path
+.sp
+Location of the puppet executable, used for revoking certificates.
+.sp
+default: \fB\(dq/usr/bin/puppet\(dq\fP
+.SS pxe_just_once
+.sp
+If this setting is set to \fBTrue\fP, Cobbler systems that pxe boot will request at the end of their installation to
+toggle the \fB\-\-netboot\-enabled\fP record in the Cobbler system record. This eliminates the potential for a PXE boot loop
+if the system is set to PXE first in it\(aqs BIOS order. Enable this if PXE is first in your BIOS boot order, otherwise
+leave this disabled. See the manpage for \fB\-\-netboot\-enabled\fP\&.
+.sp
+default: \fBTrue\fP
+.SS nopxe_with_triggers
+.sp
+If this setting is set to \fBTrue\fP, triggers will be executed when systems will request to toggle the
+\fB\-\-netboot\-enabled\fP record at the end of their installation.
+.sp
+default: \fBTrue\fP
+.SS redhat_management_permissive
+.sp
+If using \fBauthn_spacewalk\fP in \fBmodules.conf\fP to let Cobbler authenticate against Satellite/Spacewalk\(aqs auth system,
+by default it will not allow per user access into Cobbler Web and Cobbler XML\-RPC. In order to permit this, the following
+setting must be enabled HOWEVER doing so will permit all Spacewalk/Satellite users of certain types to edit all of
+Cobbler\(aqs configuration. these roles are: \fBconfig_admin\fP and \fBorg_admin\fP\&. Users should turn this on only if they
+want this behavior and do not have a cross\-multi\-org separation concern. If you have a single org in your satellite,
+it\(aqs probably safe to turn this on and then you can use CobblerWeb alongside a Satellite install.
+.sp
+default: \fBFalse\fP
+.SS redhat_management_server
+.sp
+This setting is only used by the code that supports using Uyuni/SUSE Manager/Spacewalk/Satellite authentication within Cobbler Web and
+Cobbler XML\-RPC.
+.sp
+default: \fB\(dqxmlrpc.rhn.redhat.com\(dq\fP
+.SS redhat_management_key
+.sp
+Specify the default Red Hat authorization key to use to register system. If left blank, no registration will be
+attempted. Similarly you can set the \fB\-\-redhat\-management\-key\fP to blank on any system to keep it from trying to
+register.
+.sp
+default: \fB\(dq\(dq\fP
+.SS register_new_installs
+.sp
+If set to \fBTrue\fP, allows \fB/usr/bin/cobbler\-register\fP (part of the Koan package) to be used to remotely add new
+Cobbler system records to Cobbler. This effectively allows for registration of new hardware from system records.
+.sp
+default: \fBFalse\fP
+.SS remove_old_puppet_certs_automatically
+.sp
+When a puppet managed machine is reinstalled it is necessary to remove the puppet certificate from the puppet master
+server before a new certificate is signed (see above). Enabling the following feature will ensure that the certificate
+for the machine to be installed is removed from the puppet master server if the puppet master server is running on the
+same machine as Cobbler. This requires \fBpuppet_auto_setup\fP above to be enabled
+.sp
+default: \fBFalse\fP
+.SS replicate_repo_rsync_options
+.sp
+Replication rsync options for repos set to override default value of \fB\-avzH\fP\&.
+.sp
+default: \fB\(dq\-avzH\(dq\fP
+.SS replicate_rsync_options
+.sp
+replication rsync options for distros, autoinstalls, snippets set to override default value of \fB\-avzH\fP\&.
+.sp
+default: \fB\(dq\-avzH\(dq\fP
+.SS reposync_flags
+.sp
+Flags to use for yum\(aqs reposync. If your version of yum reposync does not support \fB\-l\fP, you may need to remove that
+option.
+.sp
+default: \fB\(dq\-l \-n \-d\(dq\fP
+.SS reposync_rsync_flags
+.sp
+Flags to use for rysync\(aqs reposync. If archive mode (\-a,\-\-archive) is used then createrepo is not ran after the rsync as
+it pulls down the repodata as well. This allows older OS\(aqs to mirror modular repos using rsync.
+.sp
+default: \fB\(dq\-rltDv \-\-copy\-unsafe\-links\(dq\fP
+.SS restart_*
+.sp
+When DHCP and DNS management are enabled, \fBcobbler sync\fP can automatically restart those services to apply changes.
+The exception for this is if using ISC for DHCP, then OMAPI eliminates the need for a restart. \fBomapi\fP, however, is
+experimental and not recommended for most configurations. If DHCP and DNS are going to be managed, but hosted on a box
+that is not on this server, disable restarts here and write some other script to ensure that the config files get
+copied/rsynced to the destination box. This can be done by modifying the restart services trigger. Note that if
+\fBmanage_dhcp\fP and \fBmanage_dns\fP are disabled, the respective parameter will have no effect. Most users should not
+need to change this.
+.sp
+defaults:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+restart_dns: true
+restart_dhcp: true
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS run_install_triggers
+.sp
+Install triggers are scripts in \fB/var/lib/cobbler/triggers/install\fP that are triggered in autoinstall pre and post
+sections. Any executable script in those directories is run. They can be used to send email or perform other actions.
+They are currently run as root so if you do not need this functionality you can disable it, though this will also
+disable \fBcobbler status\fP which uses a logging trigger to audit install progress.
+.sp
+default: \fBtrue\fP
+.SS scm_track_*
+.sp
+enables a trigger which version controls all changes to \fB/var/lib/cobbler\fP when add, edit, or sync events are
+performed. This can be used to revert to previous database versions, generate RSS feeds, or for other auditing or backup
+purposes. Git and Mercurial are currently supported, but Git is the recommend SCM for use with this feature.
+.sp
+default:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+scm_track_enabled: false
+scm_track_mode: \(dqgit\(dq
+scm_track_author: \(dqcobbler <cobbler@localhost>\(dq
+scm_push_script: \(dq/bin/true\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS serializer_pretty_json
+.sp
+Sort and indent JSON output to make it more human\-readable.
+.sp
+default: \fBFalse\fP
+.SS server
+.sp
+This is the address of the Cobbler server \-\- as it is used by systems during the install process, it must be the address
+or hostname of the system as those systems can see the server. if you have a server that appears differently to
+different subnets (dual homed, etc), you need to read the \fB\-\-server\-override\fP section of the manpage for how that
+works.
+.sp
+default: \fB127.0.0.1\fP
+.SS sign_puppet_certs_automatically
+.sp
+When puppet starts on a system after installation it needs to have its certificate signed by the puppet master server.
+Enabling the following feature will ensure that the puppet server signs the certificate after installation if the puppet
+master server is running on the same machine as Cobbler. This requires \fBpuppet_auto_setup\fP above to be enabled.
+.sp
+default: \fBfalse\fP
+.SS signature_path
+.sp
+The \fBcobbler import\fP workflow is powered by this file. Its location can be set with this config option.
+.sp
+default: \fB/var/lib/cobbler/distro_signatures.json\fP
+.SS signature_url
+.sp
+Updates to the signatures may happen more often then we have releases. To enable you to import new version we provide
+the most up to date signatures we offer on this like. You may host this file for yourself and adjust it for your needs.
+.sp
+default: \fBhttps://cobbler.github.io/signatures/3.0.x/latest.json\fP
+.SS tftpboot_location
+.sp
+This variable contains the location of the tftpboot directory. If this directory is not present Cobbler does not start.
+.sp
+Default: \fB/srv/tftpboot\fP
+.SS virt_auto_boot
+.sp
+Should new profiles for virtual machines default to auto booting with the physical host when the physical host reboots?
+This can be overridden on each profile or system object.
+.sp
+default: \fBtrue\fP
+.SS webdir
+.sp
+Cobbler\(aqs web directory.  Don\(aqt change this setting \-\- see the Wiki on \(dqrelocating your Cobbler install\(dq if your /var partition
+is not large enough.
+.sp
+default: \fB@@webroot@@/cobbler\fP
+.SS webdir_whitelist
+.sp
+Directories that will not get wiped and recreated on a \fBcobbler sync\fP\&.
+.sp
+default:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+webdir_whitelist:
+  \- misc
+  \- web
+  \- webui
+  \- localmirror
+  \- repo_mirror
+  \- distro_mirror
+  \- images
+  \- links
+  \- pub
+  \- repo_profile
+  \- repo_system
+  \- svc
+  \- rendered
+  \- .link_cache
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS windows_enabled
+.sp
+Set to true to enable the generation of Windows boot files in Cobbler.
+.sp
+default: \fBFalse\fP
+.sp
+For more information see \fI\%Automatic Windows installation with Cobbler\fP\&.
+.SS windows_template_dir
+.sp
+Location of templates used for Windows.
+.sp
+default: \fB/etc/cobbler/windows\fP
+.sp
+For more information see \fI\%Automatic Windows installation with Cobbler\fP\&.
+.SS samba_distro_share
+.sp
+Samba share name for distros
+.sp
+default: \fBDISTRO\fP
+.sp
+For more information see \fI\%Automatic Windows installation with Cobbler\fP\&.
+.SS xmlrpc_port
+.sp
+Cobbler\(aqs public XML\-RPC listens on this port. Change this only if absolutely needed, as you\(aqll have to start supplying
+a new port option to Koan if it is not the default.
+.sp
+default: \fB25151\fP
+.SS yum_distro_priority
+.sp
+The default yum priority for all the distros. This is only used if yum\-priorities plugin is used. 1 is the maximum
+value. Tweak with caution.
+.sp
+default: \fBtrue\fP
+.SS yum_post_install_mirror
+.sp
+\fBcobbler repo add\fP commands set Cobbler up with repository information that can be used during autoinstall and is
+automatically set up in the Cobbler autoinstall templates. By default, these are only available at install time. To
+make these repositories usable on installed systems (since Cobbler makes a very convenient mirror) set this to \fBTrue\fP\&.
+Most users can safely set this to \fBTrue\fP\&. Users who have a dual homed Cobbler server, or are installing laptops that
+will not always have access to the Cobbler server may wish to leave this as \fBFalse\fP\&. In that case, the Cobbler
+mirrored yum repos are still accessible at \fBhttp://cobbler.example.org/cblr/repo_mirror\fP and YUM configuration can
+still be done manually. This is just a shortcut.
+.sp
+default: \fBTrue\fP
+.SS yumdownloader_flags
+.sp
+Flags to use for yumdownloader. Not all versions may support \fB\-\-resolve\fP\&.
+.sp
+default: \fB\(dq\-\-resolve\(dq\fP
+.SH MODULES.CONF
+.sp
+If you have own custom modules which are not shipped with Cobbler directly you may have additional sections here.
+.SS authentication
+.sp
+What users can log into Cobbler via the XML\-RPC API or the HTTP\-API?
+.sp
+Choices:
+.INDENT 0.0
+.IP \(bu 2
+authentication.denyall    \-\- No one
+.IP \(bu 2
+authentication.configfile \-\- Use /etc/cobbler/users.digest (default)
+.IP \(bu 2
+authentication.passthru   \-\- Ask Apache to handle it (used for kerberos)
+.IP \(bu 2
+authentication.ldap       \-\- Authenticate against LDAP
+.IP \(bu 2
+authentication.spacewalk  \-\- Ask Spacewalk/Satellite (experimental)
+.IP \(bu 2
+authentication.pam        \-\- Use PAM facilities
+.IP \(bu 2
+(user supplied)  \-\- You may write your own module
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+A new web interface is in the making. At the moment we do not have any documentation, yet.
+.UNINDENT
+.UNINDENT
+.sp
+default: \fBauthentication.configfile\fP
+.sp
+Hash algorithms:
+.sp
+This parameter has currently only a meaning when the option \fBauthentication.configfile\fP is used.
+The parameter decides what hashfunction algorithm is used for checking the passwords.
+.sp
+Choices:
+.INDENT 0.0
+.IP \(bu 2
+blake2b
+.IP \(bu 2
+blake2s
+.IP \(bu 2
+sha3_512
+.IP \(bu 2
+sha3_384
+.IP \(bu 2
+sha3_256
+.IP \(bu 2
+sha3_224
+.IP \(bu 2
+shake_128
+.IP \(bu 2
+shake_256
+.UNINDENT
+.sp
+default: \fBsha3_512\fP
+.SS authorization
+.sp
+Once a user has been cleared by the WebUI/XML\-RPC, what can they do?
+.sp
+Choices:
+.INDENT 0.0
+.IP \(bu 2
+authorization.allowall   \-\- full access for all authenticated users (default)
+.IP \(bu 2
+authorization.ownership  \-\- use users.conf, but add object ownership semantics
+.IP \(bu 2
+(user supplied)  \-\- you may write your own module
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+If you want to further restrict Cobbler with ACLs for various groups, pick \fBauthorization.ownership\fP\&.
+\fBauthorization.allowall\fP does not support ACLs. Configuration file does but does not support object
+ownership which is useful as an additional layer of control.
+.UNINDENT
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+A new web interface is in the making. At the moment we do not have any documentation, yet.
+.UNINDENT
+.UNINDENT
+.sp
+default: \fBauthorization.allowall\fP
+.SS dns
+.sp
+Chooses the DNS management engine if \fBmanage_dns\fP is enabled in \fB/etc/cobbler/settings.yaml\fP, which is off by
+default.
+.sp
+Choices:
+.INDENT 0.0
+.IP \(bu 2
+managers.bind    \-\- default, uses BIND/named
+.IP \(bu 2
+managers.dnsmasq \-\- uses dnsmasq, also must select dnsmasq for DHCP below
+.IP \(bu 2
+managers.ndjbdns \-\- uses ndjbdns
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+More configuration is still required in \fB/etc/cobbler\fP
+.UNINDENT
+.UNINDENT
+.sp
+For more information see \fI\%DNS configuration management\fP\&.
+.sp
+default: \fBmanagers.bind\fP
+.SS dhcp
+.sp
+Chooses the DHCP management engine if \fBmanage_dhcp\fP is enabled in \fB/etc/cobbler/settings.yaml\fP, which is off by
+default.
+.sp
+Choices:
+.INDENT 0.0
+.IP \(bu 2
+managers.isc     \-\- default, uses ISC dhcpd
+.IP \(bu 2
+managers.dnsmasq \-\- uses dnsmasq, also must select dnsmasq for DNS above
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+More configuration is still required in \fB/etc/cobbler\fP
+.UNINDENT
+.UNINDENT
+.sp
+For more information see \fI\%DHCP Management\fP\&.
+.sp
+default: \fBmanagers.isc\fP
+.SS tftpd
+.sp
+Chooses the TFTP management engine if \fBmanage_tftpd\fP is enabled in \fB/etc/cobbler/settings.yaml\fP, which is \fBon\fP by
+default.
+.sp
+Choices:
+.INDENT 0.0
+.IP \(bu 2
+managers.in_tftpd \-\- default, uses the system\(aqs TFTP server
+.UNINDENT
+.sp
+default: \fBmanagers.in_tftpd\fP
+.SH AUTHOR
+Enno Gotthold
+.SH COPYRIGHT
+2022, Enno Gotthold
+.\" Generated by docutils manpage writer.
+.

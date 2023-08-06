@@ -1,0 +1,129 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "COBBLERD" "8" "Jun 03, 2022" "3.3" "Cobbler"
+.SH NAME
+cobblerd \- Cobblerd Documentation
+.sp
+Cobbler \- a provisioning and update server
+.SH PREAMBLE
+.sp
+We will refer to \fIcobblerd\fP here as \(dqcobbler\(dq because \fIcobblerd\fP is short for cobbler\-daemon which is basically the server.
+The CLI will be referred to as Cobbler\-CLI and Koan as Koan.
+.SH DESCRIPTION
+.sp
+Cobbler manages provisioning using a tiered concept of Distributions, Profiles, Systems, and (optionally) Images and
+Repositories.
+.sp
+Distributions contain information about what kernel and initrd are used, plus metadata (required kernel parameters,
+etc).
+.sp
+Profiles associate a Distribution with an automated installation template file and optionally customize the metadata
+further.
+.sp
+Systems associate a MAC, IP, and other networking details with a profile and optionally customize the metadata further.
+.sp
+Repositories contain yum mirror information. Using cobbler to mirror repositories is an optional feature, though
+provisioning and package management share a lot in common.
+.sp
+Images are a catch\-all concept for things that do not play nicely in the \(dqdistribution\(dq category. Most users will not
+need these records initially and these are described later in the document.
+.sp
+The main advantage of cobbler is that it glues together many disjoint technologies and concepts and abstracts the user
+from the need to understand them. It allows the systems administrator to concentrate on what he needs to do, and not
+how it is done.
+.sp
+This manpage will focus on the cobbler command line tool for use in configuring cobbler. There is also mention of the
+Cobbler WebUI which is usable for day\-to\-day operation of Cobbler once installed/configured. Docs on the API and XML\-RPC
+components are available online at \fI\%https://cobbler.github.io\fP or
+\fI\%https://cobbler.readthedocs.io\fP\&.
+.sp
+Most users will be interested in the Web UI and should set it up, though the command line is needed for initial
+configuration \-\- in particular \fBcobbler check\fP and \fBcobbler import\fP, as well as the repo mirroring features. All of
+these are described later in the documentation.
+.SH SETUP
+.sp
+After installing, run \fBcobbler check\fP to verify that cobbler\(aqs ecosystem is configured correctly. Cobbler check will
+direct you on how to modify it\(aqs config files using a text editor.
+.sp
+Any problems detected should be corrected, with the potential exception of DHCP related warnings where you will need to
+use your judgement as to whether they apply to your environment. Run \fBcobbler sync\fP after making any changes to the
+configuration files to ensure those changes are applied to the environment.
+.sp
+It is especially important that the server name field be accurate in \fB/etc/cobbler/settings.yaml\fP, without this field
+being correct, automatic installation trees will not be found, and automated installations will fail.
+.sp
+For PXE, if DHCP is to be run from the cobbler server, the DHCP configuration file should be changed as suggested by
+\fBcobbler check\fP\&. If DHCP is not run locally, the \fBnext\-server\fP field on the DHCP server should at minimum point to
+the cobbler server\(aqs IP and the filename should be set to \fBpxelinux.0\fP\&. Alternatively, cobbler can also generate your
+DHCP configuration file if you want to run DHCP locally \-\- this is covered in a later section. If you don\(aqt already have
+a DHCP setup managed by some other tool, allowing cobbler to manage your DHCP environment will prove to be useful as it
+can manage DHCP reservations and other data. If you already have a DHCP setup, moving an existing setup to be managed
+from within cobbler is relatively painless \-\- though usage of the DHCP management feature is entirely optional. If you
+are not interested in network booting via PXE and just want to use Koan to install virtual systems or replace existing
+ones, DHCP configuration can be totally ignored. Koan also has a live CD (see Koan\(aqs manpage) capability that can be
+used to simulate PXE environments.
+.SH AUTOINSTALLATION (AUTOYAST/KICKSTART)
+.sp
+For help in building kickstarts, try using the \fBsystem\-config\-kickstart\fP tool, or install a new system and look at the
+\fB/root/anaconda\-ks.cfg\fP file left over from the installer. General kickstart questions can also be asked at
+\fI\%kickstart\-list@redhat.com\fP\&. Cobbler ships some autoinstall templates in \fB/etc/cobbler\fP that may also be helpful.
+.sp
+For AutoYaST guides and help please refer to \fI\%the opensuse project\fP\&.
+.sp
+Also see the website or documentation for additional documentation, user contributed tips, and so on.
+.SH OPTIONS
+.INDENT 0.0
+.TP
+.B \-B \-\-daemonize
+If you pass no options this is the default one. The Cobbler\-Server runs in the background.
+.TP
+.B \-F \-\-no\-daemonize
+The Cobbler\-Server runs in the foreground.
+.TP
+.B \-f \-\-log\-file
+Choose a destination for the logfile (currently has no effect).
+.TP
+.B \-l \-\-log\-level
+Choose a loglevel for the application (currently has no effect).
+.TP
+.B \-\-c \-\-config
+The location of the Cobbler configuration file.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B  \-\-disable\-automigration
+If given, do no execute automigration from older settings filles to the most recent.
+.UNINDENT
+.SH AUTHOR
+Enno Gotthold
+.SH COPYRIGHT
+2022, Enno Gotthold
+.\" Generated by docutils manpage writer.
+.
