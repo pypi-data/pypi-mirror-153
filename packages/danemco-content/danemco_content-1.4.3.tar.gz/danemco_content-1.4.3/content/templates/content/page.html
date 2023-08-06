@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}{{ page.title }}{% endblock %}
+{% block keywords %}{{ page.keywords }}{% endblock %}
+{% block description %}{{ page.description }}{% endblock %}
+{% block pagetitle %}{{ page.title }}{% endblock %}
+
+
+{% block extra_styles %}
+    <link rel="stylesheet" href="{% static 'libs/medium-editor/dist/css/medium-editor.min.css' %}"/>
+    <link rel="stylesheet" href="{% static 'libs/medium-editor/dist/css/themes/bootstrap.min.css' %}"/>
+{% endblock extra_styles %}
+
+
+{% block extra_scripts %}
+    {% if user.is_staff %}
+        <script src="{% static 'libs/medium-editor/dist/js/medium-editor.min.js' %}"></script>
+        <script>
+            var page_id = {{ object.pk|default:'"new"' }}
+            var editor = new MediumEditor('.content-page');
+            var __save_content = null;
+            $('.content-page').on('input', function () {
+                clearTimeout(__save_content);
+
+                var url = '{% url "content-save" 9999 %}'.replace('9999', page_id);
+
+                __save_content = setTimeout(function() {
+                    $.ajax({
+                        url: url,
+                        type: 'post',
+                        data: {
+                            csrfmiddlewaretoken: "{{ csrf_token }}",
+                            content: $(this).html(),
+                            url: "{{ object.url }}",
+                        },
+                        dataType: "json",
+                        success: function(retval) {
+                            if (retval.status == "OK") {
+                                page_id = retval.page_id;
+                            }
+                        }
+                    })
+                }.bind(this), 500);
+            });
+        </script>
+    {% endif %}
+{% endblock extra_scripts %}
+
+
+{% block content %}
+    <div class="content-page" data-pk="{{ page.pk }}">
+        {{ page.content }}
+    </div>
+{% endblock %}
+

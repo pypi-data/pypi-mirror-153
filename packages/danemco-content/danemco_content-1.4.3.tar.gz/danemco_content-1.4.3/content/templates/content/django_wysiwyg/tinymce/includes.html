@@ -1,0 +1,73 @@
+{% comment %}
+    This template is based on https://github.com/pydanny/django-wysiwyg/blob/0.7.1/django_wysiwyg/templates/django_wysiwyg/tinymce/includes.html
+{% endcomment %}
+{% load wysiwyg %}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/4.3.2/tinymce.min.js"></script>
+<script type="text/javascript">
+    // allow custom settings per editor ID:
+    var django_wysiwyg_editor_configs = [];{% block django_wysiwyg_editor_config %}
+    var django_wysiwyg_editor_config = {
+        'theme': 'modern',
+        'width': 'calc(100% - 7.6em)',
+        'height': 300,
+        'plugins': [
+            'advlist autolink lists link image charmap print preview hr',
+            'searchreplace wordcount visualblocks visualchars code fullscreen',
+            'insertdatetime media nonbreaking save table contextmenu directionality',
+            'emoticons template paste textcolor table anchor pagebreak'
+        ],
+        'toolbar':
+            'bold italic underline strikethrough | ' +
+            'alignleft aligncenter alignright alignjustify | ' +
+            'fontselect fontsizeselect forecolor backcolor | ' +
+            'cut copy paste | ' +
+            'bullist numlist | ' +
+            'undo redo | ' +
+            'link unlink | ' +
+            'image',
+        'relative_urls': false,
+    };
+{% endblock %}
+
+    var django_wysiwyg =
+    {
+        editors: {},
+
+        enable: function django_wysiwyg_enable(editor_name, field_id, config)
+        {
+            if( !this.editors[editor_name] ) {
+                if( !config ) {
+                    config = django_wysiwyg_editor_configs[field_id] || django_wysiwyg_editor_config;
+                }
+
+                // Apply extra settings in local copy.
+                var localconfig = {};
+                tinyMCE.extend(localconfig, config);
+                tinyMCE.extend(localconfig, {
+                    mode: "exact",
+                    elements: field_id,
+                    setup: function(editor) {
+                        django_wysiwyg.editors[editor_name] = editor;
+                    }
+                });
+
+                tinyMCE.init(localconfig);
+            }
+        },
+
+        disable: function django_wysiwyg_disable(editor_name)
+        {
+            var editor = this.editors[editor_name];
+            if( editor ) {
+                editor.save();
+                editor.remove();
+                this.editors[editor_name] = null;
+            }
+        },
+
+        is_loaded: function django_wysiwyg_is_loaded()
+        {
+            return window.tinyMCE != null;
+        }
+    }
+</script>
