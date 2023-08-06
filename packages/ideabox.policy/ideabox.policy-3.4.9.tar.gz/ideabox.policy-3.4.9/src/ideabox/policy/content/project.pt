@@ -1,0 +1,207 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"
+  xmlns:tal="http://xml.zope.org/namespaces/tal"
+  xmlns:metal="http://xml.zope.org/namespaces/metal"
+  xmlns:i18n="http://xml.zope.org/namespaces/i18n" lang="en" metal:use-macro="context/main_template/macros/master" i18n:domain="ideabox.policy">
+  <body>
+    <metal:main fill-slot="main" tal:define="images_url view/get_images_url;
+                  current_state view/review_state;
+                  timeline_states view/timeline_states;
+                  district view/get_project_district;
+                  theme view/get_project_theme;">
+      <div id="action_project">
+        <div class="ap-content">
+          <div id="viewlet-above-content-title" tal:content="structure provider:plone.abovecontenttitle" />
+          <div class="ap-header">
+            <div class="image" tal:condition="view/has_campaign_image">
+              <img src="" tal:attributes="src view/get_campaign_image"/>
+            </div>
+            <div class="ap-header-text">
+              <h1 tal:content="context/Title"></h1>
+              <div class="image hidden" tal:condition="view/has_campaign_image">
+                <img src="" tal:attributes="src view/get_campaign_image"/>
+              </div>
+              <div class="documentByLine" id="plone-document-byline" tal:condition="view/before_selected" i18n:domain="plone">
+                <tal:creator tal:define="creator_short_form view/creator;" tal:condition="creator_short_form">
+                  <tal:name tal:define="creator_long_form string:?author=${creator_short_form};
+                                          creator_is_openid python:'/' in creator_short_form;
+                                          creator_id python:(creator_short_form, creator_long_form)[creator_is_openid];
+                                          anonymous view/anonymous">
+                    <span class="documentAuthor">
+                      <tal:i18n i18n:translate="label_by_author">
+                          by
+                        <span tal:content="view/authorname" i18n:name="author"></span>
+                      </tal:i18n>
+                    </span>
+                  </tal:name>
+                </tal:creator>
+              </div>
+              <div class="theme" tal:condition="theme">
+                <label i18n:translate="">Areas concerned :</label>
+                <p tal:replace="structure theme"></p>
+              </div>
+              <div class="theme" tal:condition="district">
+                <label i18n:translate="">District(s) :</label>
+                <p tal:content="view/get_project_district"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="description">
+            <p tal:content="context/description"></p>
+          </div>
+
+          <div id="timeline" class="steps_5" i18n:domain="plone" tal:condition="view/can_view_timeline">
+            <ol id="timeline-line">
+              <tal:block tal:repeat="state timeline_states">
+                <li tal:attributes="class python: state['state'] == current_state and 'current' or state['class']" tal:define="date state/date">
+                  <div class="step">
+                    <tal:block condition="date">
+                      <div tal:content="python: date.strftime('%d')"></div>
+                      <div tal:content="python: date.strftime('%b')"></div>
+                    </tal:block>
+                  </div>
+                </li>
+              </tal:block>
+            </ol>
+            <ol id="timeline-text">
+              <tal:block tal:repeat="state timeline_states">
+                <li tal:attributes="class python: state['state'] == current_state and 'current' or state['class']">
+                  <div tal:content="state/state" i18n:translate=""></div>
+                </li>
+              </tal:block>
+            </ol>
+            <div tal:condition="view/can_edit" i18n:domain="ideabox.policy">
+              <a href="" tal:attributes="href string:${context/absolute_url}/@@workflow-edit" i18n:translate="">Edit timeline dates</a>
+            </div>
+          </div>
+
+          <tal:if condition="view/can_view_rating">
+            <div tal:content="structure here/@@rating"></div>
+          </tal:if>
+
+          <div tal:define="news view/get_news">
+            <div>
+              <tal:block tal:repeat="image_url images_url">
+                <div class="img_project" tal:attributes="style string: background-image:url(${image_url})"></div>
+              </tal:block>
+              <div i18n:translate="" id="ap-text" class="ap-button">Read more</div>
+              <div class="text ap-text ap-toggle" tal:content="structure context/body/raw|context/body"></div>
+            </div>
+            <div class="news ap-text ap-toggle" tal:condition="news">
+              <div id="project_facet_view" class="news">
+                <tal:block repeat="element news">
+                  <a href="" title="" tal:attributes="href element/getURL;
+                                                title element/Title" tal:define="idx python:repeat['element'].index + 1;
+                                            img_url string:${element/getURL}/@@images/image/project_faceted">
+                    <div class="" tal:attributes="class string:project item_${idx}">
+                      <div class="image" tal:attributes="style string:background-image:url('${img_url}')"></div>
+                      <div>
+                        <div class="date_project" tal:define="date python: element.created > element.effective and element.created or element.effective">
+                          <span tal:replace="python: date.asdatetime().strftime('%d/%m/%Y')"></span>
+                        </div>
+                        <div class="title" tal:content="element/Title">title</div>
+                        <div class="description" tal:content="element/Description">description</div>
+                      </div>
+                    </div>
+                  </a>
+                </tal:block>
+              </div>
+            </div>
+          </div>
+          <tal:block condition="view/is_geolocated">
+            <tal:widget
+              tal:define="widget python:view.widgets.get('geolocation', None)"
+              tal:replace="structure widget/@@ploneform-render-widget" />
+            <label class="horizontal" i18n:translate="">
+              Coordinates
+            </label>
+            <span tal:content="context/geolocation/latitude" /> ;
+            <span tal:content="context/geolocation/longitude" />
+          </tal:block>
+
+          <div>
+            <div i18n:translate="" id="ap-comment" class="ap-button">Comment</div>
+            <div class="ap-comment ap-toggle" tal:content="structure provider:plone.belowcontentbody" />
+          </div>
+        </div>
+
+        <div tal:condition="python: context.portal_type=='priority_action'" class="ap-state">
+          <div tal:define="state_progress view/get_state_progress" class="state-block">
+            <div id="ap-status" class="ap-button"><a href="" tal:attributes="href string:${context/absolute_url}/@@state_progress_view" i18n:translate="">Project Status</a></div>
+            <div class="state-body ap-status ap-toggle">
+              <div class="state-item" tal:condition="not: state_progress">
+                <div class="state-content" i18n:translate="">
+                  There is no progress for the moment.
+                </div>
+              </div>
+              <div class="state-item" tal:repeat="sp state_progress">
+                <tal:block tal:define="spo sp/getObject;
+                                img python: getattr(spo, 'image', None)">
+                  <div class="state-date" tal:content="python: view.format_date(spo.state_date)"></div>
+                  <div class="state-content">
+                    <div tal:condition="img" class="img">
+                      <img class="view img-responsive" src="" tal:attributes="src string: ${spo/absolute_url}/@@images/image" />
+                    </div>
+                    <div tal:replace="structure spo/body/output"></div>
+                  </div>
+                </tal:block>
+              </div>
+            </div>
+            <div class="state-more ap-status ap-toggle">
+              <a href="" tal:attributes="href string:${context/absolute_url}/@@state_progress_view">
+                <tal:block i18n:translate="">See more</tal:block>
+                <i class="fas fa-plus"></i>
+              </a>
+            </div>
+            <div class="state-notif ap-status ap-toggle" tal:condition="python: True == False">
+              <p i18n:translate="">Would you like to be kept up to date on the progress of the project?</p>
+              <tal:anonymous tal:condition="python: context.portal_membership.isAnonymousUser()">
+                <a title="Se connecter" href="http://localhost:8080/ideabox/login" id="personaltools-login" class="pat-plone-modal"
+                data-pat-plone-modal="{&quot;prependContent&quot;: &quot;.portalMessage&quot;, &quot;title&quot;: &quot;Log in&quot;, &quot;width&quot;: &quot;26em&quot;, &quot;actionOptions&quot;: {&quot;redirectOnResponse&quot;: true}}">
+                  <div class="state-switch">
+                    <div i18n:translate="">No</div>
+                    <label>
+                      <input type="checkbox" />
+                      <span class="slider round"></span>
+                    </label>
+                    <div i18n:translate="">Yes</div>
+                  </div>
+                </a>
+              </tal:anonymous>
+
+              <tal:authenticated tal:condition="not: python: context.portal_membership.isAnonymousUser()">
+                <div class="state-switch">
+                  <div i18n:translate="">No</div>
+                  <label>
+                    <input type="checkbox" />
+                    <span class="slider round"></span>
+                  </label>
+                  <div i18n:translate="">Yes</div>
+                </div>
+              </tal:authenticated>
+
+            </div>
+            <div class="actions" tal:define="viewlets view/get_restapi_viewlets">
+              <tal:while repeat="viewlet viewlets">
+                <tal:if condition="viewlet/available">
+                  <span tal:replace="structure viewlet/render"></span>
+                </tal:if>
+              </tal:while>
+            </div>
+          </div>
+        </div>
+        <script type="text/javascript">
+        $(".ap-button").click(function() {
+          var id = $(this).attr("id");
+          $(".ap-button:not(#" + id + ")").removeClass("current");
+          $(".ap-toggle:not(." + id + ")").removeClass("current");
+          $("." + id).toggleClass("current");
+          $(this).toggleClass("current");
+          $([document.documentElement, document.body]).animate({
+            scrollTop: $(this).offset().top - 20
+          }, 500);
+        });
+        </script>
+      </metal:main>
+    </body>
+  </html>

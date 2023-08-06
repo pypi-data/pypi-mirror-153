@@ -1,0 +1,44 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en"
+      lang="en"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      i18n:domain="ideabox.policy">
+    <body>
+        <section tal:define="projects view/contents;
+                             default_image view/default_image">
+            <h2 tal:content="view/title"></h2>
+            <div id="project_facet_view"
+                 class="eea-preview-items">
+                <tal:block repeat="brain projects">
+                <div tal:define="idx python:repeat['brain'].index + 1;
+                                 title brain/pretty_title_or_id|string:;
+                                 view_url brain/getURL|string:#;
+                                 image_id brain/project_picture|string:;
+                                 obj brain/getObject;
+                                 image_url python:image_id and view_url + '/' + image_id + '/@@images/image/project_faceted' or default_image"
+                     tal:attributes="class string:project item_${idx}">
+
+                    <a href="" title=""
+                       tal:attributes="href view_url;
+                                       title title">
+                      <div tal:condition="python: view.rating(obj)" tal:content="structure obj/@@rating"></div>
+                      <div class="image" tal:attributes="style string: background-image:url('${image_url}')"></div>
+                      <div>
+                        <div class="title" tal:content="title">title</div>
+                        <div class="description"><tal:block repeat="theme brain/project_theme">
+                          <span tal:content="python: view.get_theme(theme)">theme</span>
+                          <tal:if condition="not: python: repeat['theme'].end"> / </tal:if>
+                        </tal:block></div>
+                      </div>
+                    </a>
+                </div>
+                </tal:block>
+            </div>
+            <div class="align-right">
+              <a class="voir-tout" href="" tal:attributes="href view/folder_projects" tal:condition="view/folder_projects" i18n:translate="">View all</a>
+            </div>
+        </section>
+    </body>
+</html>

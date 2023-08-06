@@ -1,0 +1,112 @@
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xml:lang="en"
+  lang="en"
+  xmlns:tal="http://xml.zope.org/namespaces/tal"
+  xmlns:metal="http://xml.zope.org/namespaces/metal"
+  xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+  metal:use-macro="context/main_template/macros/master"
+  i18n:domain="ideabox.policy">
+
+  <body>
+    <metal:content-core fill-slot="content-core">
+      <metal:block define-macro="content-core">
+        <div tal:define="self nocall:context/@@faceted-explorer;
+                         map_view context/@@faceted-map-geojson;
+                         folderContents folderContents | python:context.getFolderContents();
+                         Batch python:modules['Products.CMFPlone'].Batch;
+                         b_start python:request.get('b_start', 0);
+                         batch python:isinstance(folderContents, Batch) and folderContents or Batch(folderContents, 100, int(b_start), orphan=0);">
+          <div tal:condition="self/can_submit_project">
+            <div i18n:domain="ideabox.policy">
+              <button class="btn" id="btn-create-projects" i18n:translate=""
+                      tal:attributes="onclick python:'window.open(\'{}/{}\',\'_self\')'.format(self.get_path(), '@@project_submission')">Create project
+              </button>
+            </div>
+          </div>
+
+          <div metal:use-macro="context/batch_macros/macros/navigation"/>
+
+          <div id="faceted-map"
+               class="pat-leaflet" style="width: 100%; height:40em;"
+               data-pat-leaflet="${self/map_configuration}"
+               data-geojson=''
+               tal:attributes="data-geojson python:map_view.data_geo(batch)">
+          </div>
+
+          <div id="project_facet_view" class="eea-preview-items">
+
+            <tal:entries repeat="brain batch">
+              <tal:block define="idx python:repeat['brain'].index + 1">
+                <div class=""
+                     tal:attributes="class string:project item_${idx}"
+                     tal:define="portal_type brain/portal_type;
+                                 useViewTypes context/portal_properties/site_properties/typesUseViewActionInListings|python:[];
+                                 useView python:portal_type in useViewTypes;">
+                  <tal:block tal:define="title brain/pretty_title_or_id|string:;
+                                         url brain/getURL|string:#;
+                                         view_url python:(url and useView and url + '/view') or url;
+                                         image_id brain/project_picture|string:;
+                                         obj brain/getObject;
+                                         image_url python:image_id and view_url + '/' + image_id + '/@@images/image/project_faceted' or self.default_image(obj)">
+                    <a href=""
+                       title=""
+                       tal:attributes="href view_url;
+                                       title title">
+                      <div tal:condition="python: portal_type=='Project'">
+                        <div tal:condition="python: self.rating(obj)" tal:content="structure obj/@@rating"></div>
+                      </div>
+                      <div class="image" tal:attributes="style string: background-image:url('${image_url}')"></div>
+                      <div>
+                        <div class="title" tal:content="title">title</div>
+                        <div class="description">
+                          <tal:block repeat="theme brain/project_theme">
+                            <span tal:content="python: self.get_theme(theme)">theme</span>
+                            <tal:if condition="not: python: repeat['theme'].end">
+                              /
+                            </tal:if>
+                          </tal:block>
+                        </div>
+                      </div>
+                    </a>
+                  </tal:block>
+                </div>
+              </tal:block>
+            </tal:entries>
+            <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                  $(Faceted.Events).bind(Faceted.Events.AJAX_QUERY_SUCCESS, function() {
+                    setTimeout(function() {
+                      var data = $("#faceted-map").attr("data-geojson");
+                      require('pat-registry', 'pat-leaflet').scan($('div#faceted-map'));
+                      if (typeof data != "undefined" && data) {
+                        data = JSON.parse(data);
+                        if (data.features) {
+                          $('#faceted-map').trigger('leaflet.refresh', data);
+                        }
+                      } else {
+                        $('#faceted-map').trigger('leaflet.refresh', data);
+                      }
+
+                      $('.faceted-map-item').hover(function () {
+                        $('.pat-leaflet').trigger('leaflet.openPopup', $(this).data('index'));
+                      }, function () {
+                        $('.pat-leaflet').trigger('leaflet.closePopup', $(this).data('index'));
+                      });
+                    }, 50);
+                  });
+                  $('.button-map').click(function() {
+                    $('.button-map').toggle();
+                    $('.pat-leaflet').toggleClass('hidden');
+                  });
+                });
+            </script>
+          </div>
+
+          <div metal:use-macro="context/batch_macros/macros/navigation"/>
+
+        </div>
+      </metal:block>
+    </metal:content-core>
+  </body>
+</html>

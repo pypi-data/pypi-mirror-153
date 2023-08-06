@@ -1,0 +1,146 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    i18n_domain="ideabox.policy">
+
+  <!-- Set overrides folder for Just-a-Bunch-Of-Templates product -->
+  <include package="z3c.jbot" file="meta.zcml" />
+  <browser:jbot
+    directory="overrides"
+    layer="ideabox.policy.interfaces.IIdeaboxPolicyLayer"
+    />
+
+  <!-- Publish static files -->
+  <plone:static
+    name="ideabox.policy"
+    type="plone"
+    directory="static"
+    />
+
+  <browser:resource
+    name="ideabox.js"
+    file="static/ideabox.js"
+    />
+
+  <browser:page
+    for="*"
+    name="project_progression_summary"
+    permission="zope2.View"
+    class=".project.SummaryProgressionView"
+    template="templates/project_summary.pt"
+    />
+
+  <browser:page
+    for="*"
+    name="project_theme_summary"
+    permission="zope2.View"
+    class=".project.SummaryThemeView"
+    template="templates/project_summary.pt"
+    />
+
+  <browser:page
+    for="ideabox.policy.content.project.IProject"
+    name="rating"
+    permission="zope2.View"
+    class=".rating.ProjectRatingView"
+    />
+
+  <browser:page
+    for="ideabox.policy.content.project.IProject"
+    name="workflow-edit"
+    permission="cmf.ModifyPortalContent"
+    class=".workflow.WorkflowEditView"
+    />
+
+  <adapter
+    for="ideabox.policy.content.project.IProject
+         zope.interface.Interface
+         ideabox.policy.browser.workflow.IWorkflowForm
+         zope.interface.Interface
+         zope.interface.Interface"
+    provides="z3c.form.interfaces.IValue"
+    name="default"
+    factory=".workflow.WorkflowDataProvider"
+    />
+
+  <browser:page
+    name="project_submission"
+    for="*"
+    class=".project_submission.ProjectSubmissionView"
+    template="templates/project_submission.pt"
+    permission="ideabox.ProposeProject"
+    layer="ideabox.policy.interfaces.IIdeaboxPolicyLayer"
+    />
+
+  <browser:viewlet
+    for="*"
+    name="viewlet.user_menu"
+    manager="plone.app.layout.viewlets.interfaces.IPortalTop"
+    class=".viewlet.UserMenuViewlet"
+    permission="zope.Public"
+    layer="ideabox.policy.interfaces.IIdeaboxPolicyLayer"
+    />
+
+  <browser:viewlet
+    name="plone.comments"
+    for="Products.CMFCore.interfaces.IContentish"
+    layer="plone.app.discussion.interfaces.IDiscussionLayer"
+    manager="plone.app.layout.viewlets.interfaces.IBelowContentBody"
+    view="plone.app.layout.globals.interfaces.IViewView"
+    class="plone.app.discussion.browser.comments.CommentsViewlet"
+    permission="zope2.View"
+    />
+
+  <browser:page
+    name="ideabox_settings"
+    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+    class=".controlpanel.IdeaBoxSettingsControlPanel"
+    permission="cmf.ManagePortal"
+    />
+
+  <configure package="plone.app.contenttypes.browser">
+    <browser:pages
+        for="plone.dexterity.interfaces.IDexterityContainer"
+        class="ideabox.policy.browser.folder.FolderView"
+        layer="ideabox.policy.interfaces.IIdeaboxPolicyLayer"
+        permission="zope2.View">
+      <browser:page
+          name="summary_view"
+          template="templates/listing_summary.pt"
+          menu="plone_displayviews"
+          title="Ideabox Summary view"
+          />
+      <browser:page
+          name="listing_view"
+          template="templates/listing.pt"
+          menu="plone_displayviews"
+          title="Ideabox Standard view"
+          />
+    </browser:pages>
+  </configure>
+
+  <!-- comments -->
+  <configure package="plone.app.discussion.browser">
+    <browser:viewlet
+      name="plone.comments"
+      for="ideabox.policy.content.project.IProject"
+      layer="..interfaces.IDiscussionLayer"
+      manager="plone.app.layout.viewlets.interfaces.IBelowContent"
+      view="plone.app.layout.globals.interfaces.IViewView"
+      class="ideabox.policy.browser.comment.CommentsViewlet"
+      permission="zope2.View"
+      />
+  </configure>
+
+  <browser:page
+    name="register"
+    for="plone.app.layout.navigation.interfaces.INavigationRoot"
+    class=".register.CustomRegistrationForm"
+    layer="ideabox.policy.interfaces.IIdeaboxPolicyLayer"
+    permission="cmf.AddPortalMember"
+    />
+
+  <adapter factory=".register.CustomRegistrationAdapter" />
+
+</configure>
