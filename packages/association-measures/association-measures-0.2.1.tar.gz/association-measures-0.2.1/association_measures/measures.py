@@ -1,0 +1,481 @@
+"""
+Association measures are mathematical formulae that interpret cooccurrence frequency data.
+
+http://www.collocations.de/AM/index.html
+"""
+
+
+import numpy as np
+# from statistics import NormalDist  # requires python version >= 3.8
+from scipy.stats import norm    # requires scipy
+from pandas import concat
+
+from .binomial import choose
+from .frequencies import expected_frequencies, observed_frequencies
+
+
+CHOOSE = np.vectorize(choose)
+
+
+def list_measures():
+    """Return a dictionary of implemented measures (name: measure)
+
+    :return: dictionary of measures
+    :rtype: dict
+
+    """
+
+    return {
+        # asymptotic hypothesis tests
+        'z_score': z_score,
+        't_score': t_score,
+        'log_likelihood': log_likelihood,
+        'simple_ll': simple_ll,
+        # point estimates of association strength
+        'liddell': liddell,
+        'min_sensitivity': min_sensitivity,
+        'dice': dice,
+        'log_ratio': log_ratio,
+        # likelihood measures
+        # 'hypergeometric_likelihood': hypergeometric_likelihood,
+        # 'binomial_likelihood': binomial_likelihood,
+        # information theory
+        'mutual_information': mutual_information,
+        'local_mutual_information': local_mutual_information,
+        # conservative estimates
+        'conservative_log_ratio': conservative_log_ratio
+    }
+
+
+def score(df, f1=None, N=None, N1=None, N2=None,
+          measures=None, freq=True, per_million=True, digits=6,
+          disc=.5, signed=True, alpha=.01, correct='Bonferroni',
+          one_sided=False):
+
+    """Wrapper for `calculate_measures` that also allows integer counts to
+    be given as parameters. This is reasonable for the following notations:
+
+    - frequency signature: integers f1, N (df contains f, f2)
+    - corpus frequencies: integers N1, N2 (df contains f1, f2)
+
+    Note that the wrapper also sets reasonable defaults for keyword
+    arguments that will be passed to the respective measures.
+
+    See `calculate_measures` for more info.
+
+    """
+
+    if all(v is None for v in [f1, N1, N2, N]):
+        pass
+
+    elif f1 is not None and N is not None:
+        try:
+            df = df[['f', 'f2']].copy()
+            df['f1'] = f1
+            df['N'] = N
+        except KeyError:
+            raise ValueError(
+                'frequency signature notation: (f1, N) are given, but (f, f2) are not'
+            )
+
+    elif N1 is not None and N2 is not None:
+        try:
+            df = df[['f1', 'f2']].copy()
+            df['N1'] = N1
+            df['N2'] = N2
+        except KeyError:
+            raise ValueError(
+                'corpus frequency notation: (N1, N2) are given, but (f1, f2) are not'
+            )
+
+    else:
+        raise ValueError(
+            'either (f1, N) OR (N1, N2) have to be given'
+        )
+
+    df = calculate_measures(df, measures, freq, per_million, digits,
+                            disc=disc, signed=signed, alpha=alpha,
+                            correct=correct, one_sided=one_sided)
+
+    return df
+
+
+def calculate_measures(df, measures=None, freq=False,
+                       per_million=True, digits=None, **kwargs):
+    """Calculate a list of association measures on columns of
+    df. Defaults to all available (and numerically stable) measures.
+
+    Columns must follow one of the following notations:
+    - contingency table: O11, O12, O21, O22
+    - frequency signature: f, f1, f2, N
+    - corpus frequencies: f1, N1, f2, N2
+
+    :param DataFrame df: Dataframe with reasonably-named frequency columns
+    :param list measures: names of AMs (or AMs)
+    :param bool freq: also return observed and expected frequencies?
+    :param bool per_million: return instances per million? (only if freq is True)
+    :param int digits: round scores
+
+    Further keyword arguments will be passed to the respective measures:
+    :param float disc: discounting (or smoothing) parameter for O11 == 0 (and O21 == 0)
+    :param bool signed: enforce negative values for rows with O11 < E11?
+    :param float alpha: CLR: significance level
+    :param str correct: CLR: correction type repeated tests (None|"Bonferroni"|"Sidak")
+    :param bool one_sided: CLR: calculate one- or two-sided confidence interval
+
+    :return: association measures
+    :rtype: DataFrame
+
+    """
+
+    # convert input to contingency notation and calculate expected frequencies
+    df_obs = observed_frequencies(df)
+    df_exp = expected_frequencies(df)
+    df = df_obs.join(df_exp)
+    freq_columns = df.columns
+
+    # select measures
+    ams_all = list_measures()
+    if measures is not None:
+        if isinstance(measures[0], str):
+            measures = [ams_all[k] for k in measures if k in ams_all.keys()]
+    else:
+        measures = [ams_all[k] for k in ams_all]
+
+    # calculate measures
+    for measure in measures:
+        df[measure.__name__] = measure(df, **kwargs)
+
+    if not freq:
+        df = df.drop(freq_columns, axis=1)
+
+    else:
+        # add instances (per million)
+        fac = 10**6 if per_million else 1
+        name = 'ipm' if per_million else 'instances'
+        R1 = df['O11'] + df['O12']
+        R2 = df['O21'] + df['O22']
+        df[name] = df['O11'] / R1 * fac
+        df[name + '_reference'] = df['O21'] / R2 * fac
+        df[name + '_expected'] = df['E11'] / R1 * fac
+
+    df = round(df, digits) if digits is not None else df
+
+    return df
+
+
+###############################
+# ASYMPTOTIC HYPOTHESIS TESTS #
+###############################
+
+def z_score(df, **kwargs):
+    """
+    Calculate z-score
+
+    :param DataFrame df: DataFrame with columns O11 and E11
+    :return: z-score
+    :rtype: pd.Series
+    """
+
+    am = (df['O11'] - df['E11']) / np.sqrt(df['E11'])
+
+    return am
+
+
+def t_score(df, disc=.001, **kwargs):
+    """
+    Calculate t-score
+
+    :param DataFrame df: pd.DataFrame with columns O11 and E11
+    :param float disc: discounting (or smoothing) parameter for O11 == 0
+    :return: t-score
+    :rtype: pd.Series
+    """
+
+    O11_disc = df['O11'].where(df['O11'] != 0, disc)
+    am = (df['O11'] - df['E11']) / np.sqrt(O11_disc)
+
+    return am
+
+
+def log_likelihood(df, signed=True, **kwargs):
+    """
+    Calculate log-likelihood
+
+    :param DataFrame df: pd.DataFrame with columns O11..O22, E11..E22
+    :param bool signed: return negative values for rows with O11 < E11?
+    :return: log-likelihood
+    :rtype: pd.Series
+    """
+
+    # NB: discounting will not have any effect:
+    #     term will be multiplied by original Oij = 0
+    O11_disc = df['O11'].where(df['O11'] != 0, 1)
+    O12_disc = df['O12'].where(df['O12'] != 0, 1)
+    O21_disc = df['O21'].where(df['O21'] != 0, 1)
+    O22_disc = df['O22'].where(df['O22'] != 0, 1)
+
+    ii = df['O11'] * np.log(O11_disc / df['E11'])
+    ij = df['O12'] * np.log(O12_disc / df['E12'])
+    ji = df['O21'] * np.log(O21_disc / df['E21'])
+    jj = df['O22'] * np.log(O22_disc / df['E22'])
+
+    am = 2 * (ii + ij + ji + jj)
+
+    if signed:
+        am = np.sign(df['O11'] - df['E11']) * am
+
+    return am
+
+
+def simple_ll(df, signed=True, **kwargs):
+    """
+    Calculate simple log-likelihood
+
+    :param DataFrame df: pd.DataFrame with columns O11, E11
+    :param bool signed: return negative values for rows with O11 < E11?
+    :return: simple log-likelihood
+    :rtype: pd.Series
+    """
+
+    # NB: discounting will not have any effect:
+    #     term will be multiplied by original Oij = 0
+    O11_disc = df['O11'].where(df['O11'] != 0, 1)
+
+    log_term = df['O11'] * np.log(O11_disc / df['E11'])
+
+    am = 2 * (log_term - (df['O11'] - df['E11']))
+
+    if signed:
+        am = np.sign(df['O11'] - df['E11']) * am
+
+    return am
+
+
+###########################################
+# POINT ESTIMATES OF ASSOCIATION STRENGTH #
+###########################################
+
+def min_sensitivity(df, **kwargs):
+    """Calculate Minimum Sensitivity.
+
+    :param DataFrame df: pd.DataFrame with columns O11, O12, O21
+    :return: dice
+    :rtype: pd.Series
+    """
+
+    R1 = df['O11'] + df['O12']
+    C1 = df['O11'] + df['O21']
+
+    am1 = df['O11'] / R1
+    am2 = df['O11'] / C1
+    am = concat([am1, am2], axis=1).min(axis=1)
+
+    return am
+
+
+def liddell(df, **kwargs):
+    """Calculate Liddell
+
+    :param DataFrame df: pd.DataFrame with columns O11, O12, O21, O22
+    :return: liddell
+    :rtype: pd.Series
+    """
+
+    C1 = df['O11'] + df['O21']
+    C2 = df['O21'] + df['O22']
+
+    am = (df['O11'] * df['O22'] - df['O21'] * df['O21']) / C1 / C2
+
+    return am
+
+
+def dice(df, **kwargs):
+    """
+    Calculate Dice coefficient
+
+    :param DataFrame df: pd.DataFrame with columns O11, O12, O21
+    :return: dice
+    :rtype: pd.Series
+    """
+
+    am = (2 * df['O11']) / (2 * df['O11'] + df['O12'] + df['O21'])
+
+    return am
+
+
+def log_ratio(df, disc=.5, **kwargs):
+    """
+    Calculate log-ratio, a.k.a. relative risk
+
+    :param DataFrame df: pd.DataFrame with columns O11, O12, O21, O22
+    :param float disc: discounting (or smoothing) parameter for O11 == 0 and O21 == 0
+    :return: log-ratio
+    :rtype: pd.Series
+    """
+
+    # questionable discounting according to Hardie (2014)
+    O11_disc = df['O11'].where(df['O11'] != 0, disc)
+    O21_disc = df['O21'].where(df['O21'] != 0, disc)
+
+    R1 = df['O11'] + df['O12']
+    R2 = df['O21'] + df['O22']
+
+    am = np.log2((O11_disc / O21_disc) / (R1 / R2))
+
+    return am
+
+
+#######################
+# LIKELIHOOD MEASURES #
+#######################
+
+def hypergeometric_likelihood(df, **kwargs):
+    """
+    Calculate hypergeometric-likelihood
+
+    :param DataFrame df: pd.DataFrame with columns O11, O12, O21, O22
+    :return: hypergeometric-likelihood
+    :rtype: pd.Series
+    """
+
+    df = df.astype(
+        {'O11': 'int32', 'O12': 'int32', 'O21': 'int32', 'O22': 'int32'}
+    )
+
+    np.seterr(all='ignore')
+    c1 = CHOOSE(df['O11'] + df['O21'], df['O11'])
+    c2 = CHOOSE(df['O12'] + df['O22'], df['O12'])
+    c3 = CHOOSE(df['O11'] + df['O12'] + df['O21'] + df['O22'], df['O11'] + df['O12'])
+    am = c1 / c3 * c2
+    np.seterr(all='warn')
+
+    return am
+
+
+def binomial_likelihood(df, **kwargs):
+    """
+    Calculate binomial-likelihood
+
+    :param DataFrame df: pd.DataFrame with columns O11, O12, O21, O22, E11
+    :return: binomial-likelihood
+    :rtype: pd.Series
+    """
+
+    df = df.astype(
+        {'O11': 'int32', 'O12': 'int32', 'O21': 'int32', 'O22': 'int32', 'E11': 'int32'}
+    )
+
+    N = df['O11'] + df['O12'] + df['O21'] + df['O22']
+
+    np.seterr(all='ignore')
+    c1 = CHOOSE(N, df['O11'])
+    c2 = (df['E11'] / N) ** df['O11']
+    c3 = (1 - df['E11'] / N) ** (N - df['O11'])
+    am = c1 * c2 * c3
+    np.seterr(all='warn')
+
+    return am
+
+
+##########################
+# CONSERVATIVE ESTIMATES #
+##########################
+
+def conservative_log_ratio(df, disc=.5, alpha=.01,
+                           correct='Bonferroni', one_sided=False, **kwargs):
+    """
+    Calculate conservative log-ratio, i.e. the binary logarithm of the
+    lower bound of the confidence interval of relative risk at the
+    (Bonferroni-corrected) confidence level.
+
+    :param DataFrame df: pd.DataFrame with columns O11, O12, O21, O22
+    :param float disc: discounting (or smoothing) parameter for O11 == 0 and O21 == 0
+    :param float alpha: significance level
+    :param str correct: correction type for several tests (None | "Bonferroni" | "Sidak")
+    :param bool one_sided: calculate one- or two-sided confidence interval
+
+    :return: conservative log-ratio
+    :rtype: pd.Series
+
+    """
+
+    # questionable discounting according to Hardie (2014)
+    O11_disc = df['O11'].where(df['O11'] != 0, disc)
+    O21_disc = df['O21'].where(df['O21'] != 0, disc)
+
+    # compute natural logarithm of relative risk
+    # so we can use estimate for standard error of log(RR)
+    R1 = df['O11'] + df['O12']
+    R2 = df['O21'] + df['O22']
+    lrr = np.log((O11_disc / O21_disc) / (R1 / R2))
+
+    # Bonferroni or Sidak correction
+    if isinstance(correct, str):
+        vocab = (df['O11'] >= 1).sum()
+        if correct == 'Bonferroni':
+            alpha /= vocab
+        elif correct == "Sidak":  # TODO: improve computation
+            alpha = 1 - (1 - alpha) ** (1 / vocab)
+        else:
+            raise ValueError('parameter "correct" should either be "Bonferroni" or "Sidak".')
+    elif correct is None:
+        pass
+    else:
+        raise ValueError('parameter "correct" should either be None or a string.')
+
+    # get respective quantile of normal distribution
+    if not one_sided:
+        alpha /= 2
+    # z_factor = NormalDist().inv_cdf(1 - alpha)
+    z_factor = norm.ppf(1 - alpha)
+
+    # asymptotic standard deviation of log(RR) according to Wikipedia
+    lrr_sd = np.sqrt(1/O11_disc + 1/O21_disc - 1/R1 - 1/R2)
+
+    # calculate and apply appropriate boundary
+    ci_min = (lrr - lrr_sd * z_factor).clip(lower=0)
+    ci_max = (lrr + lrr_sd * z_factor).clip(upper=0)
+    clrr = ci_min.where(lrr >= 0, ci_max)
+
+    # adjust to binary logarithm
+    clrr /= np.log(2)
+
+    return clrr
+
+
+######################
+# INFORMATION THEORY #
+######################
+
+def mutual_information(df, disc=.001, **kwargs):
+    """
+    Calculate Mutual Information
+
+    :param DataFrame df: pd.DataFrame with columns O11 and E11
+    :param float disc: discounting (or smoothing) parameter for O11 == 0
+    :return: mutual information
+    :rtype: pd.Series
+    """
+
+    O11_disc = df['O11'].where(df['O11'] != 0, disc)
+    am = np.log10(O11_disc / df['E11'])
+
+    return am
+
+
+def local_mutual_information(df, **kwargs):
+    """
+    Calculate Local Mutual Information
+
+    :param DataFrame df: pd.DataFrame with columns O11 and E11
+    :return: mutual information
+    :rtype: pd.Series
+    """
+
+    # NB: discounting will not have any effect:
+    #     term will be multiplied by original Oij = 0
+    O11_disc = df['O11'].where(df['O11'] != 0, 1)
+    am = df['O11'] * np.log10(O11_disc / df['E11'])
+
+    return am
