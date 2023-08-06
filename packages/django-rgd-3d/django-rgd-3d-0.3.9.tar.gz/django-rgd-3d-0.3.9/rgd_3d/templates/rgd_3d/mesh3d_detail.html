@@ -1,0 +1,69 @@
+{% extends "rgd/_base/detail.html" %}
+
+{% block meta_table_body %}
+<tr>
+  <td>Description</td>
+  <td>{{ object.description }}</td>
+</tr>
+<tr>
+  <td>VTP Data</td>
+  <td>{{ object.data_link_vtp }}</td>
+</tr>
+<tr>
+  <td>Source Data</td>
+  <td>{{ object.data_link }}</td>
+</tr>
+
+{% if object.mesh3dspatial %}
+<tr>
+  <td>Acquisition Date</td>
+  <td>{{ object.mesh3dspatial.acquisition_date }}</td>
+</tr>
+<tr>
+  <td>Area</td>
+  <td>{{ object.mesh3dspatial.footprint.area | floatformat:-2 }}</td>
+</tr>
+<tr>
+  <td>Instrumentation</td>
+  <td>{{ object.mesh3dspatial.instrumentation }}</td>
+</tr>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_meta %}
+{% if object.mesh3dspatial %}
+
+<br />
+
+{% include 'rgd/_include/empty_viewer.html' %}
+
+<script>
+  let reader = geo.createFileReader('geojsonReader', {
+    'layer': layer
+  });
+  var footprint = '{{ object.mesh3dspatial.footprint.json|escapejs }}'
+  reader.read(footprint, (features) => {
+    features[0].style({
+        strokeColor: '#FF0000',
+        fill: true,
+      })
+      .draw();
+  });
+
+  let extent = JSON.parse('{{ object.mesh3dspatial.bounds_json|escapejs }}');
+  setBounds(extent)
+</script>
+
+{% endif %}
+{% endblock %}
+
+{% block detail %}
+
+{% include 'rgd_3d/_include/vtkjs_viewer.html' %}
+
+<script>
+  load(vtkContainer, `{% url 'mesh-3d-base64' object.id %}`)
+</script>
+
+{% endblock %}
