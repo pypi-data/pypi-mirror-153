@@ -1,0 +1,246 @@
+"""
+"About" cog for discordbot - https://github.com/pvyParts/allianceauth-discordbot
+
+Since we don't want to have it branded for "The Initiative", we have to build our own
+"""
+
+# Standard Library
+import logging
+
+# Third Party
+import pendulum
+from aadiscordbot.app_settings import get_site_url
+from aadiscordbot.cogs.utils.decorators import sender_is_admin
+from discord.colour import Color
+from discord.embeds import Embed
+from discord.ext import commands
+from discord.utils import get
+
+# Django
+from django.conf import settings
+
+# Alliance Auth
+from allianceauth.eveonline.evelinks.eveimageserver import (
+    alliance_logo_url,
+    corporation_logo_url,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class About(commands.Cog):
+    """
+    All about me!
+    """
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(pass_context=True)
+    async def about(self, ctx):
+        """
+        All about the bot
+        """
+
+        await ctx.trigger_typing()
+
+        embed = Embed(title="TN-NT Discord Services")
+
+        try:
+            if settings.TNNT_TEMPLATE_ENTITY_ID == 1:
+                embed.set_thumbnail(url=get_site_url + "static/icons/allianceauth.png")
+            else:
+                if settings.TNNT_TEMPLATE_ENTITY_TYPE == "alliance":
+                    embed.set_thumbnail(
+                        url=alliance_logo_url(settings.TNNT_TEMPLATE_ENTITY_ID, 256)
+                    )
+                elif settings.TNNT_TEMPLATE_ENTITY_TYPE == "corporation":
+                    embed.set_thumbnail(
+                        url=corporation_logo_url(settings.TNNT_TEMPLATE_ENTITY_ID, 256)
+                    )
+        except AttributeError:
+            pass
+
+        embed.colour = Color.green()
+
+        embed.description = (
+            "This is a multi-functional discord bot tailored "
+            "specifically for Terra Nanotech.\n\nType `!help` for more information."
+        )
+
+        url = get_site_url()
+
+        embed.add_field(
+            name="Auth Link",
+            value="[{auth_url}]({auth_url})".format(auth_url=url),
+            inline=False,
+        )
+
+        embed.set_footer(
+            text="Developed by Aaron Kable, forked for Terra Nanotech by Rounon Dax"
+        )
+
+        return await ctx.send(embed=embed)
+
+    @commands.command(hidden=True)
+    @sender_is_admin()
+    async def uptime(self, ctx):
+        """
+        Returns the uptime
+        """
+
+        await ctx.send(
+            pendulum.now(tz="UTC").diff_for_humans(
+                self.bot.currentuptime, absolute=True
+            )
+        )
+
+    @commands.command(hidden=True)
+    @sender_is_admin()
+    async def get_webhooks(self, ctx):
+        """
+        Returns the webhooks for the channel
+        """
+
+        hooks = await ctx.message.channel.webhooks()
+
+        if len(hooks) == 0:
+            name = "{}_webhook".format(ctx.message.channel.name.replace(" ", "_"))
+            hook = await ctx.message.channel.create_webhook(name=name)
+
+            await ctx.message.author.send(f"{hook.name} - {hook.url}")
+        else:
+            for hook in hooks:
+                await ctx.message.author.send(f"{hook.name} - {hook.url}")
+
+        return await ctx.message.delete()
+
+    @commands.command(hidden=True)
+    @sender_is_admin()
+    async def new_channel(self, ctx):
+        """
+        Create a new channel in a category.
+        """
+
+        await ctx.message.channel.trigger_typing()
+
+        input_string = ctx.message.content[13:].split(" ")
+
+        if len(input_string) != 2:
+            return await ctx.message.add_reaction(chr(0x274C))
+
+        everyone_role = ctx.guild.default_role
+        channel_name = input_string[1]
+        target_cat = get(ctx.guild.channels, id=int(input_string[0]))
+        found_channel = False
+
+        # TODO replace with channel lookup not loop
+        for channel in ctx.guild.channels:
+            if channel.name.lower() == channel_name.lower():
+                found_channel = True
+
+        if not found_channel:
+            # Create channel
+            channel = await ctx.guild.create_text_channel(
+                channel_name.lower(), category=target_cat
+            )
+
+            await channel.set_permissions(
+                everyone_role, read_messages=False, send_messages=False
+            )
+
+        return await ctx.message.add_reaction(chr(0x1F44D))
+
+    @commands.command(hidden=True)
+    @sender_is_admin()
+    async def add_role(self, ctx):
+        """
+        Add a role from a channel.
+        """
+
+        await ctx.message.channel.trigger_typing()
+
+        input_string = ctx.message.content[10:].split(" ")
+
+        if len(input_string) != 2:
+            return await ctx.message.add_reaction(chr(0x274C))
+
+        target_role = get(ctx.guild.roles, name=input_string[1])
+        channel_name = get(ctx.guild.channels, name=input_string[0])
+
+        if channel_name:
+            await channel_name.set_permissions(
+                target_role, read_messages=True, send_messages=True
+            )
+
+        return await ctx.message.add_reaction(chr(0x1F44D))
+
+    @commands.command(hidden=True)
+    @sender_is_admin()
+    async def rem_role(self, ctx):
+        """
+        Remove a role from a channel.
+        """
+
+        await ctx.message.channel.trigger_typing()
+
+        input_string = ctx.message.content[10:].split(" ")
+
+        if len(input_string) != 2:
+            return await ctx.message.add_reaction(chr(0x274C))
+
+        target_role = get(ctx.guild.roles, name=input_string[1])
+        channel_name = get(ctx.guild.channels, name=input_string[0])
+
+        if channel_name:
+            await channel_name.set_permissions(
+                target_role, read_messages=False, send_messages=False
+            )
+
+        return await ctx.message.add_reaction(chr(0x1F44D))
+
+    @commands.command(hidden=True)
+    @sender_is_admin()
+    async def list_role(self, ctx):
+        """
+        List roles from a channel.
+        """
+
+        await ctx.message.channel.trigger_typing()
+
+        input_string = ctx.message.content[11:]
+
+        channel_name = get(ctx.guild.channels, name=input_string)
+        roles = {}
+
+        if channel_name:
+            for role in channel_name.overwrites:
+                roles[role.name] = {}
+                overides = channel_name.overwrites_for(role)
+
+                for _name, _value in overides:
+                    if _value is not None:
+                        roles[role.name][_name] = _value
+
+        embed = Embed(title=f"'{channel_name.name}' Channel Roles")
+        embed.colour = Color.blue()
+        message = ""
+
+        for key, role in roles.items():
+            _msg = f"\n`{key}` Role:\n"
+            for r, v in role.items():
+                _msg += f"{r}: {v}\n"
+            message += _msg
+
+        embed.description = message
+
+        return await ctx.send(embed=embed)
+
+
+def setup(bot):
+    """
+    Setup the cog
+    :param bot:
+    """
+
+    bot.add_cog(About(bot))
