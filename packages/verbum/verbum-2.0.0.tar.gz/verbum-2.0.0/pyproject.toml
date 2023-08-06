@@ -1,0 +1,164 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "verbum"
+version = "2.0.0"
+description = "Python version bumper."
+authors = ["Christian Riedel <cielquan@protonmail.com>"]
+license = "MIT"
+repository = "https://github.com/cielquan/verbum"
+readme = "README.md"
+keywords = ["version", "pep440"]
+packages = [
+  { include = "verbum", from = "src"},
+  { include = "tests", format = "sdist" },
+  { include = "AUTHORS.rst", format = "sdist" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# EXTRA testing
+pytest = { version = ">=6.0", optional = true }
+pytest-cov = {version = ">=3.0", optional = true}
+coverage = {extras = ["toml"], version = ">=6.0", optional = true}
+# TODO:#i# wait for new release
+# pytest-sugar = { version = ">=0.9.5", optional = true }
+# pytest-sugar = { git = "https://github.com/Teemu/pytest-sugar.git", rev = "ee02ada200026f4bfabf2252c6c59b08f5564255", optional = true }
+pytest-randomly = { version = ">=3.0", optional = true }
+
+[tool.poetry.dev-dependencies]
+pre-commit = ">=2.17"
+tox = ">=3.15"
+my-flake8-plugins = { git = "https://github.com/cielquan/my-flake8-plugins.git", rev = "v1.3.1", extras= ["flakeheaven"]}
+pylint = ">=2.12"
+mypy = ">=0.931"
+pytest = ">=6.0"
+
+[tool.poetry.extras]
+testing = [
+  "pytest",
+  "pytest-cov",
+  "coverage",
+  "pytest-sugar",
+  "pytest-randomly",
+]
+
+
+# -- BLACK CONFIG ---------------------------------------------------------------------
+[tool.black]
+line-length = 100
+exclude = "venv/"
+include = '\.pyi?$'  # single quotes needed
+
+
+# -- ISORT CONFIG ---------------------------------------------------------------------
+[tool.isort]
+profile = "black"
+lines_after_imports = 2
+combine_as_imports = true
+skip_gitignore = true
+
+
+# -- MYPY CONFIG ----------------------------------------------------------------------
+[tool.mypy]
+show_error_codes = true
+strict_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+disallow_any_generics = true
+check_untyped_defs = true
+implicit_reexport = false
+python_version = "3.10"  # CHANGE ME
+
+
+# -- FLAKEHEAVEN CONFIG ----------------------------------------------------------------
+[tool.flakeheaven]
+base = ["https://raw.githubusercontent.com/Cielquan/my-flake8-plugins/v1.3.1/flakeheaven-base.toml"]
+min_python_version = "3.10"  # CHANGE ME
+
+
+# -- PYLINT CONFIG --------------------------------------------------------------------
+[tool.pylint]
+
+[tool.pylint.messages_control]
+disable = [
+  # deactivate because double check
+  # https://github.com/PyCQA/pylint/issues/3512
+  "C0113",  # unneeded-not - F713[flake8]
+  "C0114",  # missing-module-docstring - D100,D104[flake8]
+  "C0115",  # missing-class-docstring - D101,D106[flake8]
+  "C0116",  # missing-function-docstring - D102,D103,D105[flake8]
+  "C0301",  # line-too-long - E501[pycodestyle]
+  "C0303",  # trailing-whitespace - W291,W293[falke8]
+  "C0304",  # missing-final-newline - W292[falke8]
+  "C0321",  # multiple-statements - E701[falke8]
+  "C0411",  # wrong-import-order - I202[flake8]
+  "E0602",  # undefined-variable - F821[flake8]
+  "R0912",  # too-many-branches - C901[flake8]
+  "W0301",  # unnecessary-semicolon - E703[flake8]
+  "W0311",  # bad-indentation - E111[flake8]
+  "W0611",  # unused-import - F401[flake8]
+  "W0612",  # unused-variable - F841[flake8]
+  "W0702",  # bare-except - E722[pycodestyle]
+  # deactivate because unwanted
+  "W0511",  # fixme
+  # deactivate because of bugs
+  "W1203",  # Use % format in logger funcs | https://github.com/PyCQA/pylint/issues/2354
+]
+
+[tool.pylint.spelling]
+spelling-private-dict-file = "spelling_dict.txt"
+
+
+# -- PYTEST CONFIG --------------------------------------------------------------------
+[tool.pytest.ini_options]
+addopts = "-ra --showlocals"
+mock_use_standalone_module = true
+
+
+# -- COVERAGE CONFIG ------------------------------------------------------------------
+[tool.coverage]
+[tool.coverage.run]
+branch = true
+parallel = true
+context = "static-context"
+omit = [
+  "tests/*",
+]
+
+[tool.coverage.paths]
+tox_combine = [
+  "src/verbum",
+  "*/.tox/*/lib/python*/site-packages/verbum",
+  "*/.tox/pypy*/site-packages/verbum",
+  "*/.tox\\*\\Lib\\site-packages\\verbum",
+]
+local_combine = [
+  "src/verbum",
+  "*/.venv/lib/python*/site-packages/verbum",
+  "*/.venv\\*\\Lib\\site-packages\\verbum",
+  "*/src/verbum",
+  "*\\src\\verbum",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+  "# pragma: no cover",
+  "if __name__ == ['\"]__main__['\"]:",
+  "def __str__",
+  "def __repr__",
+  "if self.debug:",
+  "if settings.DEBUG",
+  "if 0:",
+  "if False:",
+  "if TYPE_CHECKING:",
+  "if MYPY:",
+]
+
+[tool.coverage.html]
+show_contexts = true
