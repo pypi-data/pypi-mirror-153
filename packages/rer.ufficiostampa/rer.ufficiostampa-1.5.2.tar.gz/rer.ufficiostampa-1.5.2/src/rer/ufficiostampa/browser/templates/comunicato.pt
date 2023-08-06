@@ -1,0 +1,58 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"
+    xmlns:tal="http://xml.zope.org/namespaces/tal"
+    xmlns:metal="http://xml.zope.org/namespaces/metal"
+    xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+    lang="en"
+    metal:use-macro="context/@@main_template/macros/master"
+    i18n:domain="rer.ufficiostampa">
+<body>
+
+<metal:content-description fill-slot="content-description">
+  <div class="send-links" tal:condition="view/can_see_links">
+    <a class="plone-btn plone-btn-primary"
+        href="${context/absolute_url}/@@send"
+        tal:condition="view/can_send"
+        tal:define="message_sent context/message_sent|nothing">
+      <tal:send condition="not:message_sent" i18n:translate="send_link">Send</tal:send>
+      <tal:send condition="message_sent" i18n:translate="resend_link">Resend</tal:send>
+    </a>
+    <a class="plone-btn plone-btn-primary"
+        href="${context/absolute_url}/@@send-preview"
+        i18n:translate="send_preview_link">See preview</a>
+  </div>
+  <div tal:condition="context/Description"
+       tal:content="context/Description"
+       class="documentDescription description"></div>
+</metal:content-description>
+
+<metal:content-core fill-slot="content-core">
+<metal:content-core define-macro="content-core"
+                    tal:define="toc python:  getattr(context, 'table_of_contents', False);
+                                toLocalizedTime nocall: context/@@plone/toLocalizedTime;
+                                effective context/effective;
+                                is_published python:effective.year() != 1969">
+  <strong tal:condition="is_published"
+          tal:content="python:toLocalizedTime(effective,long_format=1)">
+    August 16, 2001 at 23:35:59
+  </strong>
+  <section id="section-text">
+    <div id="parent-fieldname-text" tal:condition="context/text" tal:content="structure python:context.text.output_relative_to(view.context)" tal:attributes="class python: toc and 'pat-autotoc' or ''">
+      Text
+    </div>
+  </section>
+
+  <div class="attachments"
+       tal:define="attachments view/get_children"
+       tal:condition="attachments">
+    <h2 i18n:translate="press_attachments">Allegati</h2>
+    <ul>
+      <li tal:repeat="attachment attachments" class="attachment">
+        <a href="${attachment/url}" title="${attachment/description}">${attachment/title}</a>
+      </li>
+    </ul>
+  </div>
+</metal:content-core>
+</metal:content-core>
+
+</body>
+</html>
