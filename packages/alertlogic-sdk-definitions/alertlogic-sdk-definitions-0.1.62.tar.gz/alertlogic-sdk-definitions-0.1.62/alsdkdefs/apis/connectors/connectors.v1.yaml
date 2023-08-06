@@ -1,0 +1,1410 @@
+openapi: 3.0.2
+info:
+  title: Connectors Service
+  version: '1.0'
+  contact:
+    email: support@alertlogic.com
+    name: Alert Logic Support
+  description: Integrations Connections Service
+servers:
+  - url: 'https://connectors.mdr.global.alertlogic.com'
+    x-alertlogic-global-endpoint: production
+    description: production
+  - url: 'https://connectors.mdr.product.dev.alertlogic.com'
+    description: integration
+paths:
+  /v1/connections/notifications/reenqueue:
+    post:
+      summary: Reenqueue the broken notifications from DLQ
+      operationId: reenqueue_notification
+      responses:
+        '200':
+          description: The messages were enqueued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reenqueued_num:
+                    type: integer
+                    description: The number of reenqueued messages
+        '403':
+          description: Forbidden
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsReenqueueNotificationsDLQFunction.Arn}/invocations'
+      description: Reenqueue the broken notifications from DLQ
+      parameters: []
+  '/v1/connections/{id}/notification':
+    parameters:
+      - schema:
+          type: string
+          format: uuid
+        name: id
+        in: path
+        required: true
+        description: Integration Connection ID
+    post:
+      summary: Send notification to a given connection
+      operationId: send_notification
+      responses:
+        '200':
+          description: Enqueue notification (`sync` query parameter is false or not set at all) or send it right away and return the results
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    title: MessageIdResponse
+                    description: Response for async request
+                    properties:
+                      message_id:
+                        type: string
+                        description: The id of message being enqueued
+                  - $ref: '#/components/schemas/ActualRequest'
+                description: Returns either request result (if `sync` query parameter is equal to `true`) or `message_id` of enqueued notification
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsSendNotificationFunction.Arn}/invocations'
+      description: Send notification for the given connection
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Payload data
+            x-alertlogic-schema:
+              name: data
+              encoding:
+                explode: true
+        description: Message body
+      parameters:
+        - schema:
+            type: boolean
+          in: query
+          name: sync
+          description: The request should be syncronized (i. e. do not put the request to the queue and return the results right away)
+  '/v1/{account_id}/connections/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+      - schema:
+          type: string
+          format: uuid
+        name: id
+        in: path
+        required: true
+        description: Integration Connection ID
+    get:
+      summary: Get Existing Connection Information
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/WebhookConnection'
+                  - $ref: '#/components/schemas/EmailConnection'
+              examples: {}
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      operationId: get_connection
+      description: Returns Connection Information
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsGetConnectionFunction.Arn}/invocations'
+      parameters:
+        - schema:
+            type: boolean
+          in: query
+          name: include_sample_payload
+          description: Include sample payload in the result?
+    delete:
+      summary: Delete existing integration connection
+      operationId: delete_connection
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsDeleteConnectionFunction.Arn}/invocations'
+      description: Deletes existing connection
+    put:
+      summary: Update existing connection information
+      operationId: update_connection
+      responses:
+        '200':
+          description: Valid only for `dry_run=true` query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActualRequest'
+        '201':
+          description: Valid only when `dry_run` query parameter isn't specified or `dry_run=false` is specified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  modified:
+                    $ref: '#/components/schemas/ChangeRecord'
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsUpdateConnectionFunction.Arn}/invocations'
+      description: Updates existing connection information
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/WebhookConnection'
+                - $ref: '#/components/schemas/EmailConnection'
+        description: Valid Integration Connection Objects
+      parameters:
+        - schema:
+            type: boolean
+          in: query
+          name: dry_run
+          description: When present and set to `true` just tests the connection without updating an existing connection instance.
+  '/v1/connections/{id}':
+    parameters:
+      - schema:
+          type: string
+          format: uuid
+        name: id
+        in: path
+        required: true
+        description: Integration Connection ID
+    get:
+      summary: Get existing connection Information by its ID
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/WebhookConnection'
+                  - $ref: '#/components/schemas/EmailConnection'
+                description: Connection Object
+              examples: {}
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      operationId: get_connection_by_id
+      description: Returns Connection Information
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsGetConnectionByIdFunction.Arn}/invocations'
+      parameters: []
+  '/v1/{account_id}/connections':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+    get:
+      summary: List all account's connections
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  anyOf:
+                    - $ref: '#/components/schemas/WebhookConnection'
+                    - $ref: '#/components/schemas/EmailConnection'
+      operationId: list_connections
+      description: Returns a list of all integration connections for an account
+      security:
+        - aims_request_authorizer: []
+      parameters:
+        - schema:
+            type: boolean
+          in: query
+          name: include_sample_payload
+          description: Include sample payload in the result?
+        - schema:
+            type: string
+          in: query
+          name: connection_target_id
+          description: Filter by the connection target id
+    post:
+      summary: Create connection information
+      operationId: create_connection
+      responses:
+        '200':
+          description: Valid only for `dry_run=true` query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActualRequest'
+        '201':
+          description: Valid only when `dry_run` query parameter isn't specified or `dry_run=false` is specified.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/WebhookConnection'
+                  - $ref: '#/components/schemas/EmailConnection'
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '409':
+          description: Conflict
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsUpdateConnectionFunction.Arn}/invocations'
+      description: Create connection
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/CreateEmailConnection'
+                - $ref: '#/components/schemas/CreateWebhookConnection'
+              description: Valid Integration Connection object
+            examples: {}
+        description: Valid Integration Connection Objects
+      parameters:
+        - schema:
+            type: boolean
+          in: query
+          name: dry_run
+          description: When present and set to `true` just tests the connection without creating a connection instance.
+  '/v1/{account_id}/connection_targets/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+      - schema:
+          type: string
+          format: uuid
+        name: id
+        in: path
+        required: true
+        description: Connection Target ID
+    get:
+      summary: Get Existing Connection Target Information
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+              examples: {}
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      operationId: get_connection_target
+      description: Returns Connection Target Information
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsGetConnectionTarget.Arn}/invocations'
+    delete:
+      summary: Delete existing connection target
+      operationId: delete_connection_target
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsDeleteConnectionTargetFunction.Arn}/invocations'
+      description: Deletes existing connection target
+    put:
+      summary: Update existing connection target
+      operationId: update_connection_target
+      responses:
+        '200':
+          description: Existing Connection Target
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsUpdateConnectionTarget.Arn}/invocations'
+      description: Updates existing connection target
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/ConnectionTargetJira'
+                - $ref: '#/components/schemas/ConnectionTargetJsd'
+                - $ref: '#/components/schemas/ConnectionTargetSnow'
+                - $ref: '#/components/schemas/ConnectionTargetMsteams'
+                - $ref: '#/components/schemas/ConnectionTargetSlack'
+                - $ref: '#/components/schemas/ConnectionTargetPagerduty'
+                - $ref: '#/components/schemas/ConnectionTargetWebhook'
+        description: Valid Connection Target Object
+  '/v1/{account_id}/connection_targets':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+    get:
+      summary: List all account's connection targets
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+      operationId: list_connection_targets
+      description: Returns a list of all connections targets for an account
+      security:
+        - aims_request_authorizer: []
+      parameters:
+        - name: filter
+          schema:
+            type: object
+          in: query
+          description: 'When present, list only connection targets with the specified values of the given fields. Multiple values can be separated using comma: `param=foo,bar`.'
+          style: form
+          explode: true
+    post:
+      summary: Create connection target
+      operationId: create_connection_target
+      responses:
+        '201':
+          description: New connection target object created
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsCreateConnectionTarget.Arn}/invocations'
+      description: Create connection target
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: Valid Connection Target object
+              oneOf:
+                - $ref: '#/components/schemas/ConnectionTargetJira'
+                - $ref: '#/components/schemas/ConnectionTargetJsd'
+                - $ref: '#/components/schemas/ConnectionTargetSnow'
+                - $ref: '#/components/schemas/ConnectionTargetMsteams'
+                - $ref: '#/components/schemas/ConnectionTargetSlack'
+                - $ref: '#/components/schemas/ConnectionTargetPagerduty'
+                - $ref: '#/components/schemas/ConnectionTargetWebhook'
+            examples: {}
+        description: Valid Integration Connection Objects
+  '/v1/{account_id}/connection_targets_full':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+    get:
+      summary: List Existing Connection Target Full Information
+      tags: []
+      parameters:
+        - name: filter
+          schema:
+            type: object
+          in: query
+          description: 'When present, list only connection targets with the specified values of the given fields. Multiple values can be separated using comma: `param=foo,bar`.'
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+        '403':
+          description: Forbidden
+      operationId: list_connection_targets_full
+      description: Returns A List Of Connection Targets With Full Information
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsListConnectionTargetsFull.Arn}/invocations'
+  '/v1/{account_id}/connection_targets_full/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+      - schema:
+          type: string
+          format: uuid
+        name: id
+        in: path
+        required: true
+        description: Connection Target ID
+    get:
+      summary: Get Existing Connection Target Full Information
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+              examples: {}
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      operationId: get_connection_target_full
+      description: Returns Connection Target Full Information
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsGetConnectionTargetFull.Arn}/invocations'
+  '/v1/integration_types/{name}':
+    parameters:
+      - schema:
+          type: string
+        name: name
+        in: path
+        required: true
+    get:
+      summary: Get Integration Type Configuration Information
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationType'
+              examples: {}
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      operationId: get_integration_type
+      description: Returns JSON Schema of parameters required to create a connection
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsGetIntegrationTypeFunction.Arn}/invocations'
+  /v1/integration_types:
+    get:
+      summary: Get a list of supported integration types
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of IntegrationType objects
+                items:
+                  $ref: '#/components/schemas/IntegrationTypeShort'
+              examples:
+                Response Example:
+                  value:
+                    - name: webhook
+                      display_name: Notification Webhook
+                      description: Webhooks allow you to send Alert Logic data and notifications to external services
+                      category: webhook
+                      icon: al al-webhooks
+                    - name: snow
+                      display_name: Service Now Notification
+                      description: SNOW integration allows you to send Alert Logic data and notifications to Service Now.
+                      category: webhook
+                      icon: al al-jira
+                    - name: email
+                      display_name: Ticketing Email
+                      description: Ticketing email integrations allow you to generate an issue automatically from an Alert Logic security incident.
+                      category: email
+                      icon: pi pi-envelope
+        '403':
+          description: Forbidden
+      operationId: list_integration_types
+      description: Returns a list of supported integration types
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsListIntegrationTypesFunction.Arn}/invocations'
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - email
+              - webhook
+          in: query
+          name: category
+          description: Filter by category
+    parameters: []
+  '/v1/{account_id}/integration_types/{name}':
+    parameters:
+      - schema:
+          type: string
+        name: name
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+    get:
+      summary: Get Account Integration Type Configuration Information
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationType'
+              examples: {}
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      operationId: get_account_integration_type
+      description: Returns account-specific schema of parameters required to create a connection
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsGetAccountIntegrationTypeFunction.Arn}/invocations'
+
+  /v1/connection_targets:
+    get:
+      summary: Get a list of supported connection targets
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of ConnectionTarget objects
+                items:
+                  $ref: '#/components/schemas/ConnectionTargetDef'
+        '403':
+          description: Forbidden
+      operationId: list_connection_targets_definitions
+      description: Returns definitions of supported connection targets
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsListConnectionTargetsDefinitionsFunction.Arn}/invocations'
+
+  '/v1/connection_targets/{name}':
+    parameters:
+      - schema:
+          type: string
+        name: name
+        in: path
+        required: true
+    get:
+      summary: Get a connection target definition by its name
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionTargetDef'
+        '403':
+          description: Forbidden
+      operationId: get_connection_target_definition
+      description: Returns connection target definition
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsGetConnectionTargetDefinitionFunction.Arn}/invocations'
+
+  /v1/{account_id}/definitions/connection_targets:
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+    get:
+      summary: Get a list of supported connection targets for an account
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of ConnectionTarget objects
+                items:
+                  $ref: '#/components/schemas/ConnectionTargetDef'
+        '403':
+          description: Forbidden
+      operationId: list_account_connection_targets_definitions
+      description: Returns definitions of supported connection targets
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsListAccountConnectionTargetsDefinitionsFunction.Arn}/invocations'
+
+  '/v1/{account_id}/definitions/connection_targets/{name}':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+      - schema:
+          type: string
+        name: name
+        in: path
+        required: true
+    get:
+      summary: Get a connection target definition by its name for an account
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionTargetDef'
+        '403':
+          description: Forbidden
+      operationId: get_account_connection_target_definition
+      description: Returns connection target definition
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsGetAccountConnectionTargetDefinitionFunction.Arn}/invocations'
+
+  /v1/payload_types:
+    get:
+      summary: Get a list of supported payload types
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: List of PayloadType objects
+                items:
+                  type: object
+                  properties:
+                    value:
+                      type: string
+                      description: Payload Type name
+                    title:
+                      type: string
+                      description: Payload Type display name
+                    description:
+                      type: string
+                      description: Payload Type description
+                  required:
+                    - value
+                    - title
+                    - description
+              examples: {}
+        '403':
+          description: Forbidden
+      operationId: list_payload_types
+      description: Returns a list of supported payload types
+      security:
+        - aims_request_authorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${integrationsListPayloadTypesFunction.Arn}/invocations'
+      parameters: []
+  /healthcheck:
+    get:
+      summary: Your GET endpoint
+      tags: []
+      responses:
+        '200':
+          description: OK
+      operationId: get_healthcheck
+      description: Check health status of the service.
+      x-amazon-apigateway-integration:
+        uri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${connectorsGetHealthcheckFunction.Arn}/invocations'
+  '/v1/{account_id}/migrate/connection_targets':
+    parameters:
+      - schema:
+          type: string
+        name: account_id
+        in: path
+        required: true
+        description: AIMS Account ID
+    post:
+      summary: ''
+      operationId: migrate_to_connection_target
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConnectionTarget'
+      description: Migrates accounts connections to connection targets
+      security:
+        - aims_request_authorizer: []
+components:
+  schemas:
+    EmailConnection:
+      title: EmailConnection
+      allOf:
+        - $ref: '#/components/schemas/CreateEmailConnection'
+        - type: object
+          properties:
+            id:
+              type: string
+              description: Connection UUID
+            account_id:
+              type: string
+              description: AIMS Account ID
+            created:
+              $ref: '#/components/schemas/ChangeRecord'
+            modified:
+              $ref: '#/components/schemas/ChangeRecord'
+            sample_payload:
+              type: object
+              description: Only if requested
+          required:
+            - id
+            - account_id
+            - created
+            - modified
+      description: EmailConnection Object Schema
+    WebhookConnection:
+      title: WebhookConnection
+      allOf:
+        - $ref: '#/components/schemas/CreateWebhookConnection'
+        - type: object
+          properties:
+            id:
+              type: string
+              description: Connection UUID
+            created:
+              $ref: '#/components/schemas/ChangeRecord'
+            modified:
+              $ref: '#/components/schemas/ChangeRecord'
+            account_id:
+              type: string
+              description: AIMS Account ID
+            sample_payload:
+              type: object
+              description: Only if requested
+          required:
+            - id
+            - created
+            - modified
+            - account_id
+      description: WebhookConnection Object Schema
+    CreateWebhookConnection:
+      title: CreateWebhookConnection
+      type: object
+      description: CreateWebhookConnection Object Schema
+      properties:
+        name:
+          type: string
+          description: Name of the connection
+        type:
+          type: string
+          enum:
+            - webhook
+            - jsd
+            - jira
+            - snow
+            - msteams
+            - pagerduty
+            - slack
+          description: Connection type.
+        target_url:
+          type: string
+          pattern: '^https?://\\S+'
+          description: Target URL
+        headers:
+          type: string
+          pattern: '^([-\w]+:\s*[^,]+(,\s*)?)*$'
+          description: Custom headers to be sent with HTTP POST request
+        payload_type:
+          type: string
+          enum:
+            - incident
+            - observation
+            - scheduled_report
+            - health
+          description: Alert Logic payload type this connection converts and send to the target URL as HTTP POST request body
+        payload_conversion_type:
+          type: string
+          enum:
+            - jq
+            - default
+          description: 'Conversion type to apply. `json` conversion can reference payload fields using {{field_path}} format. `jq` conversion uses jq language to convert Alert Logic Payload to the payload format expected by the target URL.'
+        payload_template:
+          type: string
+          description: The templage to convert Alert Logic Payload to the target URL payload format.
+        auth_header:
+          type: string
+          description: HTTP Authorization header. Make sure to base64 encode authorization value if the target URL requires it.
+        method:
+          type: string
+          description: 'HTTP verbs, can have values POST, PUT GET, DELETE, PATCH, OPTIONS, HEAD by default is POST'
+          default: POST
+          enum:
+            - POST
+            - PUT
+            - GET
+            - DELETE
+            - PATCH
+            - OPTIONS
+            - HEAD
+      required:
+        - name
+        - type
+        - target_url
+        - payload_conversion_type
+        - payload_template
+    CreateEmailConnection:
+      title: CreateEmailConnection
+      type: object
+      description: CreateEmailConnection Object Schema
+      properties:
+        name:
+          type: string
+          description: Name of the email connection
+        type:
+          type: string
+          enum:
+            - email
+          description: Type of the connection. Must be `email`
+        email:
+          type: string
+          pattern: '^[^@]+@[^@]+\\.[a-z]+$'
+          description: Email address to send notifications to
+        subject_template:
+          type: string
+          description: Email subject template.
+        payload_type:
+          type: string
+          description: Alert Logic payload type that will be sent with to the target email
+          enum:
+            - incident
+            - observation
+      required:
+        - name
+        - type
+        - email
+        - subject_template
+        - payload_type
+    ConnectionTargetJira:
+      title: ConnectionTargetJira
+      description: ConnectionTargetJira object schema
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - jira
+        instance_name:
+          type: string
+          minLength: 1
+        auth_header:
+          type: string
+        headers:
+          type: string
+          pattern: '^[-\w]+:[^\r\n]*((\r?\n)[-\w]+:[^\r\n]*)*$'
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - type
+        - name
+        - instance_name
+    ConnectionTargetJsd:
+      title: ConnectionTargetJsd
+      description: ConnectionTargetJsd object schema
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - jsd
+        instance_name:
+          type: string
+          minLength: 1
+        auth_header:
+          type: string
+        headers:
+          type: string
+          pattern: '^[-\w]+:[^\r\n]*((\r?\n)[-\w]+:[^\r\n]*)*$'
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - type
+        - name
+        - instance_name
+    ConnectionTargetSnow:
+      title: ConnectionTargetSnow
+      description: ConnectionTargetSnow object schema
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - snow
+        instance_name:
+          type: string
+          minLength: 1
+        auth_header:
+          type: string
+        headers:
+          type: string
+          pattern: '^[-\w]+:[^\r\n]*((\r?\n)[-\w]+:[^\r\n]*)*$'
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - name
+        - type
+        - instance_name
+        - auth_header
+        - headers
+    ConnectionTargetMsteams:
+      title: ConnectionTargetMsteams
+      description: ConnectionTargetMsteams object schema
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - msteams
+        base_url:
+          type: string
+          pattern: '^https?://\S+'
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - type
+        - name
+        - base_url
+    ConnectionTargetSlack:
+      title: ConnectionTargetSlack
+      description: ConnectionTargetSlack object schema
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - slack
+        base_url:
+          type: string
+          pattern: '^https?://\S+'
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - name
+        - type
+        - base_url
+    ConnectionTargetPagerduty:
+      title: ConnectionTargetPagerduty
+      description: ConnectionTargetPagerduty object schema
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - pagerduty
+        base_url:
+          type: string
+          pattern: '^https?://\S+'
+        routing_key:
+          type: string
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - type
+        - name
+        - routing_key
+    ConnectionTargetWebhook:
+      title: ConnectionTargetWebhook
+      description: ConnectionTargetWebhook object schema
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - webhook
+        base_url:
+          type: string
+          pattern: '^https?://\S+'
+        auth_header:
+          type: string
+        headers:
+          type: string
+          pattern: '^[-\w]+:[^\r\n]*((\r?\n)[-\w]+:[^\r\n]*)*$'
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - name
+        - type
+        - base_url
+    DefaultTemplates:
+      type: object
+      title: DefaultTemplates
+      minProperties: 1
+      description: 'DefaultTemplates Object Schema '
+      properties:
+        incident:
+          type: object
+          minProperties: 1
+          additionalProperties: false
+          description: Incident Payload conversion object
+          properties:
+            jq:
+              type: string
+              description: '`jq` conversion template'
+            default:
+              type: string
+              description: '`default` (JSON) conversion template'
+        observation:
+          type: object
+          minProperties: 1
+          additionalProperties: false
+          description: Observation Payload conversion object
+          properties:
+            jq:
+              type: string
+              description: '`jq` conversion template'
+            default:
+              type: string
+              description: '`default` (JSON) conversion template'
+        scheduled_report:
+          type: object
+          minProperties: 1
+          additionalProperties: false
+          description: Scheduled Report Payload conversion object
+          properties:
+            jq:
+              type: string
+              description: '`jq` conversion template'
+            default:
+              type: string
+              description: '`default` (JSON) conversion template'
+        health:
+          type: object
+          minProperties: 1
+          additionalProperties: false
+          description: Health Payload conversion object
+          properties:
+            jq:
+              type: string
+              description: '`jq` conversion template'
+            default:
+              type: string
+              description: '`default` (JSON) conversion template'
+    IntegrationType:
+      title: IntegrationType
+      type: object
+      description: IntegrationType Object Schema
+      properties:
+        name:
+          type: string
+          description: Integration type name.
+        display_name:
+          type: string
+          description: Integration type display name
+        description:
+          type: string
+          description: Integration type description
+        category:
+          type: string
+          description: Business category an integration type belongs to
+        icon:
+          type: string
+          description: An icon from Alert Logic's library of icons to use to display an integration
+        dry_run_message:
+          type: string
+          description: ''
+        payload_templates:
+          $ref: '#/components/schemas/DefaultTemplates'
+        subject_templates:
+          $ref: '#/components/schemas/DefaultTemplates'
+        form:
+          type: object
+          description: UI Rendering form
+          required:
+            - controls
+          properties:
+            controls:
+              type: object
+              description: UI Form Controls object
+    IntegrationTypeShort:
+      title: IntegrationTypeShort
+      type: object
+      description: 'IntegrationType just the fields important for listing '
+      properties:
+        name:
+          type: string
+          description: Integration type name.
+        display_name:
+          type: string
+          description: Integration type display name
+        description:
+          type: string
+          description: Integration type description
+        category:
+          type: string
+          description: Business category an integration type belongs to
+        icon:
+          type: string
+          description: An icon from Alert Logic's library of icons to use to display an integration
+      required:
+        - name
+        - display_name
+        - description
+        - category
+        - icon
+    ConnectionTargetDef:
+      title: ConnectionTargetDef
+      type: object
+      description: Connection Target Definition
+      properties:
+        name:
+          type: string
+          description: Connection target name
+        display_name:
+          type: string
+          description: Connection target isplay name
+        icon:
+          type: string
+          description: An icon from Alert Logic's library of icons to use to display an integration
+        form:
+          type: object
+          description: UI Rendering form
+          required:
+            - controls
+          properties:
+            controls:
+              type: object
+              description: UI Form Controls object
+        active:
+          type: boolean
+          description: Active status of the connection
+          default: true
+      required:
+        - name
+        - display_name
+        - icon
+        - form
+    ChangeRecord:
+      title: ChangeRecord
+      type: object
+      description: ChangeRecord Object Schema
+      properties:
+        by:
+          type: string
+          format: uuid
+          description: User ID
+        at:
+          type: integer
+          format: int32
+          description: Epoch Timestamp
+    ActualRequest:
+      title: ActualRequest
+      description: Response data
+      type: object
+      properties:
+        request:
+          type: object
+          properties:
+            body:
+              type: string
+            headers:
+              type: object
+        response:
+          type: object
+          properties:
+            body:
+              type: string
+            code:
+              type: integer
+            headers:
+              type: object
+    ConnectionTarget:
+      title: ConnectionTarget
+      type: object
+      properties:
+        id:
+          type: string
+        account_id:
+          type: string
+        type:
+          type: string
+        base_url:
+          type: string
+        name:
+          type: string
+        secret_id:
+          type: string
+        auth_header:
+          type: string
+        created:
+          $ref: '#/components/schemas/ChangeRecord'
+        modified:
+          $ref: '#/components/schemas/ChangeRecord'
+        headers:
+          type: string
+        routing_key:
+          type: string
+      description: Connection Target schema
+  securitySchemes:
+    aims_request_authorizer:
+      type: apiKey
+      name: X-AIMS-Auth-Token
+      in: header
+      x-amazon-apigateway-authtype: custom
+      x-amazon-apigateway-authorizer:
+        authorizerUri:
+          'Fn::Sub': 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AIMSTokenAuthorizerFunction.Arn}/invocations'
+        authorizerResultTtlInSeconds: 300
+        identitySource: 'method.request.header.X-AIMS-Auth-Token, context.path'
+        type: request
