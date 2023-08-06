@@ -1,0 +1,130 @@
+{% load i18n %}
+{% load rules %}
+{% load content_filters %}
+{% load poi_filters %}
+
+<tr class="border-t border-solid border-gray-200 hover:bg-gray-100 text-gray-800">
+    <td class="py-3 pl-4">
+        <input type="checkbox" name="selected_ids[]" value="{{ event.id }}" form="bulk-action-form" class="bulk-select-item" />
+    </td>
+    <td>
+        <a href="{% url 'edit_event' event_id=event.id region_slug=request.region.slug language_slug=language.slug %}" class="block py-3 pl-2 pr-2 text-gray-800">
+            {% if event_translation %}
+                {{ event_translation.title }}
+            {% else %}
+                <i>{% trans 'Translation not available' %}</i>
+            {% endif %}
+        </a>
+    </td>
+    {% get_current_language as LANGUAGE_CODE %}
+    {% get_language LANGUAGE_CODE as backend_language %}
+    {% if backend_language and backend_language != language %}
+        <td>
+            <a href="{% url 'edit_event' event_id=event.id region_slug=request.region.slug language_slug=LANGUAGE_CODE %}" class="block py-3 pr-2 text-gray-800">
+                {% if event.backend_translation %}
+                    {{ event.backend_translation.title }}
+                {% else %}
+                    <i>{% trans 'Translation not available' %}</i>
+                {% endif %}
+            </a>
+        </td>
+    {% endif %}
+    <td class="py-3 pr-2 text-gray-800 lang-grid">
+        {% spaceless %}
+            {% for other_language, other_status in event.translation_states.values %}
+                <a href="{% url 'edit_event' event_id=event.id region_slug=request.region.slug language_slug=other_language.slug %}"
+                   class="{{ other_language.slug }}">
+                    <div id="translation-icon">
+                        {% if other_status == translation_status.IN_TRANSLATION %}
+                            <span title="{% trans 'Currently in translation' %}">
+                                <i data-feather="clock" class="{% if other_language.slug == language.slug %}text-blue-500{% else %}text-gray-800{% endif %}"></i>
+                            </span>
+                        {% elif other_status == translation_status.OUTDATED %}
+                            <span title="{% trans 'Translation outdated' %}">
+                                <i data-feather="alert-triangle" class="{% if other_language.slug == language.slug %}text-yellow-500{% else %}text-gray-800{% endif %}"></i>
+                            </span>
+                        {% elif other_status == translation_status.UP_TO_DATE %}
+                            <span title="{% trans 'Translation up-to-date' %}">
+                                <i data-feather="check" class="{% if other_language.slug == language.slug %}text-green-500{% else %}text-gray-800{% endif %}"></i>
+                            </span>
+                        {% elif other_status == translation_status.FALLBACK %}
+                            <span title="{% trans 'Default language is duplicated' %}">
+                                <i data-feather="copy" class="{% if other_language.slug == language.slug %}text-blue-500{% else %}text-gray-800{% endif %}"></i>
+                            </span>
+                        {% elif other_status == translation_status.MISSING %}
+                            <span title="{% trans 'Translation missing' %}" class="no-trans">
+                                <i data-feather="x" class="{% if other_language.slug == language.slug %}text-red-500{% else %}text-gray-800{% endif %}"></i>
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div id="ajax-icon" class="hidden">
+                        <span title="{% trans 'Currently in translation' %}">
+                            <i data-feather="clock" class="{% if other_language.slug == language.slug %}text-blue-500{% else %}text-gray-800{% endif %}"></i>
+                        </span>
+                    </div>
+                </a>
+            {% endfor %}
+        {% endspaceless %}
+    </td>
+    <td class="py-3 pr-2">
+        {{ event_translation.get_status_display }}
+    </td>
+    <td class="py-3 pr-2">
+        {% if event.location %}
+            {% get_language LANGUAGE_CODE as current_language %}
+            <i data-feather="map-pin"></i> {{ event.location|poi_translation_title:current_language }}
+        {% else %}
+            {% trans 'Not specified' %}
+        {% endif %}
+    </td>
+    <td class="py-3 pr-2">
+        <span class="whitespace-nowrap"><i data-feather="calendar"></i> {{ event.start_date|date:'d.m.Y' }}</span>{% if not event.is_all_day %} <span class="whitespace-nowrap"><i data-feather="clock"></i> {{ event.start_time|time:'H:i' }}</span>{% endif %}
+    </td>
+    <td class="py-3 pr-2">
+        <span class="whitespace-nowrap"><i data-feather="calendar"></i> {{ event.end_date|date:'d.m.Y' }}</span>{% if not event.is_all_day %} <span class="whitespace-nowrap"><i data-feather="clock"></i> {{ event.end_time|time:'H:i' }}</span>{% endif %}
+    </td>
+    <td class="py-3 pr-2 whitespace-nowrap">
+        {% if event.recurrence_rule %}
+            <i data-feather="repeat"></i> {{ event.recurrence_rule.get_frequency_display }}
+        {% else %}
+            <i data-feather="calendar"></i> {% trans 'One-time' %}
+        {% endif %}
+    </td>
+    <td class="pr-4 py-3 flex flex-nowrap justify-end gap-2">
+        {% if event_translation.status == PUBLIC %}
+            <a href="{{ WEBAPP_URL }}{{ event_translation.get_absolute_url }}"
+            rel="noopener noreferrer" target="_blank" title="{% trans 'Open event in web app' %}" class="btn-icon">
+                <i data-feather="external-link"></i>
+            </a>
+        {% else %}
+            <button title="{% trans 'This event cannot be opened in the web app, because it is not public.' %}" class="btn-icon" disabled>
+                <i data-feather="external-link"></i>
+            </button>
+        {% endif %}
+        {% has_perm 'cms.change_event' request.user as can_edit_event %}
+        {% if can_edit_event %}
+            <form action="{% url 'copy_event' event_id=event.id region_slug=request.region.slug language_slug=language.slug %}" method="post">
+                {% csrf_token %}
+                <button class="btn-icon" title="{% trans 'Copy event' %}">
+                    <i data-feather="copy"></i>
+                </button>
+            </form>
+            <button title="{% trans 'Archive event' %}" class="confirmation-button btn-icon"
+                data-confirmation-title="{{ archive_dialog_title }}"
+                data-confirmation-text="{{ archive_dialog_text }}"
+                data-confirmation-subject="{{ event_translation.title }}"
+                data-action="{% url 'archive_event' event_id=event.id region_slug=request.region.slug language_slug=language.slug %}">
+                <i data-feather="archive"></i>
+            </button>
+        {% endif %}
+        {% if perms.cms.delete_event %}
+            <button title="{% trans 'Delete event' %}" class="confirmation-button btn-icon"
+                data-confirmation-title="{{ delete_dialog_title }}"
+                data-confirmation-text="{{ delete_dialog_text }}"
+                data-confirmation-subject="{{ event_translation.title }}"
+                data-action="{% url 'delete_event' event_id=event.id region_slug=request.region.slug language_slug=language.slug %}">
+                <i data-feather="trash-2"></i>
+            </button>
+        {% endif %}
+    </td>
+</tr>
