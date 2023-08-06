@@ -1,0 +1,131 @@
+Metadata-Version: 2.1
+Name: pygeon-notifications
+Version: 1.0.2
+Summary: Supplementary package for usage with Pygeon mobile application
+Home-page: https://pygeon.io
+Author: Azuth Technologies
+Author-email: contact@pygeon.io
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests
+
+# Introduction
+
+Pygeon lets you monitor programs by enabling in-code alerts in the form of push notifications on your phone. Alerts can have a custom title, body and an optional context string that gets displayed as the subtitle of the notification on your phone. Sound and vibration for alerts are on by default but could be overriden by your phone's notification settings.
+
+
+## Install Pygeon
+
+```
+pip install pygeon-notifications
+```
+
+## Usage from the Command Line
+Install and open the Pygeon app on your mobile (iOS only) and sign-in. After signing in you will recieve a private key. Use the private key to initialize pygeon in your terminal with the following command:
+```bash
+$ pygeon-init YOUR_PRIVATE_KEY
+```
+
+To send alert from the command line:
+```bash
+$ pygeon -t "Title"
+```
+
+If you want to include a body in the alert (body is optional):
+```bash
+$ pygeon -t "Title" -b "Body"
+```
+Note that maximum length of the body is 200 characters.
+
+The most common use case of pygeon from the command line is when you want to alert yourself after a command is done executing. Here are a few examples of this scenario:
+
+### Example 1: Send alert when a command is done executing:
+```bash
+$ make && pygeon -t "Build Done"
+```
+
+### Example 2: Send alert when a command is done executing and include output of the command in the alert body
+
+```bash
+$ pygeon -t "Python script finished!" -b $(python main.py)
+```
+In this case the output of main.py will be included in the body
+
+
+## Usage with Python (>= 3.6)
+Install and open the Pygeon app on your mobile (iOS only) and sign-in. After signing in you will recieve a private key. Use the private key to instantiate a Pygeon object that you can use to send alerts anywhere in your scripts
+
+#### example
+```python
+from pygeon import Pygeon
+my_pygeon = Pygeon("YOUR_PRIVATE_KEY")
+
+my_pygeon.send("Cool Title", "Even cooler description")
+```
+
+## Usage with POST requests
+
+The Pygeon python package under the hood is a simple program that sends a POST request to Pygeon servers. Hence you can send alerts using a simple POST request to `https://pygeon.io/api/alert` with your private key, title and description in the body of the request.
+
+### curl example
+
+```bash
+curl -X POST "https://pygeon.io/api/alert" -H 'Content-Type: application/json' -d '{"ppk":"YOUR_PRIVATE_KEY","title":"Cool Title", "desc": "Cool Body"}'
+
+```
+
+### node example
+
+```js
+const axios = require('axios')
+
+axios.post('https://pygeon.io/api/alert', {
+    ppk: 'YOUR_PRIVATE_KEY',
+    title: 'Cool Title',
+    desc: 'Even cooler description'
+  })
+  .then(res => {
+    console.log(`statusCode: ${res.status}`)
+    console.log(res)
+  })
+  .catch(error => {
+    console.error(error)
+  })
+```
+
+## Example use cases
+
+Pygeon is built for software developers and some use cases include but are not limited to:
+
+### **example use case 1**: You want to step away from your machine until a task finishes
+
+```python
+from pygeon import Pygeon
+my_pygeon = Pygeon("YOUR_PRIVATE_KEY")
+
+long_task.execute()
+# you step away for a beer 🍺
+my_pygeon.send("Task finished!")
+```
+![](https://i.ibb.co/3YLJBXM/task-fin-tiny.jpg)
+
+### **example use case 2**: You want alerts in your trading bot about the stock market
+
+```python
+from pygeon import Pygeon
+my_pygeon = Pygeon("YOUR_PRIVATE_KEY")
+
+#custom trading logic
+if eth_price >= eth_strike:
+    my_pygeon.send("Price Alert!", f"Eth above {eth_strike}")
+```
+<img src="https://i.ibb.co/XkxFTmq/price-alert-small.jpg" alt="drawing" width="200"/>
+
+Note  that Pygeon alerts are also recieved on the apple watch if you have one connected to your phone. 
+
+
+
