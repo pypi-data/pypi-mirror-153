@@ -1,0 +1,274 @@
+# Default configuration for genmixdb
+# (See genmixdb for more information.)
+
+# The values in this file are the defaults used if they are not specified in a
+# local config.
+
+# Output file name; "${config}" will be expanded to the name of the local config
+# file
+output: "${config}.h5"
+
+# Feature to use
+feature: ""
+
+# Transform frame size
+frame_size: "${frame_size}"
+
+# Targets list
+#
+# Required field:
+#
+#   'target_name'
+#                     File name. May be one of the following:
+#     audio           Supported formats are .wav, .mp3, .aif, .flac, and .ogg
+#     glob            Matches file glob patterns
+#     .yml            The given YAML file is parsed into the list
+#     .txt            Each line in the given text file indicates an item which
+#                     may be anything in this list (audio, glob, .yml, or .txt)
+#
+# Optional fields:
+#
+#   'truth_settings'
+#                     Local overrides for truth. Contains any or all of the
+#                     following:
+#     'function'      Name of truth function <str>
+#     'config'        Truth function config <dict>
+#     'index'         Truth index <int>
+#
+#   'target_augmentations'
+#                     Target-specific augmentation rules override. This target
+#                     will be augmented with these rules only. If you want to
+#                     include the global augmentations, then add:
+#
+#                     - "${target_augmentations}"
+#
+#                     to the list. See the Augmentation Rules section for
+#                     details.
+#
+#   'class_balancing_augmentation'
+#                     Target-specific class balancing augmentation override.
+#                     This target will not use the global class balancing
+#                     augmentation rule, but will use this rule instead for
+#                     class balancing operations. If this rule is specified and
+#                     empty, then this target will not be used for class
+#                     balancing.
+#
+# Example:
+#
+#   targets:
+#     - target_name: data/esc50/ESC-50-master/audio/1-*.wav
+#       truth_settings:
+#         function: sed
+#         config:
+#           thresholds: [-38, -41, -48]
+#         index: 2
+#     - target_name: target.mp3
+#       truth_settings:
+#         function: sed
+#         config:
+#           thresholds: [-38, -41, -48]
+#         index: 5
+#       class_balancing_augmentation: { }
+#
+
+targets: [ ]
+
+# Number of classes in this dataset
+num_classes: 1
+
+# Class labels
+class_labels: [ ]
+
+# Random number generator seed
+seed: 0
+
+# Threshold for class weights calculation to quantize truth to binary for
+# counting.
+# Supports scalar or list:
+#   scalar  use for all classes
+#   list    must be of num_classes length
+class_weights_threshold: 0.5
+
+# Truth output mode; either 'normal' or 'mutex'
+truth_mode: normal
+
+# Truth reduction function; either 'mean' or 'max'
+# Used in feature generation to reduce sample-based truth down to transform
+# frame-based truth. The feature generator will further reduce this down to
+# feature frame-based truth (based on stride and decimation).
+truth_reduction_function: max
+
+# Global truth settings (may be overridden in the targets list)
+# These are the function, config, and index used to calculate truth
+truth_settings:
+  function: sed
+  config:
+    thresholds: [ -38, -41, -48 ]
+  index: 1
+
+# Augmentation Rules
+#
+# These rules may be specified for target and/or noise. Each rule will be
+# applied for each target/noise. The values may be specified as scalars, lists,
+# or random using the syntax 'rand(<min>, <max>)'.
+#
+# If a value is specified as a list, then the rule is repeated for each value in
+# the list.
+#
+# If a value is specified using rand, then the rule is repeated 'count' times.
+#
+# Rules may specify any or all of the following augmentations:
+#
+#   'normalize' Normalize audio file to the specified level (in dBFS).
+#   'gain'      Apply an amplification or an attenuation to the audio signal.
+#               The signal level is adjusted by the given number of dB; positive
+#               amplifies, negative attenuates.
+#   'pitch'     Change the audio pitch (but not its tempo). Pitch amount is
+#               specified as positive or negative 'cents' (i.e., 100ths of a
+#               semitone).
+#   'tempo'     Change the audio tempo (but not its pitch). Tempo amount is
+#               specified as the ratio of the new tempo to the old tempo. For
+#               example, '1.1' speeds up the tempo by 10% and '0.9' slows it
+#               down by 10%.
+#   'eq1'       Apply a two-pole peaking equalization filter. EQ parameters are
+#               specified as a [frequency, width, gain] triple where:
+#                   'frequency' gives the central frequency in Hz (20 - 8000),
+#                   'width' gives the width as a Q-factor (0.3 - 2.0), and
+#                   'gain' gives the gain in dB (-20 - 20).
+#   'eq2'       Apply an additional band of EQ. Same as 'eq1'
+#   'eq3'       Apply an additional band of EQ. Same as 'eq1'
+#   'lpf'       Apply a low-pass Butterworth filter. The 3dB point frequency is
+#               specified in Hz (20 - 8000).
+#   'count'     Number of times to repeat a rule with random values.
+#               NOTE: specifying count is only meaningful if at least one of the
+#               parameters in the rule uses rand; it is ignored otherwise.
+#
+# Only the specified augmentations for a given rule are applied; all others are
+# skipped in the given rule. For example, if a rule only specifies 'tempo',
+# then only a tempo augmentation is applied and all other possible augmentations
+# are ignored (e.g., 'gain', 'pitch', etc.).
+#
+# Example:
+#
+# target_augmentations:
+#   - normalize: -3.5
+#   - normalize: -3.5
+#     pitch: [-300, 300]
+#     tempo: [0.8, 1.2]
+#     eq1: [[1000, 0.8, 3], [600, 1.0, -4], [800, 0.6, 0]]
+#   - normalize: -3.5
+#     pitch: "rand(-300, 300)"
+#     eq1: ["rand(100, 6000)", "rand(0.6, 1.0)", "rand(-6, 6)"]
+#     lpf: "rand(1000, 8000)"
+#     count: 10
+#   - tempo: "rand(0.9, 1.1)"
+#     eq1: [["rand(100, 7500)", 0.8, -10], ["rand(100, 7500)", 0.8, 10]]
+#     count: 3
+#
+# There are four rules given in this example.
+#
+# The first rule is simple:
+#   - normalize: -3.5
+#
+# This results in just one augmentation being applied to each target:
+#
+#   normalize: -3.5
+#
+# The second rule illustrates the use of lists to specify values:
+#   - normalize: -3.5
+#     pitch: [-300, 300]
+#     tempo: [0.8, 1.2]
+#     eq1: [[1000, 0.8, 3], [600, 1.0, -4], [800, 0.6, 0]]
+#
+# There are two values given for pitch, two for tempo, and three for eq. This
+# rule expands to 2 * 2 * 3 = 12 unique augmentations being applied to each
+# target:
+#
+#   normalize: -3.5, pitch: -3, tempo: 0.8, eq1: [1000, 0.8,  3]
+#   normalize: -3.5, pitch: -3, tempo: 0.8, eq1: [ 600, 1.0, -4]
+#   normalize: -3.5, pitch: -3, tempo: 0.8, eq1: [ 800, 0.6,  0]
+#   normalize: -3.5, pitch: -3, tempo: 1.2, eq1: [1000, 0.8,  3]
+#   normalize: -3.5, pitch: -3, tempo: 1.2, eq1: [ 600, 1.0, -4]
+#   normalize: -3.5, pitch: -3, tempo: 1.2, eq1: [ 800, 0.6,  0]
+#   normalize: -3.5, pitch:  3, tempo: 0.8, eq1: [1000, 0.8,  3]
+#   normalize: -3.5, pitch:  3, tempo: 0.8, eq1: [ 600, 1.0, -4]
+#   normalize: -3.5, pitch:  3, tempo: 0.8, eq1: [ 800, 0.6,  0]
+#   normalize: -3.5, pitch:  3, tempo: 1.2, eq1: [1000, 0.8,  3]
+#   normalize: -3.5, pitch:  3, tempo: 1.2, eq1: [ 600, 1.0, -4]
+#   normalize: -3.5, pitch:  3, tempo: 1.2, eq1: [ 800, 0.6,  0]
+#
+# The third rule shows the use of rand.
+#   - normalize: -3.5
+#     pitch: "rand(-300, 300)"
+#     eq1: ["rand(100, 6000)", "rand(0.6, 1.0)", "rand(-6, 6)"]
+#     lpf: "rand(1000, 8000)"
+#     count: 10
+#
+# Since the count value is 10, this rule expands to 10 unique augmentations
+# being applied to each target. Here is a possible expansion:
+#
+#   normalize: -3.5, pitch: -1.0, eq1: [5930.9, 0.8,  3.0], lpf: 5689.7
+#   normalize: -3.5, pitch:  1.8, eq1: [1775.1, 0.9, -3.8], lpf: 6835.9
+#   normalize: -3.5, pitch: -2.0, eq1: [4363.0, 0.7,  4.2], lpf: 7521.8
+#   normalize: -3.5, pitch:  0.4, eq1: [2705.5, 0.9, -2.9], lpf: 1199.7
+#   normalize: -3.5, pitch:  2.7, eq1: [4699.0, 1.0, -0.1], lpf: 1895.9
+#   normalize: -3.5, pitch: -0.2, eq1: [4073.0, 0.9,  3.1], lpf: 5320.2
+#   normalize: -3.5, pitch: -1.4, eq1: [5030.8, 0.8, -5.0], lpf: 7059.1
+#   normalize: -3.5, pitch: -0.4, eq1: [ 125.3, 0.9, -1.6], lpf: 3632.7
+#   normalize: -3.5, pitch: -0.4, eq1: [1870.7, 0.8, -5.9], lpf: 2200.1
+#   normalize: -3.5, pitch: -1.2, eq1: [3527.3, 0.9,  3.7], lpf: 6963.9
+#
+# The fourth rule demonstrates the use of scalars, lists, and rand:
+#   - tempo: "rand(0.9, 1.1)"
+#     eq1: [["rand(100, 7500)", 0.8, -10], ["rand(100, 7500)", 0.8, 10]]
+#     count: 3
+#
+# This rule expands to 6 unique augmentations being applied to each target
+# (list of 2 * count of 3). Here is a potential expansion:
+#
+#   tempo: 0.9, eq1: [4963.8, 0.8, -10.0]
+#   tempo: 1.1, eq1: [5295.8, 0.8, -10.0]
+#   tempo: 1.0, eq1: [ 383.2, 0.8, -10.0]
+#   tempo: 0.9, eq1: [2547.0, 0.8,  10.0]
+#   tempo: 1.0, eq1: [1708.8, 0.8,  10.0]
+#   tempo: 0.9, eq1: [7356.4, 0.8,  10.0]
+#
+
+# List of augmentation rules to use for each target
+target_augmentations:
+  - normalize: -3.5
+
+# Default augmentation rule to use for generating class balancing target data.
+# This must contain at least one random rule in order to guarantee unique
+# additional data.
+class_balancing_augmentation:
+  normalize: -3.5
+  pitch: "rand(-300, 300)"
+  tempo: "rand(0.8, 1.2)"
+  eq1: [ "rand(50, 250)", "rand(0.6, 1.0)", "rand(-6, 6)" ]
+  eq2: [ "rand(250, 1200)", "rand(0.6, 1.0)", "rand(-6, 6)" ]
+  eq3: [ "rand(1200, 6000)", "rand(0.6, 1.0)", "rand(-6, 6)" ]
+
+# Noise mixture rules
+#
+#   'files'         List of files to use for noise in the mixtures
+#   'augmentations' See the description for augmentation rules above
+#   'snrs'          List of required signal-to-noise ratios (in dB).
+#                   All other augmentations are applied to both target and noise
+#                   and then the energy levels are measured and the appropriate
+#                   noise gain calculated to achieve the desired SNR.
+#                   Special values:
+#                     * -99   Noise only mixture (no target)
+#                     * 99    Target only mixture (no noise)
+#   'exhaustive'    If true, use every noise/augmentation with every
+#                   target/augmentation. If false, cycle through every
+#                   target/augmentation without necessarily using all
+#                   noise/augmentation combinations (reduced data set).
+noise_mix:
+  files:
+    - "${default_noise}"
+  augmentations:
+    - normalize: -3.5
+  snrs:
+    - 99
+  exhaustive: true
