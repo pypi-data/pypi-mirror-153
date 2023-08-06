@@ -1,0 +1,787 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#kubernetes-clustername-yaml",
+    "type": "object",
+    "additionalProperties": false,
+    "minProperties": 1,
+    "patternProperties": {
+        "^_.*$": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "allOf": [
+                {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "healthcheck_mode": {
+                                    "enum": [
+                                        "tcp",
+                                        "http",
+                                        "https"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "healthcheck_mode": {
+                                    "enum": [
+                                        "cmd"
+                                    ]
+                                },
+                                "healthcheck_cmd": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "healthcheck_cmd"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "drain_method": {
+                                    "enum": [
+                                        "noop",
+                                        "hacheck",
+                                        "test"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "drain_method": {
+                                    "enum": [
+                                        "http"
+                                    ]
+                                },
+                                "drain_method_params": {
+                                    "type": "object",
+                                    "properties": {
+                                        "drain": {
+                                            "type": "object"
+                                        },
+                                        "stop_draining": {
+                                            "type": "object"
+                                        },
+                                        "is_draining": {
+                                            "type": "object"
+                                        },
+                                        "is_safe_to_kill": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "required": [
+                                        "drain",
+                                        "stop_draining",
+                                        "is_draining",
+                                        "is_safe_to_kill"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "drain_method_params"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "properties": {
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 0.25
+                },
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "gpus": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "min_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "max_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "backoff_factor": {
+                    "type": "integer",
+                    "default": 2
+                },
+                "max_launch_delay_seconds": {
+                    "type": "integer",
+                    "default": 300
+                },
+                "registrations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "uniqueItems": true
+                },
+                "bounce_method": {
+                    "enum": [
+                        "crossover",
+                        "brutal",
+                        "downthenup"
+                    ]
+                },
+                "bounce_health_params": {
+                    "type": "object",
+                    "properties": {
+                        "check_haproxy": {
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "min_task_uptime": {
+                            "type": "number"
+                        },
+                        "haproxy_min_fraction_up": {
+                            "type": "number",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "exclusiveMinimum": true,
+                            "exclusiveMaximum": false
+                        }
+                    }
+                },
+                "bounce_margin_factor": {
+                    "type": "number",
+                    "default": 1,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "exclusiveMinimum": false,
+                    "exclusiveMaximum": false
+                },
+                "bounce_priority": {
+                    "type": "integer"
+                },
+                "deploy_group": {
+                    "type": "string"
+                },
+                "autoscaling": {
+                    "type": "object",
+                    "properties": {
+                        "metrics_provider": {
+                            "enum": [
+                                "uwsgi",
+                                "mesos_cpu",
+                                "cpu",
+                                "piscina",
+                                "arbitrary_promql"
+                            ]
+                        },
+                        "decision_policy": {
+                            "type": "string"
+                        },
+                        "setpoint": {
+                            "type": "number"
+                        },
+                        "forecast_policy": {
+                            "enum": [
+                                "moving_average",
+                                "current"
+                            ]
+                        },
+                        "offset": {
+                            "type": "number"
+                        },
+                        "moving_average_window_seconds": {
+                            "type": "integer"
+                        },
+                        "use_prometheus": {
+                            "type": "boolean"
+                        },
+                        "use_resource_metrics": {
+                            "type": "boolean"
+                        },
+                        "uwsgi_stats_port": {
+                            "type": "integer"
+                        },
+                        "scaledown_policies": {
+                            "type": "object"
+                        },
+                        "good_enough_window": {
+                            "type": "array",
+                            "items": {
+                                "type": "number"
+                            },
+                            "minItems": 2,
+                            "maxItems": 2
+                        },
+                        "prometheus_adapter_config": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "seriesQuery": {
+                                    "type": "string"
+                                },
+                                "metricsQuery": {
+                                    "type": "string"
+                                },
+                                "resources": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "overrides": {
+                                            "type": "object",
+                                            "properties": {
+                                                "group": {
+                                                    "type": "string"
+                                                },
+                                                "resource": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "template": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "metricsQuery"
+                            ]
+                        }
+                    },
+                    "allOf": [
+                        {
+                            "oneOf": [
+                                {
+                                    "properties": {
+                                        "metrics_provider": {
+                                            "$comment": "The long string at the end of the enum is there to make the error message more helpful to users. Without it, you just get `Validation Message: 'prometheus_adapter_config' is a required property`.",
+                                            "enum": [
+                                                "uwsgi",
+                                                "mesos_cpu",
+                                                "cpu",
+                                                "piscina",
+                                                "if metrics_provider is arbitrary_promql, the prometheus_adapter_config parameter is required"
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "properties": {
+                                        "metrics_provider": {
+                                            "enum": [
+                                                "arbitrary_promql"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "prometheus_adapter_config"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "sfn_autoscaling": {
+                    "type": "object"
+                },
+                "service_account_name": {
+                    "type": "string"
+                },
+                "drain_method": {
+                    "enum": [
+                        "noop",
+                        "hacheck",
+                        "http",
+                        "test"
+                    ],
+                    "default": "noop"
+                },
+                "drain_method_params": {
+                    "type": "object"
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "extra_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "node_selectors": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^[a-zA-Z0-9]+[a-zA-Z0-9-_./]*[a-zA-Z0-9]+$": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "uniqueItems": true
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "operator": {
+                                                        "enum": [
+                                                            "In",
+                                                            "NotIn"
+                                                        ]
+                                                    },
+                                                    "values": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "uniqueItems": true
+                                                    }
+                                                },
+                                                "required": [
+                                                    "operator",
+                                                    "values"
+                                                ]
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "operator": {
+                                                        "enum": [
+                                                            "Exists",
+                                                            "DoesNotExist"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "operator"
+                                                ]
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "operator": {
+                                                        "enum": [
+                                                            "Gt",
+                                                            "Lt"
+                                                        ]
+                                                    },
+                                                    "value": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "operator",
+                                                    "value"
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "pool": {
+                    "type": "string"
+                },
+                "cmd": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array"
+                        }
+                    ]
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
+                    "type": "object",
+                    "patternProperties": {
+                        "^[a-zA-Z_]+[a-zA-Z0-9_]*$": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "boto_keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "extra_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "monitoring": {
+                    "type": "object",
+                    "properties": {
+                        "team": {
+                            "type": "string"
+                        },
+                        "page": {
+                            "type": "boolean"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "marathon_shard": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "previous_marathon_shards": {
+                    "type": "array"
+                },
+                "aws_ebs_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "persistent_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "size": {
+                                "type": "integer"
+                            },
+                            "mode": {
+                                "type": "string"
+                            },
+                            "storage_class_name": {
+                                "type": "string"
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "uniqueItems": true
+                },
+                "secret_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "secret_name": {
+                                "type": "string"
+                            },
+                            "default_mode": {
+                                "type": "string"
+                            },
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "mode": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "path"
+                                    ]
+                                },
+                                "uniqueItems": true
+                            }
+                        },
+                        "required": [
+                            "container_path",
+                            "secret_name"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
+                "replication_threshold": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "cfs_period_us": {
+                    "type": "integer",
+                    "minimum": 1000,
+                    "maximum": 1000000,
+                    "exclusiveMinimum": false
+                },
+                "net": {
+                    "type": "string"
+                },
+                "container_port": {
+                    "type": "number"
+                },
+                "deploy_blacklist": {
+                    "type": "array"
+                },
+                "deploy_whitelist": {
+                    "type": "array"
+                },
+                "monitoring_blacklist": {
+                    "type": "array"
+                },
+                "iam_role": {
+                    "type": "string"
+                },
+                "iam_role_provider": {
+                    "enum": [
+                        "kiam",
+                        "aws"
+                    ]
+                },
+                "fs_group": {
+                    "type": "integer"
+                },
+                "healthcheck_mode": {
+                    "enum": [
+                        "cmd",
+                        "tcp",
+                        "http",
+                        "https"
+                    ]
+                },
+                "healthcheck_cmd": {
+                    "type": "string",
+                    "default": "/bin/true"
+                },
+                "healthcheck_grace_period_seconds": {
+                    "type": "number",
+                    "default": 60
+                },
+                "healthcheck_interval_seconds": {
+                    "type": "number",
+                    "default": 10
+                },
+                "healthcheck_timeout_seconds": {
+                    "type": "number",
+                    "default": 10
+                },
+                "healthcheck_max_consecutive_failures": {
+                    "type": "integer",
+                    "default": 30
+                },
+                "healthcheck_uri": {
+                    "type": "string",
+                    "default": "/status"
+                },
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "exclusiveMinimum": false
+                },
+                "host_port": {
+                    "type": "integer",
+                    "default": 0,
+                    "minimum": 0,
+                    "maximum": 65535,
+                    "exclusiveMinimum": false
+                },
+                "dependencies_reference": {
+                    "type": "string"
+                },
+                "extra_docker_args": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "security": {
+                    "type": "object",
+                    "properties": {
+                        "outbound_firewall": {
+                            "enum": [
+                                "block",
+                                "monitor"
+                            ]
+                        }
+                    }
+                },
+                "sidecar_resource_requirements": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "hacheck": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "memory": {
+                                            "type": "string"
+                                        },
+                                        "ephemeral-storage": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "memory": {
+                                            "type": "string"
+                                        },
+                                        "ephemeral-storage": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "anti_affinity": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "service": {
+                                    "type": "string"
+                                },
+                                "instance": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string"
+                                    },
+                                    "instance": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "uniqueItems": true
+                        }
+                    ]
+                },
+                "prometheus_shard": {
+                    "type": "string"
+                },
+                "prometheus_path": {
+                    "type": "string"
+                },
+                "prometheus_port": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "routable_ip": {
+                    "type": "boolean"
+                },
+                "lifecycle": {
+                    "type": "object",
+                    "properties": {
+                        "termination_grace_period_seconds": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "pre_stop_command": {
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "pod_management_policy": {
+                    "enum": [
+                        "OrderedReady",
+                        "Parallel"
+                    ]
+                },
+                "is_istio_sidecar_injection_enabled": {
+                    "type": "boolean"
+                }
+            }
+        }
+    }
+}
