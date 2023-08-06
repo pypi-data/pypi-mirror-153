@@ -1,0 +1,49 @@
+import tensorflow as tf
+import numpy as np
+from matplotlib import pyplot as plt
+import sys
+
+sys.path.insert(0, "../")
+import tensorcircuit as tc
+from tensorcircuit.applications.dqas import *
+from tensorcircuit.applications.layers import *
+from tensorcircuit.applications.graphdata import *
+from tensorcircuit.applications.van import *
+
+tc.set_backend("tensorflow")
+set_op_pool([Hlayer, rxlayer, rylayer, rzlayer, zzlayer])
+
+
+def my_verbose():
+    pm = get_var("prob_model")
+
+    # print(
+    #     "optimal lnprob:", pm.log_prob(tf.one_hot([[0, 4, 1, 4, 1]], depth=5)),
+    # )
+
+
+micro_sample_p = partial(micro_sample, repetitions=2, header=[0])
+
+
+def pbm_main():
+    p = 5
+    c = len(get_op_pool())
+    m = NMF(5, 2)
+    pm, nnp, h = DQAS_search_pmb(
+        qaoa_vag_energy,
+        prob_model=m,
+        sample_func=micro_sample_p,
+        g=regular_graph_generator(n=8, d=3),
+        p=p,
+        batch=28,
+        prethermal=0,
+        epochs=300,
+        parallel_num=0,
+        verbose=True,
+        verbose_func=my_verbose,
+        structure_opt=tf.optimizers.Adam(learning_rate=0.02),
+    )
+
+
+if __name__ == "__main__":
+    pbm_main()

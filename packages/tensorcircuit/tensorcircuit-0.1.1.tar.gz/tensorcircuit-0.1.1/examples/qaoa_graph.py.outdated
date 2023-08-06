@@ -1,0 +1,33 @@
+import sys
+
+sys.path.insert(0, "../")
+
+import tensorcircuit as tc
+from tensorcircuit.applications.dqas import *
+from tensorcircuit.applications.graphdata import *
+from tensorcircuit.applications.layers import *
+
+tc.set_backend("tensorflow")
+g = get_graph("8B")
+g.__repr__ = "origin"
+
+
+def graph_search():
+    gs = reduce_edges(g)
+    op_pool = [(Hlayer, g), (rxlayer, g), (rylayer, g), (rzlayer, g), (zzlayer, g)]
+    for graph in gs:
+        op_pool.append((zzlayer, graph))
+    set_op_pool(op_pool)
+    DQAS_search(
+        qaoa_graph_vag,
+        g=single_generator(g),
+        p=5,
+        prethermal=0,
+        batch=10,
+        epochs=10,
+        verbose_func=verbose_output,
+    )
+
+
+if __name__ == "__main__":
+    graph_search()

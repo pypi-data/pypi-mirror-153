@@ -1,0 +1,154 @@
+"""
+Demonstration of TFIM VQE on A100 with lager qubit number counts, MPO expectation
+"""
+
+import time
+import logging
+import sys
+import numpy as np
+
+logger = logging.getLogger("tensorcircuit")
+logger.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+logger.addHandler(ch)
+
+sys.setrecursionlimit(10000)
+
+import tensorflow as tf
+import tensornetwork as tn
+import cotengra as ctg
+
+import tensorcircuit as tc
+
+# from tensorcircuit import keras
+
+opt = ctg.ReusableHyperOptimizer(
+    methods=["greedy", "kahypar"],
+    parallel=True,
+    minimize="combo",
+    max_time=180,
+    max_repeats=4096,
+    progbar=True,
+)
+
+
+def opt_reconf(inputs, output, size, **kws):
+    tree = opt.search(inputs, output, size)
+    tree_r = tree.subtree_reconfigure_forest(
+        progbar=True, num_trees=14, num_restarts=16, subtree_weight_what=("size",)
+    )
+    return tree_r.get_path()
+
+
+# the following API are compatible with py3.8+ and new cotengra
+# note how API changes
+
+# opt = ctg.ReusableHyperOptimizer(
+#     methods=["greedy", "kahypar"],
+#     parallel="ray",  # default dispatcher and loky dispatcher fails
+#     minimize="combo",
+#     max_time=180,
+#     max_repeats=4096,
+#     progbar=True,
+# )
+
+
+# def opt_reconf(inputs, output, size, **kws):
+#     tree = opt.search(inputs, output, size)
+#     tree_r = tree.subtree_reconfigure_forest(
+#          parallel='ray', progbar=True, num_trees=10, num_restarts=10, subtree_weight_what=("size",)    )
+#     return tree_r.path() # API changes here
+
+tc.set_contractor("custom", optimizer=opt_reconf, preprocessing=True)
+tc.set_dtype("complex64")
+tc.set_backend("tensorflow")
+dtype = np.complex64
+
+nwires, nlayers = 80, 6
+
+
+def quoperator_mpo(tfi_mpo):
+    tfi_mpo = tfi_mpo.tensors
+    nwires = len(tfi_mpo)
+    # tfi_mpo[0] = tf.reshape(tfi_mpo[0], tfi_mpo[0].shape[1:])
+    # tfi_mpo[-1] = tf.reshape(tfi_mpo[-1], [tfi_mpo[-1].shape[0]]+tfi_mpo[-1].shape[2:])
+    mpo = []
+    for i in range(nwires):
+        mpo.append(tn.Node(tfi_mpo[i]))
+
+    # tn.connect(mpo[0][0], mpo[1][0])
+    for i in range(nwires - 1):
+        tn.connect(mpo[i][1], mpo[i + 1][0])
+
+    tfi_mpo = tc.quantum.quantum_constructor(
+        [mpo[i][-1] for i in range(nwires)],  # out_edges
+        [mpo[i][-2] for i in range(nwires)],  # in_edges
+        [],
+        [mpo[0][0], mpo[-1][1]],  # ignore_edges
+    )
+    return tfi_mpo
+
+
+Jx = np.array([1.0 for _ in range(nwires - 1)])  # strength of xx interaction (OBC)
+Bz = np.array([-1.0 for _ in range(nwires)])  # strength of transverse field
+hamiltonian_mpo = tn.matrixproductstates.mpo.FiniteTFI(
+    Jx, Bz, dtype=dtype
+)  # matrix product operator
+hamiltonian_mpo = quoperator_mpo(hamiltonian_mpo)
+
+
+def vqe_forward(param):
+    split_conf = {
+        "max_singular_values": 2,
+        "fixed_choice": 1,
+    }
+    c = tc.Circuit(nwires, split=split_conf)
+    # c = tc.Circuit(nwires)
+    for i in range(nwires):
+        c.H(i)
+    for j in range(nlayers):
+        for i in range(0, nwires - 1):
+            c.exp1(
+                i,
+                (i + 1) % nwires,
+                theta=param[2 * j, i],
+                unitary=tc.gates._xx_matrix,
+            )
+
+        for i in range(nwires):
+            c.rz(i, theta=param[2 * j + 1, i])
+    # return tc.backend.real(c.expectation([tc.gates.z(), [1]]))
+    return tc.templates.measurements.mpo_expectation(c, hamiltonian_mpo)
+
+
+if __name__ == "__main__":
+    time0 = time.time()
+
+    tc_vag = tf.function(
+        tc.backend.value_and_grad(vqe_forward),
+        input_signature=[
+            tf.TensorSpec([2 * nlayers, nwires], tf.float32),
+        ],
+    )
+    param = tc.backend.implicit_randn(stddev=0.1, shape=[2 * nlayers, nwires])
+    print(tc_vag(param)[0])
+
+    time1 = time.time()
+    print("staging time: ", time1 - time0)
+
+    # try:
+    #     keras.save_func(tc_vag, "./funcs/%s_%s_10_tfim_mpo" % (nwires, nlayers))
+    # except ValueError as e:
+    #     print(e)  # keras.save_func now has issues to be resolved
+
+    opt = tc.backend.optimizer(tf.keras.optimizers.Adam(0.005))
+    times = []
+    for j in range(2000):
+        loss, gr = tc_vag(param)
+        param = opt.update(gr, param)
+        if j % 200 == 0:
+            times.append(time.time())
+            print("loss", loss.numpy())
+            if j > 0:
+                print("running time:", (times[-1] - times[0]) / j)
