@@ -1,0 +1,78 @@
+Metadata-Version: 2.1
+Name: fw-gear-dicom-fixer
+Version: 0.5.1
+Summary: This gear reports on the Dicom files data elements and optionally fixes or enhances the problematic ones, generating a new archive.
+Home-page: https://gitlab.com/flywheel-io/flywheel-apps/dicom-fixer
+License: MIT
+Keywords: Flywheel,Gears,Dicom,Fixer
+Author: Flywheel
+Author-email: support@flywheel.io
+Requires-Python: >=3.8,<3.11
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Scientific/Engineering :: Medical Science Apps.
+Requires-Dist: flywheel-gear-toolkit[flywheel] (>=0.5.9,<0.6.0)
+Requires-Dist: flywheel-sdk (>=16.0.0,<17.0.0)
+Requires-Dist: fw-file (>=1.3,<2.0)
+Requires-Dist: numpy (>=1.22.2,<2.0.0)
+Project-URL: Repository, https://gitlab.com/flywheel-io/flywheel-apps/dicom-fixer
+Description-Content-Type: text/markdown
+
+<!-- markdownlint-disable line-length-->
+# Dicom Fixer
+
+## Description
+
+This gear is responsible for reporting on the Dicom files data elements and optionally
+fixing/enhancing the problematic ones and generating a new archive.  
+This gear utilizes the `tracker` functionality of `RawDataElements`
+in [fw-file](https://gitlab.com/flywheel-io/tools/lib/fw-file.git).  Namely, it houses
+a collection of default and custom callbacks that are applied to `RawDataElements` on
+read through `pydicom`. More on callback below.
+
+Dicom fixer will also decompress compressed TransferSyntaxes so that no issues are met
+on the platform downstream.
+
+## Usage
+
+### Inputs
+
+* __dicom__: Input dicom
+
+### Configuration
+
+* `debug` (boolean, default False): Include debug statements in output.
+* `standardize_transfer_syntax` (boolean, default True): Whether or not to change `TransferSyntaxUID` to ExplicitVRLittleEndian
+* `tag` (string, default: `dicom-fixer`): The tag to be added on input file upon run completion.
+
+## Callbacks
+
+### fw-file callbacks
+
+* `backslash_in_VM1_string_callback`: Fix value of RawDataElement with VM=1 and VR of type string that contains an invalid \ character (\ is the array delimiter in Dicom standard) and replaces with _. Use case is to handle non-compliant Dicom implementation that let e.g. SeriesDescription value containing \.
+* `handle_none_VR`: A callback to handle VR = None.
+  * Mirror the handling of pydicom pydicom.dataelement.DataElement_from_raw when VR is None but set VR to 'UN' for public tag that are not in the pydicom dictionary instead of raising a KeyError.
+* `handle_un_VR`: A callback to handle VR=UN.
+  * Mirror pydicom.dataelem.DataElement_from_raw when VR is UN but instead set VR to 'OB' when decoding value raises with the inferred VR.
+* `converter_exception_callback`: A callback to catch NotImplementedError when raw_elem contains an invalid VR.
+
+### Custom callbacks
+
+* `handle_incorrect_unit`: Callback to fix known incorrect units
+  * Currently only implemented to correct MagneticFieldStrength from milli-Tesla to Tesla.
+
+#### Non-RawDataElement callbacks
+
+* `decode_dcm`: Mirrors pydicom.dataset.Dataset.decode, except it ignores decoding the OriginalAttributesSequence tag.
+* `is_dcm`: This is a callback that works on the collection itself, filtering out and removing any files that don't look like a DICOM.  
+  * "Looks like a dicom" is defined as: Having at least 2 public dicom tags outside the file_meta (0x0000, and 0x0002) group.
+* `standardize_transfer_syntax`: Sets the TransferSyntaxUID to ExplicitVRLittleEndian
+
+## Contributing
+
+For more information about how to get started contributing to that gear,
+checkout [CONTRIBUTING.md](CONTRIBUTING.md).
+
