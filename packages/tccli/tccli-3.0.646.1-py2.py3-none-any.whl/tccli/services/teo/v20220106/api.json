@@ -1,0 +1,922 @@
+{
+  "actions": {
+    "CreatePrefetchTask": {
+      "document": "创建预热任务",
+      "input": "CreatePrefetchTaskRequest",
+      "name": "创建预热任务",
+      "output": "CreatePrefetchTaskResponse"
+    },
+    "CreatePurgeTask": {
+      "document": "创建清除缓存任务",
+      "input": "CreatePurgeTaskRequest",
+      "name": "创建清除缓存任务",
+      "output": "CreatePurgeTaskResponse"
+    },
+    "DescribePrefetchTasks": {
+      "document": "查询预热任务状态",
+      "input": "DescribePrefetchTasksRequest",
+      "name": "查询预热任务状态",
+      "output": "DescribePrefetchTasksResponse"
+    },
+    "DescribePurgeTasks": {
+      "document": "查询清除缓存历史记录",
+      "input": "DescribePurgeTasksRequest",
+      "name": "查询清除缓存历史记录",
+      "output": "DescribePurgeTasksResponse"
+    },
+    "DescribeZones": {
+      "document": "用户查询用户站点信息列表，支持分页",
+      "input": "DescribeZonesRequest",
+      "name": "查询用户站点信息列表",
+      "output": "DescribeZonesResponse"
+    },
+    "DownloadL7Logs": {
+      "document": "查询七层离线日志",
+      "input": "DownloadL7LogsRequest",
+      "name": "七层离线日志下载",
+      "output": "DownloadL7LogsResponse"
+    }
+  },
+  "metadata": {
+    "apiVersion": "2022-01-06",
+    "api_brief": "通过 API 实现 DNS 解析、7 层动静态加速、4 层加速、安全防护等功能配置。",
+    "serviceNameCN": "边缘安全加速平台",
+    "serviceShortName": "teo"
+  },
+  "objects": {
+    "CreatePrefetchTaskRequest": {
+      "document": "CreatePrefetchTask请求参数结构体",
+      "members": [
+        {
+          "default": "",
+          "document": "Zone ID",
+          "example": "8afj24jzg9",
+          "member": "string",
+          "name": "ZoneId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "要预热的资源列表，每个元素格式类似如下:\nhttp://www.example.com/example.txt",
+          "example": "[\"http://www.qq.com/1.txt\"]",
+          "member": "string",
+          "name": "Targets",
+          "required": false,
+          "type": "list"
+        },
+        {
+          "default": "",
+          "document": "是否对url进行encode\n若内容含有非 ASCII 字符集的字符，请开启此开关，编码转换（编码规则遵循 RFC3986）",
+          "example": "true",
+          "member": "bool",
+          "name": "EncodeUrl",
+          "required": false,
+          "type": "bool"
+        },
+        {
+          "default": "",
+          "document": "附带的http头部信息",
+          "example": "无",
+          "member": "Header",
+          "name": "Headers",
+          "required": false,
+          "type": "list"
+        }
+      ],
+      "type": "object"
+    },
+    "CreatePrefetchTaskResponse": {
+      "document": "CreatePrefetchTask返回参数结构体",
+      "members": [
+        {
+          "document": "任务ID",
+          "example": "jkqj4hahfkaf",
+          "member": "string",
+          "name": "JobId",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "document": "失败的任务列表\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "[]",
+          "member": "FailReason",
+          "name": "FailedList",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": true
+        },
+        {
+          "document": "唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。",
+          "member": "string",
+          "name": "RequestId",
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "CreatePurgeTaskRequest": {
+      "document": "CreatePurgeTask请求参数结构体",
+      "members": [
+        {
+          "default": "",
+          "document": "Zone ID",
+          "example": "8afj24jzg9",
+          "member": "string",
+          "name": "ZoneId",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "类型，当前支持的类型：\n- purge_url：URL\n- purge_prefix：前缀\n- purge_host：Hostname\n- purge_all：全部缓存",
+          "example": "purge_url",
+          "member": "string",
+          "name": "Type",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "要刷新的资源列表，每个元素格式依据Type而定\n1) Type = purge_host 时\n形如：www.example.com 或 foo.bar.example.com\n2) Type = purge_prefix 时\n形如：http://www.example.com/example\n3) Type = purge_url 时\n形如：https://www.example.com/example.jpg\n4）Type = purge_all 时\nTargets可为空，不需要填写",
+          "example": "[\"http://www.qq.com/1.txt\"]",
+          "member": "string",
+          "name": "Targets",
+          "required": false,
+          "type": "list"
+        },
+        {
+          "default": "",
+          "document": "若有编码转换，仅清除编码转换后匹配的资源\n若内容含有非 ASCII 字符集的字符，请开启此开关，编码转换（编码规则遵循 RFC3986）",
+          "example": "true",
+          "member": "bool",
+          "name": "EncodeUrl",
+          "required": false,
+          "type": "bool"
+        }
+      ],
+      "type": "object"
+    },
+    "CreatePurgeTaskResponse": {
+      "document": "CreatePurgeTask返回参数结构体",
+      "members": [
+        {
+          "document": "任务ID",
+          "example": "jkqj4hahfkaf",
+          "member": "string",
+          "name": "JobId",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "document": "失败的任务列表及原因\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "[]",
+          "member": "FailReason",
+          "name": "FailedList",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": true
+        },
+        {
+          "document": "唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。",
+          "member": "string",
+          "name": "RequestId",
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "DescribePrefetchTasksRequest": {
+      "document": "DescribePrefetchTasks请求参数结构体",
+      "members": [
+        {
+          "default": "",
+          "document": "任务ID",
+          "example": "ajjvjaf924",
+          "member": "string",
+          "name": "JobId",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询起始时间",
+          "example": "2022-02-09T02:35:00Z",
+          "member": "datetime_iso",
+          "name": "StartTime",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询结束时间",
+          "example": "2022-02-09T02:35:00Z",
+          "member": "datetime_iso",
+          "name": "EndTime",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询起始偏移量",
+          "example": "7",
+          "member": "int64",
+          "name": "Offset",
+          "required": false,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "查询最大返回的结果条数",
+          "example": "100",
+          "member": "int64",
+          "name": "Limit",
+          "required": false,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "查询的状态\n允许的值为：processing、success、failed、timeout、invalid",
+          "example": "processing",
+          "member": "string",
+          "name": "Statuses",
+          "required": false,
+          "type": "list"
+        },
+        {
+          "default": "",
+          "document": "zone id",
+          "example": "jalfj2n42",
+          "member": "string",
+          "name": "ZoneId",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询的域名列表",
+          "example": "[\"www.qq.com\"]",
+          "member": "string",
+          "name": "Domains",
+          "required": false,
+          "type": "list"
+        },
+        {
+          "default": "",
+          "document": "查询的资源",
+          "example": "http://www.qq.com/1.txt",
+          "member": "string",
+          "name": "Target",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "DescribePrefetchTasksResponse": {
+      "document": "DescribePrefetchTasks返回参数结构体",
+      "members": [
+        {
+          "document": "该查询条件总共条目数",
+          "example": "100",
+          "member": "uint64",
+          "name": "TotalCount",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": false
+        },
+        {
+          "document": "任务结果列表",
+          "example": "无",
+          "member": "Task",
+          "name": "Tasks",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": false
+        },
+        {
+          "document": "唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。",
+          "member": "string",
+          "name": "RequestId",
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "DescribePurgeTasksRequest": {
+      "document": "DescribePurgeTasks请求参数结构体",
+      "members": [
+        {
+          "default": "",
+          "document": "任务ID",
+          "example": "ajjvjaf924",
+          "member": "string",
+          "name": "JobId",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "类型",
+          "example": "purge_url",
+          "member": "string",
+          "name": "Type",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询起始时间",
+          "example": "2022-02-09T02:35:00Z",
+          "member": "datetime_iso",
+          "name": "StartTime",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询结束时间",
+          "example": "2022-02-09T02:35:00Z",
+          "member": "datetime_iso",
+          "name": "EndTime",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询起始偏移量",
+          "example": "7",
+          "member": "int64",
+          "name": "Offset",
+          "required": false,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "查询最大返回的结果条数",
+          "example": "100",
+          "member": "int64",
+          "name": "Limit",
+          "required": false,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "查询的状态\n允许的值为：processing、success、failed、timeout、invalid",
+          "example": "processing",
+          "member": "string",
+          "name": "Statuses",
+          "required": false,
+          "type": "list"
+        },
+        {
+          "default": "",
+          "document": "zone id",
+          "example": "jalfj2n42",
+          "member": "string",
+          "name": "ZoneId",
+          "required": false,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "查询的域名列表",
+          "example": "[\"www.qq.com\"]",
+          "member": "string",
+          "name": "Domains",
+          "required": false,
+          "type": "list"
+        },
+        {
+          "default": "",
+          "document": "查询内容",
+          "example": "http://www.qq.com/1.txt",
+          "member": "string",
+          "name": "Target",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "DescribePurgeTasksResponse": {
+      "document": "DescribePurgeTasks返回参数结构体",
+      "members": [
+        {
+          "document": "该查询条件总共条目数",
+          "example": "100",
+          "member": "uint64",
+          "name": "TotalCount",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": false
+        },
+        {
+          "document": "任务结果列表",
+          "example": "无",
+          "member": "Task",
+          "name": "Tasks",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": false
+        },
+        {
+          "document": "唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。",
+          "member": "string",
+          "name": "RequestId",
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "DescribeZonesRequest": {
+      "document": "DescribeZones请求参数结构体",
+      "members": [
+        {
+          "default": "",
+          "document": "分页参数，页偏移",
+          "example": "0",
+          "member": "int64",
+          "name": "Offset",
+          "required": false,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "分页参数，每页返回的站点个数",
+          "example": "1000",
+          "member": "int64",
+          "name": "Limit",
+          "required": false,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "查询条件过滤器，复杂类型",
+          "example": "无",
+          "member": "ZoneFilter",
+          "name": "Filters",
+          "required": false,
+          "type": "list"
+        }
+      ],
+      "type": "object"
+    },
+    "DescribeZonesResponse": {
+      "document": "DescribeZones返回参数结构体",
+      "members": [
+        {
+          "document": "符合条件的站点数",
+          "example": "10",
+          "member": "int64",
+          "name": "TotalCount",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": false
+        },
+        {
+          "document": "站点详细信息列表\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "无",
+          "member": "Zone",
+          "name": "Zones",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": true
+        },
+        {
+          "document": "唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。",
+          "member": "string",
+          "name": "RequestId",
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "DownloadL7LogsRequest": {
+      "document": "DownloadL7Logs请求参数结构体",
+      "members": [
+        {
+          "default": "",
+          "document": "起始时间(需严格按照RFC3339标准传参)",
+          "example": "2022-05-04T03:27:00+08:00",
+          "member": "datetime_iso",
+          "name": "StartTime",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "结束时间(需严格按照RFC3339标准传参)",
+          "example": "2022-05-10T23:59:00+08:00",
+          "member": "datetime_iso",
+          "name": "EndTime",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "document": "每页展示条数",
+          "example": "12",
+          "member": "int64",
+          "name": "PageSize",
+          "required": true,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "当前页",
+          "example": "2",
+          "member": "int64",
+          "name": "PageNo",
+          "required": true,
+          "type": "int"
+        },
+        {
+          "default": "",
+          "document": "站点集合",
+          "example": "[\"zone1\",\"zone2\"]",
+          "member": "string",
+          "name": "Zones",
+          "required": false,
+          "type": "list"
+        },
+        {
+          "default": "",
+          "document": "域名集合",
+          "example": "[\"www.baidu.com\"]",
+          "member": "string",
+          "name": "Domains",
+          "required": false,
+          "type": "list"
+        }
+      ],
+      "type": "object"
+    },
+    "DownloadL7LogsResponse": {
+      "document": "DownloadL7Logs返回参数结构体",
+      "members": [
+        {
+          "document": "七层离线日志data\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "{}",
+          "member": "L7OfflineLog",
+          "name": "Data",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": true
+        },
+        {
+          "document": "页面大小\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "1",
+          "member": "int64",
+          "name": "PageSize",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": true
+        },
+        {
+          "document": "页号\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "success",
+          "member": "int64",
+          "name": "PageNo",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": true
+        },
+        {
+          "document": "总页数\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "1",
+          "member": "int64",
+          "name": "Pages",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": true
+        },
+        {
+          "document": "总条数\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "2",
+          "member": "int64",
+          "name": "TotalSize",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": true
+        },
+        {
+          "document": "唯一请求 ID，每次请求都会返回。定位问题时需要提供该次请求的 RequestId。",
+          "member": "string",
+          "name": "RequestId",
+          "type": "string"
+        }
+      ],
+      "type": "object"
+    },
+    "FailReason": {
+      "document": "失败原因",
+      "members": [
+        {
+          "default": "",
+          "document": "失败原因",
+          "example": "domain not valid",
+          "member": "string",
+          "name": "Reason",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "处理失败的资源列表。\n该列表元素来源于输入参数中的Targets，因此格式和入参中的Targets保持一致",
+          "example": "[\"http://www.qq.com/1.txt\"]",
+          "member": "string",
+          "name": "Targets",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": false
+        }
+      ],
+      "usage": "out"
+    },
+    "Header": {
+      "document": "刷新预热附带的头部信息",
+      "members": [
+        {
+          "default": "",
+          "document": "HTTP头部",
+          "example": "User-Agent",
+          "member": "string",
+          "name": "Name",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "HTTP头部值",
+          "example": "TencentEdgeOne",
+          "member": "string",
+          "name": "Value",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        }
+      ],
+      "usage": "in"
+    },
+    "L7OfflineLog": {
+      "document": "离线日志详细信息",
+      "members": [
+        {
+          "default": "",
+          "document": "日志打包开始时间\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "\"\"",
+          "member": "int64",
+          "name": "LogTime",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": true
+        },
+        {
+          "default": "",
+          "document": "站点名称\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "\"baidu.com\"",
+          "member": "string",
+          "name": "Domain",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": true
+        },
+        {
+          "default": "",
+          "document": "原始大小 单位byte\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "12",
+          "member": "int64",
+          "name": "Size",
+          "required": true,
+          "type": "int",
+          "value_allowed_null": true
+        },
+        {
+          "default": "",
+          "document": "下载地址\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "\"\"",
+          "member": "string",
+          "name": "Url",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": true
+        },
+        {
+          "default": "",
+          "document": "日志数据包名\n注意：此字段可能返回 null，表示取不到有效值。",
+          "example": "\"\"",
+          "member": "string",
+          "name": "LogPacketName",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": true
+        }
+      ],
+      "usage": "out"
+    },
+    "Task": {
+      "document": "内容管理任务结果",
+      "members": [
+        {
+          "default": "",
+          "document": "任务ID",
+          "example": "20g9wz8m9mgx",
+          "member": "string",
+          "name": "JobId",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "状态",
+          "example": "状态",
+          "member": "string",
+          "name": "Status",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "资源",
+          "example": "http://www.qq.com",
+          "member": "string",
+          "name": "Target",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "任务类型",
+          "example": "purge_url",
+          "member": "string",
+          "name": "Type",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "任务创建时间",
+          "example": "2022-02-09T02:28:43Z",
+          "member": "datetime_iso",
+          "name": "CreateTime",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "任务完成时间",
+          "example": "2022-02-09T02:28:43Z",
+          "member": "datetime_iso",
+          "name": "UpdateTime",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        }
+      ],
+      "usage": "out"
+    },
+    "Zone": {
+      "document": "站点信息",
+      "members": [
+        {
+          "default": "",
+          "document": "站点ID",
+          "example": "zone-xxxxx",
+          "member": "string",
+          "name": "Id",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "站点名称",
+          "example": "test.com",
+          "member": "string",
+          "name": "Name",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "站点当前使用的 NS 列表",
+          "example": "test1.com,test2.com",
+          "member": "string",
+          "name": "OriginalNameServers",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "腾讯云分配的 NS 列表",
+          "example": "无",
+          "member": "string",
+          "name": "NameServers",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "站点状态\n- active：NS 已切换\n- pending：NS 未切换\n- moved：NS 已切走\n- deactivated：被封禁",
+          "example": "active",
+          "member": "string",
+          "name": "Status",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "站点接入方式\n- full：NS 接入\n- partial：CNAME 接入",
+          "example": "full",
+          "member": "string",
+          "name": "Type",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "站点是否关闭",
+          "example": "false",
+          "member": "bool",
+          "name": "Paused",
+          "required": true,
+          "type": "bool",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "站点创建时间",
+          "example": "无",
+          "member": "datetime_iso",
+          "name": "CreatedOn",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "站点修改时间",
+          "example": "无",
+          "member": "datetime_iso",
+          "name": "ModifiedOn",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        }
+      ],
+      "usage": "out"
+    },
+    "ZoneFilter": {
+      "document": "站点查询过滤条件",
+      "members": [
+        {
+          "default": "",
+          "document": "过滤字段名，支持的列表如下：\n- name: 站点名。\n- status: 站点状态",
+          "example": "name",
+          "member": "string",
+          "name": "Name",
+          "required": true,
+          "type": "string",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "过滤字段值",
+          "example": "test.com",
+          "member": "string",
+          "name": "Values",
+          "required": true,
+          "type": "list",
+          "value_allowed_null": false
+        },
+        {
+          "default": "",
+          "document": "是否启用模糊查询，仅支持过滤字段名为name。模糊查询时，Values长度最大为1",
+          "example": "false",
+          "member": "bool",
+          "name": "Fuzzy",
+          "required": false,
+          "type": "bool",
+          "value_allowed_null": false
+        }
+      ],
+      "usage": "in"
+    }
+  },
+  "version": "1.0"
+}
