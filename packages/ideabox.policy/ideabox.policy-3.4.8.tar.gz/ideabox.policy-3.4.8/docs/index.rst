@@ -1,0 +1,5 @@
+====================
+ideabox.policy
+====================
+
+User documentation

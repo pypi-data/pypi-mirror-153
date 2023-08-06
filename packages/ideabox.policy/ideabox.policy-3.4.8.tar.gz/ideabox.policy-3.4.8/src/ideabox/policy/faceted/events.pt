@@ -1,0 +1,60 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+        metal:use-macro="context/main_template/macros/master"
+        i18n:domain="ideabox.policy">
+
+<body>
+  <metal:content-core fill-slot="content-core">
+    <metal:block define-macro="content-core">
+      <div tal:define="
+        scale python: getattr(context, 'collection_image_scale', 'evenement') or 'evenement';
+        folderContents folderContents | python:context.getFolderContents();
+        Batch python:modules['Products.CMFPlone'].Batch;
+        b_start python:request.get('b_start', 0);
+        batch python:isinstance(folderContents, Batch) and folderContents or Batch(folderContents, 100, int(b_start), orphan=2)">
+
+        <div metal:use-macro="context/batch_macros/macros/navigation" />
+
+        <div id="news_facet_view" class="eea-preview-items columns-2 vertical">
+          <tal:entries repeat="brain batch">
+            <tal:block define="idx python:repeat['brain'].index + 1;
+                               obj brain/getObject">
+            <div class="" tal:attributes="class string:news item_${idx}"
+                tal:define="portal_type brain/portal_type;
+                            useViewTypes context/portal_properties/site_properties/typesUseViewActionInListings|python:[];
+                            useView python:portal_type in useViewTypes;">
+              <tal:block
+                   tal:define="title brain/pretty_title_or_id|string:;
+                               url brain/getURL|string:#;
+                               view_url python:(url and useView and url + '/view') or url;
+                               event_view nocall:obj/@@event_summary;">
+              <a href="" title=""
+                 tal:attributes="href view_url;
+                                 title title">
+
+                <tal:block define="image obj/image|string:;
+                                   image_url python:image and view_url + '/@@images/image/' + scale or ''">
+                <div class="image" tal:attributes="style string: background-image:url('${image_url}')"></div>
+                </tal:block>
+                <div class="text">
+                  <h3 class="title" tal:content="title">title</h3>
+                  <div class="documentByLine" tal:content="structure python:event_view.formatted_date(obj)"></div>
+                  <div class="description" tal:content="obj/description">description</div>
+                </div>
+              </a>
+              </tal:block>
+            </div>
+            </tal:block>
+          </tal:entries>
+        </div>
+
+        <div metal:use-macro="context/batch_macros/macros/navigation" />
+
+      </div>
+
+    </metal:block>
+  </metal:content-core>
+</body>
+</html>
