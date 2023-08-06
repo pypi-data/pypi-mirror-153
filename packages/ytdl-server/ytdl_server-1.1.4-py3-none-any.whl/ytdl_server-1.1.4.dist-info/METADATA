@@ -1,0 +1,275 @@
+Metadata-Version: 2.1
+Name: ytdl-server
+Version: 1.1.4
+Summary: Download videos to a remote server using youtube-dl via a REST API
+Home-page: https://gitlab.com/adralioh/ytdl-server
+Author: Adralioh
+Project-URL: Documentation, https://adralioh.gitlab.io/ytdl-server
+Keywords: youtube-dl,yt-dlp,youtube,download,rest,api
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Framework :: Celery
+Classifier: Framework :: Flask
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: System :: Archiving
+Classifier: Typing :: Typed
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: COPYING
+Requires-Dist: Flask
+Requires-Dist: Flask-SQLAlchemy
+Requires-Dist: celery
+Requires-Dist: billiard
+Requires-Dist: SQLAlchemy
+Requires-Dist: PyYAML
+Provides-Extra: dbapi
+Requires-Dist: psycopg2 ; extra == 'dbapi'
+
+# ytdl-server
+ytdl-server is a program that allows you to download videos onto a remote server
+using youtube-dl.
+
+Using youtube-dl to download videos onto a network file share is inefficient
+since the video file has to pass through your workstation. Additionally, many of
+the post-processing options that youtube-dl provides will create a temporary
+copy of the file, which means that the amount of data uploaded over the network
+can be 3-4x the size of the actual file.
+
+ytdl-server solves this by allowing you to download videos directly to the
+remote server via a REST API.
+
+ytdl-server also supports high-availability, which means that you can perform
+maintenance without downtime.
+
+[TOC]
+
+## How it works
+ytdl-server has two main components: the Flask REST API and the Celery worker.
+
+The REST API communicates with the user in order to create jobs. The jobs are
+then run by the worker in order to download the desired videos.
+
+The complete structure of ytdl-server is shown in the below diagram:
+
+![Diagram of ytdl-server's structure](docs/_static/structure.svg)
+
+*Included in ytdl-server* means that the component is part of ytdl-server.
+
+*Included in the Docker images* means that the component is built into the Docker images. You'll need to install it separately if you're not using them.
+
+*Not included* means that the component is not part of ytdl-server and needs to
+be installed separately.
+
+- Reverse proxy / Load balancer (*not included*)
+
+  Used to forward user-requests to the WSGI server(s).
+
+  Some available options are [NGINX](https://www.nginx.com/) and
+  [Caddy](https://caddyserver.com/).
+
+  Load balancing is only needed if you're running multiple WSGI server
+  instances.
+
+- WSGI server (*included in the Docker images*)
+
+  Used to run the Flask REST API(s).
+
+  Some available options are [Gunicorn][gunicorn] and
+  [gevent](https://www.gevent.org/).
+
+  [gunicorn]: https://gunicorn.org/
+
+  If you're using the Docker images, Gunicorn is included.
+
+  If you're running multiple REST API instances, each one needs its own WSGI
+  server instance.
+
+- Flask REST API (*included in ytdl-server*)
+
+  Used to create and manage jobs.
+
+  You can run multiple instances if you want high-availability. Otherwise, a
+  single instance is fine.
+
+- Celery broker (*not included*)
+
+  Used to dispatch jobs created by the REST API to a Celery worker.
+
+  You can use any broker [supported by Celery][celery_brokers], including
+  [RabbitMQ](https://www.rabbitmq.com/) and [Redis][redis].
+
+  [celery_brokers]: https://docs.celeryproject.org/en/stable/getting-started/backends-and-brokers/index.html#broker-overview
+  [redis]: https://redis.io/
+
+- Celery worker (*included in ytdl-server*)
+
+  Used to run jobs (download videos).
+
+  You can run multiple instances if you want high-availability. Otherwise, a
+  single instance is fine.
+
+- PostgreSQL database (*not included*)
+
+  Used to store information about jobs, and also functions as the Celery result
+  backend.
+
+## Installation
+### Docker (recommended)
+Prebuilt Docker images are provided. See [Registry](#registry) for a list of
+supported tags.
+
+An example Docker Compose file is provided [here](docker-compose.yml).
+To use it, copy the Compose file to a directory, and run the following command
+to start it:
+```bash
+docker-compose up
+```
+
+The REST API will be accessible at port 8000. See [Usage](#usage) for how to use
+it.
+
+If you want to use a custom config file, overwrite the existing config file at
+`/config/ytdl-server.yml`. See [Configuration](#configuration) for available
+options.
+
+### Manual
+ytdl-server requires [Python](https://www.python.org/) 3.9+.
+
+Install from [PyPI](https://pypi.org/project/ytdl-server/):
+```bash
+pip3 install 'ytdl-server[dbapi]'
+```
+
+Install from source:
+```bash
+git clone 'https://gitlab.com/adralioh/ytdl-server.git'
+pip3 install './ytdl-server[dbapi]'
+```
+
+> The ``[dbapi]`` extra installs [Psycopg2](https://www.psycopg.org/), which is
+  used to connect to the PostgreSQL database. You must install a DBAPI for
+  ytdl-server to work. You can alternatively install ``psycopg2-binary`` if you
+  don't want to compile it from source. See
+  [Installation - Psycopg 2](https://www.psycopg.org/docs/install.html) for
+  details.
+
+If you're using [Redis][redis] or [Amazon SQS](https://aws.amazon.com/sqs/) as
+the broker, you must also install the following extra dependencies:
+```bash
+# Redis
+pip3 install 'celery[redis]'
+# Amazon SQS
+pip3 install 'celery[sqs]'
+```
+
+Run the REST API using a WSGI server such as [Gunicorn][gunicorn]:
+```bash
+gunicorn -w 4 'ytdl_server.flask:with_logging()'
+```
+
+Run the Celery worker using Celery:
+```bash
+celery -A 'ytdl_server.run_celery' worker
+```
+
+You also need to set up the reverse proxy, Celery broker, and PostgreSQL
+database. See [How it works](#how-it-works) for information, and see
+[Configuration](#configuration) for how to configure ytdl-server to use the
+database and broker.
+
+## Updating
+When updating ytdl-server, refer to the
+[versioning scheme](https://adralioh.gitlab.io/ytdl-server/version.html) and the
+[changelog](CHANGELOG.md) for information about what has changed.
+
+## Configuration
+See [Configuration](https://adralioh.gitlab.io/ytdl-server/config.html).
+
+## Usage
+Videos are downloaded via jobs. You create a new job whenever you want to
+download one or more videos.
+
+> The following examples access the ytdl-server directly using curl. See
+  [Frontends](#frontends) for more user-friendly ways of accessing it.
+
+Create a job:
+```bash
+curl ytdl.example.com/jobs/ \
+     -H 'Content-Type: application/json' \
+     -d '{
+           "urls": [ "https://www.youtube.com/watch?v=AAAAAAAAAAA",
+                     "https://www.youtube.com/watch?v=BBBBBBBBBBB" ],
+           "ytdl_opts": { "format": "best",
+                          "outtmpl": "%(id)s.%(ext)s" }
+         }'
+```
+
+Jobs are created asynchronously, which means that the videos will be downloaded
+in the background.
+
+You can check the status of a job as follows:
+```bash
+curl ytdl.example.com/jobs/ffedda2d-7fa4-4839-a705-88c893e3f942
+```
+
+*ffedda2d-7fa4-4839-a705-88c893e3f942* is the job ID. This is obtained from the
+output of the previous command where you created the job.
+
+You can also cancel a running job:
+```bash
+curl ytdl.example.com/jobs/ffedda2d-7fa4-4839-a705-88c893e3f942 \
+     -X PATCH \
+     -H 'Content-Type: application/json' \
+     -d '{
+           "status": "cancelled"
+         }'
+```
+
+> For complete documentation about the REST API, see
+  [REST API](https://adralioh.gitlab.io/ytdl-server/api.html).
+
+## Registry
+Prebuit Docker images are provided at `registry.gitlab.com/adralioh/ytdl-server`
+for the REST API and the Celery worker.
+
+The supported tags are rebuilt monthly in order to provide the latest security
+updates.
+
+### REST API
+Images for the REST API are available at
+`registry.gitlab.com/adralioh/ytdl-server/api`.
+
+The images include [Gunicorn][gunicorn], which is used as the WSGI server.
+
+Supported tags:
+- `latest`, `1`, `1.1`, `1.1.4`
+
+### Celery worker
+Images for the Celery worker are available at
+`registry.gitlab.com/adralioh/ytdl-server/worker`.
+
+The *yt_dlp* tags use [yt-dlp](https://github.com/yt-dlp/yt-dlp) instead of
+youtube-dl. You also need to set the *YTDL_MODULE* env-var to `yt_dlp` on the
+REST API when using these.
+
+The *ffmpeg* tags include [FFmpeg](https://www.ffmpeg.org/), which is required
+for many of youtube-dl's post-processing options.
+
+Supported tags:
+- `latest`, `1`, `1.1`, `1.1.4`
+- `yt_dlp`, `1-yt_dlp`, `1.1-yt_dlp`, `1.1.4-yt_dlp`
+- `ffmpeg`, `1-ffmpeg`, `1.1-ffmpeg`, `1.1.4-ffmpeg`
+- `yt_dlp-ffmpeg`, `1-yt_dlp-ffmpeg`, `1.1-yt_dlp-ffmpeg`, `1.1.4-yt_dlp-ffmpeg`
+
+## Testing and development
+See [tests](tests)
+
+## Frontends
+- [ytcl](https://gitlab.com/adralioh/ytcl) - Command-line interface with syntax
+  similar to youtube-dl
+
+## Frequently asked questions
+See
+[Frequently asked questions](https://adralioh.gitlab.io/ytdl-server/faq.html).
