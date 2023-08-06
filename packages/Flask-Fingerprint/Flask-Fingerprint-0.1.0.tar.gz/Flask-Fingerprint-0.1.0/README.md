@@ -1,0 +1,117 @@
+# Flask-Fingerprint
+[![License](https://badgen.net/badge/license/MIT/blue)](https://codeberg.org/S1SYPHOS/flask-fingerprint/src/branch/main/LICENSE) [![PyPI](https://badgen.net/pypi/v/flask-fingerprint)](https://pypi.org/project/flask-fingerprint) [![Build](https://ci.codeberg.org/api/badges/S1SYPHOS/flask-fingerprint/status.svg)](https://codeberg.org/S1SYPHOS/flask-fingerprint/issues)
+
+This project is a lightweight [`Flask`](https://flask.palletsprojects.com) extension for cache-busting static assets via file hash or query parameter.
+
+
+## Installation
+
+It's available from [PyPi](https://pypi.org/project/flask-fingerprint) using `pip`:
+
+```text
+pip install Flask-Fingerprint
+```
+
+
+## Getting started
+
+Using this library is straightforward:
+
+```python
+from flask_fingerprint import Fingerprint
+
+# Configuration
+config = {
+    'manifest': 'path/to/manifest.json',
+    'extensions': ['js', 'css', 'jpg'],
+    'hash_size': 12,
+    'query': False,
+}
+
+# Option 1
+Fingerprint(app, config)
+
+# Option 2
+ext = Fingerprint(config=config)
+ext.init_app(app)
+```
+
+After that, [`url_for`](https://flask.palletsprojects.com/en/latest/api/#flask.Flask.url_for) takes care of cache-busting your static assets auto-magically:
+
+```html
+<!-- When enabled, this .. -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<!-- .. becomes this .. -->
+<script src="/<static-folder>/js/main.f1l3h4sh.js"></script>
+```
+
+Unless passing a manifest file (as created by third-party tools like [`gulp-rev`](https://github.com/sindresorhus/gulp-rev)) or using `query` mode (see section 'Configuration'), you need to implement server rules to make this work.
+
+
+### Apache
+
+Place the following snippet inside your `.htaccess`, right after `RewriteBase`:
+
+```text
+# RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.+)\.([0-9a-z]{8})\.(js|css)$ $1.$3 [L]
+```
+
+**Note**: The `{8}` part has to match your `hash_size` (see section 'Configuration').
+
+
+### NGINX
+
+Place the following snippet anywhere inside your virtual host setup:
+
+```text
+location ~ (.+)\.(?:\w+)\.(js|css)$ {
+    try_files $uri $1.$2;
+}
+```
+
+
+## Usage
+
+### `__init__(app: Flask = None, config: dict = None)`
+
+Creates `Fingerprint` instance.
+
+
+### `init_app(app: Flask, config: dict)`
+
+See `__init__` above.
+
+**Note**: `flask_fingerprint` also exposes a `logger` instance which might prove useful when debugging!
+
+
+## Configuration
+
+When passing a `config` object (like in the example above), you may use the following options:
+
+
+### `manifest: str`:
+
+Manifest file, mapping unbusted filenames & their busted revisions. Default: `<static_folder>/manifest.json`
+
+
+### `extensions: list | str`:
+
+Allowed extensions. Default: `['css', 'js']`
+
+
+### `hash_size: int`:
+
+Length of file hash. Default: `8`
+
+
+### `query: bool`:
+
+Use query parameter instead of file hash. Default: `False`
+
+
+## Credits
+
+This extension was [inspired](https://github.com/ChrisTM/Flask-CacheBust) [by](https://github.com/daxlab/Flask-Cache-Buster) [other](https://github.com/israel-fl/Flask-CacheBust) [solutions](https://github.com/raicheff/flask-rev) for cache-busting assets in Flask applications.
