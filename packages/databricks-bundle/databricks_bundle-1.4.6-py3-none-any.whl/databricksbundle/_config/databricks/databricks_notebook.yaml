@@ -1,0 +1,31 @@
+parameters:
+  databricksbundle:
+    databricks:
+      spark:
+        extra_config:
+    notebook:
+      path_resolver: "notebook"
+
+services:
+  databricksbundle.dbutils.DatabricksDbUtilsFactory:
+
+  databricksbundle.notebook.path.DatabricksNotebookPathResolver:
+    tags:
+      - { name: databricksbundle.notebook.path_resolver, alias: notebook }
+
+  databricksbundle.spark.config.databricks_extra_config:
+    class: databricksbundle.spark.config.DictConfigConfigurator
+    arguments:
+      - '%databricksbundle.databricks.spark.extra_config%'
+    tags:
+      - databricks.configurator
+
+  databricksbundle.spark.NotebookSessionFactory:
+    arguments:
+      - !tagged databricks.configurator
+
+  pyspark.dbutils.DBUtils:
+    factory: ['@databricksbundle.dbutils.DatabricksDbUtilsFactory', 'create']
+
+  pyspark.sql.session.SparkSession:
+    factory: ['@databricksbundle.spark.NotebookSessionFactory', 'create']
