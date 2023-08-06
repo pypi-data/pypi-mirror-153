@@ -1,0 +1,11 @@
+RANDOMIZED = "RANDOMIZED"
+
+ACTIVE = "active"
+ACTIVE_NAME = "Active: "
+PLACEBO = "placebo"
+PLACEBO_NAME = "Placebo: "
+DEFAULT = "default"
+DEFAULT_ASSIGNMENT_MAP = {ACTIVE: 1, PLACEBO: 2}
+EXPORT_RANDO = "EXPORT_RANDO"
+CONTROL = "control"
+INTERVENTION = "intervention"
