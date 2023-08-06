@@ -1,0 +1,83 @@
+{
+  "update_interval_seconds": 60,
+  "broker": {
+    "port": 1883,
+    "maxMessageNumberPerWorker": 20,
+    "maxNumberOfWorkers": 200
+  },
+  "mapping": [
+    {
+      "topicFilter": "v2/+/rt.dev[5].bi[0].u16[20]/pub",
+      "converter": {
+        "type": "custom",
+        "extension": "CustomMqttUplinkConverter",
+        "extension-config": {
+          "ACSTATUS": 1
+        }
+      }
+    },
+    {
+      "topicFilter": "v2/+/rt.dev[5].sta",
+      "converter": {
+        "type": "custom",
+        "extension": "CustomMqttUplinkConverter",
+        "extension-config": {
+          "Door1": 1
+        }
+      }
+    }
+  ],
+  "connectRequests": [
+    {
+      "topicFilter": "sensor/connect",
+      "deviceNameJsonExpression": "${SerialNumber}"
+    },
+    {
+      "topicFilter": "sensor/+/connect",
+      "deviceNameTopicExpression": "(?<=sensor\/)(.*?)(?=\/connect)"
+    }
+  ],
+  "disconnectRequests": [
+    {
+      "topicFilter": "sensor/disconnect",
+      "deviceNameJsonExpression": "${SerialNumber}"
+    },
+    {
+      "topicFilter": "sensor/+/disconnect",
+      "deviceNameTopicExpression": "(?<=sensor\/)(.*?)(?=\/disconnect)"
+    }
+  ],
+  "attributeRequests": [
+    {
+      "retain": false,
+      "topicFilter": "v1/devices/me/attributes/request",
+      "deviceNameTopicExpression": "${SerialNumber}",
+      "attributeNameJsonExpression": "${sensorModel}"
+    }
+  ],
+  "attributeUpdates": [
+    {
+      "retain": true,
+      "deviceNameFilter": "SmartMeter.*",
+      "attributeFilter": "uploadFrequency",
+      "topicExpression": "sensor/${deviceName}/${attributeKey}",
+      "valueExpression": "{\"${attributeKey}\":\"${attributeValue}\"}"
+    }
+  ],
+  "serverSideRpc": [
+    {
+      "deviceNameFilter": ".*",
+      "methodFilter": "echo",
+      "requestTopicExpression": "sensor/${deviceName}/request/${methodName}/${requestId}",
+      "responseTopicExpression": "sensor/${deviceName}/response/${methodName}/${requestId}",
+      "responseTimeout": 10000,
+      "valueExpression": "${params}"
+    },
+    {
+      "deviceNameFilter": ".*",
+      "methodFilter": "no-reply",
+      "requestTopicExpression": "sensor/${deviceName}/request/${methodName}/${requestId}",
+      "valueExpression": "${params}"
+    }
+  ]
+}
