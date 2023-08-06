@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+import subprocess
+import argparse
+from argparse import RawTextHelpFormatter
+from logger_slg import init_logger
+import datetime
+import time
+import yaml
+from pprint import pformat
+import json
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
+
+    parser.add_argument('-o', '--output_filepath', default='/var/log/slg/time_log.json',
+                        help='Where we should log the times. Must be absolute path')
+
+    parser.add_argument('-s', '--sleep_time', default=1, type=float,
+                        help='How long should sleep be between each log.')
+
+    parser.add_argument('-i', '--time_til_idle', default=30000, type=int,
+                        help='How long we should wait before we consider the user idle. (in milliseconds)')
+
+    parser.add_argument('-c', '--config_filepath', default='/home/steven/.config/slg/time_log.yml',
+                        help='Filepath of the config file we are using')
+
+    args = parser.parse_args()
+
+    return args
+
+#########################
+### CONFIG OPTIONS
+#########################
+
+# DynamicPageTitles:
+#     StringToMatch: TagName
+#        INFO: Used in slg-time-logger-consolidate
+# OverrideAll:
+#     StringToMatch: TagName
+#        INFO: In order from top to bottom, if an override "StringToMatch" is in the window title, it will be registered immediately.
+#               The active window won't be considered. This is a total override and is useful in cases where something open
+#               is considered to be a significant enough distraction that should be registered as the main focus.
+#               For example: Having a twitch window open that is constantly distracting you. This could be considered something that
+#               ruins your focus so much that it should be logged as the main focus. Its a deterrant.
+# IdleIgnore:
+#    StringToMatch: TagName
+#        INFO: This is the same pattern as above but it is an override for the idle function. Useful for things like
+#               watching a video. Idle time is expected in that scenario.
+
+def write_json(data: dict, filepath):
+    with open(filepath, 'w') as outfile:
+        json.dump(data, outfile)
+
+def read_json(filepath):
+    with open(filepath, 'r') as f:
+        output = json.load(f)
+    return output
+
+def write_output(output, filepath, date, time_):
+    try:
+        json_obj = read_json(filepath)
+    except:
+        json_obj = {}
+    if date not in json_obj:
+        json_obj[date] = {}
+    json_obj[date][time_] = output
+    write_json(json_obj, filepath)
+
+
+def read_config_file(filepath):
+    try:
+        with open(filepath, "r") as stream:
+            try:
+                config = yaml.safe_load(stream)
+                logger.info(f'Using config:\n\n{pformat(config)}\n')
+                return config
+            except yaml.YAMLError as exc:
+                print(exc)
+    except FileNotFoundError:
+        logger.exception('Config file not found. Proceeding with defaults')
+
+def check_if_idle(output, time_til_idle, idle_ignore_strings):
+    idle_time = int(subprocess.check_output(f"xprintidle", shell=True).strip().decode('utf-8'))
+    # assume idle til proven otherwise
+    idle = True
+    if idle_time > time_til_idle:
+        for str_ in idle_ignore_strings:
+            if str_ in output:
+                idle = False
+                break
+        if idle:
+            output = 'Idle'
+    return output
+
+def check_for_overrides(overrides, filepath, date, time_):
+    continue_while_loop = False
+    try:
+        all_windows = subprocess.check_output(['wmctrl', '-l']).decode('utf-8').split('\n')
+    except subprocess.CalledProcessError:
+        logger.info('No windows open')
+        return False # dont continue the while loop
+    except:
+        logger.exception('issue calling "wmctrl -l"')
+
+    for str_to_match in config.get('OverrideAll', {}):
+        for active_window in all_windows:
+            window_title = ' '.join(active_window.split(' ')[4:])
+            if str_to_match in window_title:
+                # we override
+                output = window_title
+                logger.debug(output)
+                write_output(output, filepath, date, time_)
+                # continue while loop
+                continue_while_loop = True
+                break
+        if continue_while_loop:
+            break
+    return continue_while_loop
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+    try:
+        logger = init_logger(
+            name=__name__,
+            log_path=f'/home/steven/slg_dev_ops/{__file__.split("/")[-1]}.log',
+            log_level='INFO',
+            stream_log_level='INFO',
+        )
+        logger.info('Using arguments: %s', pformat(args))
+        config = read_config_file(args.config_filepath)
+
+        idle_ignore_strings = list(config.get('IdleIgnore', {}).keys())
+
+        abs_filepath = args.output_filepath
+
+        while True:
+            dt = datetime.datetime.now()
+            date = dt.strftime('%Y-%m-%d')
+            time_ = dt.strftime('%H:%M:%S')
+
+            overrides = config.get('OverrideAll', {})
+            # return True if we should continue the while loop because an override was met and written to the file
+            continue_while_loop = check_for_overrides(overrides, abs_filepath, date, time_)
+            if continue_while_loop:
+                time.sleep(args.sleep_time)
+                continue
+
+            try:
+                output = subprocess.check_output(f"xdotool getwindowfocus getwindowname", shell=True).strip().decode('utf-8')
+            except subprocess.CalledProcessError:
+                logger.exception('"xdotool getwindowfocus getwindowname" failed')
+                time.sleep(args.sleep_time)
+                continue
+            except:
+                logger.exception('issue calling "xdotool getwindowfocus getwindowname"')
+
+            output = check_if_idle(output, args.time_til_idle, idle_ignore_strings)
+
+            logger.debug(output)
+            write_output(output, abs_filepath, date, time_)
+
+            time.sleep(args.sleep_time)
+
+    except:
+        logger.exception('An error occurred')

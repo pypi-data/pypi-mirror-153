@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+import subprocess
+import os
+import argparse
+from argparse import RawTextHelpFormatter
+from logger_slg import init_logger
+from slg_dev_ops.digital_ocean_api import create_droplet, get_droplets_ip, add_domain_records, apply_firewall_to_droplet
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
+    bools = parser.add_argument_group()
+
+    parser.add_argument('domain_name', help='Domain name with top-level domain (e.g. example.com)')
+
+    parser.add_argument('-t', '--token', required=True, help='digital ocean access token')
+
+    bools.add_argument('--testing', action='store_true',
+                       help='If testing, tick this')
+
+    args = parser.parse_args()
+
+    return args
+
+
+if __name__ == '__main__':
+    logger = init_logger(
+        name=__name__,
+        log_path=f'/var/log/slg/{__file__.split("/")[-1]}.log'
+    )
+
+    args = get_arguments()
+
+    logger.info('Creating droplet')
+    droplet_id = create_droplet(args.token, testing=args.testing)
+
+    logger.info("Getting newly created droplet's IP")
+    ip = get_droplets_ip(droplet_id, args.token)
+
+    logger.info('Adding domain records for droplet')
+    records = add_domain_records(ip, args.domain_name, args.token)
+
+    logger.info('Adding firewall rules to droplet')
+    firewall_resp = apply_firewall_to_droplet(droplet_id, args.token)

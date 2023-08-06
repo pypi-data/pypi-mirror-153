@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+import os
+import argparse
+import subprocess
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    parser.add_argument('path_to_submodule', help="full path to submodule from base directory")
+
+    bools.add_argument('-k', "--keep_directory", action="store_true",
+                       help="if checked this doesnt delete the submodule directory but keeps it on as a regulary subdirectory")
+
+    args = parser.parse_args()
+
+    return args
+
+
+def main(args):
+    confirm = input('This is a confirmation checking to make sure you are at the root of your repository. Meaning there is a .git directory and a .gitmodules file in this directory. Press enter to verify and continue. Press Ctrl-C to escape. ')
+
+    confirmation_two = input('\n\nWARNING: Please check your .git/config file for your submodules and verify that there are two lines following the [submodule "your_submodule"] line. This script deletes two lines with no checks')
+
+    path = args.path_to_submodule
+
+    # sed needs its own defined path because if there are / 's in the path then sed interprets those incorrectly
+    sed_path = '\/'.join(path.split('/'))
+    dirname = path.split('/')[-1]
+
+    # clear the 3 lines defined in the gitmodules file
+    subprocess.run(f"sed -i '/submodule \"{sed_path}\"/,+2d' .gitmodules", shell=True)
+
+    subprocess.run("git add .gitmodules", shell=True)
+    
+    # clear the 2 lines defined in the .git/config file
+    subprocess.run(f"sed -i '/submodule \"{sed_path}\"/,+2d' .git/config", shell=True)
+
+    subprocess.run(f"git rm --cached {path}", shell=True)
+    subprocess.run(f"rm -rf .git/modules/{path}", shell=True)
+    subprocess.run(f"git commit -m 'removed submodule {dirname}'", shell=True)
+
+    if not args.keep_directory:
+        subprocess.run(f"rm -rf {path}")
+    
+
+
+if __name__ == "__main__":
+    args = get_arguments()
+    main(args)
+

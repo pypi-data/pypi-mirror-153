@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+import subprocess
+import os
+import argparse
+from argparse import RawTextHelpFormatter
+from logger_slg import init_logger
+from colorama import Fore, Back, Style
+import requests
+import time
+from inspect import currentframe, getframeinfo
+from slg_dev_ops.digital_ocean_api import create_droplet, get_droplets_ip, add_domain_records, apply_firewall_to_droplet
+from playsound import playsound
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='''
+If you have initialization steps you want to take, make sure to name it "init.sh" and place it in the projects root.
+
+Here is an example usage:
+
+slg-spin-up-entire-server-with-nginx-https-website \
+-to $(gpg -d ~/secrets/digitalocean-at.gpg) \
+-p twitch-clips \
+-d doodler.fun \
+-u steven \
+-g slgotting \
+-e sgotting21@gmail.com \
+-s /home/steven/Sounds/beep.mp3 \
+2>&1 | tee /var/log/slg/spin-up-entire-https/output-$(date "+%F-%H-%M-%S")
+    ''', formatter_class=RawTextHelpFormatter)
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    parser.add_argument('-p', '--project_name', help='Name of the project you are creating', required=True)
+
+    parser.add_argument('-d', '--domain_name', help='Domain name of the site (with no www prepended, ie twitchclip.io)', required=True)
+
+    parser.add_argument('-u', '--username', help='Username to be created on the remote machine', required=True)
+
+    parser.add_argument('-g', '--github_username', help='Github username for pulling of project', required=True)
+
+    # parser.add_argument('-r', '--remote_ip', help='IP address of the remote server', required=True)
+
+    parser.add_argument('-e', '--email_address', help='Email address for LetsEncrypt', required=True)
+
+    parser.add_argument('-to', '--token', help='Digital Ocean Access Token for droplet api calls', required=True)
+
+    parser.add_argument('-s', '--sound_file', help='If you wish to include the absolute path to a sound file to alert you when your input is needed. Not all inputs are accounted for.')
+
+    bools.add_argument('-t', '--testing', action='store_true',
+                       help='If ticked, will use testing values for certain commands')
+
+    args = parser.parse_args()
+
+    return args
+
+def run_remote_command(username, remote_ip, user_commands):
+    i=0
+    while i<5:
+        try:
+            return subprocess.check_output(
+                f'ssh {username}@{remote_ip} "{user_commands}"', shell=True)
+        except Exception as e:
+            i+=1
+            if i == 5:
+                logger.exception('Issue with command.')
+                exit(0)
+            logger.warn('Trying commands again in 5 seconds...')
+            time.sleep(5)
+
+    # an example command with sudo access
+    # user_commands = f'''
+    #     echo {password} | sudo -S apt update &&
+    #     echo {password} | sudo -S apt-get install -y python3-pip &&
+    #     pip3 install slg-dev-ops &&
+    #     echo {password} | sudo -S chown -R {args.username} ~/.ssh/ &&
+    #     echo {password} | sudo -S chmod 700 ~/.ssh/ &&
+    #     echo {password} | sudo -S chmod 600 ~/.ssh/*
+    # '''.replace('\t', '').replace('\n', '')
+
+def run_local_command(command):
+    subprocess.run(command, shell=True)
+
+def print_in_color_then_reset(print_string, color=Fore.YELLOW):
+    print(color + print_string, flush=True)
+    print(Style.RESET_ALL, flush=True)
+
+def wait_til_domains_are_ready(subdomains=['', 'www', 'staging']):
+    for domain in subdomains:
+        if domain:
+            domain = domain + '.'
+        while True:
+            try:
+                resp = requests.get(f'http://{domain}{args.domain_name}')
+                if resp.status_code == 200:
+                    logger.info(f'Request succeeded for subdomain: "{domain}"')
+                    break
+                else:
+                    print(f"The subdomain \"{domain}\" is not ready. Make sure you've pointed the domain name to the new IP.", flush=True)
+                    print("Trying again in 5 seconds...", flush=True)
+                    time.sleep(5)
+            except:
+                print(f"The subdomain \"{domain}\" is not ready. Make sure you've pointed the domain name to the new IP.", flush=True)
+                print("Trying again in 5 seconds...", flush=True)
+                time.sleep(5)
+
+
+
+
+if __name__ == '__main__':
+    logger = init_logger(
+        name=__name__,
+        log_path=f'/var/log/slg/{__file__.split("/")[-1]}.log'
+    )
+
+    args = get_arguments()
+
+    logger.info(f'''\nSpinning up server with the following configuration:
+        project_name: {' ' * (16 - len('project_name'))}{args.project_name}
+        domain_name: {' ' * (16 - len('domain_name'))}{args.domain_name}
+        username: {' ' * (16 - len('username'))}{args.username}
+        github_username: {' ' * (16 - len('github_username'))}{args.github_username}
+        email_address: {' ' * (16 - len('email_address'))}{args.email_address}
+        testing: {' ' * (16 - len('testing'))}{args.testing}
+        token: {' ' * (16 - len('token'))}<hidden>
+    '''.replace('\t',''))
+
+    test_flag = '-t' if args.testing else ''
+    sound_arg_addition = f'--sound_file {args.sound_file}' if args.sound_file else ''
+
+    uname = args.username
+    # ip = args.remote_ip
+
+    if args.sound_file: playsound(args.sound_file)
+
+    input("""Set up your domain name's nameservers to point to digital ocean's nameservers to continue.
+
+    You also need to add the domain at this location https://cloud.digitalocean.com/networking/domains
+
+    They are:
+
+        ns1.digitalocean.com
+        ns2.digitalocean.com
+        ns3.digitalocean.com
+
+    Once finished with setting up digital ocean to have control of your domain, press enter to proceed.
+    """)
+
+    logger.info('Creating droplet')
+    droplet_id = create_droplet(args.token, testing=args.testing)
+
+    logger.info("Getting newly created droplet's IP")
+    ip = get_droplets_ip(droplet_id, args.token)
+
+    logger.info('Adding domain records for droplet')
+    records = add_domain_records(ip, args.domain_name, args.token)
+
+    logger.info('Adding firewall rules to droplet')
+    firewall_resp = apply_firewall_to_droplet(droplet_id, args.token)
+
+    if not (records == 'Successfully created records for @, www, staging' and firewall_resp):
+        logger.error(f'''Droplet was not created successfully:
+
+            droplet_id: {droplet_id}
+            ip: {ip}
+            records: {records}
+            firewall_resp: {firewall_resp}
+        ''')
+        exit(0)
+
+    print('\n\nSleeping for 60 seconds while server boots up...\n\n', flush=True)
+    time.sleep(60)
+
+    print("\n---- NOTE: this script will ask you for your password many times. This is for ease of development and shouldn't be cause for alarm ----\n")
+
+    if args.sound_file: playsound(args.sound_file)
+    password = input('Please enter your password for sudo commands and the password of the user to be created: ')
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_local_command(f'slg-digital-ocean-droplet-setup -r {ip} -u {uname} {sound_arg_addition} -dn')
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'PATH=/home/steven/.local/bin:$PATH; echo {password} | sudo -S -E env "PATH=$PATH" slg-install-nginx')
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'PATH=/home/steven/.local/bin:$PATH; echo {password} | sudo -S -E env "PATH=$PATH" slg-install-firewall')
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'PATH=/home/steven/.local/bin:$PATH; slg-init-remote-crontab -u {uname}')
+
+    run_remote_command(uname, ip, f'echo {password} | sudo -S mkdir -p /var/log/usr && echo {password} | sudo -S chown -R {uname}:{uname} /var/log/usr')
+
+    wait_til_domains_are_ready(['', 'www', 'staging'])
+    if args.sound_file: playsound(args.sound_file)
+    input("Press enter when you're good with domains being ready")
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'echo {password} | sudo -S -E env "PATH=$PATH" slg-setup-tls-ssl-nginx {args.domain_name} {args.project_name} -u {uname} -e {args.email_address} {test_flag}')
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'echo {password} | sudo -S -E env "PATH=$PATH" slg-init-gunicorn-systemd-services /home/{uname}/production-{args.project_name} -u {uname} -s /home/{uname}/staging-{args.project_name}')
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'echo {password} | sudo -S -E env "PATH=$PATH" slg-init-nginx-conf-gunicorn -f /etc/nginx/conf.d/{args.project_name}.conf -d {args.domain_name},www.{args.domain_name},staging.{args.domain_name}')
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'echo {password} | sudo -S mkdir -p /var/www/html/static')
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'echo {password} | sudo -S mkdir -p /var/www-staging/html/static')
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'echo {password} | sudo -S npm install -g javascript-obfuscator')
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'echo {password} | sudo -S docker run -p 27017:27017 --restart unless-stopped -v /home/{uname}/mongo-{args.project_name}:/data/db -d mongo')
+
+    print_in_color_then_reset(f'\n\n---- NOW STARTING LINE {getframeinfo(currentframe()).lineno} ----\n\n')
+    run_remote_command(uname, ip, f'ssh-keygen -q -t rsa -N \'\' -f ~/.ssh/id_gh_read_only <<<y >/dev/null 2>&1')
+
+    print_in_color_then_reset("\n\nCopy the below string and paste into a deploy key in your project's repository:\n\n", color=Fore.MAGENTA)
+    public_key = run_remote_command(uname, ip, f'cat ~/.ssh/id_gh_read_only.pub')
+    print_in_color_then_reset(public_key.decode('utf-8'), color=Fore.MAGENTA)
+
+    if args.sound_file: playsound(args.sound_file)
+    input("\n\nWhen you've pasted in the above key press enter to continue. Or hit Ctrl-C if you don't wish to proceed in cloning your repo and performing initialization.")
+
+    GIT_RSA_FINGERPRINT = 'SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8'
+    fingerprint = run_remote_command(uname, ip, f"ssh-keyscan -t rsa github.com | tee ~/.ssh/github-key-temp | ssh-keygen -lf -")
+    # extract the actual fingerprint
+    fingerprint = fingerprint.split()[1].decode('utf-8')
+
+    if GIT_RSA_FINGERPRINT != fingerprint:
+        print_in_color_then_reset("\n\n-------- EXITING. GITHUB FINGERPRINT DOESN'T MATCH ---------\n\n", color=Fore.RED)
+        print(GIT_RSA_FINGERPRINT, flush=True)
+        print(fingerprint, flush=True)
+        exit(0)
+    else:
+        # add key to known hosts
+        run_remote_command(uname, ip, f"cat ~/.ssh/github-key-temp >> ~/.ssh/known_hosts")
+
+    run_remote_command(uname, ip, f"git config --global core.sshCommand 'ssh -i ~/.ssh/id_gh_read_only -F /dev/null'")
+
+    # pull a production version of the site, and run associated installs
+    run_remote_command(uname, ip, f'git clone --recurse-submodules git@github.com:{args.github_username}/{args.project_name}.git production-{args.project_name}')
+    run_remote_command(uname, ip, f'python3 -m venv /home/{uname}/production-{args.project_name}/venv')
+    run_remote_command(uname, ip, f'/home/{uname}/production-{args.project_name}/venv/bin/pip3 install wheel')
+    run_remote_command(uname, ip, f'/home/{uname}/production-{args.project_name}/venv/bin/pip3 install -r /home/{uname}/production-{args.project_name}/requirements.txt')
+
+    # pull to a staging location as well
+    run_remote_command(uname, ip, f'git clone --recurse-submodules git@github.com:{args.github_username}/{args.project_name}.git staging-{args.project_name}')
+    run_remote_command(uname, ip, f'python3 -m venv /home/{uname}/staging-{args.project_name}/venv')
+    run_remote_command(uname, ip, f'/home/{uname}/staging-{args.project_name}/venv/bin/pip3 install wheel')
+    run_remote_command(uname, ip, f'/home/{uname}/staging-{args.project_name}/venv/bin/pip3 install -r /home/{uname}/staging-{args.project_name}/requirements.txt')
+
+    # copy config.ini from local machine to staging and production locations
+    run_local_command(f'scp /home/{uname}/{args.project_name}/config.ini {uname}@{ip}:/home/{uname}/staging-{args.project_name}')
+    run_local_command(f'scp /home/{uname}/{args.project_name}/config.ini {uname}@{ip}:/home/{uname}/production-{args.project_name}')
+
+    # run the initialization script in the repository
+    run_remote_command(uname, ip, f'~/production-{args.project_name}/init.sh {password}')
+
+    print(
+        f"\n\nNow you can login as {args.username}: ssh {args.username}@{ip}!")
+
+    if args.sound_file: playsound(args.sound_file)

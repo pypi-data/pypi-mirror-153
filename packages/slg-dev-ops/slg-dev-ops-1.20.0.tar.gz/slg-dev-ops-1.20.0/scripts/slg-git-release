@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+import subprocess
+import os
+import argparse
+import sys
+import re
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    parser.add_argument('-u', '--username', default="slgotting",
+                        help="username owner of repo")
+
+    parser.add_argument('-c', '--commit_message', default='update version',
+                        help='Message for this commit')
+
+    # which part of version to increment (major, minor, patch) ; if neither major or minor are checked then we default to patch
+    bools.add_argument('-M', dest='major', action='store_true',
+                       help='Increment the major version and release')
+
+    bools.add_argument('-m', dest='minor', action='store_true',
+                       help='Increment the minor version and release')
+
+    args = parser.parse_args()
+
+    return args
+
+
+def get_version_parts(
+        version, output_type='int') -> [
+        'major', 'minor', 'patch']:
+    output = version[1:]
+    if output_type == 'int':
+        return [int(val) for val in output.split('.')]
+    elif output_type == 'str':
+        return output.split('.')
+
+
+def increment_version(version, args):
+    parts = get_version_parts(version)
+    if args.major:
+        parts[0] += 1
+        parts[1] = 0
+        parts[2] = 0
+    elif args.minor:
+        parts[1] += 1
+        parts[2] = 0
+    else:
+        parts[2] += 1
+    return 'v' + '.'.join([str(val) for val in parts])
+
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+    input(
+        'Make sure to add all files that will be changed in this release using git add \
+        <files>. Press enter if you want to continue or Ctrl-C to make changes')
+
+    input('Another check, this file pushes the updated version and whatever files are added via git add. \
+        It also creates a new release based on which ticker is ticked (default is to increment patch)')
+
+    # ensure gh is installed
+    output = subprocess.check_output('gh --version', shell=True)
+    if 'command not found' in output.decode('utf-8'):
+        print('gh is not installed')
+        exit(1)
+
+    repo_name = subprocess.check_output(
+        'basename `git rev-parse --show-toplevel`',
+        shell=True).decode('utf-8').strip()
+
+    # get latest release from github repo
+    releases = subprocess.check_output(
+        f'gh release list -R {args.username}/{repo_name}', shell=True)
+
+    if len(releases.decode('utf-8')) == 0:  # means this is the first release
+        while True:
+            new_version = 'v' + input(
+                'Please enter an initial version number with format "x.x.x": ')
+            if re.match('v[0-9]\.[0-9]\.[0-9]', new_version):
+                break
+            else:
+                print(
+                    'Please enter the appropriate format([0-9]{1, 3}\.[0-9]{1, 3}\.[0-9]{1, 3})')
+        print('\n\nAlso make sure to add repository secrets for PYPI on github before releasing. \n\n')
+    else:
+        latest_version = releases.decode('utf-8').split('\n')[0].split('\t')[0]
+
+        # update version (this has v on the front of it)
+        new_version = increment_version(latest_version, args)
+
+    output = subprocess.check_output(
+        f'echo "__version__ = \'{new_version[1:]}\'" > version.py', shell=True)
+
+    pushed = subprocess.check_output(
+        f'git add version.py && git commit -m "{args.commit_message}" && git push origin master',
+        shell=True)
+
+    
+    if 'rejected' in pushed.decode('utf-8'):
+        print('\n\nPush was rejected for some reason. Check output and make appropriate fixes before pushing a release')
+    else:
+        subprocess.run(f'gh release create {new_version}', shell=True)

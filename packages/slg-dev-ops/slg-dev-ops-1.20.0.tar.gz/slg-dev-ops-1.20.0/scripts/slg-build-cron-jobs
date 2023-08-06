@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+import subprocess
+import os
+import argparse
+from argparse import RawTextHelpFormatter
+import re
+from logger_slg import init_logger
+
+CHAR_MAPPING = {
+    'e': '*',
+    's': '/',
+    'c': ',',
+}
+
+logger = init_logger(
+    name=__name__,
+    log_path=f'/var/log/slg/{__file__.split("/")[-1]}.log'
+)
+
+def get_arguments():
+    parser = argparse.ArgumentParser(description='''
+    Build files with the following naming structure in a directory:
+
+    minute hour day(week) month day(week) filename.(extension)
+
+    Or in other words standard cronjob format. The only difference is how some characters are represented because filenames dont support all characters.
+
+    Here's the mapping for characters:
+
+        e => *
+        s => /
+        c => ,
+
+    So for example if you wanted to create the every minute in perpetuity that would look like this:
+
+        "e e e e e filename.py"
+
+    WARNING: Do not include month names like JAN, FEB, MAR, etc. They are not supported (and likely never will be due to mapping conflicts).
+
+    Visit https://crontab.guru/ for allowed values reference.
+
+    IMPORTANT: Any cronjobs built will be built with an environment in mind (if desired). Therefore any variables that are constant amongst cronjobs must be defined in the env file
+    IMPORTANT: Likewise, cronjobs will be built using the virtual environment version of python (passed in by argument) so that the proper requirements are passed in
+
+    IMPORTANT: RESERVED FOLDERS ARE "modules", "logs", "staging"
+    IMPORTANT: put any necessary modules/imports into a subdirectory called "modules" which won't be touched
+    IMPORTANT: insert any logs in a subdirectory called "logs" to store logs that also won't be touched
+    IMPORTANT: The folder "staging" is for any jobs that must be run for staging cronjobs (staging requirements are usually less demanding and thus demand separate jobs)
+
+    Currently only supports Python3
+    ''', formatter_class=RawTextHelpFormatter)
+
+    # argument groups can have their tickers combined (ie -su)
+    bools = parser.add_argument_group()
+
+    # REQUIRED string value
+    parser.add_argument('-d', '--directory', required=True, help='Absolute path to the directory where cronjobs are stored (pwd while in directory to get path)')
+
+    parser.add_argument('-e', '--env_files', help='Comma separated list (NO SPACES IN BETWEEN) of absolute paths to all env files you wish to include')
+
+    parser.add_argument('-v', '--virtual_environment_python', help='Absolute path to the virtual environment python3 binary. Example: /path/to/venv/bin/python3')
+
+    # integer value
+    parser.add_argument('-u', '--username', default='steven', type=str,
+                        help='Username of the crontab to append to')
+
+    bools.add_argument('-o', '--dont_overwrite_existing', action="store_true", help="Tick to not overwrite lines that have the same filepath as an incoming addition")
+
+    bools.add_argument('-t', '--test_run_lines', action="store_true", help="Set this flag to enable testing of your cronjob lines")
+
+    args = parser.parse_args()
+
+    return args
+
+
+def verify_filename(filename):
+    map_chars = ''.join(CHAR_MAPPING.keys())
+    pattern = re.compile('(?:[%s0-9-]+ ){5}.*?\.[a-zA-Z0-9]{1,4}' % map_chars)
+    if not pattern.match(filename):
+        logger.warning('Filename does not match cronjob pattern ')
+        return False
+    else:
+        return True
+
+    # regex that verifies  "e_e_e_e_e filename.py"
+    # regex = re.compile('^([esc0-9-]{1,5}_){4}[esc0-9-]{1,5}$ [a-z')
+
+    # regex that matches acceptable filename characters only
+
+def parse_filename_as_timing_and_filepath(directory, filename):
+    if not verify_filename(filename):
+        return False, False
+
+    timing = filename.split(' ')
+    filename = timing.pop()
+
+    parsed_timing = ''
+    for comp in timing:
+        for char in CHAR_MAPPING:
+            comp = comp.replace(char, CHAR_MAPPING[char])
+        parsed_timing += comp + ' '
+
+    logger.info(filename)
+    logger.info(parsed_timing)
+
+    filepath = f'\"{directory}/{" ".join(timing)} {filename}\"'
+    return parsed_timing, filepath
+
+
+
+IGNORE_DIRS = [
+    '__pycache__'
+]
+STARTSWITH_IGNORE_DIRS = [
+    '.'
+]
+SPECIAL_DIRS = [
+    'modules',
+    'logs',
+    'staging',
+]
+IGNORE_FILES = [
+    '__init__.py'
+]
+
+if __name__ == '__main__':
+    args = get_arguments()
+    print(args)
+    line_beginning = ''
+    if args.env_files:
+        line_beginning += f'env - $(add-to-env {args.env_files}) '
+    if args.virtual_environment_python:
+        line_beginning += args.virtual_environment_python
+
+    try:
+
+        # get all files and directories in directory
+        # files, dirs = os.walk(args.directory).__next__()
+
+        out_files = []
+        crontab_lines = []
+        test_crontab_lines = []
+        walk = os.walk(args.directory)
+
+        while walk:
+            try:
+                directory, dirs, files = next(walk)
+
+                relative_dir = directory.replace(args.directory + '/', '')
+                special=False
+                for dir in SPECIAL_DIRS:
+                    if relative_dir.startswith(dir) or relative_dir.startswith(dir):
+                        special=True
+                        break
+                if special:
+                    continue
+
+                good_dir = True
+                for string in STARTSWITH_IGNORE_DIRS:
+                    if relative_dir.startswith(string):
+                        good_dir = False
+                        break
+
+                for dir in IGNORE_DIRS:
+                    if directory.endswith(dir):
+                        good_dir = False
+                        break
+
+                if not good_dir:
+                    continue
+
+                dir_files = [] # files that have directory prepended to the front
+                for file in files:
+                    if file in IGNORE_FILES:
+                        continue
+                    dir_files.append(f'{directory}/{file}')
+
+                out_files += dir_files
+
+                for file in files:
+                    if file in IGNORE_FILES:
+                        continue
+                    try:
+                        timing, filepath = parse_filename_as_timing_and_filepath(directory, file)
+                        if filepath:
+                            crontab_line = f'{timing} {line_beginning} {filepath}'
+                            crontab_lines.append(crontab_line)
+                            test_crontab_lines.append(f'{line_beginning} {filepath}')
+                    except:
+                        logger.exception(f"\n\nCouldn't create crontab line with:\n\nDirectory: {directory}\n\nFile: {file}\n\n")
+
+            except StopIteration:
+                break
+
+        logger.info(f'Crontab lines: {crontab_lines}')
+        logger.info(f'Standard lines: {out_files}')
+
+        if not args.dont_overwrite_existing: # double negative here is somewhat confusing but its because I want the default to not have to use a flag in the args
+            for file in out_files:
+                logger.info(f'cleared out lines that have {file} text in them')
+                subprocess.run(f'(crontab -u $(whoami) -l | grep -v "{file}" ) | crontab -u $(whoami) -', shell=True)
+
+        crontab_addition = '\n\n'.join(crontab_lines)
+        logger.info(crontab_addition)
+        subprocess.run(f'(crontab -u $(whoami) -l; echo \'{crontab_addition}\' ) | crontab -u $(whoami) -', shell=True)
+        # for file in files:
+            # crontab_line = '\n"' + parse_filename_as_cronjob(file) + '"'
+
+            # subprocess.run(f'(crontab -u $(whoami) -l; echo "{crontab_line}" ) | crontab -u $(whoami) -', shell=True)
+
+        print("\n\n\n--------- This is a reminder that this script did not delete any existing lines that didn't exist in the directory. They shouldn't run but it wouldn't hurt to clean up once in a while ---------\n\n\n")
+
+        if args.test_run_lines:
+            logger.info('Beginning crontab line testing now')
+            for line in test_crontab_lines:
+                try:
+                    output = subprocess.getstatusoutput(line)
+                    if output[0] != 0:
+                        raise Exception(output[1])
+                except:
+                    logger.exception(f'There was an error running {line}')
+                    exit(1)
+            logger.info('All crontab lines ran without error')
+
+        logger.info("Consolidating newline's")
+        subprocess.run(f"crontab -u $(whoami) -l | sed '/^$/N;/^\\n$/D' | crontab -u $(whoami) -", shell=True)
+
+    except:
+        logger.exception('Something went wrong')
