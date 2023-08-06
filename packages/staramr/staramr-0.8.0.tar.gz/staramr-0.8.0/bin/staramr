@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+"""
+Copyright Government of Canada 2018
+
+Written by: National Microbiology Laboratory, Public Health Agency of Canada
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this work except in compliance with the License. You may obtain a copy of the
+License at:
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+-------------------------------------------------------------------------------
+
+PURPOSE:
+
+This software is used to scan input FASTA files against the ResFinder and PointFinder databases and produce a summary
+of detected AMR genes.
+
+USAGE:
+
+staramr --help
+staramr db --help
+staramr search --help
+
+staramr search --output-dir [OUTPUT_DIR] [INPUT_FILE] ..
+
+EXAMPLE:
+
+staramr db build
+staramr search --output-dir out *.fasta
+
+"""
+import argparse
+import logging
+import sys
+from os import path
+
+from staramr import __version__
+from staramr.exceptions.CommandParseException import CommandParseException
+from staramr.subcommand.Database import Database
+from staramr.subcommand.Search import Search
+
+logger = logging.getLogger("staramr")
+
+script_name = path.basename(path.realpath(sys.argv[0]))
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog=script_name, description='Do AMR detection for genes and point mutations')
+    parser.add_argument('--verbose', action='store_true', dest='verbose',
+                        help='Turn on verbose logging [False].', required=False)
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s {}'.format(__version__))
+    subparsers = parser.add_subparsers(dest='command', help='Subcommand for AMR detection.')
+
+    Search(subparsers, script_name, __version__)
+    Database(subparsers, script_name)
+
+    args = parser.parse_args()
+    if args.command is None:
+        parser.print_help()
+    else:
+        try:
+            args.run_command(args)
+        except CommandParseException as e:
+            logger.error(str(e))
+            if e.print_help():
+                e.get_parser().print_help()
+            sys.exit(1)
+        except Exception as e:
+            logger.exception(str(e))
+            sys.exit(1)
