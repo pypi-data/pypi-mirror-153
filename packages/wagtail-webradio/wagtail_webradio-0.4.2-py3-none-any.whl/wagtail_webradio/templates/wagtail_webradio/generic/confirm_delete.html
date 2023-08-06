@@ -1,0 +1,39 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n %}
+
+{% block main_content %}
+  <form action="{{ view.get_delete_url }}" method="POST">
+    {% csrf_token %}
+
+    {% if protected_objects %}
+      {% if view.error_message %}
+        <p class="help-block help-critical">{{ view.error_message }}</p>
+      {% endif %}
+      <p>{% blocktranslate with escaped_object=object %}Deleting '{{ escaped_object }}' would require deleting the following protected related objects:{% endblocktranslate %}</p>
+      <ul class="listing">
+        {% for obj, edit_url in protected_objects %}
+          <li>
+            <div class="title">
+              <div class="title-wrapper">
+                {% if edit_url %}
+                  <a href="{{ edit_url }}">{{ obj }}</a>
+                {% else %}
+                  {{ obj }}
+                {% endif %}
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <button type="submit" class="button serious">
+        {% trans "Try again" %}
+      </button>
+    {% else %}
+      <p>{{ view.confirmation_message }}</p>
+      <button type="submit" class="button serious">
+        {% trans 'Yes, delete' %}
+      </button>
+    {% endif %}
+  </form>
+{% endblock %}
