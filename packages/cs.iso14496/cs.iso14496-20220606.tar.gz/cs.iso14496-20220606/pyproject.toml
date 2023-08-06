@@ -1,0 +1,447 @@
+[project]
+name = "cs.iso14496"
+description = "Facilities for ISO14496 files - the ISO Base Media File Format, the basis for several things including MP4 and MOV."
+authors = [
+    { name = "Cameron Simpson", email = "cs@cskk.id.au" },
+]
+keywords = [
+    "python3",
+]
+dependencies = [
+    "cs.binary>=20220605",
+    "cs.buffer>=20210316",
+    "cs.cmdutils>=20220606",
+    "cs.context>=20220227",
+    "cs.fstags>=20220606",
+    "cs.lex>=20220227",
+    "cs.logutils>=20220531",
+    "cs.pfx>=20220523",
+    "cs.py.func>=20220311.1",
+    "cs.tagset>=20220606",
+    "cs.threads>=20211208",
+    "cs.units>=20220311",
+    "cs.upd>=20220606",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Video",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
+version = "20220606"
+
+[project.license]
+text = "GNU General Public License v3 or later (GPLv3+)"
+
+[project.urls]
+URL = "https://bitbucket.org/cameron_simpson/css/commits/all"
+
+[project.readme]
+text = """
+Facilities for ISO14496 files - the ISO Base Media File Format,
+the basis for several things including MP4 and MOV.
+
+*Latest release 20220606*:
+Update obsolete use of Tag.with_prefix.
+
+ISO make the standard available here:
+* [link](http://standards.iso.org/ittf/PubliclyAvailableStandards/index.html)
+* [link](http://standards.iso.org/ittf/PubliclyAvailableStandards/c068960_ISO_IEC_14496-12_2015.zip)
+
+## Function `add_body_class(klass)`
+
+Register a box body class in KNOWN_BOXBODY_CLASSES.
+
+## Function `add_body_subclass(superclass, box_type, section, desc)`
+
+Create and register a new BoxBody class that is simply a subclass of
+another.  Returns the new class.
+
+## Function `add_generic_sample_boxbody(box_type, section, desc, struct_format_v0, sample_fields, struct_format_v1=None, has_inferred_entry_count=False)`
+
+Create and add a specific Time to Sample box - section 8.6.1.
+
+## Function `add_time_to_sample_boxbody(box_type, section, desc)`
+
+Add a Time to Sample box - section 8.6.1.
+
+## Class `Box(cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+Base class for all boxes - ISO14496 section 4.2.
+
+This has the following fields:
+* `header`: a `BoxHeader`
+* `body`: a `BoxBody` instance, usually a specific subclass
+* `unparsed`: any unconsumed bytes from the `Box` are stored as here
+
+## Class `BoxBody(cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+Abstract basis for all `Box` bodies.
+
+## Class `BoxHeader(cs.binary.BoxHeader, cs.binary._BinaryMultiValue_Base, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An ISO14496 Box header packet.
+
+## Class `BTRTBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+BitRateBoxBody - section 8.5.2.2.
+
+## Class `CO64BoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'c064' Chunk Offset box - section 8.7.5.
+
+## Class `ContainerBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+Common subclass of several things with `.boxes`.
+
+## Class `CPRTBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'cprt' Copyright box - section 8.10.2.
+
+## Class `CSLGBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'cslg' Composition to Decode box - section 8.6.1.4.
+
+## Function `decode_itunes_date_field(data)`
+
+The iTunes 'Date' meta field: a year or an ISO timestamp.
+
+## Function `deref_box(B, path)`
+
+Dereference a path with respect to this Box.
+
+## Class `DREFBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'dref' Data Reference box containing Data Entry boxes - section 8.7.2.1.
+
+## Function `dump_box(B, indent='', fp=None, crop_length=170, indent_incr=None)`
+
+Recursively dump a Box.
+
+## Class `ELNGBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A ELNGBoxBody is a Extended Language Tag box - ISO14496 section 8.4.6.
+
+## Class `ELSTBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An 'elst' Edit List FullBoxBody - section 8.6.6.
+
+## Class `FallbackBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A `BoxBody` subclass which parses nothing for unimplemented `Box` types,
+used by `pick_boxbody_class()`.
+
+## Class `FREEBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'free' or 'skip' box - ISO14496 section 8.1.2.
+Note the length and discard the data portion.
+
+## Class `FTYPBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An 'ftyp' File Type box - ISO14496 section 4.3.
+Decode the major_brand, minor_version and compatible_brands.
+
+## Class `FullBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A common extension of a basic BoxBody, with a version and flags field.
+ISO14496 section 4.2.
+
+## Class `HDLRBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A HDLRBoxBody is a Handler Reference box - ISO14496 section 8.4.3.
+
+## Function `ILSTAofBSchema(attribute_name)`
+
+Attribute name and type for ILST \"A of B\" schema.
+
+## Class `ILSTBoxBody(ContainerBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+Apple iTunes Information List, container for iTunes metadata fields.
+
+The basis of the format knowledge here comes from AtomicParsley's
+documentation here:
+
+    http://atomicparsley.sourceforge.net/mpeg-4files.html
+
+and additional information from:
+
+    https://github.com/sergiomb2/libmp4v2/wiki/iTunesMetadata
+
+## Function `ILSTISOFormatSchema(attribute_name)`
+
+Attribute name and type for ILST ISO format schema.
+
+## Function `ILSTRawSchema(attribute_name)`
+
+Attribute name and type for ILST raw schema.
+
+## Function `ILSTTextSchema(attribute_name)`
+
+Attribute name and type for ILST text schema.
+
+## Function `ILSTUInt32BESchema(attribute_name)`
+
+Attribute name and type for ILST UInt32BE schema.
+
+## Function `ILSTUInt8Schema(attribute_name)`
+
+Attribute name and type for ILST UInt8BE schema.
+
+## Class `itunes_media_type(builtins.tuple)`
+
+itunes_media_type(type, stik)
+
+*Method `itunes_media_type.__new__(_cls, type, stik)`*:
+Create new instance of itunes_media_type(type, stik)
+
+## Class `itunes_store_country_code(builtins.tuple)`
+
+itunes_store_country_code(country_name, iso_3166_1_code, itunes_store_code)
+
+*Method `itunes_store_country_code.__new__(_cls, country_name, iso_3166_1_code, itunes_store_code)`*:
+Create new instance of itunes_store_country_code(country_name, iso_3166_1_code, itunes_store_code)
+
+## Function `main(argv=None)`
+
+Command line mode.
+
+## Class `MDATBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A Media Data Box - ISO14496 section 8.1.1.
+
+## Class `MDHDBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A MDHDBoxBody is a Media Header box - ISO14496 section 8.4.2.
+
+## Class `METABoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'meta' Meta BoxBody - section 8.11.1.
+
+## Class `MOOVBoxBody(ContainerBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An 'moov' Movie box - ISO14496 section 8.2.1.
+Decode the contained boxes.
+
+## Class `MP4Command(cs.cmdutils.BaseCommand)`
+
+Command line usage:
+
+Usage: mp4 subcommand [...]
+  Subcommands:
+    autotag autotag [-n] [-p prefix] [--prefix=prefix] paths...
+      Tag paths based on embedded MP4 metadata.
+      -n  No action.
+      -p prefix, --prefix=prefix
+          Set the prefix of added tags, default: 'mp4'
+    deref ...
+        Dereference a Box specification against ISO14496 files.
+    extract extract [-H] filename boxref output
+      Extract the referenced Box from the specified filename into output.
+      -H  Skip the Box header.
+    help [-l] [subcommand-names...]
+      Print the full help for the named subcommands,
+      or for all subcommands if no names are specified.
+      -l  Long help even if no subcommand-names provided.
+    info info [{-|filename}]...]
+      Print informative report about each source.
+    parse [parse [{-|filename}]...]
+      Parse the named files (or stdin for \"-\").
+    tags path
+      Report the tags of `path` based on embedded MP4 metadata.
+    test [testnames...]
+      Run self tests.
+
+## Class `MVHDBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An 'mvhd' Movie Header box - ISO14496 section 8.2.2.
+
+## Class `OverBox(cs.binary.BinaryListValues, cs.binary.AbstractBinary, cs.binary.BinaryMixin, HasBoxesMixin)`
+
+A fictitious `Box` encompassing all the Boxes in an input buffer.
+
+## Function `parse(o)`
+
+Return the `OverBox` from a source (str, int, bytes, file).
+
+The leading `o` parameter may be one of:
+* `str`: a filesystem file pathname
+* `int`: a OS file descriptor
+* `bytes`: a `bytes` object
+* `file`: if not `int` or `str` the presumption
+  is that this is a file-like object
+
+Keyword arguments are as for `OverBox.from_buffer`.
+
+## Function `parse_deref_path(path, offset=0)`
+
+Parse a `path` string from `offset`.
+Return the path components and the offset where the parse stopped.
+
+Path components:
+* _identifier_: an identifier represents a Box field or if such a
+  field is not present, a the first subbox of this type
+* `[`_index_`]`: the subbox with index _index_
+
+Examples:
+
+    >>> parse_deref_path('.abcd[5]')
+    ['abcd', 5]
+
+## Function `parse_fields(bfr, copy_offsets=None, **kw)`
+
+Parse an ISO14496 stream from the CornuCopyBuffer `bfr`,
+yield top level OverBoxes.
+
+Parameters:
+* `bfr`: a `CornuCopyBuffer` provided the stream data,
+  preferably seekable
+* `discard_data`: whether to discard unparsed data, default `False`
+* `copy_offsets`: callable to receive Box offsets
+
+## Function `parse_tags(path, tag_prefix=None)`
+
+Parse the tags from `path`.
+Yield `(box,tags)` for each subbox with tags.
+
+The optional `tag_prefix` parameter
+may be specified to prefix each tag name with a prefix.
+Other keyword arguments are passed to `parse()`
+(typical example: `discard_data=True`).
+
+## Class `PDINBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'pdin' Progressive Download Information box - ISO14496 section 8.1.3.
+
+## Function `pick_boxbody_class(box_type: bytes)`
+
+Infer a `BoxBody` subclass from the 4-byte bytes `box_type`.
+Returns `FallbackBoxBody` for unimplemented types.
+
+## Function `report(box, indent='', fp=None, indent_incr=None)`
+
+Report some human friendly information about a box.
+
+## Class `SMHDBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'smhd' Sound Media Headerbox - section 12.2.2.
+
+## Class `STCOBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'stco' Chunk Offset box - section 8.7.5.
+
+## Class `STSCBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+'stsc' (Sample Table box - section 8.7.4.1.
+
+## Class `STSZBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'stsz' Sample Size box - section 8.7.3.2.
+
+## Class `STZ2BoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'stz2' Compact Sample Size box - section 8.7.3.3.
+
+## Class `TimeStamp32(cs.binary.UInt32BE, cs.binary.UInt32BE, builtins.tuple, cs.binary.AbstractBinary, cs.binary.BinaryMixin, TimeStampMixin)`
+
+The 32 bit form of an ISO14496 timestamp.
+
+## Class `TimeStamp64(cs.binary.UInt64BE, cs.binary.UInt64BE, builtins.tuple, cs.binary.AbstractBinary, cs.binary.BinaryMixin, TimeStampMixin)`
+
+The 64 bit form of an ISO14496 timestamp.
+
+## Class `TimeStampMixin`
+
+Methods to assist with ISO14496 timestamps.
+
+## Class `TKHDBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'tkhd' Track Header box - ISO14496 section 8.2.2.
+
+## Class `TrackGroupTypeBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A TrackGroupTypeBoxBody contains a track group id - ISO14496 section 8.3.3.2.
+
+## Class `TrackReferenceTypeBoxBody(BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A TrackReferenceTypeBoxBody contains references to other tracks - ISO14496 section 8.3.3.2.
+
+## Class `TREFBoxBody(ContainerBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+Track Reference BoxBody, container for trackReferenceTypeBoxes - ISO14496 section 8.3.3.
+
+## Class `TTSB_Sample(builtins.tuple)`
+
+TTSB_Sample(count, delta)
+
+*Method `TTSB_Sample.__new__(_cls, count, delta)`*:
+Create new instance of TTSB_Sample(count, delta)
+
+## Class `URL_BoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An 'url ' Data Entry URL BoxBody - section 8.7.2.1.
+
+## Class `URN_BoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An 'urn ' Data Entry URL BoxBody - section 8.7.2.1.
+
+## Class `UTF8or16Field(cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+An ISO14496 UTF8 or UTF16 encoded string.
+
+## Class `VMHDBoxBody(FullBoxBody, BoxBody, cs.binary.SimpleBinary, types.SimpleNamespace, cs.binary.AbstractBinary, cs.binary.BinaryMixin)`
+
+A 'vmhd' Video Media Headerbox - section 12.1.2.
+
+# Release Log
+
+
+
+*Release 20220606*:
+Update obsolete use of Tag.with_prefix.
+
+*Release 20210306*:
+* Huge refactor of the Box classes to the new Binary* classes from cs.binary.
+* mp4: new \"tags\" subcommand to print the tags parsed from a file.
+* BoxHeader: fix the definition of MAX_BOX_SIZE_32.
+* BoxBody: new parse_boxes utility method to part the remainder of a Box as subBoxes.
+* MP4.cmd_parse: run the main parse in discard_data=True mode.
+* METABoxBody.__getattr__: fix ILST typo.
+* MP4Command: update for new cs.cmdutils.BaseCommand API.
+* Many small fixes and tweaks.
+
+*Release 20200229*:
+* ILST: recognise @cpy as copyright, sfID as itunes_store_country_code.
+* ILST: new SFID_ISO_3166_1_ALPHA_3_CODE and STIK_MEDIA_TYPES providing context data for various field values, as yet unused.
+* Make various list fields of some boxes deferred because they are expensive to parse (uses new cs.binary deferred_field).
+* add_generic_sample_boxbody: drop __iter__, causes dumb iterators to parse the samples.
+* ILST: iTunes \"Date\" metadata seem to contain plain years or ISO8601 datestamps.
+* mp4 autotag: add -n (no action) and -p,--prefix (set tag prefix, default 'mp4') options.
+* mp4 autotag: use \"mp4.\" as the tag prefix.
+
+*Release 20200130*:
+* Parsing of ILST boxes (iTunes metadata).
+* Command line: new \"info\" subcommand reporting metadata, \"autotag\" applying metadata to fstags.
+* Box tree walk, ancestor, iteration.
+* Assorted cleanups and internal changes.
+
+*Release 20190220*:
+parse_buffer yields instead of returns; some small bugfixes.
+
+*Release 20180810*:
+* parse_fd(): use a mmap to access the descriptor if a regular file and not discard_data;
+* this lets us use the mmapped file as backing store for the data, a big win for the media sections.
+
+*Release 20180805*:
+Initial PyPI release."""
+content-type = "text/markdown"
+
+[build-system]
+requires = [
+    "setuptools >= 61.0",
+    "trove-classifiers",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
