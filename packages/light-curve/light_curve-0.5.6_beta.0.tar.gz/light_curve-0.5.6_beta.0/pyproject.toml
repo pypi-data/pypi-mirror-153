@@ -1,0 +1,111 @@
+[build-system]
+requires = ["maturin>=0.12.7,<0.13"]
+build-backend = "maturin"
+
+[project]
+name = "light-curve"
+dependencies = ["numpy", "scipy", "dataclasses; python_version < '3.7'"]
+classifier = ["Intended Audience :: Science/Research", "License :: OSI Approved :: MIT License", "Programming Language :: Python", "Programming Language :: Python :: 3 :: Only", "Programming Language :: Python :: 3.6", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9", "Programming Language :: Rust", "Topic :: Scientific/Engineering :: Astronomy"]
+
+[tool.maturin]
+# It asks to use Cargo.lock to make the build reproducible
+cargo-extra-args = "--locked"
+
+[tool.black]
+line-length = 120
+target-version = ["py36", "py37", "py38", "py39", "py310"]
+include = '\.py$'
+
+[tool.isort]
+profile = 'black'
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+# requires pytest-benchmark
+addopts = "-ra --import-mode=append --benchmark-min-time=0.1 --benchmark-max-time=5.0 --benchmark-sort=mean --benchmark-disable"
+testpaths = [
+    "tests/",
+    "README.md", # requires pytest-markdown
+]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py36,py37,py38,py39,py310
+isolated_build = True
+
+[testenv]
+deps =
+    pytest
+    pytest-benchmark
+    pytest-markdown
+    numpy
+    scipy
+    feets
+commands = pytest README.md tests/ light_curve/
+"""
+
+
+# Test
+# We skip benchmark tests, because it requires feets and its transitive
+# dependencies, which are tricky and slow to compile on marginal platforms.
+# We use platforms where scipy binary wheels are available
+[[tool.cibuildwheel.overrides]]
+select = "cp*-manylinux_x86_64 cp*-manylinux_aarch64 cp*-macosx*"
+test-command = "pytest {package}/README.md {package}/light_curve/ {package}/tests/ --ignore {package}/tests/test_w_bench.py"
+test-requires = [
+    "pytest",
+    "pytest-benchmark",
+    "pytest-markdown",
+    "numpy",
+    "scipy",
+]
+
+[tool.cibuildwheel.environment]
+PATH = "$PATH:$HOME/.cargo/bin"
+GSL_VERSION = "2.7"  # used in manylinux only
+CARGO_NET_GIT_FETCH_WITH_CLI = "true"  # Solves the issue with OOM in QEMU during crate.io index fetching
+
+[tool.cibuildwheel.macos]
+before-all = [
+    # Install Rust
+    "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
+    # Install GSL
+    "brew install gsl",
+]
+
+# glibc Linux aka manylinux, CentOS
+[[tool.cibuildwheel.overrides]]
+select = "*-manylinux*"
+before-all = [
+    # Install Rust
+    "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
+    # Rust build deps require openssl
+    "yum install -y openssl-devel",
+    # manylinux2014 image has GSL v.1 -> compile GSL static libraries ourselves
+    "curl -O https://mirror.ibcp.fr/pub/gnu/gsl/gsl-${GSL_VERSION}.tar.gz",
+    "tar -xzvf gsl-${GSL_VERSION}.tar.gz",
+    "cd gsl-${GSL_VERSION}",
+    "./configure --with-pic --enable-shared=no",
+    "make -j$(nproc)",
+    "make install",
+    "cd -",
+    "rm -rf gsl-${GSL_VERSION} gsl-${GSL_VERSION}.tar.gz",
+]
+
+# MUSL Linux, Alpine
+[[tool.cibuildwheel.overrides]]
+select = "*-musllinux*"
+before-all = [
+    # Install Rust
+    "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y",
+    # Rust build deps require openssl
+    "apk add openssl-dev",
+    # Install GSL
+    "apk add gsl-dev",
+]
+
+# Build with Intel MKL on Linux x86_64
+[[tool.cibuildwheel.overrides]]
+select = "*linux_x86_64"
+environment = { "PATH" = "$PATH:$HOME/.cargo/bin", "GSL_VERSION" = "2.7", "MATURIN_PEP517_ARGS" = "--cargo-extra-args='--locked --no-default-features --features mkl,gsl'" }
