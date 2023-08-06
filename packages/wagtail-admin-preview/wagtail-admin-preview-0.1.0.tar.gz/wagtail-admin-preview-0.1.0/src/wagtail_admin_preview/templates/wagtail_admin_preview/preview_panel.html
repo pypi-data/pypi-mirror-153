@@ -1,0 +1,69 @@
+{% load wagtailadmin_tags %}
+{%spaceless%}
+{%block content%}
+<style>
+	.preview-frame{
+		padding: 0px 0px 10px 0px;
+		margin: 0px;
+		border: var(--border-width) dashed var(--border-color);
+		width: var(--width);
+		height: var(--height);
+	}
+</style>
+
+<div id="preview-target" style="position:relative;padding-top:40px !important; max-width:calc(100vw - 160px);display: block">
+	<div style="position:absolute;inset: 40px 0px auto auto;">
+		<span id="scale-pointer" class="w-font-semibold w-text-lg w-border w-border-teal" style="padding: 0.75rem 1rem">100%</span>
+	</div>
+	<div class="w-flex w-justify-center w-py-3">
+		{%for size in sizes%}
+		<button class="button" onclick="setFrameSize(event, {{size}})">
+			{%if size < 768 %}
+			{% icon name='mobile-screen' class_name='w-w-4 w-h-4'%}
+			{%elif size >= 768 < 1280%}
+			{% icon name='tablet-screen' class_name='w-w-4 w-h-4'%}
+			{%else%}
+			{% icon name='desktop-screen' class_name='w-w-4 w-h-4'%}
+			{%endif%}
+			<span>{{size}}</span>
+		</button>
+		{%endfor%}
+	</div>
+	<div class="w-flex w-justify-center w-pt-3" style="overflow: auto; width: 100%;margin: 0px auto">
+		<iframe class="preview-frame" id="preview-frame"
+						style="--border-width: 2px; --border-color: #F00; --width: 100%; --height: calc(100vh - 160px);"
+		srcdoc="{{self.rendered}}">
+		</iframe>
+	</div>
+</div>
+<script>
+	function setFrameSize(event, size){
+		event.preventDefault();
+		var frame = document.querySelector('iframe#preview-frame');
+		frame.style.setProperty('--width', size+'px');
+		adjustZoom(frame, size);
+	}
+	function adjustZoom(element, size){
+		var scalePointer = document.querySelector('span#scale-pointer');
+		var parentSize = element.parentElement.getBoundingClientRect();
+		var previewDocument = element.contentDocument || element.contentWindow.document;
+		element.style.setProperty('--scale', '1.0');
+		scalePointer.innerText = '100%';
+		if (size <= parentSize.width){
+			previewDocument.body.style.removeProperty('transform-origin');
+			previewDocument.body.style.removeProperty('transform');
+			return;
+		}
+		var scale = (parentSize.width / size);
+		element.style.setProperty('--width', (size * scale)+'px');
+		element.style.setProperty('--scale', scale);
+		console.log(size * scale, scale);
+		scalePointer.innerText = `${(scale*100).toFixed(2)}%`;
+
+		var previewDocument = element.contentDocument || element.contentWindow.document;
+		previewDocument.body.style.setProperty('transform-origin', `top center`);
+		previewDocument.body.style.setProperty('transform', `scale(${scale})`);
+	}
+</script>
+{%endblock%}
+{%endspaceless%}
