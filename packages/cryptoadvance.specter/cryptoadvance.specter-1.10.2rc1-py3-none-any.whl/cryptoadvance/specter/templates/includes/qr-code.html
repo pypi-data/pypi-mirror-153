@@ -1,0 +1,436 @@
+<!--
+  Custom QR code component.
+  You can use it as a normal html tag, for example:
+  <qr-code value="data-to-encode" style="margin-top:20px;" width="400"></qr-code>
+
+  If the QR code data is larger than 300 bytes it will enable "click to animate" feature.
+  If the QR code data is larger than 2300 bytes it will switch to animated-only mode.
+
+  Optional attributes:
+  `frame-rate="3"` - set framerate of the QR codes animation in fps.
+  `animate="auto"` - animation behaviour:
+  - `auto` - animate automatically after 2300 bytes, will remain static before that size.
+  - `on` - animate by default even if QR code size is reasonably small, can be stopped on click.
+  - `off` - don't animate by default even if QR code is too large, can be animated on click.
+-->
+<template id="qr-code">
+  <style>
+    .qr-holder{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-code{
+      background: #fff;
+      padding: 20px;
+      margin: auto;
+    }
+    .note{
+      font-size: 0.7em;
+    }
+    .copy{
+      display: none;
+      height: 30px;
+      width: 30px;
+      color: #000;
+      margin: 0;
+      margin-bottom: -30px;
+      margin-left: auto;
+      z-index: 3;
+      cursor: pointer;
+      border-radius: 3px;
+      box-sizing: border-box;
+      background: rgba(255,255,255,0.7);
+      padding: 3px;
+    }
+    .qr-holder:hover .copy{
+      display: block;
+    }
+    .copy:hover{
+      background: rgba(255,255,255,1);
+    }
+    .copy img{
+      width: 10px;
+    }
+    .range {
+      opacity: 0.3;
+      display: none;
+      color: #000;
+      background: #fff;
+      height: 2rem;
+      width: 55%;
+      min-width: 250px;
+      border-radius: 5rem;
+      box-shadow: 1px 5px 5px rgba(0, 0, 0, 0.3);
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-holder:hover .range {
+      opacity: 0.9;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 80%;
+      height: 100%;
+      background: transparent;
+    }
+    input[type="range"]:focus {
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #fff;
+      margin-top: -5px;
+      box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 60%;
+      height: 9px;
+      background: #bdbdbd;
+      border-radius: 3rem;
+      transition: all 0.5s;
+      cursor: pointer;
+    }
+    input[type="range"]:hover::-webkit-slider-runnable-track {
+      background: var(--cmap-blue);
+    }
+    input[type="range"]::-ms-track {
+      width: 60%;
+      cursor: pointer;
+      height: 9px;
+      transition: all 0.5s;
+      /* Hides the slider so custom styles can be added */
+      background: transparent;
+      border-color: transparent;
+      color: transparent;
+    }
+    input[type="range"]::-ms-thumb {
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #fff;
+      margin-top: -5px;
+      box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+    input[type="range"]::-ms-fill-lower {
+      background: #bdbdbd;
+      border-radius: 3rem;
+    }
+    input[type="range"]:focus::-ms-fill-lower {
+      background: var(--cmap-blue);
+    }
+    input[type="range"]::-ms-fill-upper {
+      background: #bdbdbd;
+      border-radius: 3rem;
+    }
+    input[type="range"]:focus::-ms-fill-upper {
+      background: var(--cmap-blue);
+    }
+    input[type="range"]::-moz-range-thumb {
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #fff;
+      margin-top: -5px;
+      box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-track {
+      width: 60%;
+      height: 9px;
+      background: #bdbdbd;
+      border-radius: 3rem;
+      transition: all 0.5s;
+      cursor: pointer;
+    }
+    input[type="range"]:hover::-moz-range-track {
+      background: var(--cmap-blue);
+    }
+  </style>
+  <div class="qr-holder">
+    <a class="copy"><img src="{{ url_for('static', filename='img/copy.svg') }}" style="width: 26px; height: 26px;"></a>
+    <div class="qr-code"></div>
+    <div class="note">Click to animate</div>
+    <div class="range" style="margin-top: 10px; margin-bottom: -5px;">
+      <span class="minus-size" style="cursor: pointer;">&nbsp;&nbsp;-&nbsp;&nbsp;</span><input type="range" class="size-slider"><span class="plus-size" style="cursor: pointer;">&nbsp;&nbsp;+&nbsp;&nbsp;</span>
+    </div>
+  </div>
+</template>
+
+<script type="text/javascript" src="{{ url_for('static', filename='qr/qrcode.min.js') }}"></script>
+<script type="text/javascript">
+class QRCodeElement extends HTMLElement {
+  constructor() {
+    super();
+    // Create a shadow root
+    var shadow = this.attachShadow({mode: 'open'});
+    var style = document.getElementById('qr-code').content;
+    var clone = style.cloneNode(true);
+
+    this.el = clone.querySelector(".qr-code");
+    this.note = clone.querySelector(".note");
+    this.qrcode = null;
+    this.animate = false;
+    this.chunks = [];
+    this.maxLen = 300;
+    this.maxStaticLen = 2300;
+    this.isQRlarge = true;
+    this.isQRtoolarge = false;
+    this.idx = 0;
+    this.framePeriod = 300;
+    this.mode = 'auto';
+
+    this.copybtn = clone.querySelector(".copy");
+
+    this.sizeDiv = clone.querySelector(".range");
+    this.sizeSlider = clone.querySelector(".size-slider");
+    this.minusSize = clone.querySelector(".minus-size");
+    this.plusSize = clone.querySelector(".plus-size");
+
+    // Attach the created element to the shadow dom
+    shadow.appendChild(clone);
+
+    this.addEventListener('click', e => {
+      this.animate = !this.animate;
+      this.idx = 0;
+      if(!this.animate){
+        let value = this.getAttribute('value');
+        value = this.maybe_remove_checksum(value);
+        this.qrcode.makeCode(value);
+        if(this.isQRlarge){
+          this.note.innerHTML = `{{ _("Click to animate") }}`;
+        }
+      }
+    });
+    const animate = () => {
+      // repeat
+      window.setTimeout(animate, this.framePeriod);
+      // check if it's visible
+      if(this.offsetParent==null){
+        // reset encoder
+        this.encoder = null;
+        return;
+      }
+      if(this.urdata){
+        if(!this.animate){
+          return;
+        }
+        if(!this.encoder){
+          this.encoder = this.urdata.toUREncoder();
+        }
+        this.qrcode.makeCode(this.encoder.nextPart().toUpperCase());
+      }
+      if((this.qrcode==null) || this.chunks.length<=1){
+        return;
+      }
+      if(this.animate && this.isQRlarge){
+        this.qrcode.makeCode(this.chunks[this.idx]);
+        let prefix = "";
+        if(!this.isQRtoolarge){
+          prefix = "Click to stop. ";
+        }
+        this.note.innerHTML = `${prefix}Part ${this.idx+1} of ${this.chunks.length}`;
+        this.idx = (this.idx+1) % this.chunks.length;
+      }
+    }
+    window.setTimeout(animate, this.framePeriod);
+
+    this.copybtn.addEventListener('click', e=>{
+      e.cancelBubble = true;
+      var value = this.getAttribute('value');
+      copyText(value, "QR code content is copied!");
+    });
+    this.sizeDiv.addEventListener('click', e=>{
+      e.cancelBubble = true;
+    });
+    this.sizeSlider.addEventListener('change', e => {
+      this.setAttribute('width', this.sizeSlider.value);
+    });
+    this.minusSize.addEventListener('click', e => {
+      this.sizeSlider.value = Number(this.sizeSlider.value) - 50;
+      this.setAttribute('width', this.sizeSlider.value);
+    });
+    this.plusSize.addEventListener('click', e => {
+      this.sizeSlider.value = Number(this.sizeSlider.value) + 50;
+      this.setAttribute('width', this.sizeSlider.value);
+    });
+  }
+  static get observedAttributes() {
+    return ['value', 'width', 'frame-rate', 'animate'];
+  }
+  maybe_remove_checksum(value){
+    // this is bc-ur, remove checksum for static QR
+    if(value.includes("UR:") || value.includes("ur:")){
+      let arr = value.split("/")
+      // no sequential part - remove checksum
+      if(arr.length == 3){
+        value = arr[0]+"/"+arr[2];
+      }
+    }
+    return value;
+  }
+  split(text){
+    if((text!=null)){
+      let is_bcur = (text.includes("UR:") || text.includes("ur:"));
+      this.chunks = [];
+      let txt_len = text.length;
+      if(txt_len / this.maxLen > 1.0){
+        this.isQRlarge = true
+        if (txt_len >= this.maxStaticLen) {this.isQRtoolarge = true}
+        /* This algorithm makes all the chunks of about equal length.
+        This makes sure that the last chunk is not (too) different in size
+        which is visually noticeable when animation occurs */
+        let payload = text;
+        if(is_bcur){
+          let arr = text.split("/");
+          // payload length
+          payload = arr[arr.length-1];
+        }
+        let number_of_chunks = Math.ceil(payload.length / this.maxLen)
+        let n = Math.ceil(payload.length / number_of_chunks)
+        for (let i = 0; i < payload.length; i += n) {
+          this.chunks.push(payload.substring(i, i + n));
+        }
+        if(is_bcur){
+          let arr = text.split("/");
+          for (let j=0; j<this.chunks.length; j++) {
+            // ur:bytes/1of3/checksum/payload
+            this.chunks[j] = arr[0]+"/"+(j+1)+"OF"+number_of_chunks+"/"+arr[1]+"/"+this.chunks[j];
+          }
+        }else{
+          for (let j=0; j<this.chunks.length; j++) {
+            this.chunks[j] = "p"+(j+1)+"of"+number_of_chunks+" "+this.chunks[j];
+          }
+        }
+      }else{
+        this.chunks.push(text)
+      }
+    }
+  }
+  connectedCallback() {
+    let frameRate = parseFloat(this.getAttribute('frame-rate'));
+    if(isNaN(frameRate)){
+      this.framePeriod = 300;
+    }else{
+      this.framePeriod = Math.round(1000/frameRate);
+    }
+    let mode = this.getAttribute('animate');
+    if(mode){
+      this.mode = mode;
+    }
+    if (this.getAttribute('scalable') !== null) {
+      let defaultSize = parseInt(this.getAttribute('width').replace("px",""))
+      if(isNaN(defaultSize)){
+        defaultSize = 400;
+      }
+      this.sizeSlider.setAttribute('value', defaultSize);
+      this.sizeSlider.setAttribute('min', 100);
+      if (defaultSize < 400) {
+        this.sizeSlider.setAttribute('max', 450);
+      } else {
+        this.sizeSlider.setAttribute('max', 650);
+      }
+      this.sizeDiv.style.display = 'flex';
+    }
+  }
+  attributeChangedCallback(attrName, oldValue, newValue) {
+    if(newValue !== oldValue){
+      let frameRate = parseFloat(this.getAttribute('frame-rate'));
+      if(isNaN(frameRate)){
+        this.framePeriod = 300;
+      }else{
+        this.framePeriod = Math.round(1000/frameRate);
+      }
+      let mode = this.getAttribute('animate');
+      if(mode){
+        this.mode = mode;
+      }
+      var value = this.getAttribute('value');
+      var width = parseInt(this.getAttribute('width').replace("px",""));
+      if(isNaN(width)){
+        width=400;
+      }
+      if (window.innerWidth < 600)
+      width = Math.min(window.innerWidth * 0.4, width);
+      this.width = width;
+      if(this.qrcode != null){
+        this.qrcode.clear();
+        this.el.innerHTML="";
+      }
+      if(value == undefined){
+        return;
+      }
+      // bcur encoding should be used
+      // supported:
+      // - crypto-psbt for transactions
+      // - ur-bytes for arbitrary data (i.e. wallet export file)
+      if(value.startsWith("crypto-psbt:") || value.startsWith("ur-bytes:")){
+        let payload = value.split(":")[1];
+        let data = window.URlib.default.from_base64(payload);
+        if(value.startsWith("crypto-psbt:")){
+          this.urdata = new window.URlib.CryptoPSBT(data);
+        }else if(value.startsWith("ur-bytes:")){
+          this.urdata = new window.URlib.Bytes(data);
+        }
+        this.encoder = this.urdata.toUREncoder();
+        let firstPart = this.encoder.nextPart().toUpperCase();
+        // if it's just ur:crypto-psbt/data then everything fits in 1 chunk
+        this.animate = (firstPart.split("/").length > 2);
+        this.qrcode = new QRCode(this.el, {
+          "text":   firstPart,
+          "width":  width,
+          "height": width,
+          "correctLevel": QRCode.CorrectLevel.M,
+        });
+        this.note.innerHTML = "";
+      // other qrcode formats - bcur1 and text
+      }else{
+        this.encoder = null;
+        this.split(value);
+        if(this.mode == 'off'){
+          value = this.maybe_remove_checksum(value);
+        }else{
+          if(this.chunks.length == 1){
+            this.isQRlarge = false;
+            this.note.innerHTML = "";
+          }else{
+            this.isQRlarge = true;
+            this.note.innerHTML = `{{ _("Click to animate") }}`;
+          }
+          // we have to use chunks
+          if(this.isQRtoolarge){
+            value = this.chunks[0];
+            this.animate = true;
+          }else{
+            // if this is bc-ur, remove checksum for static QR
+            value = this.maybe_remove_checksum(value);
+          }
+          if((this.mode == 'on') && (this.chunks.length > 1)){
+            this.animate = true;
+            value = this.chunks[0];
+            this.idx = 0;
+            let prefix = "";
+            if(!this.isQRtoolarge){
+              prefix = "Click to stop. ";
+            }
+            this.note.innerHTML = `${prefix}Part ${this.idx+1} of ${this.chunks.length}`;
+          }
+        }
+        this.qrcode = new QRCode(this.el, {
+          "text":   value,
+          "width":  width,
+          "height": width,
+          "correctLevel": QRCode.CorrectLevel.M,
+        });
+      }
+    }
+  }
+}
+customElements.define('qr-code', QRCodeElement);
+</script>

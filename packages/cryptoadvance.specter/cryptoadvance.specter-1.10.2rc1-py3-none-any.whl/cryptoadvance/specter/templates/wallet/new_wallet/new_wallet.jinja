@@ -1,0 +1,68 @@
+{% extends "base.jinja" %}
+{% block main %}
+	<form action="./" method="POST" onsubmit="return isValidForm()">
+		<input type="hidden" class="csrf-token" name="csrf_token" value="{{ csrf_token() }}"/>
+		{% if wallet_type == 'multisig' %}
+			<h1 style="margin: 20px;">{{ _("Pick the devices you want in your multisig quorum") }}</h1>
+		{% else %}
+			<h1 style="margin: 20px;">{{ _("Pick the device you want to use") }}</h1>
+		{% endif %}
+		<div class="row overflow">
+			{% for device_name in specter.device_manager.devices_names %}
+				{% set device = specter.device_manager.devices[device_name] %}
+				<label style="position: relative;">
+					<input type="{{ 'checkbox' if wallet_type == 'multisig' else 'radio' }}" {% if wallet_type == 'simple' %} onchange="document.getElementById('submit-device').click()" {% endif %} name="devices" value="{{ device.alias }}" class="hidden" chain="{{specter.chain}}" {% if not device.has_key_types(wallet_type, specter.chain) %}disabled{% endif %}>
+					<div class="small-card radio" id="{{device.alias}}">
+						<img src="{{ url_for('static', filename='img/devices/' ~ device.icon) }}" width="18px">
+						{{ device_name }}
+					</div>
+					{% if not device.has_key_types(wallet_type, specter.chain) %}
+						<tool-tip style="position: absolute; top: 30px; left: 25px;">
+    						<h4 slot="title">{{ _("Device cannot be selected") }}</h4>
+						    <span slot="paragraph">
+						        {{device.no_key_found_reason(wallet_type, specter.chain)}}
+						    </span>
+						</tool-tip>
+					{% endif %}
+				</label>
+			{% endfor %}
+			<a href="{{ url_for('devices_endpoint.new_device_type') }}" style="text-decoration: none; color: #fff;">
+				<div class="small-card radio">
+					<img src="{{ url_for('static', filename='img/plus.svg') }}" style="transform: scale(1.5);" class="svg-white">
+					{{ _("Add new device") }}
+				</div>
+			</a>
+		</div>
+		<button id="submit-device" type="submit" name="action" value="device" class="btn centered">{{ _("Continue") }}</button>
+		<br>
+		<div class="note">
+			<center>
+				{% if wallet_type == 'multisig' %}
+					{{ _("We use sorted multisig (BIP-67), so <b>order is NOT important.</b>") }}<br>
+					<br>
+					{{ _('Please read the <a style="color: #fff" href="https://specter-desktop-docs.netlify.app/multisig-guide/" target="_blank">multisig guide</a>.') }}<br>
+					<br>
+				{% endif %}
+			</center>
+		</div>
+	</form>
+{% endblock %}
+{% block scripts %}
+	<script>
+	function isValidForm() {
+		if ('{{wallet_type}}' == 'multisig') {
+			let checkedCount = 0;
+			for (let device of document.getElementsByName('devices')) {
+				if (device.checked) {
+					checkedCount++;
+				}
+			}
+			if (checkedCount < 2) {
+				showNotification(`{{ _("Please select at least 2 devices for your multisig") }}`);
+				return false;
+			}
+		}
+		return true;
+	}
+	</script>
+{% endblock %}
