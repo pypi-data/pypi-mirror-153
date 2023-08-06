@@ -1,0 +1,67 @@
+{% set KW_NETWORK_TYPE = {'point-to-point': 'point-to-point','point-to-multipoint': 'ptmp', 'non-broadcast': 'nbma','broadcast': 'broadcast' } %}
+{% set area = ospf.area|default("0.0.0.0") %}
+
+{% if ospf.router_id|ipv4 %}
+  /routing ospf instance set 0 router-id={{ ospf.router_id }}
+{% endif %}
+
+{#
+  Create AREA list. If default area != 0.0.0.0, append to list
+#}
+{% set area_list = [] %}
+{% if area != '0.0.0.0' %}
+{{ area_list.append(area) }}
+{% endif %}
+{#
+  For each link, check defined area. If != 0.0.0.0, add to area list
+#}
+{% for l in interfaces|default([]) if l.ospf.area is defined %}
+{% if l.ospf.area != '0.0.0.0' %}
+{{ area_list.append(l.ospf.area) }}
+{% endif %}
+{% endfor %}
+
+{#
+  For each unique area, add to area configuration
+#}
+{% for a_def in area_list|unique %}
+/routing ospf area add name={{ a_def }} area-id={{ a_def }}
+{% endfor %}
+
+{% for l in interfaces|default([]) if l.ospf.passive|default(False) %}
+/routing ospf interface add interface={{ l.ifname }} passive=yes
+{% endfor %}
+
+/routing ospf interface add interface=loopback passive=yes
+{% if 'ipv4' in loopback %}
+/routing ospf network add area=[/routing ospf area find area-id={{ area }} and instance=default] network={{ loopback.ipv4 }}
+{% endif %}
+
+{% for l in interfaces|default([]) if 'ospf' in l and 'ipv4' in l %}
+{%   if "external" in l.role|default("") %}
+## OSPF not configured on external interface {{ l.ifname }}
+{%   else %}
+
+/routing ospf network add area=[/routing ospf area find area-id={{ l.ospf.area|default(area) }} and instance=default] network={{ l.ipv4 | ipaddr('subnet') }}
+
+{% set ospf_intf_params=[] %}
+
+{%     if l.ospf.network_type is defined %}
+{{ ospf_intf_params.append('network-type='+KW_NETWORK_TYPE[l.ospf.network_type]) }}
+{%     endif %}
+
+{%     if l.ospf.cost is defined %}
+{{ ospf_intf_params.append('cost='+l.ospf.cost|string) }}
+{%     endif %}
+
+{%     if l.ospf.bfd|default(False) %}
+{{ ospf_intf_params.append('use-bfd=yes') }}
+{%     endif %}
+
+{%     if ospf_intf_params|length > 0 %}
+/routing ospf interface add interface={{ l.ifname }} {{ ospf_intf_params|join(' ') }}
+{%     endif %}
+
+{%   endif %}
+
+{% endfor %}

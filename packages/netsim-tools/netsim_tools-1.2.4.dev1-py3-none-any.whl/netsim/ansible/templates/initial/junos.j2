@@ -1,0 +1,83 @@
+system {
+  host-name {{ inventory_hostname }}
+    static-host-mapping {
+{% for k,v in hostvars.items() if k != inventory_hostname %}
+{%   if v.loopback.ipv4 is defined %}
+        {{ k|replace('_','') }} inet {{ v.loopback.ipv4|ipaddr('address') }};
+{%   elif v.interfaces|default([]) and v.interfaces[0].ipv4 is defined %}
+        {{ k|replace('_','') }} inet {{ v.interfaces[0].ipv4|ipaddr('address') }};
+{%   endif %}
+{% endfor %}
+    }
+}
+interfaces {
+  lo0 {
+    unit 0 {
+{% if 'ipv4' in loopback %}
+      family inet {
+        address {{ loopback.ipv4 }};
+      }
+{% endif %}
+{% if 'ipv6' in loopback %}
+      family inet6 {
+        address {{ loopback.ipv6 }};
+      }
+{% endif %}
+    }
+  }
+{% for l in interfaces|default([]) %}
+  {{ l.ifname }} {
+{% if l.name is defined %}
+    description "{{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}";
+{% elif l.type|default("") == "stub" %}
+    description "Stub interface"
+{% endif %}
+{% if l.mtu is defined %}
+    mtu {{ l.mtu + 14 }};
+{% endif %}
+    unit 0 {
+{% if l.bandwidth is defined %}
+      bandwidth {{ l.bandwidth * 1000 }};
+{% endif %}
+{#
+    IPv4 addresses
+#}
+{% if 'ipv4' in l %}
+{%   if l.ipv4 == True %}
+      family inet {
+        unnumbered-address lo0.0
+      }
+{%   elif l.ipv4|ipv4 %}
+      family inet {
+        address {{ l.ipv4 }};
+      }
+{%   else %}
+! Invalid IPv4 address {{ l.ipv4 }}
+{%   endif %}
+{% endif %}
+{#
+    IPv6 addresses
+#}
+{% if 'ipv6' in l %}
+{%   if l.ipv6 == True %}
+      family inet6;
+{%   elif l.ipv6|ipv6 %}
+      family inet6 {
+        address {{ l.ipv6 }};
+      }
+{%   else %}
+! Invalid IPv6 address {{ l.ipv6 }}
+{%   endif %}
+{% endif %}
+    }
+  }
+{% endfor %}
+}
+protocols {
+  lldp {
+    interface {{ mgmt.ifname|default('fxp0') }} {
+      disable;
+    }
+    interface all;
+  }
+}
