@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>turberfield.dialogue.handlers &mdash; turberfield-dialogue 0.42.0 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/turberfield.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> turberfield-dialogue
+          </a>
+              <div class="version">
+                0.42.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../battle.html">Example 1: Battle Royal</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../syntax.html">Syntax guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cloak.html">Example 2: Cloak of Darkness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../publishing.html">Publishing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../performing.html">Performing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changes.html">Change Log</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">turberfield-dialogue</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>turberfield.dialogue.handlers</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for turberfield.dialogue.handlers</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># encoding: UTF-8</span>
+
+<span class="c1"># This file is part of turberfield.</span>
+<span class="c1">#</span>
+<span class="c1"># Turberfield is free software: you can redistribute it and/or modify it</span>
+<span class="c1"># under the terms of the GNU General Public License as published</span>
+<span class="c1"># by the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># Turberfield is distributed in the hope that it will be useful, but</span>
+<span class="c1"># WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with turberfield.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">MutableSequence</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">wave</span>
+
+<span class="kn">import</span> <span class="nn">pkg_resources</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">simpleaudio</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">simpleaudio</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="kn">import</span> <span class="nn">turberfield.dialogue.cli</span>
+<span class="kn">from</span> <span class="nn">turberfield.dialogue.model</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">turberfield.dialogue.model</span> <span class="kn">import</span> <span class="n">SceneScript</span>
+<span class="kn">from</span> <span class="nn">turberfield.dialogue.schema</span> <span class="kn">import</span> <span class="n">SchemaBase</span>
+<span class="kn">from</span> <span class="nn">turberfield.utils.assembly</span> <span class="kn">import</span> <span class="n">Assembly</span>
+<span class="kn">from</span> <span class="nn">turberfield.utils.db</span> <span class="kn">import</span> <span class="n">Connection</span>
+<span class="kn">from</span> <span class="nn">turberfield.utils.db</span> <span class="kn">import</span> <span class="n">Creation</span>
+<span class="kn">from</span> <span class="nn">turberfield.utils.logger</span> <span class="kn">import</span> <span class="n">LogManager</span>
+
+
+<div class="viewcode-block" id="TerminalHandler"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler">[docs]</a><span class="k">class</span> <span class="nc">TerminalHandler</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The default handler for events from scene script files.</span>
+<span class="sd">    It generates output for a console terminal.</span>
+
+<span class="sd">    The class is written to be a callable, stateful object.</span>
+<span class="sd">    Its `__call__` method delegates to handlers specific to each type of event.</span>
+<span class="sd">    You can subclass it and override those methods to suit your own application.</span>
+
+<span class="sd">    :param terminal: A stream object.</span>
+<span class="sd">    :param str dbPath: An optional URL to the internal database.</span>
+<span class="sd">    :param float pause: The time in seconds to pause on a line of dialogue.</span>
+<span class="sd">    :param float dwell: The time in seconds to dwell on a word of dialogue.</span>
+<span class="sd">    :param log: An optional log object.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pause</span> <span class="o">=</span> <span class="n">turberfield</span><span class="o">.</span><span class="n">dialogue</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">DEFAULT_PAUSE_SECS</span>
+    <span class="n">dwell</span> <span class="o">=</span> <span class="n">turberfield</span><span class="o">.</span><span class="n">dialogue</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">DEFAULT_DWELL_SECS</span>
+
+<div class="viewcode-block" id="TerminalHandler.handle_audio"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_audio">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">handle_audio</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle an audio event.</span>
+
+<span class="sd">        This function plays an audio file.</span>
+<span class="sd">        Currently only `.wav` format is supported.</span>
+
+<span class="sd">        :param obj: An :py:class:`~turberfield.dialogue.model.Model.Audio`</span>
+<span class="sd">            object.</span>
+<span class="sd">        :param bool wait: Force a blocking wait until playback is complete.</span>
+<span class="sd">        :return: The supplied object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">simpleaudio</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">obj</span>
+
+        <span class="n">fp</span> <span class="o">=</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">resource_filename</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">package</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">wave</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span>
+        <span class="n">nChannels</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">getnchannels</span><span class="p">()</span>
+        <span class="n">bytesPerSample</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">getsampwidth</span><span class="p">()</span>
+        <span class="n">sampleRate</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">getframerate</span><span class="p">()</span>
+        <span class="n">nFrames</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">getnframes</span><span class="p">()</span>
+        <span class="n">framesPerMilliSecond</span> <span class="o">=</span> <span class="n">nChannels</span> <span class="o">*</span> <span class="n">sampleRate</span> <span class="o">//</span> <span class="mi">1000</span>
+
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">framesPerMilliSecond</span> <span class="o">*</span> <span class="n">obj</span><span class="o">.</span><span class="n">offset</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">nFrames</span> <span class="o">-</span> <span class="n">offset</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+            <span class="n">duration</span><span class="p">,</span>
+            <span class="n">framesPerMilliSecond</span> <span class="o">*</span> <span class="n">obj</span><span class="o">.</span><span class="n">duration</span> <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">duration</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">duration</span>
+        <span class="p">)</span>
+
+        <span class="n">data</span><span class="o">.</span><span class="n">readframes</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
+        <span class="n">frames</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">readframes</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">loop</span><span class="p">):</span>
+            <span class="n">waveObj</span> <span class="o">=</span> <span class="n">simpleaudio</span><span class="o">.</span><span class="n">WaveObject</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">nChannels</span><span class="p">,</span> <span class="n">bytesPerSample</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">)</span>
+            <span class="n">playObj</span> <span class="o">=</span> <span class="n">waveObj</span><span class="o">.</span><span class="n">play</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">loop</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">wait</span><span class="p">:</span>
+                <span class="n">playObj</span><span class="o">.</span><span class="n">wait_done</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">obj</span></div>
+
+<div class="viewcode-block" id="TerminalHandler.handle_interlude"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_interlude">[docs]</a>    <span class="k">def</span> <span class="nf">handle_interlude</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">,</span>
+        <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle an interlude event.</span>
+
+<span class="sd">        Interlude functions permit branching. They return a folder which the</span>
+<span class="sd">        application can choose to adopt as the next supplier of dialogue.</span>
+
+<span class="sd">        This handler calls the interlude with the supplied arguments and</span>
+<span class="sd">        returns the result.</span>
+
+<span class="sd">        :param obj: A callable object.</span>
+<span class="sd">        :param folder: A</span>
+<span class="sd">            :py:class:`~turberfield.dialogue.model.SceneScript.Folder` object.</span>
+<span class="sd">        :param int index: Indicates which scene script in the folder</span>
+<span class="sd">            is being processed.</span>
+<span class="sd">        :param ensemble: A sequence of Python objects.</span>
+<span class="sd">        :param branches: A sequence of</span>
+<span class="sd">            :py:class:`~turberfield.dialogue.model.SceneScript.Folder` objects.</span>
+<span class="sd">            from which to pick a branch in the action.</span>
+<span class="sd">        :return: A :py:class:`~turberfield.dialogue.model.SceneScript.Folder`</span>
+<span class="sd">            object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">folder</span><span class="o">.</span><span class="n">metadata</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">obj</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TerminalHandler.handle_line"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_line">[docs]</a>    <span class="k">def</span> <span class="nf">handle_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle a line event.</span>
+
+<span class="sd">        This function displays a line of dialogue. It generates a blocking wait</span>
+<span class="sd">        for a period of time calculated from the length of the line.</span>
+
+<span class="sd">        :param obj: A :py:class:`~turberfield.dialogue.model.Model.Line` object.</span>
+<span class="sd">        :return: The supplied object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">persona</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">obj</span>
+
+        <span class="n">name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">persona</span><span class="p">,</span> <span class="s2">&quot;_name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="n">textwrap</span><span class="o">.</span><span class="n">indent</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="si">{t.normal}{name}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="p">),</span>
+                <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="mi">2</span>
+            <span class="p">),</span>
+            <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="n">textwrap</span><span class="o">.</span><span class="n">indent</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="si">{t.normal}{obj.text}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span>
+                <span class="p">),</span>
+                <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="mi">10</span>
+            <span class="p">),</span>
+            <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+        <span class="p">)</span>
+        <span class="n">interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pause</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dwell</span> <span class="o">*</span> <span class="n">obj</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span></div>
+
+<div class="viewcode-block" id="TerminalHandler.handle_memory"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_memory">[docs]</a>    <span class="k">def</span> <span class="nf">handle_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle a memory event.</span>
+
+<span class="sd">        This function accesses the internal database. It writes a record</span>
+<span class="sd">        containing state information and an optional note.</span>
+
+<span class="sd">        :param obj: A :py:class:`~turberfield.dialogue.model.Model.Memory`</span>
+<span class="sd">            object.</span>
+<span class="sd">        :return: The supplied object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">con</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+                <span class="n">SchemaBase</span><span class="o">.</span><span class="n">note</span><span class="p">(</span>
+                    <span class="n">db</span><span class="p">,</span>
+                    <span class="n">obj</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span>
+                    <span class="n">obj</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+                    <span class="n">obj</span><span class="o">.</span><span class="n">object</span><span class="p">,</span>
+                    <span class="n">text</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">text</span><span class="p">,</span>
+                    <span class="n">html</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">html</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span></div>
+
+<div class="viewcode-block" id="TerminalHandler.handle_property"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_property">[docs]</a>    <span class="k">def</span> <span class="nf">handle_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle a property event.</span>
+
+<span class="sd">        This function will set an attribute on an object if the event requires</span>
+<span class="sd">        it.</span>
+
+<span class="sd">        :param obj: A :py:class:`~turberfield.dialogue.model.Model.Property`</span>
+<span class="sd">            object.</span>
+<span class="sd">        :return: The supplied object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">object</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">object</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">attr</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">val</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;. &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="ow">or</span> <span class="n">e</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;</span><span class="si">{t.dim}{obj.object._name}</span><span class="s2">.</span><span class="si">{obj.attr}</span><span class="s2"> = </span><span class="si">{obj.val!s}{t.normal}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span>
+                    <span class="p">),</span>
+                    <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span>
+                    <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;. &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="ow">or</span> <span class="n">e</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">obj</span></div>
+
+<div class="viewcode-block" id="TerminalHandler.handle_scene"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_scene">[docs]</a>    <span class="k">def</span> <span class="nf">handle_scene</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle a scene event.</span>
+
+<span class="sd">        This function applies a blocking wait at the start of a scene.</span>
+
+<span class="sd">        :param obj: A :py:class:`~turberfield.dialogue.model.Model.Shot`</span>
+<span class="sd">            object.</span>
+<span class="sd">        :return: The supplied object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="si">{t.dim}{scene}{t.normal}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">scene</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">scene</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span> <span class="n">t</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span>
+            <span class="p">),</span>
+            <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+        <span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span></div>
+
+<div class="viewcode-block" id="TerminalHandler.handle_scenescript"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_scenescript">[docs]</a>    <span class="k">def</span> <span class="nf">handle_scenescript</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle a scene script event.</span>
+
+<span class="sd">        :param obj: A :py:class:`~turberfield.dialogue.model.SceneScript.Folder`</span>
+<span class="sd">            object.</span>
+<span class="sd">        :return: The supplied object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">fP</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span></div>
+
+<div class="viewcode-block" id="TerminalHandler.handle_shot"><a class="viewcode-back" href="../../../api.html#turberfield.dialogue.handlers.TerminalHandler.handle_shot">[docs]</a>    <span class="k">def</span> <span class="nf">handle_shot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Handle a shot event.</span>
+
+<span class="sd">        :param obj: A :py:class:`~turberfield.dialogue.model.Model.Shot` object.</span>
+<span class="sd">        :return: The supplied object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="si">{t.dim}{shot}{t.normal}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">shot</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span> <span class="n">t</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span>
+            <span class="p">),</span>
+            <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span></div>
+
+    <span class="k">def</span> <span class="nf">handle_creation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">con</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+            <span class="n">rv</span> <span class="o">=</span> <span class="n">Creation</span><span class="p">(</span>
+                <span class="o">*</span><span class="n">SchemaBase</span><span class="o">.</span><span class="n">tables</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Created </span><span class="si">{0}</span><span class="s2"> tables in </span><span class="si">{1}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rv</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbPath</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">rv</span>
+
+    <span class="k">def</span> <span class="nf">handle_references</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">con</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+            <span class="n">rv</span> <span class="o">=</span> <span class="n">SchemaBase</span><span class="o">.</span><span class="n">populate</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Populated </span><span class="si">{0}</span><span class="s2"> rows.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">rv</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">rv</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">terminal</span><span class="p">,</span> <span class="n">dbPath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">pause</span><span class="o">=</span><span class="n">pause</span><span class="p">,</span> <span class="n">dwell</span><span class="o">=</span><span class="n">dwell</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">terminal</span> <span class="o">=</span> <span class="n">terminal</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbPath</span> <span class="o">=</span> <span class="n">dbPath</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pause</span> <span class="o">=</span> <span class="n">pause</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dwell</span> <span class="o">=</span> <span class="n">dwell</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_manager</span> <span class="o">=</span> <span class="n">LogManager</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_manager</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_manager</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">),</span> <span class="s2">&quot;turberfield.dialogue.handle&quot;</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">shot</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">con</span> <span class="o">=</span> <span class="n">Connection</span><span class="p">(</span><span class="o">**</span><span class="n">Connection</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="n">dbPath</span><span class="p">]</span> <span class="k">if</span> <span class="n">dbPath</span> <span class="k">else</span> <span class="p">[]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handle_creation</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Model</span><span class="o">.</span><span class="n">Line</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_line</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Model</span><span class="o">.</span><span class="n">Audio</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_audio</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Model</span><span class="o">.</span><span class="n">Memory</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_memory</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Model</span><span class="o">.</span><span class="n">Property</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_property</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Model</span><span class="o">.</span><span class="n">Shot</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shot</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">scene</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">scene</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_scene</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shot</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_shot</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">obj</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shot</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">SceneScript</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_scenescript</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">MutableSequence</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_references</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Callable</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_interlude</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">obj</span></div>
+
+<span class="k">class</span> <span class="nc">CGIHandler</span><span class="p">(</span><span class="n">TerminalHandler</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">handle_audio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">resource_filename</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">package</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;lib&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">prefix</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">pos</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;event: audio&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;data: ../</span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">[</span><span class="n">pos</span><span class="p">:]),</span>
+                <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">handle_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">persona</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">obj</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;event: line&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;data: </span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">Assembly</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">)),</span>
+            <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pause</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dwell</span> <span class="o">*</span> <span class="n">obj</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">handle_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_manager</span> <span class="o">=</span> <span class="n">LogManager</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_manager</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;turberfield&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">object</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">object</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">attr</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">val</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;. &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="ow">or</span> <span class="n">e</span><span class="p">))</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;event: property&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;data: </span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">Assembly</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">)),</span>
+                <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">file</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">terminal</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">handle_scene</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">handle_scenescript</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">handle_shot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017, D Haynes.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
