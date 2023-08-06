@@ -1,0 +1,9 @@
+from _typeshed import Incomplete
+from typing import List, Tuple
+from ujenkins.exceptions import JenkinsError as JenkinsError
+
+JOB_BUILD_URL_RE: Incomplete
+
+def construct_job_config(*, description: str = ..., parameters: List[dict] = ..., commands: List[str] = ...) -> str: ...
+def construct_node_config(*, name: str, remote_fs: str = ..., executors: int = ...) -> dict: ...
+def parse_build_url(build_url: str) -> Tuple[str, int]: ...
