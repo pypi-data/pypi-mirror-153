@@ -1,0 +1,235 @@
+{
+  "type": "record",
+  "name": "ChartInfo",
+  "namespace": "com.linkedin.pegasus2avro.chart",
+  "doc": "Information about a chart",
+  "fields": [
+    {
+      "name": "customProperties",
+      "type": {
+        "type": "map",
+        "values": "string"
+      },
+      "doc": "Custom property bag.",
+      "default": {},
+      "Searchable": {
+        "/*": {
+          "queryByDefault": true
+        }
+      }
+    },
+    {
+      "name": "externalUrl",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "URL where the reference exist",
+      "default": null,
+      "java": {
+        "class": "com.linkedin.pegasus2avro.common.url.Url",
+        "coercerClass": "com.linkedin.pegasus2avro.common.url.UrlCoercer"
+      }
+    },
+    {
+      "name": "title",
+      "type": "string",
+      "doc": "Title of the chart",
+      "Searchable": {
+        "enableAutocomplete": true,
+        "fieldType": "TEXT_PARTIAL"
+      }
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "doc": "Detailed description about the chart",
+      "Searchable": {}
+    },
+    {
+      "name": "lastModified",
+      "type": {
+        "type": "record",
+        "name": "ChangeAuditStamps",
+        "namespace": "com.linkedin.pegasus2avro.common",
+        "doc": "Data captured on a resource/association/sub-resource level giving insight into when that resource/association/sub-resource moved into various lifecycle stages, and who acted to move it into those lifecycle stages. The recommended best practice is to include this record in your record schema, and annotate its fields as @readOnly in your resource. See https://github.com/linkedin/rest.li/wiki/Validation-in-Rest.li#restli-validation-annotations",
+        "fields": [
+          {
+            "name": "created",
+            "type": {
+              "type": "record",
+              "name": "AuditStamp",
+              "doc": "Data captured on a resource/association/sub-resource level giving insight into when that resource/association/sub-resource moved into a particular lifecycle stage, and who acted to move it into that specific lifecycle stage.",
+              "fields": [
+                {
+                  "name": "time",
+                  "type": "long",
+                  "doc": "When did the resource/association/sub-resource move into the specific lifecycle stage represented by this AuditEvent."
+                },
+                {
+                  "name": "actor",
+                  "type": "string",
+                  "doc": "The entity (e.g. a member URN) which will be credited for moving the resource/association/sub-resource into the specific lifecycle stage. It is also the one used to authorize the change.",
+                  "java": {
+                    "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+                  }
+                },
+                {
+                  "name": "impersonator",
+                  "type": [
+                    "null",
+                    "string"
+                  ],
+                  "doc": "The entity (e.g. a service URN) which performs the change on behalf of the Actor and must be authorized to act as the Actor.",
+                  "default": null,
+                  "java": {
+                    "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+                  }
+                }
+              ]
+            },
+            "doc": "An AuditStamp corresponding to the creation of this resource/association/sub-resource. A value of 0 for time indicates missing data.",
+            "default": {
+              "actor": "urn:li:corpuser:unknown",
+              "impersonator": null,
+              "time": 0
+            }
+          },
+          {
+            "name": "lastModified",
+            "type": "AuditStamp",
+            "doc": "An AuditStamp corresponding to the last modification of this resource/association/sub-resource. If no modification has happened since creation, lastModified should be the same as created. A value of 0 for time indicates missing data.",
+            "default": {
+              "actor": "urn:li:corpuser:unknown",
+              "impersonator": null,
+              "time": 0
+            }
+          },
+          {
+            "name": "deleted",
+            "type": [
+              "null",
+              "AuditStamp"
+            ],
+            "doc": "An AuditStamp corresponding to the deletion of this resource/association/sub-resource. Logically, deleted MUST have a later timestamp than creation. It may or may not have the same time as lastModified depending upon the resource/association/sub-resource semantics.",
+            "default": null
+          }
+        ]
+      },
+      "doc": "Captures information about who created/last modified/deleted this chart and when"
+    },
+    {
+      "name": "chartUrl",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "URL for the chart. This could be used as an external link on DataHub to allow users access/view the chart",
+      "default": null,
+      "java": {
+        "class": "com.linkedin.pegasus2avro.common.url.Url",
+        "coercerClass": "com.linkedin.pegasus2avro.common.url.UrlCoercer"
+      }
+    },
+    {
+      "name": "inputs",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": [
+            "string"
+          ]
+        }
+      ],
+      "doc": "Data sources for the chart",
+      "default": null,
+      "Relationship": {
+        "/*/string": {
+          "entityTypes": [
+            "dataset"
+          ],
+          "isLineage": true,
+          "name": "Consumes"
+        }
+      }
+    },
+    {
+      "name": "type",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "ChartType",
+          "doc": "The various types of charts",
+          "symbols": [
+            "BAR",
+            "PIE",
+            "SCATTER",
+            "TABLE",
+            "TEXT",
+            "LINE",
+            "AREA",
+            "HISTOGRAM",
+            "BOX_PLOT",
+            "WORD_CLOUD",
+            "COHORT"
+          ],
+          "symbolDocs": {
+            "BAR": "Chart showing a Bar chart",
+            "PIE": "Chart showing a Pie chart",
+            "SCATTER": "Chart showing a Scatter plot",
+            "TABLE": "Chart showing a table",
+            "TEXT": "Chart showing Markdown formatted text"
+          }
+        }
+      ],
+      "doc": "Type of the chart",
+      "default": null,
+      "Searchable": {
+        "addToFilters": true,
+        "fieldType": "KEYWORD",
+        "filterNameOverride": "Chart Type"
+      }
+    },
+    {
+      "name": "access",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "AccessLevel",
+          "namespace": "com.linkedin.pegasus2avro.common",
+          "doc": "The various access levels",
+          "symbols": [
+            "PUBLIC",
+            "PRIVATE"
+          ],
+          "symbolDocs": {
+            "PRIVATE": "Private availability to certain set of users",
+            "PUBLIC": "Publicly available access level"
+          }
+        }
+      ],
+      "doc": "Access level for the chart",
+      "default": null,
+      "Searchable": {
+        "addToFilters": true,
+        "fieldType": "KEYWORD",
+        "filterNameOverride": "Access Level"
+      }
+    },
+    {
+      "name": "lastRefreshed",
+      "type": [
+        "null",
+        "long"
+      ],
+      "doc": "The time when this chart last refreshed",
+      "default": null
+    }
+  ],
+  "Aspect": {
+    "name": "chartInfo"
+  }
+}
