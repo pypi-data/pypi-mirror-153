@@ -1,0 +1,60 @@
+{% load form_extras %}
+
+    <!-- header -->
+    <div class="grid_condition_header">
+        <div style="width: 100%; padding-top: 5px; padding-left: 5px; cursor:pointer;" onclick="condition_group_switch({{condition_group.id}});">
+            <b>{{condition_group.type_as_str}}</b>
+        </div>
+        <div style="display: flex; white-space: nowrap;">
+            <div class="dropdown dropup">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                    <i class="fa fa-plus" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a onclick="condition_add({{condition_group.id}});">Ajouter une condition</a></li>
+                    <li><a onclick="condition_group_add({{condition_group.id}}, 0);">Ajouter un groupe ET</a></li>
+                    <li><a onclick="condition_group_add({{condition_group.id}}, 1);">Ajouter un groupe OU</a></li>
+                </ul>
+            </div>
+            {% if condition_group.condition_group %}
+            <button type="button" class="btn btn-danger" onclick="condition_group_delete({{condition_group.id}});"><i class="fa fa-minus" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-default" onclick="condition_group_move_up({{condition_group.id}});"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-default" onclick="condition_group_move_dw({{condition_group.id}});"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if condition_group.children %}
+    <!-- content -->
+
+    <div style="display: flex;">
+    <div class="grid_condition_content_sidebar"></div>
+    <div class="grid_condition_content_table">
+    <table style="width: 100%;">
+    {% for child in condition_group.children %}
+    {% if child.condition %}
+    <tr class="table_row">
+        <td class="grid_condition" onclick="open2('{% url 'django:condition_update' child.condition.id %}')" style="cursor:pointer;">{{child.condition.label_as_str}}</td>
+        <td class="grid_condition" onclick="open2('{% url 'django:condition_update' child.condition.id %}')" style="cursor:pointer;">&nbsp;{{child.condition.criteria_as_str}}</td>
+        <td class="grid_condition" onclick="open2('{% url 'django:condition_update' child.condition.id %}')" style="cursor:pointer; width: 100%">&nbsp;{{child.condition.value}}</td>
+        <td class="grid_condition" style="display: flex; white-space: nowrap;">
+            <button type="button" class="btn btn-default" onclick="condition_move_up({{child.condition.id}});"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-default" onclick="condition_move_dw({{child.condition.id}});"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="4" class="grid_condition">
+            {% include "components/grid_condition_group.html" with condition_group=child.condition_group %}
+        </td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    </table>
+    </div>
+    </div>
+
+    <!-- footer -->
+    <div class="grid_condition_footer"></div>
+
+    {% endif %}
