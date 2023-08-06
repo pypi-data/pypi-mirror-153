@@ -1,0 +1,56 @@
+- hosts: dnac_servers
+  vars_files:
+    - credentials.yml
+  gather_facts: no
+  tasks:
+  - name: Create
+    cisco.dnac.reports:
+      dnac_host: "{{dnac_host}}"
+      dnac_username: "{{dnac_username}}"
+      dnac_password: "{{dnac_password}}"
+      dnac_verify: "{{dnac_verify}}"
+      dnac_port: "{{dnac_port}}"
+      dnac_debug: "{{dnac_debug}}"
+      validate_response_schema: false
+      state: present
+      tags: []
+      deliveries: []
+      name: AP-ANSIBLE
+      schedule:
+        type: SCHEDULE_NOW
+        dateTime: 1648380084211
+      view:
+        fieldGroups:
+        - fieldGroupDisplayName: AP Detail By AP
+          fieldGroupName: apDetailByAP
+          fields:
+          - displayName: AP MAC Address
+            name: macAddress
+          - displayName: Up Time
+            name: upTime
+        filters:
+        - displayName: Location
+          name: Location
+          type: MULTI_SELECT_TREE
+          value:
+          - value: sample-global-site-id
+            displayValue: Global
+        - displayName: Time Range
+          name: TimeRange
+          type: TIME_RANGE
+          value:
+            timeRangeOption: LAST_3_HOURS
+            startDateTime: 0
+            endDateTime: 0
+        format:
+          formatType: CSV
+          name: CSV
+        name: AP
+      viewGroupId: c8bfe5c9-4941-4251-8bf5-0fb643e90816
+      viewGroupVersion: 2.0.0
+
+    register: result
+
+  - name: Show result
+    ansible.builtin.debug:
+      msg: "{{ result }}"

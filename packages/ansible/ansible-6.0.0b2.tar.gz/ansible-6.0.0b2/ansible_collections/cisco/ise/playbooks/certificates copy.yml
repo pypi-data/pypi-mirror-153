@@ -1,0 +1,43 @@
+---
+- hosts: ise_servers
+  vars_files:
+      - credentials.yml
+  gather_facts: 
+    no
+  tasks:
+    - name: "Create DISK Repository {{ name }}"
+      when: state is not defined or state == 'present'
+      cisco.ise.repository:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: absent
+        protocol: CDROM
+        name: "{{ name | default('DISK') }}"
+        path: "{{ path | default('/') }}"
+        repositoryName: "DISK"
+        #userName: "TEST"
+        #serverName: "TEST"
+        #enablePki: False
+      register: result 
+
+    - name: Print
+      ansible.builtin.debug:
+        var: result
+
+    - name: Get Repository by name
+      cisco.ise.repository_info:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        repositoryName: "DISK"
+      register: result
+
+    - name: Print
+      ansible.builtin.debug:
+        var: result
+
+
+# "CDROM", "DISK", "FTP", "HTTP", "HTTPS", "NFS", "SFTP", "TFTP"
