@@ -1,0 +1,402 @@
+Metadata-Version: 2.1
+Name: ftw.referencewidget
+Version: 3.0.5
+Summary: A reference browser widget (Maintainer Timon Tschanz)
+Home-page: https://github.com/4teamwork/ftw.referencewidget
+Author: Timon Tschanz, 4teamwork AG
+Author-email: mailto:info@4teamwork.ch
+Maintainer: Timon Tschanz
+License: GPL2
+Description: ftw.referencewidget
+        ===================
+        
+        This Widget provides a Referencebrowser and a searchfield, which allows users to select references.
+        
+        The basequery is all types which are not in the types_not_searched property all modification to the allowed types are relative to this query.
+        
+        Traversal or Selectability can be changed for all widgets with the IReferenceSettings registry interface or per widget with the widget parameters.
+        
+        The widget takes the following parameters:
+         - allow_traversal: List of Types which are added as traversable. Will act as complete configuration if `override` is set to True.
+         - block_traversal: List of Types which are added as not traversable. Will be ignored if `override` is set to True.
+         - selectable: List of Types which are added to the as selectable. Will act as complete configuration if `override` is set to True
+         - nonselectable: List of Types which are added as not selectable. Will be ignored if `override` is set to True.
+         - start: The path first opened. Can either be a callable or a path. Additionaly the strings "parent", "navroot", "ploneroot" can be used.
+         - allow_nonsearched_types: If this is set to true all the types will be traversable and selectable.
+         - override: Drops all global config and the base query if a list is passed to the widget. If this is set to true, `selectable` & `allow_traversal` are not additive but act as the complete configuration instead. `nonselectable` & `block_traversal` will be ignored.
+         - traversal_query: Updates the query used vor traversing by the given dict. The dict passed will be updated after everything is allready done. So make sure not to override sort_on/sort_order attributes.
+        
+        
+        Upgrading from 1.x to 2.x
+        -------------------------
+        
+        There was no version number set for the ``ftw.referencewidget`` package. As a result of this upgradesteps wont be shown in ``../@@manage-upgrades`` from `ftw.upgrade <https://github.com/4teamwork/ftw.upgrade>`_.
+        So the first upgradesetp ``Upgrade ftw.referencewidget:default to 20181112105705: Fix registry field frontend edit`` must be installed via the ZMI under ``../portal_setup/manage_fullImport``. This sets the version for the package and so further upgrades can be installed via ``../@@manage-upgrades``.
+        
+        ContextSourceBinder
+        -------------------
+        
+        With a `RelationeChoice` or `RelationList` of `RelationChoice` a source can be configured along with the field.
+        The `ContextSourceBinder` makes sure that only valid content can be selected.
+        
+        By default, the source binder only checks for a valid portal_type when selecting content.
+        
+        The default_filter implementation therefore looks like this:
+        
+        .. code:: python
+        
+            def default_filter(source, value):
+                """"
+                Return ``True`` when the object is selectable, ``False``
+                when it is not selectable.
+        
+                """"
+                return value.portal_type in get_selectable_types_by_source(source)
+        
+        Feel free to add your own filter method as source parameter in your field.
+        Example:
+        
+        .. code:: python
+        
+            from ftw.referencewidget.filter import DefaultSelectable
+        
+            class CustomClass(DefaultSelectable):
+                def is_selectable(self):
+                    return bool(..)
+            ...
+        
+            directives.widget(realtionchoice_restricted_title=ReferenceWidgetFactory)
+            realtionchoice_restricted_title = RelationChoice(
+                title=_(u'Related Choice Restricted Title'),
+                source=ReferenceObjSourceBinder(
+                    selectable_class=CustomClass),
+                default=None,
+                required=False,
+            )
+        
+        The `filter` takes two parameter the actual source object and a value, which is the content object.
+        
+        Only `ReferenceObjSourceBinder` are supported. The SourceBinder takes the following parameters:
+        
+        - selectable: Adds these types as selectable. Will act as complete configuration if `override` is set to True
+        - nonselectable: Adds these Types are not selectable. Will be ignored if `override` is set to True.
+        - allow_nonsearched_types: If this is set to true all the types will be traversable and selectable.
+        - override: Drops all global config and the base query if a list is passed to the widget. If this is set to true, `selectable` is not additive but acts as the complete configuration instead. `nonselectable` will be ignored.
+        - selectable_class: Custom ISelectable Class to determine if a content is selectable or not.
+        
+        The parameters are same as for the widget (Backwards compatibility with 1.x releases).
+        
+        
+        Fields combinations (Registered converter)
+        ------------------------------------------
+        
+        The following combinations are supported:
+        
+        - RelationList with value_type Relation --> Stores a List of RelationValues
+        - RelationList with value_type RelationChoice --> Stores a List of RelationValues
+        - Relation --> Stores a RelationValue
+        - List of RelationChoice --> Stores a list of absolute paths, without the portal root part
+        - TextLine --> Stores a absolute path as string, without the portal root part
+        
+        
+        TinyMCE Plone 5 - Internal Link widget replacement
+        --------------------------------------------------
+        
+        With the version 3 of ftw.referencewidget within Plone 5.x the select2 internal link widget
+        automatically gets replaced by the ftw.referencewidget interna link browser.
+        Featering search and browsing within the referencebrowser popup. 
+        
+        
+        Screenshots
+        -----------
+        The general Listing:
+        ![Listing](https://github.com/4teamwork/ftw.referencewidget/raw/master/docs/static/list.png)
+        The Search Listing:
+        ![Search Listing](https://github.com/4teamwork/ftw.referencewidget/raw/master/docs/static/search.png)
+        The Selected Items
+        ![Selected](https://github.com/4teamwork/ftw.referencewidget/raw/master/docs/static/selected.png)
+        
+        Links
+        -----
+        
+        - Github: https://github.com/4teamwork/ftw.referencewidget
+        - Issues: https://github.com/4teamwork/ftw.referencewidget/issues
+        - Continuous integration: https://jenkins.4teamwork.ch/search?q=ftw.referencewidget
+        
+        
+        Copyright
+        ---------
+        
+        This package is copyright by `4teamwork <http://www.4teamwork.ch/>`_.
+        
+        ``ftw.referencewidget`` is licensed under GNU General Public License, version 2.
+        
+        Changelog
+        =========
+        
+        
+        3.0.5 (2022-06-02)
+        ------------------
+        
+        - Add fake edit view for plone site root in order to make widget work on add views on root. [mathias.leimgruber]
+        
+        
+        3.0.4 (2021-07-13)
+        ------------------
+        
+        - Fix tinymce internal link integration for portlets. [mathias.leimgruber]
+        
+        
+        3.0.3 (2021-03-31)
+        ------------------
+        
+        - Fix DictRow, DataGridFieldFactory imports to be compatible with 1.x and 2.x of collective.z3cform.datagridfield. [mathias.leimgruber]
+        
+        
+        3.0.2 (2021-01-07)
+        ------------------
+        
+        - Set initial request_path upon widget initialization to make searching in current are possible. [mathias.leimgruber]
+        
+        
+        3.0.1 (2020-12-15)
+        ------------------
+        
+        - Fix js bundle: Merge with logged-in and no dependency, since it's all loaded via requireJS. [mathias.leimgruber]
+        
+        
+        3.0.0 (2020-12-15)
+        ------------------
+        
+        - Replace the plone select2 based reference widget for internal links with the ftw.reference widget version. [mathias.leimgruber]
+        - Prepare usage within plone 5.x tinymce. [mathias.leimgruber]
+        
+        
+        2.2.1 (2020-01-15)
+        ------------------
+        
+        - Restrict handlebars.js to authenticated users. [tinagerber]
+        
+        
+        2.2.0 (2019-12-16)
+        ------------------
+        
+        - Fix use of `portal_url`, it's no longer globally available. [mathias.leimgruber]
+        - Add separate Plone 5 profile. [tinagerber]
+        - Add uninstall profile for Plone 5. [tinagerber]
+        
+        
+        2.1.1 (2019-11-29)
+        ------------------
+        
+        - Use unittest instead of unittest2. [jone]
+        
+        
+        2.1.0 (2019-03-06)
+        ------------------
+        
+        - Disable amd check for handlbar.js [mathias.leimgruber]
+        
+        - Add Plone 5.1 support. [mathias.leimgruber]
+        
+        
+        2.0.0 (2018-11-19)
+        ------------------
+        
+        - Fix not being able to edit portal_registry entries in frontend [Nachtalb]
+        
+          There was no version number set for the ``ftw.referencewidget`` package. As a result of this upgradesteps wont be shown in ``../@@manage-upgrades`` from `ftw.upgrade <https://github.com/4teamwork/ftw.upgrade>`_.
+          So the first upgradesetp ``Upgrade ftw.referencewidget:default to 20181112105705: Fix registry field frontend edit`` must be installed via the ZMI under ``../portal_setup/manage_fullImport``. This sets the version for the package and so further upgrades can be installed via ``../@@manage-upgrades``.
+        
+        
+        
+        1.5.4 (2018-01-26)
+        ------------------
+        
+        - Fix UnicodeDecodeError. [mbaechtold]
+        
+        
+        1.5.3 (2017-11-24)
+        ------------------
+        
+        - No longer use "plone.directives.form". [mbaechtold]
+        - Fix an issue when loading a page with GridDataField turns out in an error [Nachtalb]
+        
+        
+        1.5.2 (2017-10-23)
+        ------------------
+        
+        - Fix display issue with search current path only in old chrome browsers. [mathias.leimgruber]
+        
+        
+        1.5.1 (2017-10-23)
+        ------------------
+        
+        - Fix searching for current path only. [mathias.leimgruber]
+        - Fix UniCodeDecodeError while displaying the news date. [mathias.leimgruber]
+        
+        
+        1.5.0 (2017-10-23)
+        ------------------
+        
+        - Add option to search in current path. [Nachtalb]
+        - Show localized news date in title for all news items [Nachtalb]
+        
+        
+        1.4.2 (2017-08-29)
+        ------------------
+        
+        - Bugfix for DataGridField support if Plone Site is inside a mount point.
+          [mbaechtold]
+        
+        
+        1.4.1 (2017-08-08)
+        ------------------
+        
+        - Add support for "collective.z3cform.datagridfield".
+          [mbaechtold]
+        
+        
+        1.4.0 (2017-07-07)
+        ------------------
+        
+        - Implement display mode for the reference widget.
+          [mathias.leimgruber]
+        
+        - Change name of sample content buildour registry entry to avoid conflicts.
+          [mathias.leimgruber]
+        
+        - Implement path restriction option.
+          [mathias.leimgruber]
+        
+        - Render hidden input elements for given references, instead of
+          render them only by Javascript. This way the widget behaves more
+          like all other plone widgets.
+          [mathias.leimgruber]
+        
+        - Implement a additional `traversal_query` parameter for the widget.
+          [mathias.leimgruber]
+        
+        - Implement ReferenceObjPathSource for IRelationChoice fields.
+          [mathias.leimgruber]
+        
+        
+        1.3.0 (2016-11-09)
+        ------------------
+        
+        - Implement some sort options.
+          [mathias.leimgruber]
+        
+        - Use plone.app.redirector to follow renamed and moved content.
+          Also do not fail if the content has been removed.
+          [mathias.leimgruber]
+        
+        
+        1.2.3 (2016-10-18)
+        ------------------
+        
+        - Fix edge case (mainly for tests) if the value passed to the
+          IList/Widget converter is not a list, but a string.
+          [raphael-s]
+        
+        
+        1.2.2 (2016-10-18)
+        ------------------
+        
+        - Implement testbrowser widget.
+          [raphael-s]
+        
+        
+        1.2.1 (2016-10-17)
+        ------------------
+        
+        - Respect missing_value set by the field.
+          [tschanzt]
+        
+        - Implement support for ITextLine only with ReferenceWidget.
+          [mathias.leimgruber]
+        
+        
+        1.2.0 (2016-10-04)
+        ------------------
+        
+        - Show absolute path starting at the plone root for the selected value.
+          [mathias.leimgruber]
+        
+        - Remove the list style type and the obsolete spacing for the selected elements.
+          [mathias.leimgruber]
+        
+        - Implement support for IList of IRelationChoice explicitly.
+          Check Readme for more informations
+          [mathias.leimgruber]
+        
+        
+        1.1.0 (2016-09-27)
+        ------------------
+        
+        - Ignore empty value for multiple value field.
+          [mathias.leimgruber]
+        
+        - Support chameleon by not rendering handlebar templates. [jone]
+        
+        
+        1.0.4 (2016-09-19)
+        ------------------
+        
+        - Make it possible to remove an given internal reference (radio button).
+          [mathias.leimgruber]
+        
+        - Ignore empty value for single value field.
+          [mathias.leimgruber]
+        
+        - Fix search by pressing the "enter" button.
+          [mathias.leimgruber]
+        
+        - Always unbind the click event before binding a new one on the ref button.
+          [mathias.leimgruber]
+        
+        
+        1.0.3 (2016-09-14)
+        ------------------
+        
+        - Same as 1.0.2 but uploaded to PyPI.
+          [mbaechtold]
+        
+        
+        1.0.2 (2016-09-14)
+        ------------------
+        
+        - Reload Items when overlay is reloaded.
+          [tschanzt]
+        
+        - Respect Type constraints on search.
+          [tschanzt]
+        
+        
+        1.0.1 (2016-09-09)
+        ------------------
+        
+        - Ignore empty strings in converter.
+          [tschanzt]
+        
+        - Improve overlay behavior (close on click outside the overlay + close on ESC).
+          [mathias.leimgruber]
+        
+        - Get Widget name on overlay creation.
+          [tschanzt]
+        
+        
+        1.0.0 (2016-09-07)
+        ------------------
+        
+        - Initial release
+          [tschanzt]
+        
+Keywords: ftw 4teamwork widget reference browser
+Platform: UNKNOWN
+Classifier: Framework :: Plone
+Classifier: Framework :: Plone :: 4.3
+Classifier: Framework :: Plone :: 5.1
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python
+Provides-Extra: tests

@@ -1,0 +1,114 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:z3c="http://namespaces.zope.org/z3c"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    xmlns:upgrade-step="http://namespaces.zope.org/ftw.upgrade"
+    xmlns:zcml="http://namespaces.zope.org/zcml"
+    i18n_domain="ftw.referencewidget">
+
+    <five:registerPackage package="." initialize=".initialize" />
+    <i18n:registerTranslations directory="locales" />
+
+    <browser:resourceDirectory name="ftw.referencewidget" directory="resources" />
+
+    <class class="ftw.referencewidget.widget.ReferenceBrowserWidget">
+        <require permission="zope.Public"
+                 interface="ftw.referencewidget.interfaces.IReferenceWidget" />
+    </class>
+
+    <adapter factory="ftw.referencewidget.widget.ReferenceWidgetFactory" />
+
+
+    <z3c:widgetTemplate
+        mode="input"
+        widget="ftw.referencewidget.interfaces.IReferenceWidget"
+        layer="z3c.form.interfaces.IFormLayer"
+        template="templates/referencewidget_input.pt" />
+
+    <z3c:widgetTemplate
+        mode="display"
+        widget="ftw.referencewidget.interfaces.IReferenceWidget"
+        layer="z3c.form.interfaces.IFormLayer"
+        template="templates/referencewidget_display.pt" />
+
+    <genericsetup:registerProfile
+        zcml:condition="not-have plone-5"
+        name="default"
+        title="ftw.referencewidget"
+        directory="profiles/default"
+        description="Register ftw.referencewidget generally"
+        provides="Products.GenericSetup.interfaces.EXTENSION"
+        />
+
+    <genericsetup:registerProfile
+        zcml:condition="have plone-5"
+        name="default"
+        title="ftw.referencewidget"
+        directory="profiles/default_plone5"
+        description="Register ftw.referencewidget generally"
+        provides="Products.GenericSetup.interfaces.EXTENSION"
+        />
+
+    <genericsetup:registerProfile
+        zcml:condition="have plone-5"
+        name="uninstall"
+        title="Uninstall ftw.referencewidget"
+        directory="profiles/uninstall_plone5"
+        provides="Products.GenericSetup.interfaces.EXTENSION"
+        for="Products.CMFPlone.interfaces.IMigratingPloneSiteRoot"
+        />
+
+    <include package="ftw.upgrade" file="meta.zcml" />
+    <upgrade-step:directory
+        profile="ftw.referencewidget:default"
+        directory="upgrades"
+        />
+
+    <adapter factory=".converter.ReferenceDataListConverter" />
+    <adapter factory=".converter.ReferenceDataChoiceConverter" />
+    <adapter factory=".converter.ReferenceDataListWithChoiceConverter" />
+    <adapter factory=".converter.ReferenceDataTextConverter" />
+
+    <include package=".browser" />
+
+    <adapter
+        factory=".widget.ReferenceWidgetFactory"
+        provides="z3c.form.interfaces.IFieldWidget"
+        for="z3c.relationfield.interfaces.IRelationList" />
+
+    <adapter
+        factory=".widget.ReferenceWidgetFactory"
+        provides="z3c.form.interfaces.IFieldWidget"
+        for="z3c.relationfield.interfaces.IRelation" />
+
+
+    <plone:behavior
+        title="Related items"
+        description="Adds the ability to assign related items"
+        provides=".behaviors.IRelatedItems"
+        />
+
+    <!-- Some behaviors to demonstrate several use-cases -->
+    <plone:behavior
+        title="Relation choice demo behavior"
+        description="Adds the ability to assign one related item"
+        provides=".behaviors.IRelationChoiceExample"
+        />
+
+    <plone:behavior
+        title="Relation choice demo behavior with restricted source"
+        description="Adds the ability to assign one related item"
+        provides=".behaviors.IRelationChoiceRestricted"
+        />
+
+    <plone:behavior
+        title="Data grid field demo behavior"
+        description="Adds the ability to a data grid rows"
+        provides=".behaviors.IDataGridFieldExample"
+        />
+
+</configure>
