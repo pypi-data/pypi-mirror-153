@@ -1,0 +1,101 @@
+#Build Configuration for docker deployment to artifactory
+image: python:3.9
+
+definitions:
+  services:
+    redis:
+      image: redis
+  steps:
+    - step: &lint
+        caches:
+          - pip
+        name: Lint
+        script:
+          - pip install pre-commit
+          - pre-commit install
+          - pre-commit run --all-files
+    - step: &changelog
+        caches:
+          - pip
+        name: Changelog
+        script:
+          - pip install towncrier
+          # We need to fetch the main branch to compare against
+          - git remote set-branches --add origin main
+          - git fetch origin main
+          - towncrier check --compare-with origin/main
+    - step: &scan
+        caches:
+          - pip
+        name: Scan
+        script:
+          - pip install .
+          - pip install safety
+          - safety check --full-report ${SAFETY_IGNORE}
+    - step: &test
+        caches:
+          - pip
+        name: Test
+        script:
+          # - pip install apache-airflow==2.0.0b3 # TODO how to keep in sync with infrastructure?
+          - pip install .[test] # TODO need ssh keys
+          - pytest -v -n auto --cov -m "not development" dkist_processing_visp
+        services:
+          - redis
+    - step: &push_workflow
+        caches:
+          - pip
+        name: Push Workflow
+        script:
+          - pip install .
+          - export BUILD_VERSION="${BITBUCKET_TAG:1}"
+          - export ARTIFACT_FOLDER="${BITBUCKET_REPO_SLUG}_${BUILD_VERSION}/"
+          - python -c "from dkist_processing_core.build_utils import export; import dkist_processing_visp.workflows as workflow_package; export(workflow_package, '${ARTIFACT_FOLDER}')"
+          - export SOURCE_PATH="workflow_${BUILD_VERSION}.gz"
+          - tar --exclude="bitbucket-pipelines.yml" -cvzf ${SOURCE_PATH} ${ARTIFACT_FOLDER}
+          - export TARGET_PATH="generic-packages/dkist-processing-visp/${BUILD_VERSION}/"
+          - curl -fL https://getcli.jfrog.io | sh
+          - ./jfrog rt u --url $ARTIFACTORY_URL --user $ARTIFACTORY_USER --password $ARTIFACTORY_PASSWORD ${SOURCE_PATH} ${TARGET_PATH}
+    - step: &push_code
+        caches:
+          - pip
+        name: Push Code
+        script:
+          - python setup.py sdist
+          - pip install twine
+          - twine upload dist/*
+    - step: &docs
+        name: Test Docs
+        caches:
+          - pip
+        script:
+          - apt update && apt -y install graphviz
+          - pip install .[docs]
+          - sphinx-build --color -W --keep-going -b html docs docs/_build/html
+    - step: &check_changelog
+        name: Check for updated CHANGELOG
+        script:
+          - ./check_changelog_updated.sh
+
+options:
+  max-time: 25
+pipelines:
+  default:
+    - parallel:
+      - step: *lint
+      - step: *changelog
+    - parallel:
+      - step: *scan
+      - step: *test
+      - step: *docs
+  tags:
+    'v*':
+      - parallel:
+        - step: *check_changelog
+        - step: *lint
+      - parallel:
+        - step: *scan
+        - step: *test
+        - step: *docs
+      - step: *push_workflow
+      - step: *push_code
