@@ -1,0 +1,10 @@
+from utils import decryptCipher
+
+
+def cryptJSAESDecrypt(secret, passphrase):
+  return decryptCipher(secret, passphrase)
+
+
+dec = cryptJSAESDecrypt("U2FsdGVkX18hXNoV11ymMi1d6Tbrs2McveVgTuqrWRAkByjyIDy3zYFnwrZaLBPQKYnvWRWilSjqICcMviQzGUKF+tEIsSE2cKaAFKkXsals2l2Yu8BeTdCmh068ZglNNQCHHXQCOB0d+dqOUJtRYZIqds6Odv+dGsYgxFvgQnaPK8zlXsQkpl/0AVGlj0F1FIkvyb7cBM2/WmFwsX3vuEOjh0DfSEFAIf0fVsPtV9dU6psnNU5dsS6C9PgeeV1cNJ84ift8T4AGV2xBMs8hFAzVBOo/MMSmUSF3mYchiDw6BMqKriES/qQxWetgHC/MjnhugKiaJkSelMOJoGVy/pmpTs/xI08YuE6dKCnMNtE=", "passcode".encode())
+
+print(dec)
