@@ -1,0 +1,1 @@
+.. drawio:: box.drawio
