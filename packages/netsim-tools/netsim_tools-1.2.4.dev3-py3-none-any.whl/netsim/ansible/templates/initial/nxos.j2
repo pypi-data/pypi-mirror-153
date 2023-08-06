@@ -1,0 +1,71 @@
+hostname {{ inventory_hostname }}
+!
+no ip domain-lookup
+!
+feature lldp
+!
+username vagrant password vagrant
+!
+{% for k,v in hostvars.items() if k != inventory_hostname and v.af.ipv4|default(False) %}
+{%   if v.loopback.ipv4 is defined %}
+ip host {{ k }} {{ v.loopback.ipv4|ipaddr('address') }}
+{%   elif v.interfaces|default([]) and v.interfaces[0].ipv4 is defined %}
+ip host {{ k }} {{ v.interfaces[0].ipv4|ipaddr('address') }}
+{%   endif %}
+{% endfor %}
+!
+interface loopback0
+{% if 'ipv4' in loopback %}
+ ip address {{ loopback.ipv4 }}
+{% endif %}
+{% if 'ipv6' in loopback %}
+ ipv6 address {{ loopback.ipv6 }}
+{% endif %}
+!
+interface {{ mgmt.ifname|default('GigabitEthernet0/0') }}
+ no lldp transmit
+ no lldp receive
+!
+{% for l in interfaces|default([]) %}
+interface {{ l.ifname }}
+ no shutdown
+ no switchport
+ mac-address {{ '52dc.cafe.%02d%02d' % ( id,l.ifindex ) }}
+{% if l.name is defined %}
+ description {{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}
+{% elif l.type|default("") == "stub" %}
+ description Stub interface
+{% endif %}
+{% if l.bandwidth is defined %}
+ bandwidth {{ l.bandwidth  }}
+{% endif %}
+{% if l.mtu is defined %}
+ mtu {{ l.mtu }}
+{% endif %}
+{#
+    IPv4 addresses
+#}
+{% if 'ipv4' in l %}
+{%   if l.ipv4 == True %}
+ medium p2p
+ ip unnumbered loopback0
+{%   elif l.ipv4|ipv4 %}
+ ip address {{ l.ipv4 }}
+{%   else %}
+! Invalid IPv4 address {{ l.ipv4 }}
+{%   endif %}
+{% endif %}
+{#
+    IPv6 addresses
+#}
+{% if 'ipv6' in l %}
+{%   if l.ipv6 == True %}
+ ipv6 address use-link-local-only
+{%   elif l.ipv6|ipv6 %}
+ ipv6 address {{ l.ipv6 }}
+{%   else %}
+! Invalid IPv6 address {{ l.ipv6 }}
+{%   endif %}
+{% endif %}
+!
+{% endfor %}

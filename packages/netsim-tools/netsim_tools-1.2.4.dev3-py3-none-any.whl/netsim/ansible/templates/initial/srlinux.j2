@@ -1,0 +1,98 @@
+{% macro ip_addresses(intf,ipv6_ra,is_system) %}
+{% if 'ipv4' in intf %}
+    ipv4:
+     address:
+     - ip-prefix: "{{ intf.ipv4 }}"
+{% if not is_system %}
+       primary: [null]
+{% endif %}
+{% endif %}
+{% if 'ipv6' in intf %}
+    ipv6:
+     address:
+     - ip-prefix: "{{ intf.ipv6 }}"
+{% if ipv6_ra %}
+     router-advertisement:
+      router-role:
+       admin-state: enable            # no ipv6 nd suppress-ra
+       max-advertisement-interval: 5  # ipv6 nd ra-interval 5
+{% endif %}
+{% endif %}
+{% endmacro %}
+
+updates:
+{% if mtu is defined %}
+{% if (clab.type in ['ixr6','ixr10'] and (mtu+14)>9486)
+   or (clab.type in ['ixrd1','ixrd2','ixrd3','ixrh1','ixrh2'] and (mtu+14)>9398) %}
+{{ mtu_too_large | mandatory( 'IP MTU '+str(mtu)+' too large for given hardware platform: ' + clab.type ) }}
+{% else %}
+- path: system/mtu
+  val:
+   default-port-mtu: {{ [mtu + 14,1500]|max }}
+   default-l2-mtu: {{ [mtu + 14,1500]|max }}
+   default-ip-mtu: {{ mtu }}
+   _annotate_default-ip-mtu: "Custom system wide setting, overrides default 1500"
+{% endif %}
+{% endif %}
+- path: interface[name=system0]/subinterface[index=0]
+  val:
+{{  ip_addresses(loopback,False,True)  }}
+
+{% for l in interfaces|default([]) if (l.type!='lan' or l.vlan is not defined) %}
+{% set if_name_index = l.ifname.split('.') %}
+{% set if_name = if_name_index[0] %}
+{% set if_index = if_name_index[1] if if_name_index|length > 1 else '0' %}
+- path: interface[name={{ if_name }}]
+  val:
+{% if l.name is defined %}
+   description: "{{ l.name|replace('->','~')|regex_replace('[\\[\\]]','') }}{{ " ("+l.role+")" if l.role is defined else '' }}"
+{% elif l.type|default("") == "stub" %}
+   description: "Stub interface"
+{% endif %}
+{% if l.mtu is defined %} # min 1500; max 9412 for 7220, 9500 for 7250 platforms
+   mtu {{ [l.mtu + 14,1500]|max }} # TODO not supported on loopback interfaces
+{% endif %}
+   vlan-tagging: {{ l.type in ["svi","vlan_member"] }}
+   subinterface:
+    index: {{ if_index }}
+{%  if if_index != '0' and l.type in ["svi","vlan_member"] %}
+    vlan:
+     encap:
+{%    if if_index != '1' or l.vlan is defined %}
+      single-tagged:
+       vlan-id: "{{ l.vlan.access_id if l.vlan is defined else if_index }}"
+{%    else %}
+      untagged: { }
+{%    endif %}
+{% endif %}
+{{  ip_addresses(l,True,False) }}
+{% endfor %}
+
+{% macro list_interfaces(vrf) %}
+{% for l in interfaces|default([]) if (l.type!='lan' or l.vlan is not defined) and l.vrf|default('default')==vrf %}
+{% set if_name_index = l.ifname.split('.') %}
+{% set if_name = if_name_index[0] %}
+{% set if_index = if_name_index[1] if if_name_index|length > 1 else '0' %}
+   - name: {{ if_name }}.{{ if_index }}
+{% endfor %}
+{% endmacro %}
+
+{# Make sure the default VRF is called 'default' #}
+- path: network-instance[name=default]
+  val:
+   type: default
+   interface:
+   - name: system0.0
+{{ list_interfaces('default') }}
+
+{% if vrfs is defined %}
+{% for vname,vdata in vrfs.items() %}
+- path: network-instance[name={{ vname }}]
+  val:
+   type: ip-vrf
+   # TODO: vdata.rd, vdata.import/export, vdata.af
+   interface:
+{{ list_interfaces(vname) }}
+
+{% endfor %}
+{% endif %}
