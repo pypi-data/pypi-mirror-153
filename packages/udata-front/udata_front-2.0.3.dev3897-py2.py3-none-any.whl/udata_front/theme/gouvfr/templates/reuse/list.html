@@ -1,0 +1,119 @@
+{% extends theme("layouts/1-column.html") %}
+{% from theme('macros/paginator.html') import paginator with context %}
+{% from theme('macros/sort_search.html') import sort_search %}
+
+{% set meta = {
+    'title': _('Reuses'),
+    'description': _("%(site)s reuse search", site=config['SITE_TITLE']),
+    'keywords': [_('search'), _('reuses')],
+    'robots': 'noindex',
+} %}
+
+{% set bundle = 'search' %}
+
+{% block breadcrumb %}
+<li class="active">
+    {{ _('Reuses') }}
+    <small>{{ _('%(start)s to %(end)s on %(total)s',
+            start=reuses.page_start,
+            end=reuses.page_end,
+            total=reuses.total) }}</small>
+</li>
+{% endblock %}
+
+{# TODO : pull this from somewhere else, results.facet doesn't contain the list when you're already in a filtered mode #}
+{% set reuses_topics = (
+    ('health', _('Health')),
+    ('transport_and_mobility', _('Transport and mobility')),
+    ('housing_and_development', _('Housing and development')),
+    ('food_and_agriculture', _('Food and agriculture')),
+    ('culture_and_recreation', _('Culture and recreation')),
+    ('economy_and_business', _('Economy and business')),
+    ('environment_and_energy', _('Environment and energy')),
+    ('work_and_training', _('Work and training')),
+    ('politics_and_public_life', _('Politics and public life')),
+    ('safety_and_security', _('Safety and security')),
+    ('education_and_research', _('Education and research')),
+    ('society_and_demography', _('Society and demography')),
+    ('law_and_justice', _('Law and justice')),
+    ('open_data_tools', _('Open data tools')),
+    ('others', _('Others')),
+) %}
+
+{% set sorts = [
+    {"label": _('Newest'),"value": "created", "order": "desc"},
+    {"label": _('Oldest'),"value": "created", "order": "asc"},
+    {"label": _('Followers'),"value": "followers", "order": "desc"}
+] %}
+
+{% block main_content %}
+<section class="fr-container fr-py-2w">
+    <h1 class="fr-mb-1w">{{_('Reuses')}}</h1>
+    <div class="fr-grid-row fr-grid-row--middle justify-between">
+        <div>{{_('Search among %(count)s reuses on %(site)s', count=current_site.metrics['reuses']|format_number, site=current_site.title)}}</div>
+        <a
+            href="{{ url_for('datasets.list', q=reuses.query._query) }}"
+            class="fr-link fr-text--sm fr-m-0">
+            {{ _('Search in datasets') }}
+        </a>
+    </div>
+    <div class="fr-pt-3v">
+        <form method="GET" class="fr-grid-row">
+            <div class="fr-search-bar fr-search-bar--lg w-100 fr-mb-5v" role="search">
+                <label class="fr-label" for="search-reuses">
+                    {{ _('Search...') }}
+                </label>
+                <input
+                    name="q"
+                    class="fr-input"
+                    placeholder="{{ _('Search...') }}"
+                    type="search"
+                    id="search-reuses"
+                    value="{{reuses.query._query}}"
+                />
+                <button class="fr-btn" title="{{_('Search')}}" type="submit">
+                    {{ _('Search') }}
+                </button>
+            </div>
+            <div class="fr-grid-row fr-mb-1v fr-displayed-lg">
+                <ul class="fr-tags-group">
+                    <li>
+                        <a
+                            href="{{ url_for('reuses.list') }}"
+                            class="fr-tag"
+                            {% if  not reuses.query._filters.topic %}aria-pressed="true"{% endif %}
+                        >
+                            {{ _('All') }}
+                        </a>
+                    </li>
+                    {% for topic_id, label in reuses_topics %}
+                        <li>
+                            <a
+                                href="{{ reuses.query.to_url(url, replace=True, **{'topic': topic_id}) }}"
+                                class="fr-tag"
+                                {% if reuses.query._filters and reuses.query._filters.topic and reuses.query._filters.topic == topic_id %}aria-pressed="true"{% endif %}
+                            >
+                                {{ label }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="w-100 fr-grid-row  fr-grid-row--middle justify-between">
+                <p class="fr-col-auto fr-my-0">{{ _('%(result)s results', result=reuses.total) }}</p>
+                {{sort_search(reuses, sorts)}}
+            </div>
+        </form>
+    </div>
+    {%if reuses %}
+    <ul class="search-results fr-grid-row fr-grid-row--gutters fr-mt-2w">
+        {% for reuse in reuses %}
+        <li class="fr-col-lg-3 fr-col-md-4 fr-col-sm-6 fr-col-12 fr-mb-3v">
+            {% include theme('reuse/card.html') %}
+        </li>
+        {% endfor %}
+    </ul>
+    {{ paginator(reuses) }}
+    {% endif %}
+</section>
+{% endblock %}
