@@ -1,0 +1,28 @@
+{% extends 'layout.html' %}
+
+{% macro render_dir(dir) -%}
+    <ul>
+        {% for note, path in dir.notes %}
+            <li><a class="{% if path == current %}current{% endif %}" href="{{ path }}/index.html">{{ note }}</a></li>
+        {% endfor %}
+        {% for subdir, path in dir.dirs %}
+            <li>
+                <a class="{% if path == current %}current{% endif %}" href="{{ path }}/index.html">{{ subdir }}</a>
+                {% if tree[subdir] %}
+                    {{ render_dir(tree[subdir]) }}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{%- endmacro %}
+
+{% block content %}
+    <main id="browse-note" role="main">
+        <div id="browse-note-index">
+            {{ render_dir(tree['.']) }}
+        </div>
+        <div class="note" id="note">
+            {{ html }}
+        </div>
+    </main>
+{% endblock %}

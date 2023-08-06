@@ -1,0 +1,280 @@
+{% extends 'layout.html' %}
+
+{% block styles %}
+<style>
+body {
+    overflow: hidden;
+    font-size: 1.5em;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <main id="main" role="main">
+        <div id="meta">
+            <div id="timer"></div>
+            <div id="progress"></div>
+        </div>
+        <div id="presenter-notes"></div>
+        <div id="counter"></div>
+        <div class="note" id="note">
+            {{ html }}
+        </div>
+        <div id="presentation">
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@0.3.20/dist/peer.min.js"></script>
+    <script type="text/javascript">
+        let nodes = document.getElementById('note').childNodes,
+            notes = document.getElementById('presenter-notes'),
+            out = document.getElementById('presentation'),
+            els = [[]],
+            curr_slide = window.location.hash ? parseInt(window.location.hash.substr(1)) : 0;
+
+        let params = window.location.search.substr(1).split('&').reduce((acc, param) => {
+            let val = true;
+            if (param.includes('=')) [param, val] = param.split('=');
+            acc[param] = val;
+            return acc;
+        }, {});
+
+        function timestamp() {
+            return Math.floor(Date.now() / 1000);
+        }
+
+        let onSlideChange = () => {};
+        // check if this should show presenter notes
+        if (params.presenter) {
+            notes.style.display = 'block';
+
+            let meta = document.getElementById('meta');
+            meta.style.display = 'block';
+
+            let timer = document.getElementById('timer');
+            let start = timestamp();
+            let interval = 100;
+            timer.innerText = 0;
+            setInterval(() => {
+                elapsed = timestamp() - start;
+                let min = Math.floor(elapsed/60);
+                let sec = elapsed % 60;
+                timer.innerText = `${min}:${sec.toFixed(0).padStart(2, '0')}`;
+            }, interval);
+
+            if (params.key) {
+                const followers = [];
+                let peer = new Peer(params.key);
+                peer.on('connection', (conn) => {
+                    console.log('Received follower');
+                    followers.push(conn);
+                });
+                onSlideChange = (i) => {
+                    followers.forEach((conn) => conn.send(i));
+                };
+            }
+        } else if (params.key){
+            let peer = new Peer();
+            let conn = peer.connect(params.key);
+            conn.on('open', () => {
+                console.log('Connected to leader');
+                conn.on('data', (data) => {
+                    curr_slide = data;
+                    show_slide(curr_slide);
+                });
+            });
+        }
+
+        function build_slide(elms) {
+            let slide = document.createElement('div');
+            slide.className = 'slide';
+
+            // to vertically center slide content
+            let slideBody = document.createElement('div');
+            slideBody.className = 'slide-body';
+
+            // to hold actual slide content
+            let slideContent = document.createElement('div');
+            slideContent.className = 'slide-content';
+
+            elms.forEach((el) => slideContent.appendChild(el));
+
+            slideBody.appendChild(slideContent);
+            if (slide.querySelectorAll('.background').length > 0) {
+                slide.className += ' has-background';
+            }
+
+            slide.appendChild(slideBody);
+            out.appendChild(slide);
+            return slide;
+        }
+
+        function scale_slides() {
+            let slides = document.querySelectorAll('.slide'),
+                win_width = window.innerWidth,
+                win_height = window.innerHeight;
+            slides.forEach((slide) => {
+                // Reset transform, otherwise offests include scale
+                slide.style.transform = '';
+                let content = slide.querySelector('.slide-content');
+                let slide_width = content.offsetWidth,
+                    slide_height = content.offsetHeight,
+                    scale = Math.min(win_width/slide_width, win_height/slide_height);
+                if (scale < 1) {
+                    slide.style.transform       = `scale(${scale})`;
+                    slide.style.transformOrigin = '50% 50%';
+
+                    // compensate background scaling
+                    let backgrounds = slide.querySelectorAll('.background');
+                    backgrounds.forEach((bg) => {
+                        bg.style.transform = 'scale(' + 1/scale + ')';
+                    });
+                }
+            });
+        }
+
+        // Build slides out of the note html, interpreting `hr` as a slide break.
+        nodes.forEach((node) => {
+            if (node.nodeName.toLowerCase() == 'hr') {
+                els.push([]);
+            } else {
+                els[els.length - 1].push(node);
+            }
+        });
+        els.forEach((el, i) => {
+            let slide = build_slide(el);
+            slide.id = `slide-${i}`;
+        });
+        document.getElementById('note').style.display = 'none';
+
+        let slides = document.querySelectorAll('.slide');
+
+        // setup backgrounds
+        let backgrounds = document.querySelectorAll('.background');
+        backgrounds.forEach((bg) => {
+            if (bg.src !== undefined) {
+                let figure = bg.closest('figure');
+                let caption = figure.querySelector('figcaption');
+                bg.style.backgroundImage = 'url(' + bg.src + ')';
+                bg.src = '';
+                bg.closest('.slide').appendChild(bg);
+                if (caption) {
+                    let bgCaption = document.createElement('div');
+                    bgCaption.classList.add('background-caption');
+                    bgCaption.innerHTML = caption.innerHTML;
+                    bg.closest('.slide').appendChild(bgCaption);
+                }
+                figure.parentNode.removeChild(figure);
+            }
+        });
+
+        function show_slide(i) {
+            slides.forEach((slide) => {
+                slide.style.visibility = 'hidden';
+                let videos = slide.querySelectorAll('video');
+                videos.forEach((video) => {
+                    video.pause();
+                    video.currentTime = 0;
+                });
+            });
+            slides[i].style.visibility = 'visible';
+            let videos = slides[i].querySelectorAll('video');
+            videos.forEach((video) => video.play());
+            notes.innerHTML = '';
+            slides[i].querySelectorAll('.comment').forEach((el) => {
+                let div = document.createElement('div');
+                div.innerHTML = el.innerHTML;
+                notes.appendChild(div);
+            });
+
+            let progress = document.getElementById('progress');
+            progress.innerText = `${i+1}/${slides.length}`;
+
+            let counter = document.getElementById('counter');
+            counter.innerText = `${i+1}/${slides.length}`;
+
+            window.location.hash = i;
+            onSlideChange(i);
+        }
+
+        function make_static() {
+            let slideBodies = document.querySelectorAll('.slide-body');
+            slides.forEach((slide, i) => {
+                slide.style.visibility = 'visible';
+                slide.style.position = 'relative';
+                slide.style.transform = '';
+                slideBodies[i].style.position = 'relative';
+            });
+            document.body.style.overflow = 'auto';
+        }
+
+        window.onload = function() {
+            if (params.static) {
+                make_static();
+            } else {
+                scale_slides();
+                show_slide(curr_slide);
+            }
+        };
+
+        // window.onload doesn't always fire
+        // this is a backup
+        setTimeout(() => window.onload(), 5000);
+
+        if (!params.static) {
+            window.onresize = scale_slides;
+        }
+
+        // used to update other windows in the slideshow
+        // for this to work, you can't open as `file://`
+        // you need to run it off a local server
+        function broadcast_slide(idx) {
+            localStorage.setItem('slide', idx);
+        }
+
+        if (!params.static) {
+            // If no p2p key set, use local storage
+            if (!params.key) {
+                window.addEventListener('storage', function(ev) {
+                    if (ev.key === 'slide') {
+                        let idx = parseInt(ev.newValue);
+                        curr_slide = idx;
+                        show_slide(curr_slide);
+                    }
+                }, false);
+            }
+
+            // Key navigation
+            document.onkeydown = function(e) {
+                e = e || window.event;
+                switch(e.which || e.keyCode) {
+                    case 70: // f
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                        } else {
+                            document.getElementById('main').requestFullscreen();
+                        }
+                        break;
+                    case 40: // down
+                    case 78: // n
+                        if (curr_slide < slides.length - 1) {
+                            curr_slide += 1;
+                            show_slide(curr_slide);
+                            broadcast_slide(curr_slide);
+                        }
+                        e.preventDefault();
+                        break;
+                    case 38: // up
+                    case 66: // b
+                        if (curr_slide > 0) {
+                            curr_slide -= 1;
+                            show_slide(curr_slide);
+                            broadcast_slide(curr_slide);
+                        }
+                        e.preventDefault();
+                        break;
+                }
+            }
+        }
+    </script>
+{% endblock %}
