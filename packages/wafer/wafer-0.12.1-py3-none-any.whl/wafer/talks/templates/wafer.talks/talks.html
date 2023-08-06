@@ -1,0 +1,87 @@
+{% extends "wafer/base.html" %}
+{% load i18n %}
+{% load review %}
+{% block title %}{% trans "Talks" %} - {{ WAFER_CONFERENCE_NAME }}{% endblock %}
+{% block content %}
+<section class="wafer wafer-talks">
+  {% regroup talk_list by talk_type.name as grouped_talks %}
+  <div class="table-responsive">
+    <table class='table table-striped'>
+      {% for type, talks in grouped_talks %}
+        <thead class='thead-dark'>
+          <tr>
+            <th>
+              {% if type %}
+                {{ type }}
+              {% else %}
+                {% trans "Talk" %}
+              {% endif %}
+            </th>
+            {% if languages %}<th>{% trans "Language" %}</th>{% endif %}
+            <th>{% trans "Speakers" %}</th>
+          </tr>
+        </thead>
+        {% for talk in talks %}
+          <tr>
+            <td>
+              {% if not talk.cancelled and not talk.accepted and talk.is_late_submission %}
+                <span class="badge badge-warning" title="{% trans 'Late submission' %}">L</span>
+              {% endif %}
+              {% if talk.submitted %}
+                <span class="badge badge-info" title="{% trans 'Submitted' %}">{{ talk.status }}</span>
+              {% elif talk.under_consideration %}
+                <span class="badge badge-info" title="{% trans 'Under consideration' %}">{{ talk.status }}</span>
+              {% elif talk.reject %}
+                <span class="badge badge-danger" title="{% trans 'Not accepted' %}">{{ talk.status }}</span>
+              {% elif talk.cancelled %}
+                <span class="badge badge-warning" title="{% trans 'Talk Cancelled' %}">{{ talk.status }}</span>
+              {% elif talk.provisional %}
+                <span class="badge badge-success" title="{% trans 'Provisionally Accepted' %}">{{ talk.status }}</span>
+              {% endif %}
+              {% reviewed_badge user talk %}
+              {% if talk.withdrawn %}
+                <del><a href="{{ talk.get_absolute_url }}">{{ talk.title }}</a></del>
+              {% else %}
+                <a href="{{ talk.get_absolute_url }}">{{ talk.title }}</a>
+              {% endif %}
+            </td>
+            {% if languages %}
+              <td>{{ talk.get_language_display }}</td>
+            {% endif %}
+            <td>
+              {% with authors=talk.get_authors_display_name %}
+                <span class="author">{{ authors }}</span>
+              {% endwith %}
+            </td>
+          </tr>
+        {% endfor %}
+      {% empty %}
+        <tr>
+          <th colspan="{% if languages %}3{% else %}2{% endif %}">
+            {% trans 'No talks accepted yet.' %}
+          </th>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+</section>
+{% if is_paginated %}
+  <section class="wafer wafer-pagination">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="{% url 'wafer_users_talks_page' page=page_obj.previous_page_number %}">&laquo;</a></li>
+      {% else %}
+        <li class="page-item" class="disabled"><a class="page-link" href="#">&laquo;</a></li>
+      {% endif %}
+      {% for page in paginator.page_range %}
+        <li class="page-item"><a class="page-link" href="{% url 'wafer_users_talks_page' page=page %}">{{ page }}</a></li>
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="{% url 'wafer_users_talks_page' page=page_obj.next_page_number %}">&raquo;</a></li>
+      {% else %}
+        <li class="page-item" class="disabled"><a class="page-link" href="#">&raquo;</a></li>
+      {% endif %}
+    </ul>
+  </section>
+{% endif %}
+{% endblock %}
