@@ -1,0 +1,57 @@
+
+<div class="container-fluid dashboard-content">
+    <!-- Header -->
+    {% set title = "Overall Time Distribution" %}
+    {% set navigation = [('Reports', ''), ('Time Distribution', '')] %}
+    {% include 'include_header.html' %}
+
+
+    <div class="row col-12 mb-4 ml-0 pl-0">
+        <div class="col-xl-3 col-lg-3 col-md-3 col-sm-3 col-3 ml-0 mb-1 pl-0">
+            <button type="submit" id="overall-btn" class="btn btn-outline-dark" onclick="onInvoicesClick()">
+                    See Invoices for this Period
+            </button>
+        </div>
+
+        <div class="col-xl-9 col-lg-9 col-md-9 col-sm-9 col-9 mr-0 pr-0">
+            <div class="row">
+                <div class="col text-right" style="margin-top: 7px;">
+                    <h5> Date Range </h5>
+                </div>
+                <div class="col col-auto nopadding">
+                    <input class="form-control" type="text" name="daterange" value="{{ start }} - {{ end }}" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'time_distribution.html' %}
+
+
+<script>
+    var start_date = new Date({{ start|tojson }});
+    var end_date  = new Date({{ end|tojson }});
+
+    $('.datetimepicker-input').datetimepicker({
+        format: 'YYYY/MM/DD'
+    });
+
+    $('input[name="daterange"]').daterangepicker({
+        "locale": {
+            "format": "YYYY/MM/DD",
+            "firstDay": 1
+        },
+        opens: 'left'
+    }, function(start, end, label) {
+        //console.log("A new date selection was made: " + start.format('YYYY/MM/DD') + ' to ' + end.format('YYYY/MM/DD'));
+        const base_url = "{{ url_for('main', content_id='reports_time_distribution', details=details_key) | safe }}";
+        window.location.href = base_url + "&start=" + start.format('YYYY/MM/DD') + "&end=" + end.format('YYYY/MM/DD');
+    });
+
+    function onInvoicesClick() {
+        // alert("Start: " +  start_date + " end:  " + end_date);
+        const base_url = "{{ url_for('main', content_id='reports_invoices', details=details_key) | safe }}";
+        window.location.href = base_url + "&start=" + dateStr(start_date) + "&end=" + dateStr(end_date);
+    }
+
+</script>
