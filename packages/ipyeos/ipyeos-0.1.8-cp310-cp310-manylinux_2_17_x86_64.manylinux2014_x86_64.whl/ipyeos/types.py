@@ -1,0 +1,2 @@
+Name = str
+PublicKey = str
