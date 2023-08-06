@@ -1,0 +1,209 @@
+{
+  "type": "record",
+  "name": "UpstreamLineage",
+  "namespace": "com.linkedin.pegasus2avro.dataset",
+  "doc": "Upstream lineage of a dataset",
+  "fields": [
+    {
+      "name": "upstreams",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "Upstream",
+          "doc": "Upstream lineage information about a dataset including the source reporting the lineage",
+          "fields": [
+            {
+              "name": "auditStamp",
+              "type": {
+                "type": "record",
+                "name": "AuditStamp",
+                "namespace": "com.linkedin.pegasus2avro.common",
+                "doc": "Data captured on a resource/association/sub-resource level giving insight into when that resource/association/sub-resource moved into a particular lifecycle stage, and who acted to move it into that specific lifecycle stage.",
+                "fields": [
+                  {
+                    "name": "time",
+                    "type": "long",
+                    "doc": "When did the resource/association/sub-resource move into the specific lifecycle stage represented by this AuditEvent."
+                  },
+                  {
+                    "name": "actor",
+                    "type": "string",
+                    "doc": "The entity (e.g. a member URN) which will be credited for moving the resource/association/sub-resource into the specific lifecycle stage. It is also the one used to authorize the change.",
+                    "java": {
+                      "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+                    }
+                  },
+                  {
+                    "name": "impersonator",
+                    "type": [
+                      "null",
+                      "string"
+                    ],
+                    "doc": "The entity (e.g. a service URN) which performs the change on behalf of the Actor and must be authorized to act as the Actor.",
+                    "default": null,
+                    "java": {
+                      "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+                    }
+                  }
+                ]
+              },
+              "doc": "Audit stamp containing who reported the lineage and when.\nWARNING: this field is deprecated and may be removed in a future release.",
+              "default": {
+                "actor": "urn:li:corpuser:unknown",
+                "impersonator": null,
+                "time": 0
+              },
+              "deprecated": "we no longer associate a timestamp per upstream edge"
+            },
+            {
+              "name": "dataset",
+              "type": "string",
+              "doc": "The upstream dataset the lineage points to",
+              "Relationship": {
+                "entityTypes": [
+                  "dataset"
+                ],
+                "isLineage": true,
+                "name": "DownstreamOf"
+              },
+              "Searchable": {
+                "fieldName": "upstreams",
+                "fieldType": "URN",
+                "queryByDefault": false
+              },
+              "java": {
+                "class": "com.linkedin.pegasus2avro.common.urn.DatasetUrn"
+              }
+            },
+            {
+              "name": "type",
+              "type": {
+                "type": "enum",
+                "name": "DatasetLineageType",
+                "doc": "The various types of supported dataset lineage",
+                "symbols": [
+                  "COPY",
+                  "TRANSFORMED",
+                  "VIEW"
+                ],
+                "symbolDocs": {
+                  "COPY": "Direct copy without modification",
+                  "TRANSFORMED": "Transformed data with modification (format or content change)",
+                  "VIEW": "Represents a view defined on the sources e.g. Hive view defined on underlying hive tables or a Hive table pointing to a HDFS dataset or DALI view defined on multiple sources"
+                }
+              },
+              "doc": "The type of the lineage"
+            }
+          ]
+        }
+      },
+      "doc": "List of upstream dataset lineage information"
+    },
+    {
+      "name": "fineGrainedLineages",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": {
+            "type": "record",
+            "name": "FineGrainedLineage",
+            "doc": "A fine-grained lineage from upstream fields/datasets to downstream field(s)",
+            "fields": [
+              {
+                "name": "upstreamType",
+                "type": {
+                  "type": "enum",
+                  "name": "FineGrainedLineageUpstreamType",
+                  "doc": "The type of upstream entity in a fine-grained lineage",
+                  "symbols": [
+                    "FIELD_SET",
+                    "DATASET",
+                    "NONE"
+                  ],
+                  "symbolDocs": {
+                    "DATASET": " Indicates that this lineage is originating from upstream dataset(s)",
+                    "FIELD_SET": " Indicates that this lineage is originating from upstream field(s)",
+                    "NONE": " Indicates that there is no upstream lineage i.e. the downstream field is not a derived field"
+                  }
+                },
+                "doc": "The type of upstream entity"
+              },
+              {
+                "name": "upstreams",
+                "type": [
+                  "null",
+                  {
+                    "type": "array",
+                    "items": "string"
+                  }
+                ],
+                "doc": "Upstream entities in the lineage",
+                "default": null
+              },
+              {
+                "name": "downstreamType",
+                "type": {
+                  "type": "enum",
+                  "name": "FineGrainedLineageDownstreamType",
+                  "doc": "The type of downstream field(s) in a fine-grained lineage",
+                  "symbols": [
+                    "FIELD",
+                    "FIELD_SET"
+                  ],
+                  "symbolDocs": {
+                    "FIELD": " Indicates that the lineage is for a single, specific, downstream field",
+                    "FIELD_SET": " Indicates that the lineage is for a set of downstream fields"
+                  }
+                },
+                "doc": "The type of downstream field(s)"
+              },
+              {
+                "name": "downstreams",
+                "type": [
+                  "null",
+                  {
+                    "type": "array",
+                    "items": "string"
+                  }
+                ],
+                "doc": "Downstream fields in the lineage",
+                "default": null
+              },
+              {
+                "name": "transformOperation",
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "doc": "The transform operation applied to the upstream entities to produce the downstream field(s)",
+                "default": null
+              },
+              {
+                "name": "confidenceScore",
+                "type": "float",
+                "doc": "The confidence in this lineage between 0 (low confidence) and 1 (high confidence)",
+                "default": 1.0
+              }
+            ]
+          }
+        }
+      ],
+      "doc": " List of fine-grained lineage information, including field-level lineage",
+      "default": null,
+      "Relationship": {
+        "/*/upstreams/*": {
+          "entityTypes": [
+            "dataset",
+            "schemaField"
+          ],
+          "name": "DownstreamOf"
+        }
+      }
+    }
+  ],
+  "Aspect": {
+    "name": "upstreamLineage"
+  }
+}
