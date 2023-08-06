@@ -1,0 +1,60 @@
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: mdns
+  namespace: openshift-infra
+  creationTimestamp:
+  deletionGracePeriodSeconds: 65
+  labels:
+    app: kcli-mdns
+spec:
+  volumes:
+  - name: conf-dir
+    hostPath:
+      path: "/etc/kubernetes"
+  initContainers:
+  - name: mdns-render-config
+    securityContext:
+      privileged: true
+    image: {{ disconnected_url if disconnected_url != None else 'quay.io' }}/karmab/curl:{{ arch_tag }}
+    command:
+    - "/bin/sh"
+    - "-c"
+    - |
+      #/bin/sh
+      {% if ipv6 %}
+      NIC=$(ip -6 r | grep -v lo | head -1 | sed 's/.*dev \(.*\) \(proto\|metric\).*/\1/' | awk '{print $1}')
+      IP=$(ip -6 -o addr show $NIC | grep -v 'fe80::' | awk '{print $4}' | cut -d "/" -f 1 | head -1)
+      {% else %}
+      NIC=$(ip r | grep default | tail -1 | sed 's/.*dev \(.*\) \(proto\|metric\).*/\1/')
+      IP=$(ip -4 -o addr show $NIC | awk '{print $4}' | cut -d "/" -f 1 | head -1)
+      {% endif %}
+      [ -z "$IP" ] && exit 1
+      HOSTNAME=$(hostname -s)
+      sed "s/IP/$IP/" /etc/mdns/config.hcl.templ > /etc/mdns/config.hcl
+      sed -i "s/HOSTNAME/$HOSTNAME/" /etc/mdns/config.hcl
+    resources: {}
+    volumeMounts:
+    - name: conf-dir
+      mountPath: "/etc/mdns"
+    imagePullPolicy: IfNotPresent
+  containers:
+  - name: mdns-publish
+    image: {{ disconnected_url if disconnected_url != None else 'quay.io' }}/karmab/mdns-publisher:{{ arch_tag }}
+    args:
+    - "--debug"
+    resources:
+      requests:
+        cpu: 150m
+        memory: 1Gi
+    volumeMounts:
+    - name: conf-dir
+      mountPath: "/etc/mdns"
+    terminationMessagePolicy: FallbackToLogsOnError
+    imagePullPolicy: IfNotPresent
+  hostNetwork: true
+  tolerations:
+  - operator: Exists
+  priorityClassName: system-node-critical
+status: {}

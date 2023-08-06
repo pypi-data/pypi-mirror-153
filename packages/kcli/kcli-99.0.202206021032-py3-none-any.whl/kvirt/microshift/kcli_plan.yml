@@ -1,0 +1,32 @@
+microshift_profile:
+ type: profile
+ domain: {{ domain }}
+ image: {{ image }}
+ noname: {{ noname }}
+ nets: [{{ network }}] 
+ memory: {{ memory }}
+ numcpus: {{ numcpus }}
+ files:
+ - scripts
+{% if 'manifests'|find_manifests %}
+ - manifests
+{% endif %}
+{% if pull_secret|exists %}
+ - path: /root/auth.json
+   origin: {{ pull_secret }}
+{% endif %}
+{% if kubeconfig_acm != None %}
+ - path: /root/kubeconfig.acm
+   origin: {{ kubeconfig_acm }}
+{% endif %}
+ scripts:
+ - scripts/deploy.sh
+
+{% for number in range(0, nodes|int) %}
+{{ cluster }}-{{ number }}:
+ profile: microshift_profile
+ wait: true
+ finishfiles:
+ - origin: {{ KUBECONFIG }}
+   path: ~/.kcli/clusters/{{ cluster }}/auth/kubeconfig.{{ number }}
+{% endfor %}
