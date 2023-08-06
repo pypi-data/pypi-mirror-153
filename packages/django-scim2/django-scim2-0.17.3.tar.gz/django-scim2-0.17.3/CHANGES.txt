@@ -1,0 +1,292 @@
+CHANGE LOG
+==========
+
+0.17.3
+------
+
+- Update build-system from poetry to poetry-core
+- Update Django dependency from 3.2.12 to 3.2.13
+- Change scim2-filter-parser pin to lower bound
+
+0.17.2
+------
+
+- Update tests to support Django4.0
+- Replace ugettext_lazy with gettext_lazy
+
+0.17.1
+------
+
+- Update docs to include information for available settings.
+- Add a setting for exposing SCIM errors to clients, `EXPOSE_SCIM_EXCEPTIONS`.
+  This setting defaults to false for security but can be toggled on for
+  backwards compatibility.
+
+0.17.0
+------
+
+- Inclusion of a post processor for querysets during GetView.get_many() calls.
+
+0.16.6
+------
+
+- Re-release of package due to pyproject.toml bug.
+
+0.16.5
+------
+
+- Re-release of package due to PyPI release bug.
+
+0.16.4
+------
+
+- Bug fixes
+
+0.16.3
+------
+- Consider nested fields in extra_filter_kwargs and extra_exclude_kwargs
+
+0.16.2
+------
+- Drop explicit support for Python 3.6
+- Complete migration to GitHub Actions
+
+0.16.2
+------
+- Upgrade version of scim2-filter-parser
+
+0.16.1
+------
+- Fix distribution issues with pyproject.toml file
+
+0.16.0
+------
+- Require SCIM IDs to be unique across all objects of a specific model.
+  POTENTIALLY BREAKING CHANGE.
+- Drop compatibility with all Django versions before 2.2.13
+  POTENTIALLY BREAKING CHANGE.
+
+0.15.0
+------
+- Add a get_object_post_processor function.
+- Drop compatibility with all Django versions before 2.0
+  POTENTIALLY BREAKING CHANGE.
+
+0.14.4
+------
+- Fix hard coded ATTR_MAP issue (#38). Thank you @horida.
+- Update replace calls to call self.save() rather than self.obj.save() (#40) Thanks @horida.
+- Update demo documentation and requirements
+- Upgrade dependency: scim2-filter-parser -> 0.3.4
+- Move CI to CircleCI: https://circleci.com/gh/15five/django-scim2
+
+0.14.3
+------
+- Handle SCIMParesrError errors gracefully
+
+0.14.2
+------
+- Run PATCH handlers for each parsed path and value
+
+0.14.1
+------
+- Fix issue #35. PATCH not working for boolean values
+
+0.14.0
+------
+- Upgrade dependency: scim2-filter-parser -> 0.3.2 to support complex paths
+- Move to the use of AttrPath objects for determining if a PATCH path
+  is complex or not. POTENTIALLY BREAKING CHANGE.
+
+0.13.2
+------
+- Add ENTERPRISE_URN to list of schemas
+
+0.13.1
+------
+- Allow for customization of paths to be logged
+
+0.13.0
+------
+- Added validation methods to adapters
+
+0.12.8
+------
+- Upgrade dependency: scim2-filter-parser -> 0.2.3 to fix tokenization error
+
+0.12.7
+------
+- Refactor location of ATTR_MAP, placed in filters.py
+- Fixed NameError
+- Add testing around complex queries
+- Upgrade dependency: scim2-filter-parser -> 0.2.2
+
+0.12.6
+------
+- Refactor ComplexAttrPaths to use custom class
+
+  This changes the API for PATCH handlers.
+  Handlers will take a 3-tuple as before and now, additionally,
+  a ComplexAttrPath object that contains information regarding
+  the complex path. Handlers look for this object to determine
+  if they need to perform extra handling to determine the attribute
+  that needs to be updated
+
+0.12.5
+------
+- Upgrade dependency: scim2-filter-parser -> 0.2.1
+
+0.12.4
+------
+- Upgrade dependency: scim2-filter-parser -> 0.2.0
+
+0.12.3
+------
+- Retain capitalization in filter queries
+- Add tests
+
+0.12.2
+------
+- Add AuthorizationError to exceptions
+
+0.12.1
+------
+- Improve PATCH paths passed into handlers.
+
+  If you have custom handlers for patch calls defined in your adapters file
+  (eg. def handle_add(path, value, operation): ...) then you will need to 
+  update your handlers to accept a 3-tuple in place of the current string held
+  by path. A quick fix for this is to add the following line to the beginning of
+  each handler:
+
+      path, subattr, uri = path
+
+  Thanks for your patience as we migrate to a better system for handling PATCH
+  paths.
+
+0.12.0
+------
+- Include schemas in packaged version. Thanks @stefanfoulis!
+- Fix #21. Store and return externalId
+- Fix #22. Handle more complicated PATH calls
+  Please note: the parse_path_and_value method on the SCIMMixin adapter
+  changed signature. Please update your code accordingly.
+
+0.11.1
+------
+- Add logic to add extra SQL to filters
+
+0.11.0
+------
+- Replace PyPlus with scim2-filter-parser for better filter parsing
+- Move tests out of django_scim app folder to root of repo
+
+0.10.7
+------
+- Return better errors for malformed or unsupported JSON bodies
+
+0.10.6
+------
+- Create a NotImplementedError for SCIM
+- Refactor FilterTransformers
+
+0.10.5
+------
+- Tone down the number of logged exceptions (if they are SCIMExceptions as those are somewhat expected)
+
+0.10.4
+------
+- Fix logging on requests. Log on more than 401s.
+
+0.10.3
+------
+- Increase logging level for failed SCIM view call
+
+0.10.2
+------
+- Add separate logging methods for requests and response
+
+0.10.1
+------
+- Add badges to README
+
+0.10.0
+------
+- Drop support for Python2
+  !!BREAKING CHANGE!!
+- Add linting and coverage
+
+0.9.0
+-----
+- Decouple Django object id and SCIM ID
+  !!MASSIVE BREAKING CHANGE!!
+- Add tests for Abstract SCIM models
+
+0.8.2
+-----
+- Only log during SCIM calls
+
+0.8.1
+-----
+- Fix failing tests
+
+0.8.0
+-----
+- Add basic abstract models for Users and Groups
+- Update parse path function
+- Added more to demo application
+
+0.7.0
+-----
+- Change where logging of requests is done (now in middleware)
+- Improve demo application
+
+0.6.0
+-----
+- Add tests for work on supporting complex SCIM filtering
+- Update PATCH handler to decipher path key
+
+  This commit contains a BREAKING CHANGE.
+
+  If you have overridden the "handle_<op_code>" methods on the User and
+  Group adapters, those methods need to be updated to take path, and value
+  in addition to operation.
+
+  New adapter signature:
+
+  def handle_<op_code (eg. add)>(self, path, value, operation):
+      ...
+
+0.5.3
+-----
+- Bug fix: https://github.com/15five/django-scim2/issues/13
+  Thank you @tomatsue
+
+0.5.2
+-----
+- Bug fix
+
+0.5.1
+-----
+- Added tests for grammar
+- Added back explicit support for python2.7 on Django 1.11
+
+0.5.0
+-----
+- Added a group grammar for parsing group pushes
+
+0.4.1
+-----
+- Docs changes
+
+0.4.0
+-----
+** BREAKING CHANGES **
+- Port to Python 3.6, drop support for anything less than Python 3.6
+- Port to Django 1.11+, drop support for anything less than Django 1.11
+
+** NON BREAKING CHANGES **
+- change accuracy of timestamp from micro- to milli-second
+- Upgrade dateutil library
+- Support Django 2.0.0
+
