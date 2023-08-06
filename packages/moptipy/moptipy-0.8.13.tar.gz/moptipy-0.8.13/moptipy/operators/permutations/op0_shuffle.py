@@ -1,0 +1,47 @@
+"""A nullary operator shuffling a permutation."""
+from typing import Final
+
+import numpy as np
+from numpy.random import Generator
+
+from moptipy.api.operators import Op0
+from moptipy.spaces.permutations import Permutations
+from moptipy.utils.types import type_error
+
+
+# start book
+class Op0Shuffle(Op0):
+    """Shuffle permutations randomly."""
+
+    def __init__(self, space: Permutations):
+        """
+        Initialize this shuffle operation: use blueprint from space.
+
+        :param space: the search space
+        """
+        if not space:  # -book
+            raise ValueError("space must not be None.")  # -book
+        if not isinstance(space, Permutations):  # -book
+            raise type_error(space, "space", Permutations)  # -book
+        #: the internal blueprint for filling permutations
+        self.__blueprint: Final[np.ndarray] = space.blueprint
+
+    def op0(self, random: Generator, dest: np.ndarray) -> None:
+        """
+        Copy the base string to `dest` and shuffle it randomly.
+
+        :param random: the random number generator
+        :param dest: the permutation that should be shuffled.
+            Afterwards, the order of its elements is random.
+        """
+        np.copyto(dest, self.__blueprint)  # Copy blueprint to dest.
+        random.shuffle(dest)  # Shuffle destination array randomly.
+    # end book
+
+    def __str__(self) -> str:
+        """
+        Get the name of this operator.
+
+        :return: "shuffle"
+        """
+        return "shuffle"
