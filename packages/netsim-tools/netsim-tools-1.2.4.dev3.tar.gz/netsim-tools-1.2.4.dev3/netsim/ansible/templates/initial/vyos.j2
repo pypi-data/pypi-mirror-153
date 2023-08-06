@@ -1,0 +1,87 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+
+if [ "$(id -g -n)" != 'vyattacfg' ] ; then
+    exec sg vyattacfg -c "/bin/vbash $(readlink -f $0) $@"
+fi
+
+# Configuration items start here
+
+configure
+{#
+It seems VyOS has some problems in handling hostnames with only one letter in it.
+#}
+{% if inventory_hostname|length > 1 %}
+set system host-name '{{ inventory_hostname }}'
+{% else %}
+set system host-name 'vyos-{{ inventory_hostname }}'
+{% endif %}
+
+{% if vrfs is defined %}
+{% include 'vyos.vrf.j2' %}
+{% endif %}
+{% if vlans is defined %}
+{% include 'vyos.vlan.j2' %}
+{% endif %}
+
+{% if 'ipv4' in loopback %}
+set interfaces dummy dum0 address {{ loopback.ipv4 }}
+{% endif %}
+{% if 'ipv6' in loopback %}
+set interfaces dummy dum0 address {{ loopback.ipv6 }}
+{% endif %}
+
+{% for l in interfaces|default([]) %}
+
+{#
+# - Define interface hierarchy/tree level (i.e. ethernet, bridge, ...)
+# - Set proper interface name to be used below
+# While right now the ifname, when a bridge, is always brX.Y,
+#  this code is ready for future "plain" bridges (i.e., br1)
+#}
+{%   set ns = namespace(iface_level="ethernet", ifname=l.ifname) %}
+{%   if l.ifname.startswith('br') %}
+{%     set ns.iface_level = "bridge" %}
+{%   elif l.ifname.startswith('dum') %}
+{%     set ns.iface_level = "dummy" %}
+{%   endif %}
+{#
+# Split interface name with vif, if needed
+#}
+{%   set ifnamedata = l.ifname.split('.') %}
+{%   if ifnamedata|length > 1 %}
+{%     set ns.ifname = ifnamedata[0] + ' vif ' + ifnamedata[1] %}
+{%   endif %}
+
+{% if l.name is defined %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} description '{{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}'
+{% elif l.type|default("") == "stub" %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} description 'Stub interface'
+{% endif %}
+
+{% if l.mtu is defined %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} mtu {{ l.mtu }}
+{% endif %}
+
+{% if 'ipv4' in l %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} address {{ l.ipv4 }}
+{% endif %}
+{% if 'ipv6' in l %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} address {{ l.ipv6 }};
+{% endif %}
+
+{% if l.vrf is defined %}
+set interfaces {{ ns.iface_level }} {{ ns.ifname }} vrf {{ l.vrf }}
+{% endif %}
+
+{% endfor %}
+
+set service lldp interface all
+set service lldp interface {{ mgmt.ifname|default('eth0') }} disable
+
+# Commit, save and exit from subshell
+
+commit
+save
+exit
+

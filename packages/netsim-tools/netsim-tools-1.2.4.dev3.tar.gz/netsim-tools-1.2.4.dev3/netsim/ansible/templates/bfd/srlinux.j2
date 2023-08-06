@@ -1,0 +1,18 @@
+updates:
+- path: bfd
+  val:
+   subinterface:
+
+{# Excluding loopback here... #}
+
+{% for l in interfaces|default([]) if bfd is defined or l.bfd|default(False) %}
+{% set disable_bfd = 'bfd' in l and not l.bfd %}
+   - id: {{ l.ifname }}.0
+     admin-state: "{{ 'enable' if not disable_bfd else 'disable' }}"
+{% if not disable_bfd %}
+     desired-minimum-transmit-interval: {{ bfd.min_tx * 1000 }}
+     required-minimum-receive: {{ bfd.min_rx * 1000 }}
+     detection-multiplier: {{ bfd.multiplier }} # range 1..20
+     minimum-echo-receive-interval: {{ bfd.min_echo_rx|default(0) * 1000 }}
+{% endif %}
+{% endfor %}
