@@ -1,0 +1,24 @@
+[Unit]
+Description=Glean for interface %I
+DefaultDependencies=no
+Before=network-pre.target
+After = glean-early.service
+Wants=network-pre.target glean-early.service
+
+# Red Hat
+ConditionPathExists=!/etc/sysconfig/network-scripts/ifcfg-%I
+# Suse
+ConditionPathExists=!/etc/sysconfig/network/ifcfg-%I
+# Debuntu
+ConditionPathExists=!/etc/network/interfaces.d/%I.cfg
+
+[Service]
+Type=oneshot
+User=root
+Environment="ARGS=--interface %I"
+ExecStartPre=%%GLEAN_SCRIPTS_DIR%%/python-glean %%EXTRA_ARGS%% ${ARGS}
+ExecStart=/sbin/ifup %I
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
