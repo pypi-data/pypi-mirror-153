@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% block title %}- Search for "{{ request.args.get('q') }}"{% endblock %}
+{% block body %}
+    <table class="table is-bordered is-striped is-narrow is-fullwidth is-hoverable">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>
+                <i class="fa fa-comment"></i>
+            </th>
+            <th>Link</th>
+            <th>Size</th>
+            <th>Date</th>
+            <th>
+                <i class="fa fa-arrow-up"></i>
+            </th>
+            <th>
+                <i class="fa fa-arrow-down"></i>
+            </th>
+            <th>
+                <i class="fa fa fa-check"></i>
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+
+        {% for connector in connectors %}
+            {% if connector.data|length > 0 or connector.is_more %}
+                <th colspan="8">{{ connector.title }}</th>
+            {% endif %}
+
+            {% for torrent in connector.data %}
+                <tr class="{{ torrent.class }}">
+                    <td>
+                        {{ torrent.vf|flagify }}
+                        <a href="{{ torrent.href }}" target="_blank">
+                            {{ torrent.name|boldify|safe }}
+                        </a>
+                    </td>
+
+                    {% if connector.is_light %}
+                        <td colspan="7">
+                            {{ torrent.type }}
+                        </td>
+                    {% else %}
+                        <td>
+                            {{ torrent.comment|safe }}
+                        </td>
+                        <td>
+                            {{ torrent.link|safe }}
+                        </td>
+                        <td>
+                            {{ torrent.size }}
+                        </td>
+                        <td>
+                            {{ torrent.date }}
+                        </td>
+                        <td>
+                            {{ torrent.seeds }}
+                        </td>
+                        <td>
+                            {{ torrent.leechs }}
+                        </td>
+                        <td>
+                            {{ torrent.downloads }}
+                        </td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+
+            {% if connector.is_more %}
+                <tr>
+                    <th colspan="8">
+                        <a href="{{ connector.get_full_search_url() }}" target="_blank">More ...</a>
+                    </th>
+                </tr>
+            {% endif %}
+
+            {% if connector.on_error %}
+                <tr class="is-danger">
+                    <th colspan="8" class="error">
+                        Error, can't grab data from {{ connector.title }}
+                        <a href="{{ connector.get_full_search_url() }}" target="_blank">Go to the website -></a>
+                    </th>
+                </tr>
+            {% endif %}
+        {% endfor %}
+
+        </tbody>
+    </table>
+{% endblock %}

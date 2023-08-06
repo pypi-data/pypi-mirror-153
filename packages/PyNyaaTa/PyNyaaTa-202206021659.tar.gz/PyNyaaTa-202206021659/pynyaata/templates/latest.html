@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+{% block title %}- Latest torrents{% endblock %}
+{% block body %}
+    <table class="table is-bordered is-striped is-narrow is-fullwidth is-hoverable is-size-7">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Link</th>
+            <th>Size</th>
+            <th>Date</th>
+            <th>
+                <i class="fa fa-arrow-up"></i>
+            </th>
+            <th>
+                <i class="fa fa-arrow-down"></i>
+            </th>
+            <th>
+                <i class="fa fa fa-check"></i>
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+
+        {% for torrent in torrents %}
+            <tr class="{{ torrent.class }}">
+                <td colspan="{{ '3' if torrent.self.is_light else '' }}">
+                    <img class="favicon"
+                         src="{{ url_for('static', filename='favicons/%s' % torrent.self.favicon) }}" alt="">
+                    <i>&nbsp;</i>
+                    {{ torrent.vf|flagify }}
+                    <a href="{{ torrent.href }}" target="_blank">
+                        {{ torrent.name|boldify|safe }}
+                    </a>
+                </td>
+
+                {% if torrent.self.is_light %}
+                    <td>
+                        {{ torrent.date }}
+                    </td>
+                    <td colspan="3">
+                        {{ torrent.type }}
+                    </td>
+                {% else %}
+                    <td>
+                        {{ torrent.link|safe }}
+                        {{ torrent.comment|safe }}
+                    </td>
+                    <td>
+                        {{ torrent.size }}
+                    </td>
+                    <td>
+                        {{ torrent.date }}
+                    </td>
+                    <td>
+                        {{ torrent.seeds }}
+                    </td>
+                    <td>
+                        {{ torrent.leechs }}
+                    </td>
+                    <td>
+                        {{ torrent.downloads }}
+                    </td>
+                {% endif %}
+
+            </tr>
+        {% endfor %}
+
+        </tbody>
+    </table>
+
+    <nav class="pagination is-right" role="navigation" aria-label="pagination">
+        {% if page > 1 %}
+            <a class="pagination-previous" href="{{ url_for('latest', page=(page - 1)) }}">
+                Previous
+            </a>
+        {% endif %}
+        <a class="pagination-next" href="{{ url_for('latest', page=(page + 1)) }}">
+            Next page
+        </a>
+        <ul class="pagination-list"></ul>
+    </nav>
+{% endblock %}
