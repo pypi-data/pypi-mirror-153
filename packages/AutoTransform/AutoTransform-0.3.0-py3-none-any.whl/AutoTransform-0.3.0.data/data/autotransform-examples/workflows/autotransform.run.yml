@@ -1,0 +1,40 @@
+name: Run AutoTransform
+
+on:
+  workflow_dispatch:
+    inputs:
+      schema:
+        description: "A JSON encoded schema to run"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  run-autotransform:
+    runs-on: ubuntu-latest
+    name: Run AutoTransform
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up git user
+      run: |
+        git config --global user.name "<BOT NAME>"
+        git config --global user.email "<BOT EMAIL>"
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Update pip
+      run: pip install --upgrade pip
+    - name: Install AutoTransform
+      run: pip install AutoTransform
+    - name: Install requirements
+      run: pip install -r <CONFIG DIR>/requirements.txt
+    - name: Run AutoTransform
+      run: autotransform run --environment --verbose AUTO_TRANSFORM_SCHEMA
+      env:
+        AUTO_TRANSFORM_CONFIG: environment
+        AUTO_TRANSFORM_GITHUB_TOKEN: ${{ secrets.AUTO_TRANSFORM_BOT_GITHUB_TOKEN }}
+        AUTO_TRANSFORM_SCHEMA: ${{ github.event.inputs.schema }}
+        AUTO_TRANSFORM_COMPONENT_DIRECTORY: <CUSTOM COMPONENTS>
