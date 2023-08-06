@@ -1,0 +1,155 @@
+Metadata-Version: 2.1
+Name: django-admin-extra-buttons
+Version: 1.4.2
+Summary: Django mixin to easily add buttons to any ModelAdmin
+Home-page: https://github.com/saxix/django-admin-extra-buttons
+License: UNKNOWN
+Download-URL: https://pypi.python.org/pypi/django-admin-extra-buttons
+Platform: linux
+Classifier: Environment :: Web Environment
+Classifier: Operating System :: OS Independent
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 2.2
+Classifier: Framework :: Django :: 3.2
+Classifier: Framework :: Django :: 4.0
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Software Development :: Libraries :: Application Frameworks
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Intended Audience :: Developers
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: dev
+Requires-Dist: autopep8 ; extra == 'dev'
+Requires-Dist: check-manifest ; extra == 'dev'
+Requires-Dist: django ; extra == 'dev'
+Requires-Dist: pip-tools ; extra == 'dev'
+Requires-Dist: flake8 ; extra == 'dev'
+Requires-Dist: pep8 ; extra == 'dev'
+Requires-Dist: readme ; extra == 'dev'
+Requires-Dist: sphinx ; extra == 'dev'
+Requires-Dist: wheel ; extra == 'dev'
+Requires-Dist: isort ; extra == 'dev'
+Provides-Extra: docs
+Requires-Dist: markdown-include ; extra == 'docs'
+Requires-Dist: mdx-gh-links ; extra == 'docs'
+Requires-Dist: mkdocs ; extra == 'docs'
+Requires-Dist: mkdocs-material ; extra == 'docs'
+Provides-Extra: test
+Requires-Dist: coverage ; extra == 'test'
+Requires-Dist: factory-boy ; extra == 'test'
+Requires-Dist: django-webtest ; extra == 'test'
+Requires-Dist: pdbpp ; extra == 'test'
+Requires-Dist: pyquery ; extra == 'test'
+Requires-Dist: pytest ; extra == 'test'
+Requires-Dist: pytest-cov ; extra == 'test'
+Requires-Dist: pytest-django ; extra == 'test'
+Requires-Dist: pytest-echo ; extra == 'test'
+Requires-Dist: pytest-pythonpath ; extra == 'test'
+Requires-Dist: tox (>=2.3) ; extra == 'test'
+Requires-Dist: wheel ; extra == 'test'
+
+django-admin-extra-buttons
+==========================
+
+
+[![Pypi](https://badge.fury.io/py/django-admin-extra-buttons.svg)](https://badge.fury.io/py/django-admin-extra-buttons)
+[![coverage](https://codecov.io/github/saxix/django-admin-extra-buttons/coverage.svg?branch=develop)](https://codecov.io/github/saxix/django-admin-extra-buttons?branch=develop)
+[![Test](https://github.com/saxix/django-admin-extra-buttons/actions/workflows/test.yml/badge.svg)](https://github.com/saxix/django-admin-extra-buttons/actions/workflows/test.yml)
+[![Docs](https://github.com/saxix/django-admin-extra-buttons/actions/workflows/docs.yml/badge.svg)](https://github.com/saxix/django-admin-extra-buttons/actions/workflows/docs.yml)
+
+![my image](https://raw.githubusercontent.com/saxix/django-admin-extra-buttons/develop/docs/images/screenshot.png)
+
+This is a full rewriting of the original `django-admin-extra-url`. It
+provides decorators to easily add custom buttons to Django Admin pages and/or add views to any ModelAdmin
+
+It allows easy creation of wizards, actions and/or links to external resources 
+as well as api only views.
+
+Three decorators are available: 
+
+- ``button()`` to mark a method as extra view and show related button
+- ``link()`` This is used for "external" link, where you don't need to invoke local views.
+- ``view()`` View only decorator, this adds a new url but do not render any button.
+
+
+Install
+-------
+
+    pip install django-admin-extra-buttons
+
+
+After installation add it to ``INSTALLED_APPS``
+
+    INSTALLED_APPS = (
+       ...
+       'admin_extra_buttons',
+    )
+
+How to use it
+-------------
+
+```python
+
+from admin_extra_buttons.api import ExtraButtonsMixin, button, confirm_action, link, view
+from admin_extra_buttons.utils import HttpResponseRedirectToReferrer
+from django.http import HttpResponse, JsonResponse
+from django.contrib import admin
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.csrf import csrf_exempt
+
+class MyModelModelAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+
+    @button(permission='demo.add_demomodel1',
+            change_form=True,
+            html_attrs={'style': 'background-color:#88FF88;color:black'})
+    def refresh(self, request):
+        self.message_user(request, 'refresh called')
+        # Optional: returns HttpResponse
+        return HttpResponseRedirectToReferrer(request)
+    
+    @button(html_attrs={'style': 'background-color:#DC6C6C;color:black'})
+    def confirm(self, request):
+        def _action(request):
+            pass
+
+        return confirm_action(self, request, _action, "Confirm action",
+                          "Successfully executed", )
+
+    @link(href=None, 
+          change_list=False, 
+          html_attrs={'target': '_new', 'style': 'background-color:var(--button-bg)'})
+    def search_on_google(self, button):
+        original = button.context['original']
+        button.label = f"Search '{original.name}' on Google"
+        button.href = f"https://www.google.com/?q={original.name}"
+
+    @view()
+    def select2_autocomplete(self, request):
+        return JsonResponse({})
+
+    @view(http_basic_auth=True)
+    def api4(self, request):
+        return HttpResponse("Basic Authentication allowed")
+
+    @view(decorators=[csrf_exempt, xframe_options_sameorigin])
+    def preview(self, request):
+        if request.method == "POST":
+            return HttpResponse("POST")
+        return HttpResponse("GET")
+            
+
+```
+
+#### Project Links
+
+
+- Code: https://github.com/saxix/django-admin-extra-buttons
+- Documentation: https://saxix.github.io/django-admin-extra-buttons/
+- Issue Tracker: https://github.com/saxix/django-admin-extra-buttons/issues
+- Download Package: https://pypi.org/project/django-admin-extra-buttons/
+
+
