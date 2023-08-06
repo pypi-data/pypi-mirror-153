@@ -1,0 +1,267 @@
+Metadata-Version: 2.1
+Name: plinux
+Version: 1.3.5
+Summary: The cross-platform tool to execute bash commands remotely.
+Home-page: https://github.com/c-pher/plinux
+Author: Andrey Komissarov
+Author-email: a.komisssarov@gmail.com
+License: GNU General Public License v3.0
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: paramiko (>=2.11.0)
+Requires-Dist: plogger (>=1.0.6)
+Requires-Dist: python-dateutil (>=2.8.1)
+
+[![PyPI version](https://badge.fury.io/py/plinux.svg)](https://badge.fury.io/py/plinux)
+[![Build Status](https://travis-ci.org/c-pher/plinux.svg?branch=master)](https://travis-ci.org/c-pher/plinux)
+
+# Plinux
+
+Cross-platform tool to work with remote Linux OS.
+
+Plinux based on paramiko project. It can establish ssh connection to a remote server, execute command as user or with sudo rights. Plinux returns object with exit code, sent command, stdout/sdtderr response.
+
+## Installation
+For most users, the recommended method to install is via pip:
+```cmd
+pip install plinux
+```
+## Import
+```python
+from plinux import Plinux
+```
+---
+## Usage
+#### The most recommended usage way:
+```python
+from plinux import Plinux
+
+client = Plinux(host="172.16.0.124", username="bobby", password="qawsedrf")
+response = client.run_cmd("hostname")
+print(response.stdout)  # WebServer
+print(response.ok)  # True
+```
+```python
+from plinux import Plinux
+
+client = Plinux()
+response = client.run_cmd_local("hostname")
+print(response.stdout)  # WebServer
+print(response.ok)  # True
+```
+
+#### Command using sudo:
+```python
+from plinux import Plinux
+
+client = Plinux(host="172.16.0.124", username="bobby", password="qawsedrf", logger_enabled=True)
+response = client.run_cmd("systemctl stop myservicename.service", sudo=True)
+
+print(response)  # ResponseParser(response=(0, None, None, "sudo -S -p '' -- sh -c 'systemctl stop myservicename.service'"))
+print(response.command)  # sudo -S -p '' -- sh -c 'systemctl stop myservicename.service'
+print(response.exited)  # 0
+```
+
+#### SFTP usage:
+```python
+from plinux import Plinux
+
+tool = Plinux(host="ftp.test.local", username="bobby", password="qawsedrf")
+sftp = tool.sftp
+print(sftp.listdir())
+```
+
+#### SQLite3 usage:
+```python
+from plinux import Plinux
+
+client = Plinux(host="cdn1.test.local", username="bobby", password="qawsedrf")
+
+db_path = '/opt/ProductName/nxdb/StorageConfig.db'
+sql = 'select Data from DtoDataContainer'
+db = client.sqlite3(db_path, sql).json()
+print(db)  # {"Settings1": 1, "Settings2": 2...,"Settings10": 10}
+print(db['Setting1'])  # {"Settings1": 1}
+```
+
+#### Aliases
+
+Some methods have "human commands" and aliases:
+
+* client.run_cmd("ls /home/bobby")
+* client.list_dir("/home/bobby")
+* client.ls("/home/bobby")
+
+---
+
+## Changelog
+
+##### UNRELEASED
+
+##### 1.3.5 (06.06.2022)
+
+python-dateutil added as dependency.
+
+New features:
+
+- get_ntp_servers()
+- get_time_date()
+- to_known_type() auxiliary method to convert string to python known data type
+
+##### 1.3.4 (03.06.2022)
+
+- get_ip_addresses_show() new method added
+
+##### 1.3.3 (17.04.2022)
+
+- refactored to manage logger state
+
+##### 1.3.2 (4.04.2022)
+
+- exceptions moved to separate "exceptions" module. e.g.
+
+```python
+from plinux.exceptions import PackageNotFoundError
+
+raise PackageNotFoundError
+```
+
+##### 1.3.1 (4.04.2022)
+
+- logger replaced with the plogger package
+
+##### 1.3.0.post1 (22.03.2022)
+
+- code cleanup
+
+##### 1.2.9 (22.03.2022)
+
+New method added:
+
+- .get_user_id()
+
+##### 1.2.8 (28.02.2022)
+
+- .sqlite3() extended with the timeout=1000 param
+
+##### 1.2.7 (22.02.2022)
+
+- PackageNotFoundError added
+
+##### 1.2.6 (18.02.2022)
+
+New methods added:
+
+- .is_security_update_available()
+- .get_disk_size()
+- .get_directory_size()
+- .get_port_listeners_process_id()
+- .get_process_cmdline()
+
+##### 1.2.5 (07.02.2022)
+.get_json() extended to decode BOM
+
+##### 1.2.4 (21.01.2022)
+Created instance with local execution by default (host=127.0.0.1).
+Python minimum version now is 3.9
+New method added:
+- get_installed_packages_versions: Get all installed packages and their versions. Returns dict.
+Minor: added some methods description
+
+##### 1.2.3 (7.12.2021)
+New method added:
+- get_ssl_fingerprint
+- get_ssl_serial
+- get_pid fixed to process list of pids
+
+##### 1.2.2 (7.12.2021)
+
+get_free_space fixed
+
+- Now it executes command towards "/" and with -h param by default.
+- method can accept different number of positional parameters as additional command argument ()
+- Specify empty mount_point (the first param as '') to get all disk info
+
+##### 1.2.1 (22.11.2021)
+
+Added:
+
+- get_package_version
+- is_package_upgradable
+- clear_file
+- get_ssl_certificate
+- validate_ssl_key
+- get_ssl_md5
+
+##### 1.2.0 (14.10.2021)
+
+- logger added as attr for inheritance
+
+##### 1.1.9 (12.05.2021)
+
+- create_file, get_file_size, grep_line_in_file, change_line_in_file, delete_line_from_file, get_last_file, remove,
+  extract_files, copy_file, get_md5, create_directory, list_dir to accept "sudo" param
+
+##### 1.1.8 (13.02.2021)
+
+- run_cmd_session method added. Can execute several commands one-by-one
+- ResponseParser updated to work with run_cmd_session (NOTE: exit code always be 0 for the "run_cmd_session")
+
+##### 1.1.7 (21.12.2020)
+
+logger extended to catch destination host
+
+##### 1.1.6 (29.11.2020)
+
+sqlite3 method updated to accept external parameters like "-line -header"
+
+##### 1.1.5 (07.11.2020)
+
+sqlite3 method added
+
+##### 1.1.4 (06.11.2020)
+
+- added 'sftp' property explicitly
+- 'cat', 'check_exists', 'get_json' now support sudo usage
+
+##### 1.1.3 (08.08.2020)
+get_pid method added
+
+##### 1.1.2 (25.04.2020)
+- send_cmd deprecated
+- fix password prompt in stderr
+
+
+##### 1.1.1 (29.03.2020)
+get_md5 method added
+
+##### 1.1.0 (19.03.2020)
+ResponseParser extended with json()
+
+
+##### 1.0.9 (28.02.2020)
+Log filehandler writes in utf8 from now
+
+##### 1.0.8 (06.02.2020)
+get_file_permission extended:
+- added faq
+- added "human=False" param returns access rights in human readable form otherwise in in octal
+- added alias "stat"
+
+##### 1.0.7 (30.01.2020)
+- ResponseParser methods notation changed.
+    - stdout -> str
+    - stderr -> str
+    - exited -> int
+    - ok -> bool
+    - command -> str
+
+##### 1.0.6 (29.01.2020)
+- kill_user_session method added
+
+##### 1.0.5 (26.01.2020)
+- logging refactored to avoid multiple log entries
