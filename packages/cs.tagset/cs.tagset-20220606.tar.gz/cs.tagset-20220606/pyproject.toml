@@ -1,0 +1,783 @@
+[project]
+name = "cs.tagset"
+description = "Tags and sets of tags with __format__ support and optional ontology information."
+authors = [
+    { name = "Cameron Simpson", email = "cs@cskk.id.au" },
+]
+keywords = [
+    "python3",
+]
+dependencies = [
+    "cs.cmdutils>=20210404",
+    "cs.dateutils>=20210306",
+    "cs.deco>=20220327",
+    "cs.edit>=20220429",
+    "cs.fileutils>=20220429",
+    "cs.fs>=20220429",
+    "cs.lex>=20220227",
+    "cs.logutils>=20220531",
+    "cs.mappings>=20220605",
+    "cs.obj>=20200716",
+    "cs.pfx>=20220523",
+    "cs.py3>=20220523",
+    "cs.resources>=20220429",
+    "cs.threads>=20211208",
+    "icontract",
+    "typeguard",
+]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
+version = "20220606"
+
+[project.license]
+text = "GNU General Public License v3 or later (GPLv3+)"
+
+[project.urls]
+URL = "https://bitbucket.org/cameron_simpson/css/commits/all"
+
+[project.readme]
+text = """
+Tags and sets of tags
+with __format__ support and optional ontology information.
+
+*Latest release 20220606*:
+* Tag.parse_value: bugfix parse of float.
+* TagSet.edit: accept optional comments parameter with addition header comment lines, be more tolerant of errors, avoid losing data on error.
+
+See `cs.fstags` for support for applying these to filesystem objects
+such as directories and files.
+
+See `cs.sqltags` for support for databases of entities with tags,
+not directly associated with filesystem objects.
+This is suited to both log entries (entities with no \"name\")
+and large collections of named entities;
+both accept `Tag`s and can be searched on that basis.
+
+All of the available complexity is optional:
+you can use `Tag`s without bothering with `TagSet`s
+or `TagsOntology`s.
+
+This module contains the following main classes:
+* `Tag`: an object with a `.name` and optional `.value` (default `None`)
+  and also an optional reference `.ontology`
+  for associating semantics with tag values.
+  The `.value`, if not `None`, will often be a string,
+  but may be any Python object.
+  If you're using these via `cs.fstags`,
+  the object will need to be JSON transcribeable.
+* `TagSet`: a `dict` subclass representing a set of `Tag`s
+  to associate with something;
+  it also has setlike `.add` and `.discard` methods.
+  As such it only supports a single `Tag` for a given tag name,
+  but that tag value can of course be a sequence or mapping
+  for more elaborate tag values.
+* `TagsOntology`:
+  a mapping of type names to `TagSet`s defining the type
+  and also to entries for the metadata for specific per-type values.
+
+Here's a simple example with some `Tag`s and a `TagSet`.
+
+    >>> tags = TagSet()
+    >>> # add a \"bare\" Tag named 'blue' with no value
+    >>> tags.add('blue')
+    >>> # add a \"topic=tagging\" Tag
+    >>> tags.set('topic', 'tagging')
+    >>> # make a \"subtopic\" Tag and add it
+    >>> subtopic = Tag('subtopic', 'ontologies')
+    >>> tags.add(subtopic)
+    >>> # Tags have nice repr() and str()
+    >>> subtopic
+    Tag(name='subtopic',value='ontologies')
+    >>> print(subtopic)
+    subtopic=ontologies
+    >>> # a TagSet also has a nice repr() and str()
+    >>> tags
+    TagSet:{'blue': None, 'topic': 'tagging', 'subtopic': 'ontologies'}
+    >>> print(tags)
+    blue subtopic=ontologies topic=tagging
+    >>> tags2 = TagSet({'a': 1}, b=3, c=[1,2,3], d='dee')
+    >>> tags2
+    TagSet:{'a': 1, 'b': 3, 'c': [1, 2, 3], 'd': 'dee'}
+    >>> print(tags2)
+    a=1 b=3 c=[1,2,3] d=dee
+    >>> # since you can print a TagSet to a file as a line of text
+    >>> # you can get it back from a line of text
+    >>> TagSet.from_line('a=1 b=3 c=[1,2,3] d=dee')
+    TagSet:{'a': 1, 'b': 3, 'c': [1, 2, 3], 'd': 'dee'}
+    >>> # because TagSets are dicts you can format strings with them
+    >>> print('topic:{topic} subtopic:{subtopic}'.format_map(tags))
+    topic:tagging subtopic:ontologies
+    >>> # TagSets have convenient membership tests
+    >>> # test for blueness
+    >>> 'blue' in tags
+    True
+    >>> # test for redness
+    >>> 'red' in tags
+    False
+    >>> # test for any \"subtopic\" tag
+    >>> 'subtopic' in tags
+    True
+    >>> # test for subtopic=ontologies
+    >>> print(subtopic)
+    subtopic=ontologies
+    >>> subtopic in tags
+    True
+    >>> # test for subtopic=libraries
+    >>> subtopic2 = Tag('subtopic', 'libraries')
+    >>> subtopic2 in tags
+    False
+
+## Ontologies
+
+`Tag`s and `TagSet`s suffice to apply simple annotations to things.
+However, an ontology brings meaning to those annotations.
+
+See the `TagsOntology` class for implementation details,
+access methods and more examples.
+
+Consider a record about a movie, with these tags (a `TagSet`):
+
+    title=\"Avengers Assemble\"
+    series=\"Avengers (Marvel)\"
+    cast={\"Scarlett Johansson\":\"Black Widow (Marvel)\"}
+
+where we have the movie title,
+a name for the series in which it resides,
+and a cast as an association of actors with roles.
+
+An ontology lets us associate implied types and metadata with these values.
+
+Here's an example ontology supporting the above `TagSet`:
+
+    type.cast type=dict key_type=person member_type=character description=\"members of a production\"
+    type.character description=\"an identified member of a story\"
+    type.series type=str
+    character.marvel.black_widow type=character names=[\"Natasha Romanov\"]
+    person.scarlett_johansson fullname=\"Scarlett Johansson\" bio=\"Known for Black Widow in the Marvel stories.\"
+
+The type information for a `cast`
+is defined by the ontology entry named `type.cast`,
+which tells us that a `cast` `Tag` is a `dict`,
+whose keys are of type `person`
+and whose values are of type `character`.
+(The default type is `str`.)
+
+To find out the underlying type for a `character`
+we look that up in the ontology in turn;
+because it does not have a specified `type` `Tag`, it it taken to be a `str`.
+
+Having the types for a `cast`,
+it is now possible to look up the metadata for the described cast members.
+
+The key `\"Scarlett Johansson\"` is a `person`
+(from the type definition of `cast`).
+The ontology entry for her is named `person.scarlett_johansson`
+which is computed as:
+* `person`: the type name
+* `scarlett_johansson`: obtained by downcasing `\"Scarlett Johansson\"`
+  and replacing whitespace with an underscore.
+  The full conversion process is defined
+  by the `TagsOntology.value_to_tag_name` function.
+
+The key `\"Black Widow (Marvel)\"` is a `character`
+(again, from the type definition of `cast`).
+The ontology entry for her is named `character.marvel.black_widow`
+which is computed as:
+* `character`: the type name
+* `marvel.black_widow`: obtained by downcasing `\"Black Widow (Marvel)\"`,
+  replacing whitespace with an underscore,
+  and moving a bracketed suffix to the front as an unbracketed prefix.
+  The full conversion process is defined
+  by the `TagsOntology.value_to_tag_name` function.
+
+## Format Strings
+
+You can just use `str.format_map` as shown above
+for the direct values in a `TagSet`,
+since it subclasses `dict`.
+
+However, `TagSet`s also subclass `cs.lex.FormatableMixin`
+and therefore have a richer `format_as` method which has an extended syntax
+for the format component.
+Command line tools like `fstags` use this for output format specifications.
+
+An example:
+
+    >>> # an ontology specifying the type for a colour
+    >>> # and some information about the colour \"blue\"
+    >>> ont = TagsOntology(
+    ...   {
+    ...       'type.colour':
+    ...       TagSet(description=\"a colour, a hue\", type=\"str\"),
+    ...       'colour.blue':
+    ...       TagSet(
+    ...           url='https://en.wikipedia.org/wiki/Blue',
+    ...           wavelengths='450nm-495nm'
+    ...       ),
+    ...   }
+    ... )
+    >>> # tag set with a \"blue\" tag, using the ontology above
+    >>> tags = TagSet(colour='blue', labels=['a', 'b', 'c'], size=9, _ontology=ont)
+    >>> tags.format_as('The colour is {colour}.')
+    'The colour is blue.'
+    >>> # format a string about the tags showing some metadata about the colour
+    >>> tags.format_as('Information about the colour may be found here: {colour:metadata.url}')
+    'Information about the colour may be found here: https://en.wikipedia.org/wiki/Blue'
+
+## Function `as_unixtime(*a, **kw)`
+
+Convert a tag value to a UNIX timestamp.
+
+This accepts `int`, `float` (already a timestamp)
+and `date` or `datetime`
+(use `datetime.timestamp() for a nonnaive `datetime`,
+otherwise `time.mktime(tag_value.time_tuple())`,
+which assumes the local time zone).
+
+## Class `BaseTagSets(cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, collections.abc.MutableMapping, collections.abc.Mapping, collections.abc.Collection, collections.abc.Sized, collections.abc.Iterable, collections.abc.Container)`
+
+Base class for collections of `TagSet` instances
+such as `cs.fstags.FSTags` and `cs.sqltags.SQLTags`.
+
+Examples of this include:
+* `cs.fstags.FSTags`: a mapping of filesystem paths to their associated `TagSet`
+* `cs.sqltags.SQLTags`: a mapping of names to `TagSet`s stored in an SQL database
+
+Subclasses must implement:
+* `get(name,default=None)`: return the `TagSet` associated
+  with `name`, or `default`.
+* `__setitem__(name,tagset)`: associate a `TagSet`with the key `name`;
+  this is called by the `__missing__` method with a newly created `TagSet`.
+* `keys(self)`: return an iterable of names
+
+Subclasses may reasonably want to override the following:
+* `startup_shutdown(self)`: context manager to allocate and release any
+  needed resources such as database connections
+
+Subclasses may implement:
+* `__len__(self)`: return the number of names
+
+The `TagSet` factory used to fetch or create a `TagSet` is
+named `TagSetClass`. The default implementation honours two
+class attributes:
+* `TAGSETCLASS_DEFAULT`: initially `TagSet`
+* `TAGSETCLASS_PREFIX_MAPPING`: a mapping of type names to `TagSet` subclasses
+
+The type name of a `TagSet` name is the first dotted component.
+For example, `artist.nick_cave` has the type name `artist`.
+A subclass of `BaseTagSets` could utiliise an `ArtistTagSet` subclass of `TagSet`
+and provide:
+
+    TAGSETCLASS_PREFIX_MAPPING = {
+      'artist': ArtistTagSet,
+    }
+
+in its class definition. Accesses to `artist.`* entities would
+result in `ArtistTagSet` instances and access to other enitities
+would result in ordinary `TagSet` instances.
+
+*Method `BaseTagSets.__init__(self, *, ontology=None)`*:
+Initialise the collection.
+
+## Class `MappingTagSets(BaseTagSets, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, collections.abc.MutableMapping, collections.abc.Mapping, collections.abc.Collection, collections.abc.Sized, collections.abc.Iterable, collections.abc.Container)`
+
+A `BaseTagSets` subclass using an arbitrary mapping.
+
+If no mapping is supplied, a `dict` is created for the purpose.
+
+Example:
+
+    >>> tagsets = MappingTagSets()
+    >>> list(tagsets.keys())
+    []
+    >>> tagsets.get('foo')
+    >>> tagsets['foo'] = TagSet(bah=1, zot=2)
+    >>> list(tagsets.keys())
+    ['foo']
+    >>> tagsets.get('foo')
+    TagSet:{'bah': 1, 'zot': 2}
+    >>> list(tagsets.keys(prefix='foo'))
+    ['foo']
+    >>> list(tagsets.keys(prefix='bah'))
+    []
+
+## Class `RegexpTagRule`
+
+A regular expression based `Tag` rule.
+
+This applies a regular expression to a string
+and returns inferred `Tag`s.
+
+## Function `selftest(argv)`
+
+Run some ad hoc self tests.
+
+## Class `Tag(Tag, builtins.tuple, cs.lex.FormatableMixin, cs.lex.FormatableFormatter, string.Formatter)`
+
+A `Tag` has a `.name` (`str`) and a `.value`
+and an optional `.ontology`.
+
+The `name` must be a dotted identifier.
+
+Terminology:
+* A \"bare\" `Tag` has a `value` of `None`.
+* A \"naive\" `Tag` has an `ontology` of `None`.
+
+The constructor for a `Tag` is unusual:
+* both the `value` and `ontology` are optional,
+  defaulting to `None`
+* if `name` is a `str` then we always construct a new `Tag`
+  with the suppplied values
+* if `name` is not a `str`
+  it should be a `Tag`like object to promote;
+  it is an error if the `value` parameter is not `None`
+  in this case
+* an optional `prefix` may be supplied
+  which is prepended to `name` with a dot (`'.'`) if not empty
+
+The promotion process is as follows:
+* if `name` is a `Tag` subinstance
+  then if the supplied `ontology` is not `None`
+  and is not the ontology associated with `name`
+  then a new `Tag` is made,
+  otherwise the original `Tag` is returned unchanged
+* otherwise a new `Tag` is made from `name`
+  using its `.value`
+  and overriding its `.ontology`
+  if the `ontology` parameter is not `None`
+
+Examples:
+
+    >>> ont = TagsOntology({'colour.blue': TagSet(wavelengths='450nm-495nm')})
+    >>> tag0 = Tag('colour', 'blue')
+    >>> tag0
+    Tag(name='colour',value='blue')
+    >>> tag = Tag(tag0)
+    >>> tag
+    Tag(name='colour',value='blue')
+    >>> tag = Tag(tag0, ontology=ont)
+    >>> tag # doctest: +ELLIPSIS
+    Tag(name='colour',value='blue',ontology=...)
+    >>> tag = Tag(tag0, prefix='surface')
+    >>> tag
+    Tag(name='surface.colour',value='blue')
+
+*Method `Tag.__init__(self, *a, **kw)`*:
+Dummy `__init__` to avoid `FormatableMixin.__init__`
+because we subclass `namedtuple` which has no `__init__`.
+
+## Function `tag_or_tag_value(*da, **dkw)`
+
+A decorator for functions or methods which may be called as:
+
+    func(name[,value])
+
+or as:
+
+    func(Tag)
+
+The optional decorator argument `no_self` (default `False`)
+should be supplied for plain functions
+as they have no leading `self` parameter to accomodate.
+
+Example:
+
+    @tag_or_tag_value
+    def add(self, tag_name, value, *, verbose=None):
+
+This defines a `.add()` method
+which can be called with `name` and `value`
+or with single `Tag`like object
+(something with `.name` and `.value` attributes),
+for example:
+
+    tags = TagSet()
+    ....
+    tags.add('colour', 'blue')
+    ....
+    tag = Tag('size', 9)
+    tags.add(tag)
+
+## Class `TagBasedTest(TagBasedTest, builtins.tuple, TagSetCriterion)`
+
+A test based on a `Tag`.
+
+Attributes:
+* `spec`: the source text from which this choice was parsed,
+  possibly `None`
+* `choice`: the apply/reject flag
+* `tag`: the `Tag` representing the criterion
+* `comparison`: an indication of the test comparison
+
+The following comparison values are recognised:
+* `None`: test for the presence of the `Tag`
+* `'='`: test that the tag value equals `tag.value`
+* `'<'`: test that the tag value is less than `tag.value`
+* `'<='`: test that the tag value is less than or equal to `tag.value`
+* `'>'`: test that the tag value is greater than `tag.value`
+* `'>='`: test that the tag value is greater than or equal to `tag.value`
+* `'~/'`: test if the tag value as a regexp is present in `tag.value`
+* '~': test if a matching tag value is present in `tag.value`
+
+## Class `TagFile(cs.fs.FSPathBasedSingleton, cs.obj.SingletonMixin, cs.fs.HasFSPath, BaseTagSets, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, collections.abc.MutableMapping, collections.abc.Mapping, collections.abc.Collection, collections.abc.Sized, collections.abc.Iterable, collections.abc.Container)`
+
+A reference to a specific file containing tags.
+
+This manages a mapping of `name` => `TagSet`,
+itself a mapping of tag name => tag value.
+
+## Class `TagsCommandMixin`
+
+Utility methods for `cs.cmdutils.BaseCommand` classes working with tags.
+
+Optional subclass attributes:
+* `TAGSET_CRITERION_CLASS`: a `TagSetCriterion` duck class,
+  default `TagSetCriterion`.
+  For example, `cs.sqltags` has a subclass
+  with an `.extend_query` method for computing an SQL JOIN
+  used in searching for tagged entities.
+
+## Class `TagSet(builtins.dict, cs.dateutils.UNIXTimeMixin, cs.lex.FormatableMixin, cs.lex.FormatableFormatter, string.Formatter, cs.mappings.AttrableMappingMixin)`
+
+A setlike class associating a set of tag names with values.
+
+This actually subclasses `dict`, so a `TagSet` is a direct
+mapping of tag names to values.
+It accepts attribute access to simple tag values when they
+do not conflict with the class methods;
+the reliable method is normal item access.
+
+*NOTE*: iteration yields `Tag`s, not dict keys.
+
+Also note that all the `Tags` from a `TagSet`
+share its ontology.
+
+Subclasses should override the `set` and `discard` methods;
+the `dict` and mapping methods
+are defined in terms of these two basic operations.
+
+`TagSet`s have a few special properties:
+* `id`: a domain specific identifier;
+  this may reasonably be `None` for entities
+  not associated with database rows;
+  the `cs.sqltags.SQLTags` class associates this
+  with the database row id.
+* `name`: the entity's name;
+  a read only alias for the `'name'` `Tag`.
+  The `cs.sqltags.SQLTags` class defines \"log entries\"
+  as `TagSet`s with no `name`.
+* `unixtime`: a UNIX timestamp,
+  a `float` holding seconds since the UNIX epoch
+  (midnight, 1 January 1970 UTC).
+  This is typically the row creation time
+  for entities associated with database rows,
+  but usually the event time for `TagSet`s describing an event.
+
+Because ` TagSet` subclasses `cs.mappings.AttrableMappingMixin`
+you can also access tag values as attributes
+*provided* that they do not conflict with instance attributes
+or class methods or properties.
+The `TagSet` class defines the class attribute `ATTRABLE_MAPPING_DEFAULT`
+as `None` which causes attribute access to return `None`
+for missing tag names.
+This supports code like:
+
+    if tags.title:
+        # use the title in something
+    else:
+        # handle a missing title tag
+
+*Method `TagSet.__init__(self, *a, **kw)`*:
+Initialise the `TagSet`.
+
+Parameters:
+* positional parameters initialise the `dict`
+  and are passed to `dict.__init__`
+* `_id`: optional identity value for databaselike implementations
+* `_ontology`: optional `TagsOntology to use for this `TagSet`
+* other alphabetic keyword parameters are also used to initialise the
+  `dict` and are passed to `dict.__init__`
+
+## Class `TagSetCriterion`
+
+A testable criterion for a `TagSet`.
+
+## Class `TagSetPrefixView(cs.lex.FormatableMixin, cs.lex.FormatableFormatter, string.Formatter)`
+
+A view of a `TagSet` via a `prefix`.
+
+Access to a key `k` accesses the `TagSet`
+with the key `prefix+'.'+k`.
+
+This is a kind of funny hybrid of a `Tag` and a `TagSet`
+in that some things such as `__format__`
+will format the `Tag` named `prefix` if it exists
+in preference to the subtags.
+
+Example:
+
+    >>> tags = TagSet(a=1, b=2)
+    >>> tags
+    TagSet:{'a': 1, 'b': 2}
+    >>> tags['sub.x'] = 3
+    >>> tags['sub.y'] = 4
+    >>> tags
+    TagSet:{'a': 1, 'b': 2, 'sub.x': 3, 'sub.y': 4}
+    >>> sub = tags.sub
+    >>> sub
+    TagSetPrefixView:sub.{'x': 3, 'y': 4}
+    >>> sub.z = 5
+    >>> sub
+    TagSetPrefixView:sub.{'x': 3, 'y': 4, 'z': 5}
+    >>> tags
+    TagSet:{'a': 1, 'b': 2, 'sub.x': 3, 'sub.y': 4, 'sub.z': 5}
+
+## Class `TagSetsSubdomain(cs.obj.SingletonMixin, cs.mappings.PrefixedMappingProxy, cs.mappings.RemappedMappingProxy)`
+
+A view into a `BaseTagSets` for keys commencing with a prefix
+being the subdomain plus a dot (`'.'`).
+
+## Class `TagsOntology(cs.obj.SingletonMixin, BaseTagSets, cs.resources.MultiOpenMixin, cs.context.ContextManagerMixin, collections.abc.MutableMapping, collections.abc.Mapping, collections.abc.Collection, collections.abc.Sized, collections.abc.Iterable, collections.abc.Container)`
+
+An ontology for tag names.
+This is based around a mapping of names
+to ontological information expressed as a `TagSet`.
+
+Normally an object's tags are not a self contained repository of all the information;
+instead a tag just names some information.
+
+As a example, consider the tag `colour=blue`.
+Meta information about `blue` is obtained via the ontology,
+which has an entry for the colour `blue`.
+We adopt the convention that the type is just the tag name,
+so we obtain the metadata by calling `ontology.metadata(tag)`
+or alternatively `ontology.metadata(tag.name,tag.value)`
+being the type name and value respectively.
+
+The ontology itself is based around `TagSets` and effectively the call
+`ontology.metadata('colour','blue')`
+would look up the `TagSet` named `colour.blue` in the underlying `Tagsets`.
+
+For a self contained dataset this means that it can be its own ontology.
+For tags associated with arbitrary objects
+such as the filesystem tags maintained by `cs.fstags`
+the ontology would be a separate tags collection stored in a central place.
+
+There are two main categories of entries in an ontology:
+* metadata: other entries named *typename*`.`*value_key*
+  contains a `TagSet` holding metadata for a value of type *typename*
+  whose value is mapped to *value_key*
+* types: an optional entry named `type.`*typename* contains a `TagSet`
+  describing the type named *typename*;
+  really this is just more metadata where the \"type name\" is `type`
+
+Metadata are `TagSets` instances describing particular values of a type.
+For example, some metadata for the `Tag` `colour=\"blue\"`:
+
+    colour.blue url=\"https://en.wikipedia.org/wiki/Blue\" wavelengths=\"450nm-495nm\"
+
+Some metadata associated with the `Tag` `actor=\"Scarlett Johansson\"`:
+
+    actor.scarlett_johansson role=[\"Black Widow (Marvel)\"]
+    character.marvel.black_widow fullname=[\"Natasha Romanov\"]
+
+The tag values are lists above because an actor might play many roles, etc.
+
+There's a convention for converting human descriptions
+such as the role string `\"Black Widow (Marvel)\"` to its metadata.
+* the value `\"Black Widow (Marvel)\"` if converted to a key
+  by the ontology method `value_to_tag_name`;
+  it moves a bracket suffix such as `(Marvel)` to the front as a prefix
+  `marvel.` and downcases the rest of the string and turns spaces into underscores.
+  This yields the value key `marvel.black_widow`.
+* the type is `role`, so the ontology entry for the metadata
+  is `role.marvel.black_widow`
+
+this requires type information about a `role`.
+Here are some type definitions supporting the above metadata:
+
+    type.person type=str description=\"A person.\"
+    type.actor type=person description=\"An actor's stage name.\"
+    type.character type=str description=\"A person in a story.\"
+    type.role type_name=character description=\"A character role in a performance.\"
+    type.cast type=dict key_type=actor member_type=role description=\"Cast members and their roles.\"
+
+The basic types have their Python names: `int`, `float`, `str`, `list`,
+`dict`, `date`, `datetime`.
+You can define subtypes of these for your own purposes
+as illustrated above.
+
+For example:
+
+    type.colour type=str description=\"A hue.\"
+
+which subclasses `str`.
+
+Subtypes of `list` include a `member_type`
+specifying the type for members of a `Tag` value:
+
+    type.scene type=list member_type=str description=\"A movie scene.\"
+
+Subtypes of `dict` include a `key_type` and a `member_type`
+specifying the type for keys and members of a `Tag` value:
+
+Accessing type data and metadata:
+
+A `TagSet` may have a reference to a `TagsOntology` as `.ontology`
+and so also do any of its `Tag`s.
+
+## Class `TagsOntologyCommand(cs.cmdutils.BaseCommand)`
+
+A command line for working with ontology types.
+
+Command line usage:
+
+    Usage: tagsontology subcommand [...]
+      Subcommands:
+        edit [{/name-regexp | entity-name}]
+          Edit entities.
+          With no arguments, edit all the entities.
+          With an argument starting with a slash, edit the entities
+          whose names match the regexp.
+          Otherwise the argument is expected to be an entity name;
+          edit the tags of that entity.
+        help [-l] [subcommand-names...]
+          Print the full help for the named subcommands,
+          or for all subcommands if no names are specified.
+          -l  Long help even if no subcommand-names provided.
+        meta tag=value
+        type
+            With no arguments, list the defined types.
+          type type_name
+            With a type name, print its `Tag`s.
+          type type_name edit
+            Edit the tags defining a type.
+          type type_name edit meta_names_pattern...
+            Edit the tags for the metadata names matching the
+            meta_names_patterns.
+          type type_name list
+          type type_name ls
+            List the metadata names for this type and their tags.
+          type type_name + entity_name [tags...]
+            Create type_name.entity_name and apply the tags.
+
+# Release Log
+
+
+
+*Release 20220606*:
+* Tag.parse_value: bugfix parse of float.
+* TagSet.edit: accept optional comments parameter with addition header comment lines, be more tolerant of errors, avoid losing data on error.
+
+*Release 20220430*:
+* TagSetPrefixView: new as_dict() method.
+* TagSetPrefixView.__str__: behave like TagSet.__str__.
+* TagFile.save_tagsets: do not try to save if the file is missing and the tagsets are empty.
+* New TagSet.from_tags(tags) factory to make a new TagSet from an iterable of tags.
+* TagSetPrefixView: add .get and .setdefault mapping methods.
+* RegexpTagRule: accept optional tag_prefix parameter.
+* Tagset: new from_ini() and save_as_ini() methods to support cs.timeseries config files, probably handy elsewhere.
+
+*Release 20220311*:
+Assorted internal changes.
+
+*Release 20211212*:
+* Tag: new fallback_parse parameter for value parsing, default get_nonwhite.
+* Tag: new from_arg factory with fallback_parse grabbing the whole string for command line arguments, thus supporting unquoted strings for ease of use.
+* TagSetCriterion: new optional fallback_parse parameter and from_arg method as for the Tag factories.
+* Tag.transcribe_value: accept optional json_options to control the JSON encoder, used for human friendly multiline edits in cs.app.tagger.
+* Rename edit_many to edit_tagsets for clarity.
+* TagsOntology: new type_values method to return values for a type (derived from their metadata entries).
+* Tag: new alt_values method returning its TagsOntology.type_values.
+* (Internal) New _FormatStringTagProxy which proxies a Tag but uses str(self.__proxied.value) for __str__ to support format strings.
+* (Internal) TagSet.get_value: if arg_name matches a Tag, return a _FormatStringTagProxy.
+* Tag.__new__: accept (tag_name,value) or (Tag) as initialisation parameters.
+
+*Release 20210913*:
+* TagSet.get_value: raise KeyError in strict mode, leave placeholder otherwise.
+* Other small changes.
+
+*Release 20210906*:
+Many many updates; some semantics have changed.
+
+*Release 20210428*:
+Bugfix TagSet.set: internal in place changes to a complex tag value were not noticed, causing TagFile to not update on shutdown.
+
+*Release 20210420*:
+* TagSet: also subclass cs.dateutils.UNIXTimeMixin.
+* Various TagSetNamespace updates and bugfixes.
+
+*Release 20210404*:
+Bugfix TagBasedTest.COMPARISON_FUNCS[\"=\"]: if cmp_value is None, return true (the tag is present).
+
+*Release 20210306*:
+* ExtendedNamespace,TagSetNamespace: move the .[:alpha:]* attribute support from ExtendedNamespace to TagSetNamespace because it requires Tags.
+* TagSetNamespace.__getattr__: new _i, _s, _f suffixes to return int, str or float tag values (or None); fold _lc in with these.
+* Pull most of `TaggedEntity` out into `TaggedEntityMixin` for reuse by domain specific tagged entities.
+* TaggedEntity: new .set and .discard methods.
+* TaggedEntity: new as_editable_line, from_editable_line, edit and edit_entities methods to support editing entities using a text editor.
+* ontologies: type entries are now prefixed with \"type.\" and metadata entries are prefixed with \"meta.\"; provide a worked ontology example in the introduction and improve related docstrings.
+* TagsOntology: new .types(), .types_names(), .meta(type_name,value), .meta_names() methods.
+* TagsOntology.__getitem__: create missing TagSets on demand.
+* New TagsOntologyCommand, initially with a \"type [type_name [{edit|list}]]\" subcommand, ready for use as the cmd_ont subcommand of other tag related commands.
+* TagSet: support initialisation like a dict including keywords, and move the `ontology` parameter to `_onotology`.
+* TagSet: include AttrableMappingMixin to enable attribute access to values when there is no conflict with normal methods.
+* UUID encode/decode support.
+* Honour $TAGSET_EDITOR or $EDITOR as preferred interactive editor for tags.
+* New TagSet.subtags(prefix) to extract a subset of the tags.
+* TagsOntology.value_metadata: new optional convert parameter to override the default \"convert human friendly name\" algorithm, particularly to pass convert=str to things which are already the basic id.
+* Rename TaggedEntity to TagSet.
+* Rename TaggedEntities to TagSets.
+* TagSet: new csvrow and from_csvrow methods imported from obsolete TaggedEntityMixin class.
+* Move BaseTagFile from cs.fstags to TagFile in cs.tagset.
+* TagSet: support access to the tag \"c.x\" via attributes provided there is no \"c\" tag in the way.
+* TagSet.unixtime: implement the autoset-to-now semantics.
+* New as_timestamp(): convert date, datetime, int or float to a UNIX timestamp.
+* Assorted docstring updates and bugfixes.
+
+*Release 20200716*:
+* Update for changed cs.obj.SingletonMixin API.
+* Pull in TaggedEntity from cs.sqltags and add the .csvrow property and the .from_csvrow factory.
+
+*Release 20200521.1*:
+Fix DISTINFO.install_requires, drop debug import.
+
+*Release 20200521*:
+* New ValueDetail and KeyValueDetail classes for returning ontology information; TagInfo.detail now returns a ValueDetail for scalar types, a list of ValueDetails for sequence types and a list of KeyValueDetails for mapping types; drop various TagInfo mapping/iterable style methods, too confusing to use.
+* Plumb ontology parameter throughout, always optional.
+* Drop TypedTag, Tags now use ontologies for this.
+* New TagsCommandMixin to support BaseCommands which manipulate Tags.
+* Many improvements and bugfixes.
+
+*Release 20200318*:
+* *Note that the TagsOntology stuff is in flux and totally alpha.*
+* Tag.prefix_name factory returning a new tag if prefix is not empty, ptherwise self.
+* TagSet.update: accept an optional prefix for inserting \"foreign\" tags with a distinguishing name prefix.
+* Tag.as_json: turn sets and tuples into lists for encoding.
+* Backport for Python < 3.7 (no fromisoformat functions).
+* TagSet: drop unused and illplaced .titleify, .episode_title and .title methods.
+* TagSet: remove \"defaults\", unused.
+* Make TagSet a direct subclass of dict, adjust uses of .update etc.
+* New ExtendedNamespace class which is a SimpleNamespace with some inferred attributes and a partial mapping API (keys and __getitem__).
+* New TagSet.ns() returning the Tags as an ExtendedNamespace, which doubles as a mapping for str.format_map; TagSet.format_kwargs is now an alias for this.
+* New Tag.from_string factory to parse a str into a Tag.
+* New TagsOntology and TypedTag classes to provide type and value-detail information; very very alpha and subject to change.
+
+*Release 20200229.1*:
+Initial release: pull TagSet, Tag, TagChoice from cs.fstags for independent use."""
+content-type = "text/markdown"
+
+[build-system]
+requires = [
+    "setuptools >= 61.0",
+    "trove-classifiers",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
