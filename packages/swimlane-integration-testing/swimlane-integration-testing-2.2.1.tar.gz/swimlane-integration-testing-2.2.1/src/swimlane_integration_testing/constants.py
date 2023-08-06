@@ -1,0 +1,4 @@
+FALSY_VALUES = (
+    "",
+    None,
+)
