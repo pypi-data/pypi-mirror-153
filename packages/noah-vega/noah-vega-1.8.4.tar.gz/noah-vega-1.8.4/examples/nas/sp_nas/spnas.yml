@@ -1,0 +1,150 @@
+pipeline: [fine_tune, serial, reignition, parallel, fullytrain]
+
+fine_tune:
+    pipe_step:
+        type: TrainPipeStep
+
+    model:
+        pretrained_model_file: /cache/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth
+        model_desc:
+            type: FasterRCNN
+            convert_pretrained: True
+            backbone:
+                type: SerialBackbone
+
+    trainer:
+        type: Trainer
+        epochs: 1
+        with_train: False
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.02
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: WarmupScheduler
+            by_epoch: False
+            params:
+                warmup_type: linear
+                warmup_iters: 1000
+                warmup_ratio: 0.001
+                after_scheduler_config:
+                    type: MultiStepLR
+                    by_epoch: True
+                    params:
+                        milestones: [ 10, 20 ]
+                        gamma: 0.1
+        loss:
+            type: SumLoss
+        metric:
+            type: coco
+            params:
+                anno_path: /cache/datasets/COCO2017/annotations/instances_val2017.json
+
+    dataset:
+        type: CocoDataset
+        common:
+            data_root: /cache/datasets/COCO2017
+            batch_size: 4
+            img_prefix: "2017"
+            ann_prefix: instances
+serial:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: SpNasS
+        max_sample: 20
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: network.backbone.code
+                type: CATEGORY
+                range: ['111-2111-211111-211']
+
+    model:
+        pretrained_model_file: "{local_base_path}/output/fine_tune/model_0.pth"
+        model_desc:
+            type: FasterRCNN
+            freeze_swap_keys: True
+            backbone:
+                type: SerialBackbone
+    trainer:
+        ref: fine_tune.trainer
+        epochs: 3
+
+    dataset:
+        ref: fine_tune.dataset
+
+reignition:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/serial/"
+
+    dataset:
+        type: Imagenet
+        common:
+            data_path: /cache/datasets/ILSVRC/Data/CLS-LOC
+            batch_size: 128
+
+    trainer:
+        type: Trainer
+        epochs: 20
+        callbacks: ReignitionCallback
+        mixup: True
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.1
+                momentum: 0.9
+                weight_decay: !!float 1e-4
+        lr_scheduler:
+            type: CosineAnnealingLR
+            by_epoch: True
+            params:
+                T_max: 20
+        loss:
+            type: CrossEntropyLoss
+
+parallel:
+    pipe_step:
+        type: SearchPipeStep
+        models_folder: "{local_base_path}/output/reignition/"
+
+    search_algorithm:
+        type: SpNasP
+        max_sample: 20
+
+    model:
+        pretrained_model_file: "{local_base_path}/output/fine_tune/model_0.pth"
+        model_desc:
+            type: FasterRCNN
+            neck:
+                type: ParallelFPN
+
+    search_space:
+        type: SearchSpace
+        hyperparameters:
+            -   key: network.neck.code
+                type: CATEGORY
+                range: [[0, 1, 2, 3]]
+
+    trainer:
+        ref: serial.trainer
+
+    dataset:
+        ref: serial.dataset
+
+fullytrain:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/parallel/"
+
+    trainer:
+        ref: serial.trainer
+        epochs: 24
+
+    dataset:
+        ref: serial.dataset

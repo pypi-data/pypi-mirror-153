@@ -1,0 +1,48 @@
+# During network architecture search, you can set the quota parameter to limit the model to a specified range.
+#
+# The following quota parameters can be set:
+# 1. max flops
+# 2. max params
+# 3. max latency
+# 4. model is valid
+#
+# The following is a configuration example.
+
+
+#### copy the following configuration to your yaml file ####
+general:
+    quota: "flops < 1.6 and params < 1e10 and model_valid and host_latency < 10"
+########################### end #############################
+
+
+pipeline: [nas]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+    search_algorithm:
+        type: RandomSearch
+        policy:
+            num_sample: 50
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.depth
+                type: CATEGORY
+                range: [18, 34]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56]
+    model:
+        model_desc:
+            modules: ['backbone']
+            backbone:
+                type: ResNet
+                num_class: 10
+    trainer:
+        type: Trainer
+        epochs: 3
+    dataset:
+        type: Cifar10
+        common:
+            data_path: /cache/datasets/cifar10/

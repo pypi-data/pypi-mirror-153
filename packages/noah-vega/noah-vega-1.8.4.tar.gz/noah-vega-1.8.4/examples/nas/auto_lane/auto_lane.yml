@@ -1,0 +1,162 @@
+general:
+    backend: pytorch
+    parallel_search: True
+    parallel_fully_train: True
+    requires: ["intervaltree", "ujson", "PrettyTable"]
+
+
+pipeline: [nas, fully_train]
+
+
+nas:
+    pipe_step:
+        type: SearchPipeStep
+
+    search_algorithm:
+        type: AutoLaneNas
+        codec: AutoLaneNasCodec
+        random_ratio: 0.5
+        num_mutate: 20
+        max_sample: 5000
+        min_sample: 50
+        flops_ceiling_set_by_GFlops: 1
+    search_space:
+        hyperparameters:
+            -   key: network.backbone.base_depth
+                type: CATEGORY
+                range: [18, 34, 50, 101]
+            -   key: network.backbone.type
+                type: CATEGORY
+                range: [ResNetVariantDet, ResNeXtVariantDet]
+            -   key: network.backbone.base_channel
+                type: CATEGORY
+                range:  [32, 48, 56, 64]
+            -   key: network.neck.arch_code
+                type: CATEGORY
+                range: ['012-022', '012-122', '122-022','-']
+            -   key: network.neck.type
+                type: CATEGORY
+                range: [FeatureFusionModule]
+
+    model:
+        model_desc:
+            modules: ['backbone','neck']
+            backbone:
+                type: [ResNetVariantDet, ResNeXtVariantDet]
+            neck:
+                type: FeatureFusionModule
+
+    trainer:
+        type: Trainer
+        save_model_desc: True
+        with_valid: True
+        is_detection_trainer: True
+        callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
+        report_freq: 50
+        valid_interval: 10
+        epoch: 40
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.02
+                momentum: 0.9
+                weight_decay: 0.0001
+        lr_scheduler:
+            type: WarmupScheduler
+            params:
+                warmup_type: linear
+                warmup_iters: 5000
+                warmup_ratio: 0.1
+                after_scheduler_config:
+                    by_epoch: False
+                    type: CosineAnnealingLR
+                    params:
+                        T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
+        metric:
+            type: LaneMetric
+            params:
+                method: f1_measure
+                eval_width: 1640
+                eval_height: 590
+                iou_thresh: 0.5
+                lane_width: 30
+                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]
+
+    dataset:
+        type: AutoLaneDataset
+        common:
+            network_input_width: 512
+            network_input_height: 288
+            gt_len: 145
+            gt_num: 576
+            batch_size: 32
+            num_workers: 12
+            data_path: /cache/datasets/CULane/
+            dataset_format: CULane
+        train:
+            with_aug: False
+            shuffle: True
+            random_sample: True
+        val:
+            shuffle: False
+        test:
+            shuffle: False
+
+fully_train:
+    pipe_step:
+        type: TrainPipeStep
+        models_folder: "{local_base_path}/output/nas/"
+    trainer:
+        type: Trainer
+        is_detection_trainer: True
+        valid_interval: 100
+        callbacks: ['AutoLaneTrainerCallback','DetectionMetricsEvaluator','DetectionProgressLogger']
+        report_freq: 50
+        epochs: 40
+        optimizer:
+            type: SGD
+            params:
+                lr: 0.02
+                momentum: 0.9
+                weight_decay: 0.0001
+        lr_scheduler:
+            type: WarmupScheduler
+            by_epoch: False
+            params:
+                warmup_type: linear
+                warmup_iters: 5000
+                warmup_ratio: 0.1
+                after_scheduler_config:
+                    by_epoch: False
+                    type: CosineAnnealingLR
+                    params:
+                        T_max: 120000 # int(10_0000/batch_size)*epoch-warmup_iters
+        metric:
+            type: LaneMetric
+            params:
+                method: f1_measure
+                eval_width: 1640
+                eval_height: 590
+                iou_thresh: 0.5
+                lane_width: 30
+                thresh_list:  [0.50, 0.60, 0.70, 0.80, 0.90]
+
+    dataset:
+        type: AutoLaneDataset
+        common:
+            network_input_width: 512
+            network_input_height: 288
+            gt_len: 145
+            gt_num: 576
+            batch_size: 32
+            num_workers: 12
+            dataset_format: CULane
+            data_path: /cache/datasets/CULane/
+        train:
+            with_aug: True
+            shuffle: True
+            random_sample: True
+        val:
+            shuffle: False
+        test:
+            shuffle: False
