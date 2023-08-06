@@ -1,0 +1,1 @@
+This is a genetic algorithm library for quadratic assignment problem.
