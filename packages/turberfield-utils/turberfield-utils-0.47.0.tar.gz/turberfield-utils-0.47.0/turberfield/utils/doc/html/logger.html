@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>1. Flexible logging &#8212; Turberfield utilities guide 0.47.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/haiku.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="2. Object serialisation" href="assembly.html" />
+    <link rel="prev" title="Turberfield Utility library" href="index.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>Turberfield utilities guide 0.47.0</span></a></h1>
+        <h2 class="heading"><span>1. Flexible logging</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">Turberfield Utility library</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="assembly.html"><span class="section-number">2. </span>Object serialisation</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <section id="flexible-logging">
+<h1><span class="section-number">1. </span>Flexible logging<a class="headerlink" href="#flexible-logging" title="Permalink to this headline">¶</a></h1>
+<p>Python’s standard <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging">logging module</a> was conceived some time ago. It can be difficult
+to configure and it lacks the ability to easily communicate structured data.</p>
+<p>The Turberfield <code class="xref py py-mod docutils literal notranslate"><span class="pre">logger</span></code> module is designed
+for use in both web-native applications and offline tooling.</p>
+<p>It is flexible and easily customisable.</p>
+<span class="target" id="module-turberfield.utils.logger"></span><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">turberfield.utils.logger</span> <span class="kn">import</span> <span class="n">LogManager</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">LogManager</span><span class="p">()</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;root&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Hello, World!&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="m">2022</span>-05-25 <span class="m">18</span>:40:00.766978<span class="p">|</span>    INFO<span class="p">|</span>root<span class="p">|</span> Hello, World!
+</pre></div>
+</div>
+<p>The main feature of these Loggers is that you can set them to format any
+arbitrary data you might want to send them.</p>
+<p>A logger has a frame which is a list of the formats of all the fields
+it can present to a LogAdapter.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">logger</span><span class="o">.</span><span class="n">frame</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="o">[</span><span class="s1">&#39;{now}&#39;</span>, <span class="s1">&#39;{level.name:&gt;8}&#39;</span>, <span class="s1">&#39;{logger.name}&#39;</span>, <span class="s1">&#39; {0}&#39;</span><span class="o">]</span>
+</pre></div>
+</div>
+<p>This frame can be modified at run time to add extra fields to the log.
+Unlike the standard logging module, it doesn’t matter if that data is missing:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">http</span>
+
+<span class="n">logger</span><span class="o">.</span><span class="n">frame</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;</span><span class="si">{status.name}</span><span class="s2">&quot;</span><span class="p">]</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Situation report&quot;</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">http</span><span class="o">.</span><span class="n">HTTPStatus</span><span class="o">.</span><span class="n">OK</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="m">2022</span>-05-25 <span class="m">18</span>:53:51.767937<span class="p">|</span>    INFO<span class="p">|</span>root<span class="p">|</span> Situation report<span class="p">|</span>OK
+</pre></div>
+</div>
+<p>You can supply a customised LogAdapter to perform filtering or reformatting
+on an endpoint-specific basis.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+
+<span class="kn">from</span> <span class="nn">turberfield.utils.logger</span> <span class="kn">import</span> <span class="n">LogAdapter</span>
+
+<span class="k">class</span> <span class="nc">Alarmist</span><span class="p">(</span><span class="n">LogAdapter</span><span class="p">):</span>
+
+    <span class="n">patterns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;NOTE&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">234</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)),</span>
+        <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;INFO&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">)),</span>
+        <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;ERROR&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">234</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+        <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;WARNING&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">106</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+        <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;CRITICAL&quot;</span><span class="p">),</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">106</span><span class="p">)),</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">colour_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">word</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s2">&quot;level&quot;</span> <span class="ow">in</span> <span class="n">field</span><span class="p">:</span>
+            <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">c</span> <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">word</span><span class="p">)),</span>
+                <span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;[38;2;</span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">;</span><span class="si">{</span><span class="n">g</span><span class="si">}</span><span class="s2">;</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">m</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">[0m&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">word</span>
+
+    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;windows&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colour_field</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">tokens</span><span class="p">)</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+<p>Once you have configured a logger, you can clone it as the basis of another.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">root_logger</span> <span class="o">=</span> <span class="n">log_manager</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;root&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">root_logger</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">set_route</span><span class="p">(</span><span class="n">logger</span><span class="o">.</span><span class="n">Level</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">Alarmist</span><span class="p">(),</span> <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Hello, World!&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Stay safe out there!&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This example is included in the module. Run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">turberfield.utils.logger</span></code> to see
+that these log entries are now in colour on the terminal.</p>
+<p>By default, logging goes to sys.stderr.
+You can log to a file by passing the necessary path.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">logger</span><span class="o">.</span><span class="n">set_route</span><span class="p">(</span><span class="n">logger</span><span class="o">.</span><span class="n">Level</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span> <span class="n">LogAdapter</span><span class="p">(),</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;logger.log&quot;</span><span class="p">))</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;I didn&#39;t mean that.&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;It doesn&#39;t hurt to check.&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">note</span><span class="p">(</span><span class="s2">&quot;Whistle a happy tune!&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span>
+    <span class="s2">&quot;We&#39;ve run out of disk space!&quot;</span><span class="p">,</span>
+    <span class="n">status</span><span class="o">=</span><span class="n">http</span><span class="o">.</span><span class="n">HTTPStatus</span><span class="o">.</span><span class="n">INSUFFICIENT_STORAGE</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat logger.log
+2022-05-25 19:11:55.260938|   ERROR|main| I didn&#39;t mean that.|
+2022-05-25 19:11:55.261088|   DEBUG|main| It doesn&#39;t hurt to check.|
+2022-05-25 19:11:55.261178|    NOTE|main| Whistle a happy tune!|
+2022-05-25 19:11:55.261241|CRITICAL|main| We&#39;ve run out of disk space!|INSUFFICIENT_STORAGE
+</pre></div>
+</div>
+</section>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">Turberfield Utility library</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="assembly.html"><span class="section-number">2. </span>Object serialisation</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, D Haynes.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.2.0.
+    </div>
+  </body>
+</html>
