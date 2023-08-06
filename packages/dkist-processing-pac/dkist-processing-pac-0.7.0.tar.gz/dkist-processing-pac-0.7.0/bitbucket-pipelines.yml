@@ -1,0 +1,76 @@
+image: python:3.9
+definitions:
+  steps:
+    - step: &lint
+        caches:
+          - pip
+        name: Lint
+        script:
+          - pip install pre-commit
+          - pre-commit install
+          - pre-commit run --all-files
+    - step: &scan
+        caches:
+          - pip
+        name: Scan
+        script:
+          - pip install .
+          - pip install safety
+          - safety check --full-report ${SAFETY_IGNORE}
+    - step: &changelog
+        caches:
+          - pip
+        name: Changelog
+        script:
+          - pip install towncrier
+          # We need to fetch the main branch to compare against
+          - git remote set-branches --add origin main
+          - git fetch origin main
+          - towncrier check --compare-with origin/main
+    - step: &test
+        caches:
+          - pip
+        name: Test
+        script:
+          - pip install .[test]
+          - pytest -v -n auto --cov -m "not development" dkist_processing_pac
+    - step: &docs
+        name: Test Docs
+        caches:
+          - pip
+        script:
+          - apt update && apt -y install graphviz
+          - pip install .[docs]
+          - sphinx-build --color -W --keep-going -b html docs docs/_build/html
+    - step: &push
+        caches:
+          - pip
+        name: Push
+        script:
+          - python setup.py sdist
+          - pip install twine
+          - twine upload dist/*
+    - step: &check_changelog
+        name: Check for updated CHANGELOG
+        script:
+          - ./check_changelog_updated.sh
+
+pipelines:
+  default:
+    - parallel:
+      - step: *lint
+      - step: *changelog
+    - parallel:
+      - step: *scan
+      - step: *test
+      - step: *docs
+  tags:
+    'v*':
+      - parallel:
+        - step: *check_changelog
+        - step: *lint
+      - parallel:
+        - step: *scan
+        - step: *test
+        - step: *docs
+      - step: *push
