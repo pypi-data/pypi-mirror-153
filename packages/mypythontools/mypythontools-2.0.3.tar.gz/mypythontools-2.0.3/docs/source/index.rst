@@ -1,0 +1,6 @@
+*************
+mypythontools
+*************
+
+.. automodule:: mypythontools
+    :noindex:
