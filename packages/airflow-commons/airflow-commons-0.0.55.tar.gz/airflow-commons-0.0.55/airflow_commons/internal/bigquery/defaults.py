@@ -1,0 +1,3 @@
+TIMEOUT = 60
+LOCATION = "US"
+SELECT_RETURN_TYPE = "dataframe"
