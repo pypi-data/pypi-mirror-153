@@ -1,0 +1,1 @@
+(self.webpackChunkwidget_bzvisualizer=self.webpackChunkwidget_bzvisualizer||[]).push([[261],{261:(e,i,t)=>{var r=t(568),s=t(337);e.exports={id:"widget-bzvisualizer:plugin",requires:[s.IJupyterWidgetRegistry],activate:function(e,i){i.registerWidget({name:"widget-bzvisualizer",version:r.version,exports:r})},autoStart:!0}}}]);
