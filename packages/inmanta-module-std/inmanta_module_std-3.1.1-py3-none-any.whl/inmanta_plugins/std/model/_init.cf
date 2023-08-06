@@ -1,0 +1,611 @@
+"""
+    Copyright 2017 Inmanta
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+    Contact: code@inmanta.com
+"""
+
+typedef date as string matching std::validate_type("datetime.date", self)
+"""
+    A date expressed in the following format: ``YYYY-MM-DD``
+"""
+typedef time as string matching std::validate_type("datetime.time", self)
+"""
+    A time expressed in the following format: ``HH:MM[:SS[.ffffff]]``
+"""
+typedef datetime as string matching std::validate_type("datetime.datetime", self)
+"""
+    A date and time combination expressed in the following format: ``YYYY-MM-DD[T]HH:MM[:SS[.ffffff]][Z[±]HH[:]MM]]]``
+"""
+typedef ipv4_address as string matching std::validate_type("ipaddress.IPv4Address", self)
+"""
+    A string representing a valid IPv4 address (e.g. 192.168.0.1).
+"""
+typedef ipv4_interface as string matching std::validate_type("ipaddress.IPv4Interface", self)
+"""
+    A string representing an IPv4 interface. This type is equivalent to ipv4_network,
+    except that arbitrary host addresses are accepted.
+"""
+typedef ipv4_network as string matching std::validate_type("ipaddress.IPv4Network", self)
+"""
+    A string consisting of an IPv4 network address and an optional mask, separated by a slash (/). The mask can
+    be either a single number, or a string representation of an IPv4 address.
+
+    Examples: 192.168.1.0/24, 192.168.1.0/255.255.255.0 and 192.168.1.0/0.0.0.255.
+"""
+typedef ipv6_address as string matching std::validate_type("ipaddress.IPv6Address", self)
+"""
+    A string representing a valid IPv6 address.
+
+    Example: 2001:db8::1000
+"""
+typedef ipv6_interface as string matching std::validate_type("ipaddress.IPv6Interface", self)
+"""
+    A string representing an IPv6 interface. This type is equivalent to ipv6_network,
+    except that arbitrary host addresses are accepted.
+"""
+typedef ipv6_network as string matching std::validate_type("ipaddress.IPv6Network", self)
+"""
+    A string consisting of an IPv6 address and an optional prefix length, separated by a slash (/). The IP address
+    is the network address, and the prefix length must be a single number, the prefix.
+
+    Example: 2001:db00::0/24
+"""
+typedef uuid as string matching std::validate_type("uuid.UUID", self)
+"""
+    A string repesenting a uuid.
+"""
+typedef email_str as string matching std::validate_type("pydantic.EmailStr", self)
+"""
+    A string representing a valid email address.
+"""
+typedef name_email as string matching std::validate_type("pydantic.NameEmail", self)
+"""
+    A string consisting of a name and email address combination.
+
+    Example: Fred Bloggs <fred.bloggs@example.com>
+"""
+typedef any_url as string matching std::validate_type("pydantic.AnyUrl", self)
+"""
+    A string representing a URL.
+"""
+typedef any_http_url as string matching std::validate_type("pydantic.AnyHttpUrl", self)
+"""
+    A string representing a URL with scheme http or https.
+"""
+typedef http_url as string matching std::validate_type("pydantic.HttpUrl", self)
+"""
+    A string representing a URL with the following constraints:
+        * scheme: http or https
+        * Top-level domain name must be present in the hostname
+        * Maximum length of 2083 characters
+"""
+typedef ipv_any_address as string matching std::validate_type("pydantic.IPvAnyAddress", self)
+"""
+    A string representing a valid IPv4 or IPv6 address.
+"""
+typedef ipv_any_interface as string matching std::validate_type("pydantic.IPvAnyInterface", self)
+"""
+    A string matching the requiremenst of ipv4_interface or ipv6_interface.
+"""
+typedef ipv_any_network as string matching std::validate_type("pydantic.IPvAnyNetwork", self)
+"""
+    A string matching the requiremenst of ipv4_network or ipv6_network.
+"""
+typedef negative_float as number matching std::validate_type("pydantic.NegativeFloat", self)
+"""
+    A floating point number less than zero.
+"""
+typedef negative_int as int matching std::validate_type("pydantic.NegativeInt", self)
+"""
+    A integer number less than zero.
+"""
+typedef positive_float as number matching std::validate_type("pydantic.PositiveFloat", self)
+"""
+    A floating point number greater than zero.
+"""
+typedef positive_int as int matching std::validate_type("pydantic.PositiveInt", self)
+"""
+    A integer number greater than zero.
+"""
+typedef alfanum as string matching std::validate_type("pydantic.constr", self, {"regex": "^[a-zA-Z0-9]*$", "strict": true})
+"""
+    An alfanumeric number (lower- and uppercase characters are allowed).
+"""
+typedef base64 as string matching std::is_base64_encoded(self)
+"""
+    A string representing a base64-encoded string.
+"""
+typedef printable_ascii as string matching std::validate_type(
+    "pydantic.constr", self, {"regex": "^[\x20-\x7e]*$", "strict": true}
+)
+"""
+    A string consisting of only printable ascii characters: from <whitespace> to ~
+"""
+typedef ascii_word as string matching std::validate_type(
+    "pydantic.constr", self, {"regex": "^[\x21-\x7e]*$", "strict": true}
+)
+"""
+    A string consisting of only printable non-whitespace ascii characters: from ! to ~
+"""
+
+typedef non_empty_string as string matching /^(.*\S.*)$/
+"""
+    A string that contains at least one non-whitespace character
+"""
+
+implementation none for Entity:
+    """
+        An empty implementation that can be used as a safe default.
+    """
+end
+
+entity Resource:
+    """
+        A base entity for resources that can be exported. This type add specific attributes
+        that are common for most handlers.
+        It is not required to inherit from this entity at the moment but highly recommended for documentation purposes.
+
+        :attr send_event: This controls wether a resource should send its deploy state to the resources in its provides.
+    """
+    bool send_event=false
+end
+
+entity PurgeableResource extends Resource:
+    """
+        A base class for a resource that can be purged and can be purged by Inmanta whenever the resource is no
+        longer managed.
+
+        :attr purged: Set whether this resource should exist or not.
+        :attr purge_on_delete: Purge the resource when it is deleted from the configuration model.
+                               When this attribute is true, the server will include a resource with
+                               purged=true when this resource is no longer included in the
+                               configuration model.
+    """
+    bool purged=false
+    bool purge_on_delete=false
+end
+
+entity ManagedResource extends Resource:
+    """
+        A base class for a resource that can be ignored/unmanaged by Inmanta.
+
+        :attr managed: This determines whether this resource is managed by Inmanta or not.
+    """
+    bool managed=true
+end
+
+entity ManagedDevice:
+    """
+        This interface represents all devices that can be managed
+    """
+    hoststring  name
+end
+
+entity Host extends ManagedDevice:
+    """
+        A host models a server of computer in the managed infrastructure
+    """
+end
+
+implement Host using hostDefaults
+
+index Host(name)
+
+typedef hoststring as string matching /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$/
+
+entity Reload extends Resource:
+    """
+        An entity to make the (old) reload mechanism compatible with the event mechanism
+
+        :attr reload: If a service requires this file, reload or restart the service when this file
+                      changes.
+    """
+    bool reload=false
+    bool send_event=undef
+end
+
+implementation reload for Reload:
+    self.send_event=self.reload
+end
+
+entity File extends Reload, PurgeableResource:
+    """
+        This represents a file on the filesystem
+
+        :attr path: The path of the file
+        :attr mode: The permissions of the file
+        :attr owner: The owner of the file
+        :attr group: The group of the file
+        :attr content: The file contents
+    """
+    string path
+    number mode
+    string owner
+    string group
+    string content
+    bool purge_on_delete=false
+    bool send_event=undef
+    string content_seperator="\n"
+end
+
+implement File using reload, fileHost
+
+entity Content:
+    """
+        A content block as a prefix or suffix to a file. This blocks are only merged with the content at export time. This
+        is an advanced pattern that can be used to speed up the compilation in very specific use cases.
+
+        :attr sorting_key: The key to use to sort the content blocks in the same list. When this attribute is not set
+                           value is used as sorting key.
+        :attr value: The value to prepend or append
+    """
+    string? sorting_key=null
+    string value
+end
+
+implement Content using std::none
+
+File.prefix_content [0:] -- Content
+File.suffix_content [0:] -- Content
+
+entity ConfigFile extends File:
+    """
+        A file with often used defaults for configuration files.
+    """
+    number mode=644
+    string owner="root"
+    string group="root"
+end
+
+implement ConfigFile using reload, fileHost
+
+File.host [1] -- Host.files [0:]
+
+index File(host, path)
+
+implementation fileHost for File:
+    self.requires = self.host.requires
+end
+
+# the state of a service
+typedef service_state as string matching self == "running" or self == "stopped"
+
+# a service that is managed
+entity Service extends Reload:
+    """
+        Manage a service on a host.
+
+        :attr name: The name of the service to manage
+        :attr state: The desired state of the service. Valid values are 'running' or 'stopped'
+        :attr onboot: Should the service start on boot.
+    """
+    string name
+    service_state state
+    bool onboot
+end
+
+implement Service using reload, serviceHost
+
+Service.host [1] -- Host.services [0:]
+
+index Service(host, name)
+
+implementation serviceHost for Service:
+    self.requires = self.host.requires
+end
+
+# the state of a package
+typedef package_state as string matching self == "installed" or self == "removed" or self == "latest"
+
+entity Package extends Reload:
+    """
+        A software package installed on a managed device.
+
+        :attr name: The name of the package to manage
+        :attr state: The state of the package. Valid values are 'installed', 'removed' or 'latest'.
+                     latest will upgrade the package when an update is available.
+    """
+    string name
+    package_state state
+end
+
+implement Package using reload, pkgHost
+
+Host.packages [0:] -- Package.host [1]
+
+index Package(host, name)
+
+implementation pkgHost for Package:
+    self.requires = self.host.requires
+end
+
+# a directory
+entity Directory extends Reload, PurgeableResource:
+    """
+        A directory on the filesystem
+    """
+    string path
+    number mode
+    string owner
+    string group
+    bool purge_on_delete=false
+end
+
+implement Directory using reload, dirHost
+
+entity DefaultDirectory extends Directory:
+    """
+        A directory that is world readable. It is also writable for its owner root.
+    """
+    number mode=755
+    string owner="root"
+    string group="root"
+end
+
+implement DefaultDirectory using reload, dirHost
+
+Host.directories [0:] -- Directory.host [1]
+
+index Directory(host, path)
+
+implementation dirHost for Directory:
+    self.requires = self.host.requires
+end
+
+# symlink
+entity Symlink extends Reload, PurgeableResource:
+    """
+        A symbolic link on the filesystem
+    """
+    string source
+    string target
+    bool purge_on_delete=false
+    bool send_event=undef
+end
+
+implement Symlink using std::reload, symHost
+
+Host.symlinks [0:] -- Symlink.host [1]
+
+implementation symHost for Symlink:
+    self.requires = self.host.requires
+end
+
+# define operating systems
+unix = OS(name = "unix")
+windows = OS(name = "windows")
+
+linux = OS(name = "linux", family = unix)
+solaris = OS(name = "solaris", family = unix)
+freebsd = OS(name = "freebsd", family = unix)
+openbsd = OS(name = "openbsd", family = unix)
+macos = OS(name = "macos", family = unix)
+
+entity OS:
+    """
+        Defines an operating system
+
+        :attr name: The name of the operating system or family of operating systems
+        :attr version: A specific version
+        :attr python_cmd: Specifies what command should be used to launch the python interpreter on the other end
+    """
+    string name
+    number version = 0
+    string? python_cmd = "python"
+end
+
+implement OS using std::none
+
+Host.os [1] -- OS
+"""
+    Each host has an OS defined. This values is mostly used to select implementation in the
+    where clause of an `implement` statement. The :py:func:`familyof` plugin can be used
+    for this.
+"""
+
+OS.family [0:1] -- OS.member [0:]
+
+entity HostConfig:
+    """
+        This represents generic configuration for a host. This entity is used
+        by other modules to include their host specific configuration. This
+        should be instantiated in the implementation of std::Host or subclasses.
+        This host specific configuration cannot be included by just implementing
+        std::Host because possibly subclasses of std::Host are instantiated and
+        implementations are not inherited.
+    """
+end
+
+Host.host_config [1] -- HostConfig.host [1]
+implement HostConfig using std::none
+
+
+implementation hostDefaults for std::Host:
+    HostConfig(host=self)
+end
+
+
+entity HostGroup:
+    """
+        This entity represents a group of hosts. For example a cluster of machines.
+    """
+    string name
+end
+
+Host.host_groups [0:] -- HostGroup.hosts [0:]
+
+implement HostGroup using std::none
+
+
+typedef config_agent as string matching self != "internal"
+"""
+    Type for configurable agents.
+"""
+
+entity AgentConfig extends PurgeableResource:
+    """
+        Control agent settings. Currently these settings are only applied to autostarted agents
+
+        :attr autostart: When this flag is set to true, the resource will be exported and set the agent map
+                          on the orchestrator. When false (or not set), this instance is ignore but can be used to generate
+                          agent configuration files.
+        :attr agentname: The name of the agent to which this config applies.
+        :attr agent: If a resource is exported, agent manages the resource.
+        :attr uri: The uri that indicates how the agent should execute. Currently the following uri are supported:
+                   * "" An empty string. This is the same as running it locally
+                   * local: Manage resource locally
+                   * ssh://[user@]hostname[:port] Login using ssh. When user is left out, root is assumed. For port, the system
+                     default is used.
+                   * host The actual hostname or ip to use. Altough this is not a valid host in uri form it is supported.
+                   * A query string can be used to set the properties:
+                        * python: The python interpreter to use. The default value is python
+                        * retries: The number of retries before giving up. The default number of retries 10
+                        * retry_wait: The time to wait between retries for the remote target to become available. The default wait is 30s.
+                   Example: ssh://centos@centos-machine/?python=python3 (This would connect to a the centos machine and use python3 as it's interpreter)
+    """
+    bool? autostart
+    config_agent agentname
+    string agent="internal"
+    string uri="local:"
+end
+
+implement AgentConfig using std::none
+
+index AgentConfig(agentname)
+
+
+entity MutableString:
+    """
+Wrapper for string values. It can be used to pass a string out of an if statement, or to
+use relations to create a mutuable set of strings.
+
+:Example:
+.. code-block:: inmanta
+
+    attr_a = std::MutableString()
+    if some_condition:
+        attr_a.value = "a"
+    else:
+        attr_a.value = "b"
+    end
+
+
+:Example:
+.. code-block:: inmanta
+
+    entity Test:
+    end
+
+    Test.string_list [0:] -- std::MutableString
+
+    a = Test()
+    a.string_list += std::MutableString(value="value1")
+    a.string_list += std::MutableString(value="value2")
+"""
+  string? value
+end
+
+implement MutableString using std::none
+
+
+entity MutableNumber:
+    """
+Wrapper for number values, used to pass a number out of an if statement or to
+use relations to create a mutuable set of numbers.
+
+:Example:
+.. code-block:: inmanta
+
+    attr_a = std::MutableNumber()
+    if some_condition:
+        attr_a.value = 3
+    else:
+        attr_a.value = 4
+    end
+
+:Example:
+.. code-block:: inmanta
+
+    entity Test:
+    end
+
+    Test.string_list [0:] -- std::MutableNumber
+
+    a = Test()
+    a.string_list += std::MutableNumber(value=3)
+    a.string_list += std::MutableNumber(value=7)
+"""
+  number? value
+end
+
+implement MutableNumber using std::none
+
+
+entity MutableBool:
+    """
+Wrapper for boolean values, used to pass a boolean out of an if statement.
+
+:Example:
+.. code-block:: inmanta
+
+    attr_a = std::MutableBool()
+    if some_condition:
+        attr_a.value = True
+    else:
+        attr_a.value = Null
+    end
+
+"""
+  bool? value
+end
+
+implement MutableBool using std::none
+
+
+entity Packages:
+    """ Defined the state for multiple packages at once
+
+        :param name: A list of package names
+        :param state: The state of the package
+    """
+    string[] name
+    std::package_state state="installed"
+end
+
+Packages.host [1] -- std::Host
+
+implement Packages using pkgs
+
+implementation pkgs for Packages:
+    for pkg in name:
+      std::Package(host=self.host, name=pkg, state=self.state, requires=self.requires, provides=self.provides)
+    end
+end
+
+entity ResourceSet:
+    """
+    A ResourceSet describes resources that logically belong together,
+    and can be manipulated independently from other managed resources.
+
+    :attr name: The name of the resource set.
+    """
+    string name
+end
+
+ResourceSet.resources [0:] -- std::Resource
+
+index ResourceSet(name)
+
+implement ResourceSet using std::none
