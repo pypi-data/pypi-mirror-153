@@ -1,0 +1,137 @@
+timestamp: 2020-03-28T21:50:59.437046
+CREATE TABLE "auth_user"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "first_name" CHAR(512) NOT NULL,
+    "last_name" CHAR(512) NOT NULL,
+    "email" CHAR(512) NOT NULL UNIQUE,
+    "password_hash" CHAR(512) NOT NULL,
+    "login_attempts" INTEGER,
+    "datetime_next_attempt_to_login" TIMESTAMP,
+    "temporary_password" TEXT,
+    "temporary_password_hash" TEXT,
+    "temporary_password_expire" TIMESTAMP,
+    "timeout_to_resend_temporary_password_mail" TIMESTAMP,
+    "activation_code" CHAR(512),
+    "activation_attempts" INTEGER,
+    "timeout_to_resend_activation_email" TIMESTAMP,
+    "datetime_next_attempt_to_activate" TIMESTAMP,
+    "permit_mult_login" CHAR(1),
+    "activated" CHAR(1) NOT NULL DEFAULT 'F',
+    "websocket_opened" CHAR(1) NOT NULL DEFAULT 'F',
+    "locale" CHAR(512),
+    "two_factor_login" CHAR(1)
+);
+success!
+timestamp: 2020-03-28T21:50:59.597045
+CREATE TABLE "auth_group"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "role" CHAR(512),
+    "grade" INTEGER,
+    "description" TEXT
+);
+success!
+timestamp: 2020-03-28T21:50:59.732046
+CREATE TABLE "auth_membership"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "auth_user" INTEGER REFERENCES "auth_user" ("id") ON DELETE CASCADE  ,
+    "auth_group" INTEGER REFERENCES "auth_group" ("id") ON DELETE CASCADE  
+);
+success!
+timestamp: 2020-03-28T21:50:59.832046
+CREATE TABLE "auth_activity"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "auth_user" INTEGER REFERENCES "auth_user" ("id") ON DELETE CASCADE  ,
+    "request" TEXT,
+    "activity" CHAR(512),
+    "date_activity" TIMESTAMP
+);
+success!
+timestamp: 2020-03-28T21:50:59.922046
+CREATE TABLE "email_user_list"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "auth_user" INTEGER REFERENCES "auth_user" ("id") ON DELETE CASCADE  ,
+    "email" CHAR(512) NOT NULL,
+    "datetime_changed" TIMESTAMP
+);
+success!
+timestamp: 2020-03-28T21:51:00.012046
+CREATE TABLE "social_auth"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "social_name" CHAR(512),
+    "request_state" TEXT,
+    "client_token" TEXT,
+    "datetime_created" TIMESTAMP,
+    "origin" TEXT
+);
+success!
+timestamp: 2020-03-28T21:51:00.112046
+CREATE TABLE "two_factor_login"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "auth_user" INTEGER REFERENCES "auth_user" ("id") ON DELETE CASCADE  ,
+    "two_factor_url" TEXT,
+    "two_factor_code" CHAR(512),
+    "datetime_changed" TIMESTAMP
+);
+success!
+timestamp: 2020-03-28T21:51:00.312047
+CREATE TABLE "client"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "token" TEXT,
+    "auth_user" INTEGER REFERENCES "auth_user" ("id") ON DELETE CASCADE  ,
+    "date_created" TIMESTAMP,
+    "last_resign" TIMESTAMP,
+    "remember_me" CHAR(1),
+    "locked" CHAR(1)
+);
+success!
+timestamp: 2020-03-28T21:51:00.412047
+CREATE TABLE "captcha"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "token" TEXT,
+    "form_identify" CHAR(512),
+    "user_agent" CHAR(512),
+    "ip" CHAR(512),
+    "date_created" TIMESTAMP,
+    "client" INTEGER REFERENCES "client" ("id") ON DELETE CASCADE  
+);
+success!
+timestamp: 2020-03-28T21:51:00.522047
+CREATE TABLE "google_captcha"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "token" TEXT,
+    "form_identify" CHAR(512),
+    "user_agent" CHAR(512),
+    "ip" CHAR(512),
+    "date_created" TIMESTAMP,
+    "client" INTEGER REFERENCES "client" ("id") ON DELETE CASCADE  
+);
+success!
+timestamp: 2020-03-28T21:51:00.622047
+CREATE TABLE "csrf"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "token" TEXT,
+    "form_identify" CHAR(512),
+    "user_agent" CHAR(512),
+    "ip" CHAR(512),
+    "date_created" TIMESTAMP,
+    "client" INTEGER REFERENCES "client" ("id") ON DELETE CASCADE  
+);
+success!
+timestamp: 2020-03-28T21:51:00.707047
+CREATE TABLE "phanterpwagallery"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "folder" CHAR(512),
+    "filename" CHAR(512),
+    "alias_name" CHAR(512),
+    "content_type" CHAR(512)
+);
+success!
+timestamp: 2020-03-28T21:51:00.787047
+CREATE TABLE "auth_user_phanterpwagallery"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "phanterpwagallery" INTEGER REFERENCES "phanterpwagallery" ("id") ON DELETE CASCADE  ,
+    "auth_user" INTEGER REFERENCES "auth_user" ("id") ON DELETE CASCADE  ,
+    "subfolder" CHAR(512),
+    "last_update" TIMESTAMP
+);
+success!
