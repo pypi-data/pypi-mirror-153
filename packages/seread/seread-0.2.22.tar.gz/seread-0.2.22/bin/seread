@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+
+from fire import Fire
+import seread.sng # this will import all variables?
+from seread import sng
+from seread.version import __version__
+
+import sys
+import threading
+import subprocess as sp
+
+import os
+#------ CONFIG FILES---------------
+
+sng.INP_calib="~/.seread.calib"
+sng.INP_discover = "~/.seread_discover8086"
+sng.INP_permanent = "~/.seread_permanent8086"
+sng.INP_influx_cred = "~/.influx_userpassdb"
+sng.INP_udp_out = "~/.seread_udp_out"       # what? 8081 to gregory COUNTER ?
+sng.INP_script = "script"
+sng.OUT_udp = "~/DATA/serial_NG2_udp.log"
+sng.OUT_json = "~/DATA/serial_NG2_jso.log"
+sng.OUT_beamon = "~/DATA/nfs_beamon_off.log"
+sng.SHOST = "0.0.0.0"
+# servers
+sng.SPORT =  8099
+sng.SPORT_UDP =  8100
+# client
+sng.CPORT_UDP = 8081
+# countdown  for VAC
+sng.decimatevacSET = 60
+sng.decimatevac = sng.decimatevacSET
+
+
+
+dir2create =   "~/DATA"
+dir2create = os.path.expanduser( dir2create)
+if not os.path.isdir( dir2create ):
+    print(f"D... trying to create directory ", dir2create)
+    os.mkdir( dir2create )
+
+
+
+sng.MMAPFILE = os.path.expanduser("~/.config/flashcam/mmapfile")
+dir2create =   "~/.config/flashcam"
+dir2create = os.path.expanduser( dir2create)
+if not os.path.isdir( dir2create ):
+    print(f"D... trying to create directory ", dir2create)
+    os.mkdir( dir2create )
+
+# for filename in glob.glob(os.path.join(source_dir, '*.jpg')):
+#     shutil.copy(filename, dest_dir)
+
+#================================================= end of different configs
+
+def launch(MODE="help",p=1):
+    if MODE=="help":
+        print("h... available modes: help ...")
+        return
+    if MODE=="    ":print("ok")
+    if MODE=="    ":print("ok")
+    return p
+
+
+
+
+if __name__=="__main__":
+    print("D... seread script; version:",__version__)
+    # print("D... version :", __version__ )
+    print("D... use :  -D device OR  -l location  -c listen|word|script -b 19200")
+    print("D... e.g. ./sng2.py -l 2-1.1:1.0 -i false (to send no inlfux)")
+    print("                    -l is enough, just see the location of device")
+    print("-----MODES------   -c listen")
+    print("    listen")
+    print("          - no sending to serial, listen")
+#    print("    mirror")
+#    print("          - Writes 'K' and listens")
+    print("    wordxyz")
+    print("          - send  'xyz;' delimited by ';' and listen")
+    print("    script")
+    print("          - reads 'script' file, sends line by line. Last line repeats, define #EOT char==';'")
+    #print("----------------")
+
+
+
+
+    res,code,sub_code,timeout,baudrate,influxyes,filesyes,serveryes,debug=Fire( sng.select_device )   # FIRE HERE
+    # res,code,sub_code,timeout,baudrate,influxyes,debug=sng.select_device()
+    if res=="":
+        # if no device selected
+        print()
+        print("X... DEVICE doesnt exist, it is not in device's list")
+        print()
+        print("i... I am installing a virtual serial device ____")
+        print("D... ")
+        CMD = 'which socat'
+        try:
+            rex = sp.check_call( CMD.split() )
+            rex = True
+        except:
+            rex = False
+        if not rex:
+            print("X.... sudo apt install socat")
+            sys.exit(0)
+        else:
+            print("D...  socat PTY,link=/tmp/virtser_connect,raw,echo=0 PTY,link=/tmp/virtser_speak,raw,echo=0&")
+            CMD = "socat PTY,link=/tmp/virtser_connect,raw,echo=0 PTY,link=/tmp/virtser_speak,raw,echo=0&"
+            sp.check_call( CMD, shell=True)
+        print("D... echo ahoj > /tmp/virtser_speak")
+        print("D... ...    connect to it ... ")
+        print("D...  seread -D /tmp/virtser_connect")
+        print("D...")
+        sys.exit(1)
+        # devout=DEV
+
+
+
+
+    print("D... DEVICE SELECTED=/{}/".format(res))
+    print("i... code      =",code)
+    print("i... subcode   =",sub_code)
+    print("i... timeout   =",timeout,"     can be 1,10 for new line every 10sec.")
+    print("i... baudrate  =",baudrate, " \t use -b 115200 or -b 9600")
+    print("i... influxyes =",influxyes," \t use -i")
+    print("i... filesyes  =",filesyes, " \t use -f ")
+    print("i... serveryes =",serveryes," \t use -s ")
+    print("i... debug     =",debug,    " \t use -d")
+    if res=="":
+        sys.exit(1)
+    if influxyes=="false":influxyes=False
+
+    #======================================
+    sng.check_the_files()
+    # sys.exit(0)
+    #======================================
+    sng.init_udp_and_name() # prepare UDP server IP  ipsudp
+
+    if influxyes:
+        sng.init_influx_and_name(silent=False) # prepare credentials
+    #else:
+    #    print("X... influx write False on commandline")
+    sng.init_calibration()
+    # print("D... ", end="")
+
+    udpcol = sng.bcolors.ENDC+"##"+sng.bcolors.FADED
+    if len(sng.ipsudp)>0: udpcol = sng.bcolors.ENDC+"##"+sng.bcolors.OKGREEN
+    inflcol = sng.bcolors.ENDC+"##"+sng.bcolors.FADED
+    if (influxyes): inflcol = sng.bcolors.ENDC+"##"+sng.bcolors.OKGREEN
+    tcpcol = sng.bcolors.ENDC+"##"+sng.bcolors.FADED
+    if (serveryes): tcpcol = sng.bcolors.ENDC+"##"+sng.bcolors.OKGREEN
+    filcol = sng.bcolors.ENDC+"##"+sng.bcolors.FADED
+    if (filesyes): filcol = sng.bcolors.ENDC+"##"+sng.bcolors.OKGREEN
+    print("{}   {}  {}  {}  {} {} {} {}".format(
+        udpcol,
+        'send UDP',
+        inflcol,
+        '       ',
+        tcpcol,
+        'TCP/UDP server',
+        filcol,
+        'FILE'), sng.bcolors.ENDC )
+    #print("_"*80)
+    print("{} to {} {} influxdb {} on {}/{} {} {}".format(
+        udpcol,
+        str(len(sng.ipsudp))+"-PC:"+str(sng.CPORT_UDP),
+        inflcol,
+        tcpcol,
+        sng.SPORT,
+        sng.SPORT_UDP,
+        filcol,
+        sng.OUT_udp
+
+    ),
+    sng.bcolors.ENDC)
+
+    print("D... deciamte VAC",sng.decimatevacSET)
+    if type( timeout ) == tuple :
+        sng.decimatevacSET = int(timeout[1])
+        print("xxxxxxxxxx",sng.decimatevacSET)
+    #print(sng.decimatevacSET)
+
+    if serveryes:
+        #==========sserver
+        # print(sng.bcolors.OKCYAN,"i... launching TCP SERVER ... (listens) port = ", sng.SPORT, sng.bcolors.ENDC)
+        x = threading.Thread(target=sng.sserver, args=(sng.SHOST, sng.SPORT))
+        x.start()
+        x2 = threading.Thread(target=sng.sserverudp, args=(sng.SHOST, sng.SPORT_UDP))
+        x2.start()
+        #==================================== RUN=============
+    loop = sng.get_event_loop()
+
+    loop.run_until_complete( sng.run( res, baudrate, code ,sub_code, timeout, influxyes ,debug) )
+
+
+#if __name__=="__main__":
+#    print("D... seread script; version:",__version__)
+#    Fire( launch )
