@@ -1,0 +1,46 @@
+{% load i18n l10n %}
+<h3>{% blocktrans with filter_title=title %} By {{ filter_title }} {% endblocktrans %}</h3>
+
+<div class="changelist-filter-popup admindatefilter">
+    {% with choices.0 as choice %}
+        <input class="changelist-filter-popup-toggle" type="text" value="{% blocktrans with filter_title=title %} By {{ filter_title }}{% endblocktrans %}{% if choice.value_from is None %}{% else %}: {{ choice.value_from }}-{{ choice.value_to }}{% endif %}" readonly>
+        <div class="changelist-filter-popup-content">
+            <form method="get" class="admin-numeric-filter-wrapper">
+                {% for k, v in choice.request.GET.items %}
+                    {% if not k == choice.parameter_name|add:'_from' and not k == choice.parameter_name|add:'_to' %}
+                        <input type="hidden" name="{{ k }}" value="{{ v }}">
+                    {% endif %}
+                {% endfor %}
+
+                <h3>{% blocktrans with filter_title=title %}By {{ filter_title }}{% endblocktrans %}</h3>
+
+                {% if choice.min and choice.max and choice.step %}
+                    <fieldset class="module aligned">
+                        <div class="admin-numeric-filter-slider-tooltips">
+                            <span class="admin-numeric-filter-slider-tooltip-from">{{ choice.value_from }}</span>
+                            <span class="admin-numeric-filter-slider-tooltip-to">{{ choice.value_to }}</span>
+                        </div><!-- /.admin-numeric-filter-slider-tooltips -->
+
+                        <div class="admin-numeric-filter-slider" data-min="{{ choice.min|unlocalize }}" data-max="{{ choice.max|unlocalize }}" data-decimals="{{ choice.decimals|unlocalize }}" data-step="{{ choice.step|unlocalize }}">
+                        </div><!-- /.admin-numeric-filter-slider -->
+
+                        <div class="admin-numeric-filter-wrapper-group hidden">
+                            {{ choice.form.as_p }}
+                        </div><!-- /.filter-numeric-filter-wrapper-group -->
+                    </fieldset>
+
+                    <div class="controls">
+                        <input type="submit" class="submit" value="{% trans 'Apply' %}" />
+                    </div>
+
+                {% else %}
+                    <div class="admin-numeric-filter-slider-error">
+                        <p>
+                            {% trans 'No enough data.' %}
+                        </p>
+                    </div><!-- /.admin-numeric-filter-slider-error -->
+                {% endif %}
+            </form>
+        </div>
+    {% endwith %}
+</div>

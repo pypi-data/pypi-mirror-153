@@ -1,0 +1,26 @@
+{% load i18n %}
+<h3>{% blocktrans with filter_title=title %} By {{ filter_title }} {% endblocktrans %}</h3>
+
+<div class="changelist-filter-popup text-input">
+  {% with choices.0 as i %}
+    <input class="changelist-filter-popup-toggle" type="text" value="{% blocktrans with filter_title=title %} By {{ filter_title }}{% endblocktrans %}{% if i.current_value is None %}{% else %}: {{ i.current_value|default_if_none:'' }}{% endif %}" readonly>
+    <div class="changelist-filter-popup-content">
+      <form method="get">
+        <fieldset class="module aligned">
+          <div class="form-row">
+            <input type="text" name="{{ i.parameter_name }}" value="{{ i.current_value|default_if_none:"" }}" />
+            <input type="submit" value="{% trans 'apply' %}">
+            <a class="button" href="{{ i.all_choice.query_string|iriencode }}" style="vertical-align: top">{{ i.all_choice.display }}</a>
+          </div>
+
+          {#create hidden inputs to preserve values from other filters and search field#}
+          {% for k, v in i.get_query.items %}
+            {% if not k == i.parameter_name %}
+              <input type="hidden" name="{{ k }}" value="{{ v }}">
+            {% endif %}
+          {% endfor %}
+        </fieldset>
+      </form>
+    </div>
+  {% endwith %}
+</div>
