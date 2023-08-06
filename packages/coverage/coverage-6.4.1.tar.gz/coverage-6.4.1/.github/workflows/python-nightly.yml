@@ -1,0 +1,76 @@
+# Licensed under the Apache License: http://www.apache.org/licenses/LICENSE-2.0
+# For details: https://github.com/nedbat/coveragepy/blob/master/NOTICE.txt
+
+name: "Python Nightly Tests"
+
+on:
+  push:
+    branches:
+      - "**/*nightly*"
+  schedule:
+    # Run at 2:22am early Saturday morning Eastern time (6/7:22 UTC)
+    # so that we get tips of CPython development tested.
+    # https://crontab.guru/#22_7_*_*_6
+    - cron: "22 7 * * 6"
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: 1
+  COVERAGE_IGOR_VERBOSE: 1
+
+jobs:
+  tests:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version:
+          # When changing this list, be sure to check the [gh-actions] list in
+          # tox.ini so that tox will run properly. PYVERSIONS
+          # Available versions:
+          # https://launchpad.net/~deadsnakes/+archive/ubuntu/nightly/+packages
+          - "3.9-dev"
+          - "3.10-dev"
+          - "3.11-dev"
+          # https://github.com/actions/setup-python#available-versions-of-pypy
+          - "pypy-3.7-nightly"
+          - "pypy-3.8-nightly"
+          - "pypy-3.9-nightly"
+      fail-fast: false
+
+    steps:
+      - name: "Check out the repo"
+        uses: "actions/checkout@v3"
+
+      - name: "Install ${{ matrix.python-version }} with deadsnakes"
+        uses: "deadsnakes/action@v2.1.1"
+        if: "!startsWith(matrix.python-version, 'pypy-')"
+        with:
+          python-version: "${{ matrix.python-version }}"
+
+      - name: "Install ${{ matrix.python-version }} with setup-python"
+        uses: "actions/setup-python@v3"
+        if: "startsWith(matrix.python-version, 'pypy-')"
+        with:
+          python-version: "${{ matrix.python-version }}"
+
+      - name: "Show diagnostic info"
+        run: |
+          set -xe
+          python -VV
+          python -m site
+          python -m coverage debug sys
+          python -m coverage debug pybehave
+
+      - name: "Install dependencies"
+        run: |
+          python -m pip install -r requirements/tox.pip
+
+      - name: "Run tox"
+        run: |
+          python -m tox -- -rfsEX
