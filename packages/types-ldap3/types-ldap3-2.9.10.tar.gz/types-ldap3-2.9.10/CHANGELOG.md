@@ -1,0 +1,70 @@
+## 2.9.10 (2022-06-06)
+
+Always use `TypeAlias` when assigning to `Any` (#8021)
+
+## 2.9.9 (2022-05-26)
+
+Third-party stubs: fix several fictitious type aliases (#7958)
+
+## 2.9.8 (2022-04-16)
+
+Use `TypeAlias` where possible for type aliases (#7630)
+
+## 2.9.7 (2022-03-06)
+
+Upgrade to stubtest with dunder pos only reverted (#7442)
+
+## 2.9.6 (2022-02-02)
+
+Add iterable and ServerPool types to ldap3 Connection.server parameter  (#7101)
+
+## 2.9.5 (2022-01-31)
+
+Upgrade black version (#7089)
+
+## 2.9.4 (2022-01-10)
+
+Always use `_typeshed.Self`, where applicable (#6880)
+
+* Always use `_typeshed.Self`, where applicable
+
+* Revert changes to `google-cloud-ndb` (ambiguous)
+
+* Remove empty line added by script
+
+* Revert changes to `stubs/python-dateutil/dateutil/relativedelta.pyi`
+
+* Manually add a few more that the script missed
+
+* Improve `filelock` annotation
+
+Source code here: https://github.com/tox-dev/py-filelock/blob/79ec7b2826e33b982fe83b057f359448b9d966ba/src/filelock/_api.py#L207
+
+* Improve `opentracing/scope` annotation
+
+Source code here: https://github.com/opentracing/opentracing-python/blob/3e1d357a348269ef54d67f761302fab93dbfc0f7/opentracing/scope.py#L71
+
+* Improve `redis/client` stub
+
+Source code here: https://github.com/redis/redis-py/blob/15f315a496c3267c8cbcc6d6d9c6005ea4d4a4d5/redis/client.py#L1217
+
+* Improve `redis/lock` annotation
+
+Source code here: https://github.com/redis/redis-py/blob/15f315a496c3267c8cbcc6d6d9c6005ea4d4a4d5/redis/lock.py#L155
+
+* Improve `requests/models` annotation
+
+Source code here: https://github.com/psf/requests/blob/d718e753834b84018014a23d663369ac27d1ab9c/requests/models.py#L653
+
+## 2.9.3 (2022-01-08)
+
+Use lowercase `type` everywhere (#6853)
+
+## 2.9.1 (2021-12-28)
+
+Use PEP 585 syntax wherever possible (#6717)
+
+## 2.9.0 (2021-12-10)
+
+Add stubs for ldap3 (#6561)
+
