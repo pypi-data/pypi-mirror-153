@@ -1,0 +1,241 @@
+Metadata-Version: 2.1
+Name: haas-python-ttp224
+Version: 0.0.1
+Summary: This is ttp224 driver for HaaS Python. HaaS Python is forked from micropython.
+Home-page: https://haas.iot.aliyun.com/?from=corp
+Author: HaaS Python
+Author-email: yinsuo.mys@alibaba-inc.com
+License: Apache License, Version 2.0
+Project-URL: Source Code, https://github.com/alibaba/AliOS-Things
+Project-URL: Bug Tracker, https://github.com/alibaba/AliOS-Things/issues
+Project-URL: Documentation, https://haas.iot.aliyun.com/haasapi/index.html?spm=a2cpu.b16145223.0.0.81b460b1lzwYKw#/?from=corp
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+
+## HaaS Python介绍
+HaaS Python是阿里云IoT团队最新研发的一套低代码编程框架，兼容MicroPython编程规范，依托HaaS平台软硬件积木提供AI、支付、蓝牙配网、云连接、UI等物联网场景常用的能力，从而解决了物联网应用开发难的问题。有了Python轻应用框架，物联网编程不再局限于专业软件开发人员，一般的技术员也可以快速实现复杂的物联网需求。
+更多HaaS Python介绍和开发资料见[HaaS Python官网](https://haas.iot.aliyun.com/haasapi/index.html?spm=a2cpu.b16145223.0.0.595660b1dZDX71#/?from=corp),[创意案例](https://haas.iot.aliyun.com/solution?from=crop), [硬件积木](https://haas.iot.aliyun.com/solution/hardware?from=corp)
+
+HaaS Python is a set of low-code programming frameworks newly developed by Alibaba Cloud IoT team. It is compatible with MicroPython programming specifications. It relies on the hardware and software building blocks of the HaaS platform to provide capabilities commonly used in IoT scenarios such as AI, payment, Bluetooth network configuration, cloud connection, and UI. Solve the difficult problem of IoT application development. With the Python light application framework, IoT programming is no longer limited to professional software developers, and general technicians can quickly implement complex IoT requirements.
+For more HaaS Python introduction and development materials, see [HaaS Python official website](https://haas.iot.aliyun.com/haasapi/index.html?spm=a2cpu.b16145223.0.0.595660b1dZDX71#/?from=corp), [Creative Case](https://haas.iot.aliyun.com/solution?from=crop), [Hardware Building Blocks](https://haas.iot.aliyun.com/solution/hardware?from=corp)
+
+## 安装方法
+* 在[HaaS Python官网](https://haas.iot.aliyun.com/haasapi/index.html?spm=a2cpu.b50127119.0.0.4e1260b1ebMIf1#/)下载开发板对应的固件，并完成固件烧录
+
+Download the firmware corresponding to the development board at [HaaS Python website](https://haas.iot.aliyun.com/haasapi/index.html?spm=a2cpu.b50127119.0.0.4e1260b1ebMIf1#/) and complete the firmware burning
+
+* 在开发板上运行以下命令完成安装和使用,如果您在使用过程中遇到问题，欢迎在[github上向我们提交issue](https://github.com/alibaba/AliOS-Things/issues)，我们的工程师会及时解答
+
+Run the following commands on the development board to complete the installation and use. If you encounter problems during use, please submit an issue to us on [github](https://github.com/alibaba/AliOS-Things/issues), Our engineers will answer in time
+```
+import upip
+upip.install("haas-python-ttp224")
+import haas-python-ttp224
+```
+# 4路触摸电容模块-TTP224
+
+## 一、产品简介
+板载TTP224电容式4键触摸感应IC，开发者通过触摸该电容模块获取对应的高低电平状态，可以广泛应用于灯光控制、玩具、家用电器等产品中。
+
+<div align="center">
+<img src="./../../docs/images/ttp224.png"  width=40%/>
+</div>
+
+引脚定义：
+* VCC：接 3.3V
+* GND：接 GND
+* OUT1：接 GPIO
+* OUT2：接 GPIO
+* OUT3：接 GPIO
+* OUT4：接 GPIO
+
+## 二、技术参数
+* 工作电压：2.3V-5.5V DC
+* TTP224电流（3V）：2.5uA-9.0uA
+* 板载4路电平状态指示灯
+* 模式：设置输出模式、键输出模式、上限输出时间和快速/低功耗选择
+* 规格尺寸：35mm * 29mm
+
+## 三、软件接口
+4路触摸电容模块HaaS Python驱动：[下载地址](https://github.com/alibaba/AliOS-Things/tree/master/haas_lib_bundles/python/libraries/ttp224)
+### TTP224(ttp01Obj,ttp02Obj,ttp03Obj,ttp04Obj) - 创建TTP224驱动对象
+* 函数原型：
+> ttp224Obj = TTP224(ttp01Obj,ttp02Obj,ttp03Obj,ttp04Obj)
+
+* 参数说明：
+
+|参数|类型|必选参数？|说明|
+|-----|----|:---:|----|
+|ttp01Obj|GPIO|否||
+|ttp02Obj|GPIO|否||
+|ttp03Obj|GPIO|否||
+|ttp04Obj|GPIO|否||
+
+* 返回值：
+TTP224对象创建成功，返回TTP224对象；TTP224对象创建失败，抛出Exception
+
+* 示例代码：
+
+```python
+import ttp224
+from driver import GPIO
+
+ttp01Dev = GPIO()
+ttp01Dev.open("ttp01")
+ttp02Dev = GPIO()
+ttp02Dev.open("ttp02")
+ttp03Dev = GPIO()
+ttp03Dev.open("ttp03")
+ttp04Dev = GPIO()
+ttp04Dev.open("ttp04")
+ttp = ttp224.TTP224(ttp01Dev,None,ttp03Dev)
+print("ttp224 inited!")
+```
+
+* 输出：
+```log
+ttp224 inited!
+```
+
+### getStatus() - 获取TTP224的电容触摸状态值
+
+* 函数功能：
+获取TTP224的电容触摸状态值
+
+* 函数原型：
+> TTP224.getStatus()
+
+* 参数说明：
+无
+
+* 返回值：
+
+|返回值|类型|说明|
+|-----|----|----|
+|cntobj|整型|返回创建了几路TTP对象，0-没有创建对象|
+|ttp01|整型|None-该路未创建，0-未触摸，1-触摸|
+|ttp02|整型|None-该路未创建，0-未触摸，1-触摸|
+|ttp03|整型|None-该路未创建，0-未触摸，1-触摸|
+|ttp04|整型|None-该路未创建，0-未触摸，1-触摸|
+
+* 示例：
+
+```python
+import ttp224
+from driver import GPIO
+import utime
+
+ttp01Dev = GPIO()
+ttp01Dev.open("ttp01")
+ttp02Dev = GPIO()
+ttp02Dev.open("ttp02")
+ttp03Dev = GPIO()
+ttp03Dev.open("ttp03")
+ttp04Dev = GPIO()
+ttp04Dev.open("ttp04")
+ttp = ttp224.TTP224(ttp01Dev,None,ttp03Dev)
+print("ttp224 Init!")
+while True:             # 无限循环
+    cnt,ttp01,ttp02,ttp03,ttp04 = ttp.getStatus()
+    print(cnt,ttp01,ttp02,ttp03,ttp04)
+    utime.sleep(1)
+```
+
+* 输出：
+```log
+ttp224 Init!
+2 0 None 0 None
+2 0 None 0 None
+2 0 None 0 None
+2 0 None 0 None
+2 0 None 0 None
+2 1 None 0 None
+2 1 None 0 None
+2 0 None 0 None
+2 0 None 1 None
+2 1 None 1 None
+2 0 None 0 None
+2 0 None 0 None
+2 0 None 0 None
+```
+
+## 四、接口案例
+此使用实例在board.json中定义了名为tTTP224的I2C类型的对象。在Python脚本中周期性的获取TTP224各路触摸电容的状态并打印在日志中。
+
+* 代码：
+```python
+# board.json配置：
+{
+    "name": "board-name",
+    "version": "1.0.0",
+    "io": {
+      "ttp01": {
+        "type": "GPIO",
+        "port": 2,
+        "dir": "input",
+        "pull": "pullup"
+      },
+      "ttp02": {
+        "type": "GPIO",
+        "port": 12,
+        "dir": "input",
+        "pull": "pullup"
+      },
+      "ttp03": {
+        "type": "GPIO",
+        "port": 13,
+        "dir": "input",
+        "pull": "pullup"
+      },
+      "ttp04": {
+        "type": "GPIO",
+        "port": 14,
+        "dir": "input",
+        "pull": "pullup"
+      }
+    },
+    "debugLevel": "ERROR",
+    "repl": "disable"
+}
+
+```
+```python
+# Python代码
+import ttp224
+from driver import GPIO
+import utime
+
+ttp01Dev = GPIO()
+ttp01Dev.open("ttp01")
+ttp02Dev = GPIO()
+ttp02Dev.open("ttp02")
+ttp03Dev = GPIO()
+ttp03Dev.open("ttp03")
+ttp04Dev = GPIO()
+ttp04Dev.open("ttp04")
+ttp = ttp224.TTP224(ttp01Dev,ttp02Dev,ttp03Dev,ttp04Dev)
+print("ttp224 Init!")
+while True:             # 无限循环
+    cnt,ttp01,ttp02,ttp03,ttp04 = ttp.getStatus()
+    print(cnt,ttp01,ttp02,ttp03,ttp04)
+    utime.sleep(1)
+```
+
+* 输出：
+```log
+ttp224 Init!
+4 0 0 0 0
+4 0 0 0 0
+4 0 0 0 0
+4 0 0 0 0
+4 1 0 0 0
+4 1 1 0 0
+4 0 0 1 0
+```
+
+## 参考文献及购买链接
+* [1] [购买链接](https://detail.tmall.com/item.htm?spm=a230r.1.14.28.40773072fvDTR3&id=522587058105&ns=1&abbucket=17)
+
