@@ -1,0 +1,32 @@
+# Changes that run through devstack-tempest-ipv6 are likely to have an impact on
+# the devstack part of the job, so we keep devstack in the main play to
+# avoid zuul retrying on legitimate failures.
+- hosts: all
+  roles:
+    - orchestrate-devstack
+
+# We run tests only on one node, regardless how many nodes are in the system
+- hosts: tempest
+  roles:
+    - setup-tempest-run-dir
+    - setup-tempest-data-dir
+    - acl-devstack-files
+    # Verify the IPv6-only deployments. This role will perform check for
+    # IPv6 only env for example Devstack IPv6 settings and services listen
+    # address is IPv6 etc. This is invoked before tests are run so that we can
+    # fail early if anything missing the IPv6 settings or deployments.
+    - devstack-ipv6-only-deployments-verification
+  tasks:
+    - name: Run Tempest version <= 26.0.0
+      include_role:
+        name: run-tempest-26
+      when:
+        - zuul.branch is defined
+        - zuul.branch in ["stable/ocata", "stable/pike", "stable/queens", "stable/rocky", "stable/stein"]
+
+    - name: Run Tempest
+      include_role:
+        name: run-tempest
+      when:
+        - zuul.branch is defined
+        - zuul.branch not in ["stable/ocata", "stable/pike", "stable/queens", "stable/rocky", "stable/stein"]
