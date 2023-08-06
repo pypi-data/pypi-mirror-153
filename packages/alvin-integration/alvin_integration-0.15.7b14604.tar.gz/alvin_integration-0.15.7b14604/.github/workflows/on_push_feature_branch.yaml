@@ -1,0 +1,96 @@
+name: Release beta version
+
+# Only runs on non-master branches
+on:
+  push:
+    branches-ignore:
+      - 'master'
+    paths-ignore:
+      - '.github/**'
+      - 'scripts/**'
+      - '**.md'
+      - 'git-conventional-commits.json'
+      - 'LICENSE'
+      - 'docker/**'
+      - 'images/**'
+      
+jobs:
+  test-build-publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    steps:
+    - uses: actions/checkout@v2
+      with: 
+        fetch-depth: 2
+
+    - name: Setup git configuration
+      run: |
+          # Setup github-actions user
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+          # Upgrade pip
+          python3 -m pip install --upgrade pip
+          # Install build deps
+          python3 -m pip install setuptools wheel twine python-semantic-release
+          # If requirements.txt exists, install from it
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi 
+          # Install linters
+          python3 -m pip install poetry
+          poetry install --no-interaction
+
+    - name: Run tests
+      run: |
+        poetry run isort --atomic $PWD
+        poetry run black $PWD
+        # poetry run flake8 --ignore=E501,
+        poetry run bandit --recursive --number=3 -ll -ii $PWD
+
+    - name: Compose beta version
+      run: |
+        git pull
+
+        mysql -h 34.89.189.11 -u github_actions -p${{ secrets.MYSQL_PASSWORD }} --skip-column-names -s -r -e "USE pypi_packages; CREATE TABLE IF NOT EXISTS \`${{ github.ref_name }}\` ( id INT NOT NULL AUTO_INCREMENT, semantic_version CHAR(20) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP , updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, is_published BOOLEAN NOT NULL, PRIMARY KEY (id));"
+
+
+        CURRENT_VERSION=$(semantic-release print-version --current)
+        export VERSION=$(semantic-release print-version --prerelease)
+
+        VERSION="$VERSION$(( $RANDOM % 5000000 + 1 ))"
+
+        sed -i -e '/^__version__/s/=.*$/="'"$VERSION"'"/' setup.py
+
+        semantic-release version --define=commit_subject="Upgrade integration to version $VERSION"
+
+        version=$(echo $VERSION | ( IFS="-$IFS" ; read a b c d && echo "${a}b" ))
+        version2=$(echo $VERSION | ( IFS=".$IFS" ; read a b c d && echo $d ) | cut -c2-)
+        version=${version}${version2}
+
+        mysql -h 34.89.189.11 -u github_actions -p${{ secrets.MYSQL_PASSWORD }} --skip-column-names -s -r -e "USE pypi_packages; INSERT INTO \`${{ github.ref_name }}\` (semantic_version, is_published) VALUES('$version', false);"
+
+
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+
+    - name: Build beta version and publish
+      env:
+        TWINE_USERNAME: alvindotai
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        VERSION: ${{ env.VERSION }}
+      run: |
+        # Create a source distribution (sdist) & a wheel (bdist wheel)
+        python setup.py sdist bdist_wheel
+        twine upload dist/*
+                
+        mysql -h 34.89.189.11 -u github_actions -p${{ secrets.MYSQL_PASSWORD }} --skip-column-names -s -r -e "USE pypi_packages; UPDATE \`${{ github.ref_name }}\` SET is_published=true WHERE semantic_version='${{ env.VERSION }}';"
+
+        git push

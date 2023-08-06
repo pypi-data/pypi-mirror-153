@@ -1,0 +1,143 @@
+name: Release general version
+
+# Only runs on non-master branches
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+    paths-ignore:
+      - '.github/**'
+      - 'scripts/**'
+      - '**.md'
+      - 'git-conventional-commits.json'
+      - 'LICENSE'
+      - 'docker/**'
+      - 'images/**'
+
+concurrency:
+  group: ${{ github.ref }}
+
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        python-version: [3.8]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set release version
+      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ env.RELEASE_VERSION }}-rc.0
+
+    - name: Setup git configuration
+      run: |
+          # Setup github-actions user
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+          # Upgrade pip
+          python3 -m pip install --upgrade pip
+          # Install build deps
+          python3 -m pip install setuptools wheel twine python-semantic-release
+          # If requirements.txt exists, install from it
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi 
+
+    - name: Build and publish general version
+      id: publish-pypi
+      env:
+        TWINE_USERNAME: alvindotai
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        VERSION: ${{ env.RELEASE_VERSION }}
+      run: |
+        sed -i -e '/^__version__/s/=.*$/="'"$VERSION"'"/' setup.py
+        sed -i -e '/^__base_version__/s/=.*$/="'"$VERSION"'"/' setup.py
+
+        # Create a source distribution (sdist) & a wheel (bdist wheel)
+        python setup.py sdist bdist_wheel
+        twine upload dist/*
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: master
+        token: ${{ secrets.REPO_SECRET_TOKEN }}
+
+    - name: Generate CHANGELOG.md
+      env:
+        BASE_VERSION: ${{ env.RELEASE_VERSION }}-rc.0
+        RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+      run: |
+        sed -i -e '/^__version__/s/=.*$/="'"$RELEASE_VERSION"'"/' setup.py
+        sed -i -e '/^__base_version__/s/=.*$/="'"$RELEASE_VERSION"'"/' setup.py
+    
+        LINE_NUMBER=$(cat CHANGELOG.md | grep "\[$BASE_VERSION]" -n | cut -d : -f 1)
+        
+        awk 'NR=="'"$LINE_NUMBER"'"{sub(".*","'"## [$BASE_VERSION] | [$RELEASE_VERSION] --- $(date +%F)"'")}1' CHANGELOG.md > CHANGELOG.tmp.md
+
+        rm CHANGELOG.md && mv CHANGELOG.tmp.md CHANGELOG.md
+
+        git add .
+        git commit -m "Upgrade CHANGELOG.md with version $RELEASE_VERSION"
+        git push
+
+    - name: Post result to Slack
+      if: steps.publish-pypi.outcome == 'success'
+      id: slack
+      uses: slackapi/slack-github-action@v1.18.0
+      with:
+        # Slack channel id, channel name, or user id to post message.
+        # See also: https://api.slack.com/methods/chat.postMessage#channels
+        channel-id: 'release-package-alvin-integration'
+        # For posting a simple plain text message
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": ":white_check_mark: New alvin-integration release",
+                  "emoji": true
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*What has changed*\n<https://github.com/alvindotai/alvin-integration/blob/${{ env.RELEASE_VERSION }}/CHANGELOG.md|CHANGELOG.md>"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Pull Request number*\n*-*>"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Previous version*\n*${{ env.RELEASE_VERSION }}-rc.0*"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Current version*\n*${{ env.RELEASE_VERSION }}*"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}    
+
