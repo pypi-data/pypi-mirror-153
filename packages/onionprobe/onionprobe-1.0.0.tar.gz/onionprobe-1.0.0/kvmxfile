@@ -1,0 +1,251 @@
+#
+# Sample kvmx file - https://0xacab.org/rhatto/kvmx
+#
+
+# Hostname
+hostname="onionprobe"
+
+# Which base box you should use. Leave unconfigured to use kvmx-create instead.
+#basebox="bullseye"
+
+# First user name
+user="user"
+
+# First user password
+password="`head -c 40 /dev/urandom | base64`"
+
+# Networking
+#net="tap"
+net="user"
+
+# DNS config
+#net_dns="192.168.1.1"
+#net_dns="host" # copy /etc/resolv.conf from host when creating the box
+
+# Networking: tap config only
+# This setting is used during virtual machine bootstrapping by kvmx-create.
+#net_ip="10.1.1.2"
+#net_mask="255.255.255.0"
+#net_gateway="10.1.1.1"
+
+# Set this is you want to be able to share a single folder between host and guest.
+# Needs ssh_support set to "y" and a workable SSH connection to the guest.
+shared_folder="."
+#shared_folder_mountpoint="/home/$user/code/$VM"
+#shared_folder="$HOME/temp/shared/$VM"
+#shared_folder_mountpoint="/home/$user/temp/shared/$VM"
+shared_folder_mountpoint="/srv/shared"
+#shared_folder_mountpoint="/srv/kvmx"
+#shared_folder_mountpoint="/vagrant"
+
+# Set this is you want to be able to share multiple folders between host and guest using 9p.
+# Needs ssh_support set to "y" and a workable SSH connection to the guest.
+# Format: <id1>:<host-folder1>:<guest-mountpoint1>,<id2>:<host-folder2>:<guest-mountpoint2>[,...]
+#shared_folders="shared1:.:/home/$user/code/$VM,shared2:$HOME/.local/share/app:/home/$user/.local/share/app"
+
+# Maximum packet size including any headers for shared folders using 9p
+# See https://forums.lime-technology.com/topic/34691-9p-sharing-speed-not-what-i-expected/
+#     https://github.com/clearcontainers/hyperstart/pull/25
+#shared_folders_msize="524288"
+
+# Shared folders caching
+# See https://www.kernel.org/doc/Documentation/filesystems/9p.txt
+#shared_folders_cache="none"
+
+# Set this is you want to be able to share multiple folders between host and guest using SSHFS.
+# Needs ssh_support set to "y" and a workable SSH connection to the guest.
+# Format: <id1>:<guest-folder1>:<host-mountpoint1>,<id2>:<guest-folder2>:<host-mountpoint2>[,...]
+#shared_folders_sshfs="shared1:/home/$user/code/$VM:.,shared2:/home/$user/.local/share/app:$HOME/.local/share/app"
+
+# Folder to sync during provisioning in the format "/host/folder1 /guest/folder1,/host/folder2 /guest/folder2[,...]".
+# Needs ssh_support set to "y" and a workable SSH connection to the guest.
+#provision_rsync="$KVMX_BASE/share/provision/ /usr/local/share/kvmx/provision/"
+#provision_rsync="puppet/ /etc/puppet/"
+
+# Options for provision_rsync
+#provision_rsync_opts="--exclude=somefolder"
+
+# Absolute path for a provision script located inside the guest.
+# Needs ssh_support set to "y" and a workable SSH connection to the guest.
+#provision_command="sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y && sudo apt-get clean"
+#provision_command="/usr/local/share/kvmx/provision/debian/development && /etc/puppet/bin/provision && /etc/puppet/bin/deploy"
+#provision_command="/usr/local/share/kvmx/provision/debian/development && /etc/puppet/bin/deploy"
+#provision_command="/usr/local/share/kvmx/provision/debian/development && /home/$user/code/$VM/bin/custom-provisioner"
+#provision_command="/usr/local/share/kvmx/provision/debian/development"
+#provision_command="/usr/local/share/kvmx/provision/debian/trashman"
+#provision_command="/usr/local/share/kvmx/provision/debian/desktop-basic"
+provision_command="/srv/shared/scripts/provision"
+
+# Startup command
+#startup_command="/path/to/custom/command"
+#startup_command="hydractl aperiodic-upgrade"
+
+# Pre-poweroff command
+#poweroff_pre_command="/path/to/custom/command"
+
+# Rsync commands to be run on startup or poweroff, useful to keep files synced between host and guest
+#startup_rsync_to_guest="data:data:/var/data,code:$HOME/code:/home/user/code"
+#poweroff_rsync_from_guest="data:/var/data:data,code:/home/user/code:$HOME/code"
+
+# Graphics
+# See https://wiki.archlinux.org/index.php/QEMU#Graphics
+#graphics="-vga std -nographic -vnc :$GUEST_DISPLAY"
+graphics="-vga qxl"
+
+# VNC Client
+#vnc_client="xtightvncviewer"
+#vnc_client="xvnc4viewer"
+#vnc_client="xvncviewer"
+#vnc_client="vncviewer"
+vnc_client="virt-viewer"
+
+# SPICE support
+spice="1"
+
+# Set this if you want to attach an spice client when the machine boots.
+run_spice_client="0"
+
+# SPICE client
+#spice_client="spicec"
+#spice_client="virt-viewer"
+spice_client="spicy"
+
+# Set this if you want to start an xpra session when the machine boots.
+run_xpra="0"
+
+# Set this if you want to start an xephyr session when the machine boots.
+run_xephyr="0"
+
+# Set this if you want kvmx to redimension the guest screen according to host's screen dimension
+# Requires ssh_support and xrandr installed on both host and guest
+xrandr="0"
+
+# Xrandr device
+#xrandr_device="qxl-0"
+#xrandr_device="Virtual-0"
+
+# Set screen resolution
+#resolution="1280x785"
+
+# Sound
+#sound="0"
+#sound="ac97"
+
+# Set additional hostfwd mappings
+#port_mapping="hostfwd=tcp:127.0.0.1:8080-:80,hostfwd=tcp:127.0.0.1:8443-:443"
+port_mapping="hostfwd=tcp:127.0.0.1:9090-:9090"          # Prometheus Dashboard
+port_mapping="$port_mapping,hostfwd=tcp:127.0.0.1:9935-:9935" # Onionprobe Prometheus exporter
+port_mapping="$port_mapping,hostfwd=tcp:127.0.0.1:9093-:9093" # Alertmanager Dashboard
+port_mapping="$port_mapping,hostfwd=tcp:127.0.0.1:3000-:3000" # Grafana Dashboard
+
+# Where the guest image is stored
+#image="$HOME/.local/share/kvmx/$VM/box.img"
+
+# Use basebox image as a backing file for overlay images
+# See https://wiki.archlinux.org/index.php/QEMU#Overlay_storage_images
+#backing_file="1"
+
+# Where datafiles are stored: just set this if you know what you're doing
+#datadir="$HOME/.local/share/kvmx/$VM"
+
+# Drive type: use this if you want to run a Live CD/DVD/USB
+#image_drive="cdrom"
+
+# Image type: file or device (kvmx-create only)
+image_type="file"
+
+# Discards support
+# See https://jschumacher.info/2020/11/debian-qemu-libvirt-qcow2-and-fstrim/
+#     https://chrisirwin.ca/posts/discard-with-kvm-2020/
+image_discards="y"
+
+# Image size
+size="10G"
+
+# Image format: raw or qcow2
+format="qcow2"
+
+# Image compression (qcow2 only)
+qcow2_compression="1"
+
+# Bootstrap method: custom or vmdeboostrap
+method="custom"
+
+# Domain
+domain="example.org"
+
+# System arch
+arch="amd64"
+
+# Box distribution when bootstraping a new image
+version="bullseye"
+
+# Debian mirror
+mirror="https://deb.debian.org/debian/"
+
+# Memory
+memory="2048"
+
+# Enables remote administration using SSH. With this configuration enabled,
+# kvmx will be able to administer a running virtual machine using SSH access
+# inside the virtual machine.
+ssh_support="y"
+
+# Use a custom, per-virtual-machine generated SSH keypair. If you disable this
+# configuration but still want guest administration using SSH, the default
+# insecure keypair will be used.
+#
+# Please note that this setting won't take effect if you're using a basebox.
+# In that case the basebox keypair will be used if it exists, otherwise kvmx
+# fallsback to the default insecure keypair.
+#
+# This setting is used during virtual machine bootstrapping by kvmx-create.
+ssh_custom="y"
+
+# Use this config if you want kvmx-create to include a specif SSH pubkey
+# It might be a path for an existing pubkey file or the public key itself.
+#
+# Make sure to have this key available when trying to SSH into the guest using kvmx
+#ssh_custom_pubkey="/home/myhostuser/.ssh/id_rsa.pub"
+#ssh_custom_pubkey="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDVFmJ2UDn2dK3nHHAkHzt8F4AfrXTFiGa+guem92S/pztMGAUDjEZBYEW3mZ8ATyo4GoPZ92tkjmra0Fgv6ETIox+SPWbzzjhzbv2CQUTWvF6PEVwJbT1PTzaIVRiDYf+yX7e3Y8HcmkAi60Cxs5Xr3HLkqdi2jYKFofCm58R+HGnRv1WSurPnf7C7KQBSW7E1S2CafW9VFHhGCzezyThjN+n3bJjgYFzPxdTlWyfW1T7Yv61/fqfuara0kpZx1l5pblpgbCTT7WKRIhwj1x0QTo/qDQ6k52tffiCVyMGJKvires9yp5qT5Y+ldssBKDa8muRF/dh7/UCyxvcm3HTDjWG24Sr4r9JWbhkqF89UePlOw5j73qw4gzT7YQ38tzz2XI5weAL1OXM6qhCbOwfPXwYbB5xM4g62WZugtcCLan6Iy8hvoiRIJ1MU2ar73wunghQQ84oNIrEVezJsuZxwxVbe45ulnM7x4Hqeu6jmOutWFkdkAHsqd1E3zTOS1RURwi0TpnD+iWwD7FOA9c8B6AWP4i9XVW6BLi1waARrS3bVnOh3djc20fVsClfEDDXFg2KiTeQaAWfjLguyUmxysSiUC2pnibd1bEDtdfPlkA2jaE2nAn6Tw7Vp5zd8P1d1trLMx3YkRq5uQSPqnfQDKoYH5FPMlNTbMINLC56ijw== user@kvmx"
+
+# Bootloader (used only during bootstrapping by kvmx-create).
+bootloader="grub"
+
+# Drive interface
+#drive_interface="ide" # Needed by some systems like NetBSD and FreeBSD
+#drive_interface="virtio,cache=none,index=0,format=raw" # For raw devices
+
+# See http://www.reactos.org/wiki/QEMU#Setting_up_network
+#nic_model="ne2k_pci"
+
+# USB support
+#
+# Allowed values:
+#
+#   0 - No USB support
+#   1 - Support for USB 1.0
+#   2 - Support for USB 1.0 and 2.0
+#   3 - Support for USB 1.0, 2.0 and 3.0
+#
+#usb="0"
+
+# Additional qemu opts
+# Example: http://www.linux-kvm.org/page/USB_Host_Device_Assigned_to_Guest
+# See also: https://qemu.readthedocs.io/en/latest/system/usb.html
+#           https://wiki.gentoo.org/wiki/QEMU/Windows_guest
+#qemu_opts="-device usb-host,hostbus=2,hostaddr=3" # Automatically attach an specific USB device
+#qemu_opts=""
+
+# Number of CPUs
+#smp="4"
+
+# Enviroment passed to SSH commands
+#ssh_env="TERM=xterm"
+
+# Whether to be managed by kvmx-supervise
+#supervise_manage="1"
+
+# VirtIO RNG parameters
+# See https://wiki.qemu.org/Features/VirtIORNG
+#virtio_rng="max-bytes=128,period=1000"

@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# Helper script to setuo a development environment
+#
+
+# Parameters
+DIRNAME="`dirname $0`"
+BASEPATH="$DIRNAME/.."
+DEPENDENCIES="python3-prometheus-client python3-stem python3-cryptography python3-yaml python3-requests python3-socks"
+#DEPENDENCIES="python3-bs4 python3-pytest"
+DEPENDENCIES="$DEPENDENCIES tor"
+DEPENDENCIES_DOCS="pandoc latexmk texlive-latex-extra texlive-fonts-extra"
+DEPENDENCIES_PACKAGING_PYTHON="python3-venv python3-build python3-keyrings.alt twine"
+DEPENDENCIES_PACKAGING_DEBIAN="sbuild-debian-developer-setup piuparts"
+TORRC="/etc/tor/torrc"
+
+# Install dependencies
+sudo apt install -y $DEPENDENCIES
+
+# Configure Tor
+# This is mainly intended to test Onionprobe using a system-wide Tor daemon,
+# i.e., when not using the built-in Tor process handling.
+if ! grep "^ControlPort" $TORRC; then
+
+  control_pass="$(grep "^control_password" $BASEPATH/onionprobe.yaml | cut -d "'" -f 2)"
+  hashed_pass="`tor --hash-password $control_pass`"
+
+  echo "SocksPort   19050"                  | sudo tee -a $TORRC > /dev/null
+  echo "ControlPort 19051"                  | sudo tee -a $TORRC > /dev/null
+  echo "HashedControlPassword $hashed_pass" | sudo tee -a $TORRC > /dev/null
+
+  sudo service tor restart
+fi
+
+# Docker and docker-compose from distribution
+sudo apt-get install -y docker.io docker-compose
+
+# Put the regular user into docker group
+sudo usermod -a -G docker $(whoami)
+
+# Docs
+# Not automatically installed because some texlive packages uses a lot of diskspace
+#sudo apt-get install -y $DEPENDENCIES_DOCS
+
+# Python packaging
+sudo apt-get install -y $DEPENDENCIES_PACKAGING_PYTHON
+
+# Debian packaging
+sudo apt-get install -y $DEPENDENCIES_PACKAGING_DEBIAN
+
+# Sbuild chroot for unstable
+if [ ! -e "/srv/chroot/unstable-amd64-sbuild" ]; then
+  #sudo sbuild-debian-developer-setup --distribution=unstable
+  sudo sbuild-createchroot  --include=eatmydata,gnupg unstable /srv/chroot/unstable-amd64-sbuild http://deb.debian.org/debian
+fi
+
+# Sbuild chroot for stable
+#if [ ! -e "/srv/chroot/stable-amd64-sbuild" ]; then
+#  sudo sbuild-createchroot --include=eatmydata,gnupg stable   /srv/chroot/stable-amd64-sbuild   http://deb.debian.org/debian
+#  sudo sbuild-debian-developer-setup --distribution=stable
+#fi
+
+sudo sbuild-adduser $LOGNAME
+
+if [ ! -e "$HOME/.sbuildrc" ]; then
+  cp /usr/share/doc/sbuild/examples/example.sbuildrc $HOME/.sbuildrc
+fi
+
+# This allows one to build Debian packages inside a KVMX virtual machine
+#if [ -d "/srv/onionprobe" ]; then
+#  sudo chown user. /srv/onionprobe
+#fi

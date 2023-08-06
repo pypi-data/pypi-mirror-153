@@ -1,0 +1,142 @@
+---
+version: '3'
+
+services:
+  prometheus:
+    image: docker.io/prom/prometheus
+    volumes:
+      - ./${PROMETHEUS_CONFIG:-configs/prometheus/prometheus.yml}:/etc/prometheus/prometheus.yml
+      - ./${PROMETHEUS_RULES:-configs/prometheus/prometheus-rules.yml}:/etc/prometheus/prometheus-rules.yml
+      - prometheus:/prometheus
+    ports:
+      - 9090:9090
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-admin-api'
+      - '--web.enable-lifecycle'
+      - '--web.external-url=${PROMETHEUS_WEB_EXTERNAL_URL:-http://hostname:9090}'
+    healthcheck:
+      test: ["CMD-SHELL", "/bin/wget http://localhost:9090/-/healthy -q -O - | /bin/grep -q 'Prometheus is Healthy'"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+    restart: always
+    # This needs a newer Docker Compose (>= 1.28)
+    #profiles: ["prometheus", "all"]
+
+  alertmanager:
+    image: docker.io/prom/alertmanager
+    volumes:
+      - ./${ALERTMANAGER_CONFIG:-configs/alertmanager/alertmanager.yml}:/etc/alertmanager/alertmanager.yml
+      - alertmanager:/alertmanager
+    ports:
+      - 9093:9093
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    restart: always
+    # This needs a newer Docker Compose (>= 1.28)
+    #profiles: ["alertmanager", "all"]
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: grafana
+      POSTGRES_DB: grafana
+      POSTGRES_PASSWORD: ${GRAFANA_DATABASE_PASSWORD:-unsafe-password-please-change}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    restart: always
+    # This needs a newer Docker Compose (>= 1.28)
+    #profiles: [ "grafana", "all" ]
+
+  grafana:
+    image: docker.io/grafana/grafana
+    volumes:
+      - ./${GRAFANA_PROVISIONING:-configs/grafana/provisioning}:/etc/grafana/provisioning
+      - ./${GRAFANA_HOME_DASHBOARD:-configs/grafana/home.json}:${GRAFANA_DASHBOARDS_DEFAULT_HOME_DASHBOARD:-/etc/grafana/home.json}
+      - grafana:/var/lib/grafana
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres
+      GF_DATABASE_NAME: grafana
+      GF_DATABASE_USER: grafana
+      GF_DATABASE_PASSWORD: ${GRAFANA_DATABASE_PASSWORD:-unsafe-password-please-change}
+      GF_SMTP_ENABLED: ${GRAFANA_SMTP_ENABLED:-false}
+      GF_SMTP_HOST: ${GRAFANA_SMTP_HOST:-localhost:25}
+      GF_SMTP_USER: ${GRAFANA_SMTP_USER:-}
+      GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD:-}
+      GF_SMTP_STARTTLS_POLICY: ${GRAFANA_SMTP_STARTTLS_POLICY:-}
+      GF_SERVER_DOMAIN: ${GRAFANA_SERVER_DOMAIN:-}
+      GF_SERVER_ROOT_URL: ${GRAFANA_SERVER_ROOT_URL:-}
+      GF_ANALYTICS_REPORTING_ENABLED: ${GRAFANA_ANALYTICS_REPORTING_ENABLED:-false}
+      GF_ANALYTICS_CHECK_FOR_UPDATES: ${GRAFANA_ANALYTICS_CHECK_FOR_UPDATES:-false}
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: ${GRAFANA_ANALYTICS_CHECK_FOR_UPDATES:-false}
+      GF_PLUGINS_ENABLE_ALPHA: ${GRAFANA_PLUGNS_ENABLE_ALPHA:-false}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: ${GRAFANA_DASHBOARDS_DEFAULT_HOME_DASHBOARD:-/etc/grafana/home.json}
+    ports:
+      - 3000:3000
+    restart: always
+    depends_on:
+      - prometheus
+      - postgres
+    # This needs a newer Docker Compose (>= 1.28)
+    #profiles: ["grafana", "all"]
+
+  tor:
+    image: "onionprobe/tor:1.0"
+    build:
+      context: .
+      dockerfile: containers/tor/Dockerfile
+    volumes:
+      - ./scripts/generate-auth-keys-for-all-onion-services:/usr/local/bin/generate-auth-keys-for-all-onion-services
+      - tor:/var/lib/tor
+    restart: always
+    # This needs a newer Docker Compose (>= 1.28)
+    #profiles: ["tor", "all"]
+
+  # Service that periodically compiles an Onionprobe configuration
+  configurator:
+    image: "onionprobe/onionprobe:1.0"
+    build:
+      context: .
+      dockerfile: containers/onionprobe/Dockerfile
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/srv/onionprobe
+    entrypoint: "/srv/onionprobe/${CONFIGURATOR_ENTRYPOINT:-packages/tpo.py}"
+    command: "${CONFIGURATOR_PARAMS:---loop --wait 240 --config_overrides rounds=20 --config_template /srv/onionprobe/configs/tor.yaml --output_folder /srv/onionprobe/contrib}"
+    user: "${CONTAINER_UID:-1000}:${CONTAINER_GID:-1000}"
+    restart: always
+    # This needs a newer Docker Compose (>= 1.28)
+    #profiles: ["configurator", "all"]
+
+  onionprobe:
+    image: "onionprobe/onionprobe:1.0"
+    build:
+      context: .
+      dockerfile: containers/onionprobe/Dockerfile
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/srv/onionprobe
+    ports:
+      - 9935:9935
+    environment:
+      ONIONPROBE_CONFIG: /srv/onionprobe/${ONIONPROBE_CONFIG:-contrib/tpo.yaml}
+    restart: always
+    depends_on:
+      - configurator
+    # This needs a newer Docker Compose (>= 1.28)
+    #profiles: ["onionprobe", "all"]
+
+volumes:
+  prometheus: {}
+  alertmanager: {}
+  postgres: {}
+  grafana: {}
+  tor: {}
