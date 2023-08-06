@@ -1,0 +1,260 @@
+#!python
+
+# pylint: disable=fixme
+# pylint: disable=invalid-name
+# pylint: disable=line-too-long
+# pylint: disable=missing-module-docstring
+
+import os
+import sys
+import pkgutil
+import traceback
+from chiakilisp.utils import pprint
+from chiakilisp.lexer import Lexer
+from chiakilisp.parser import Parser
+from chiakilisp.runtime import ENVIRONMENT
+from chiakilisp.linter.linter import BuiltinLinter
+from chiakilisp.cxcompiler.dictionary import DICTIONARY
+from chiakilisp.cxcompiler.cgen import CPPCodeGenerator
+
+BUILTINS = globals()['__builtins__']
+ENVIRONMENT.update({name: getattr(BUILTINS, name, None)
+                    for name in dir(BUILTINS)})
+
+
+def dump(source: str,
+         source_file_name: str) -> None:
+
+    """
+    Simple enough function just to dump the AST out
+
+    :param source: (valid?) ChiakiLisp' source code
+    :param source_file_name: source code file' name
+    :return: this only dumps AST, nothing to return
+    """
+
+    for tree in wood(source, source_file_name):
+        tree.dump(0)
+
+
+def wood(source: str, source_file_name: str) -> list:
+
+    """
+    wood() method converts source to a wood of children
+
+    :param source: str instance, containing source code
+    :param source_file_name: the source code' file name
+    :return: this method will return a wood of children
+    """
+
+    lexer = Lexer(source, source_file_name)
+    lexer.lex()
+    parser = Parser(lexer.tokens())
+    parser.parse()
+    return parser.wood()  # return wood of the Children
+
+
+def require(path: str, merge: bool = False) -> dict:
+
+    """
+    require() method takes path as string, opens it,
+    takes it to the parser, then returns module environ
+
+    :param path: ChiakiLisp source path
+    :param merge: whether to merge with global environ?
+    :return: an executed module environment (as a dict)
+    """
+
+    with open(path, 'r', encoding='utf-8') as _r:
+        environment = {} if not merge else ENVIRONMENT
+        if not merge:
+            environment.update(ENVIRONMENT)  # then do this
+        for child in wood(_r.read(),  path.split('/')[-1]):
+            child.execute(environment)
+        return environment  # <---- return ready to use env
+
+
+def execute(source: str,
+            file_name: str,
+            silent: bool = False) -> None:
+
+    """
+    execute() method convert source to AST and executes its
+
+    :param source: ChiakiLisp valid source code as a string
+    :param file_name:  the file name, source code came from
+    :param silent: whether print executed expression or not
+    :return: returns _nothing_, only prints each result out
+    """
+
+    for child in wood(source, file_name):
+        result = child.execute(ENVIRONMENT)
+        # TODO: store results in *1, *2, and *3 global vars
+        if not silent:
+            pprint(result)  # with the custom formatting :D
+
+
+def generate(source: str,
+             infile_name: str,
+             outfile_name: str) -> None:
+
+    """
+    generate() method convert source to AST and executes it
+
+    :param source: ChiakiLisp valid source code as a string
+    :param infile_name: file's name we take the source from
+    :param outfile_name: file's name to write CPP code into
+    :return: returns _nothing, it only generates a CPP code
+    """
+
+    gss = []
+    cfg = {'DEFS': [],
+           'DEFUNCTIONS': [],
+           'KNOWN_POINTERS': [],
+           'CXX_INCLUDE_DIRS': [],
+           'CXX_LIBRARY_DIRS': [],
+           'LD_LINK_SRC_WITH': [],
+           'SOURCE_INCLUDING': []}
+
+    for child in wood(source, infile_name):
+        gss.append(child.generate(DICTIONARY, cfg, False))
+
+    gss = list(filter(lambda x: x, gss))  # <--- clean up!
+
+    CXX_FLAGS = ' '.join(map(lambda x: f'-I{x}',
+                             cfg['CXX_INCLUDE_DIRS']))
+
+    LD_FLAGS = ' '.join(map(lambda x: f'-L{x}',
+                            cfg['CXX_LIBRARY_DIRS']))
+
+    LD_FLAGS += LD_FLAGS or ' '
+    LD_FLAGS += ' '.join(map(lambda x: f'-l{x}',
+                             cfg['LD_LINK_SRC_WITH']))
+
+    with open('generated.env',
+              'w',
+              encoding='utf-8') as fwriter:
+        fwriter.write(
+            f'export CXX_FLAGS="{CXX_FLAGS}"'
+            f'\nexport LD_FLAGS="{LD_FLAGS}"\n')
+
+    with open(outfile_name,
+              'w',
+              encoding='utf-8') as fwriter:
+        fwriter.write(CPPCodeGenerator(gss).generate(cfg))
+
+
+def repl() -> None:
+
+    """Starts a REPL-like environment"""
+
+    while True:
+        try:
+            source: str = input('LISP> ')  # later, it may be changed to the currently _active_ namespace' name
+        except KeyboardInterrupt:  # handle Ctrl+D (exit the REPL)
+            print()  # print an empty line to prevent Python 3 from printing next LISP> prompt on the same line
+            continue
+        except EOFError:  # handle Ctrl+C (cancel a current input)
+            print()  # print an empty line to prevent host' shell to print their prompt string on the same line
+            return
+        if not source:  # if there is no source code for execute()
+            continue
+        try:
+            execute(source, '<REPL>')  # <--------------------------------- execute function also prints result
+        except (Exception,) as _exc:  # pylint: disable=W0703        # try to catch any possible exception here
+            ENVIRONMENT['*e'] = _exc  # <------------------- like in clojure REPL, store exception object in *e
+            if ENVIRONMENT.get('repl-show-traceback'):
+                traceback.print_exc()
+            else:
+                print(_exc)  # have to manually print error (and if user want to print out exception traceback)
+
+
+if __name__ == '__main__':
+
+    ENVIRONMENT['require'] = require  # <-- make it possible to require ChiakiLisp modules
+
+    try:
+        import readline  # pylint: disable=W0611                                     (>_<)
+    except ImportError:
+        readline = type('readline', (object,), {  # pylint: disable=invalid-name     (>_<)
+            "set_completer": lambda _, __: None,
+            "parse_and_bind": lambda _, __: None
+        })  # <----------------------------------- this is for MS Windows NT compatibility
+
+    readline.parse_and_bind("tab: complete")  # <--- allows user to complete binding names
+    readline.parse_and_bind('set: blink-matching-paren on')  # <- extremely needed feature
+
+    def completer(text, state) -> str or None:
+
+        """Handle completions shown by GNU Readline library when the user press Tab key"""
+
+        names = tuple(ENVIRONMENT.keys())
+
+        return (tuple(filter(lambda name: name.startswith(text), names)) + (None,))[state]
+
+    readline.set_completer(completer)
+
+    rc_file = os.path.join(os.environ.get('HOME', os.environ.get('USER')),   '.chiakilang-opts-rc.cl')
+    if os.path.exists(rc_file):
+        try:
+            require(rc_file, merge=True)
+        except (Exception,) as exc:  # pylint: disable=broad-except        # it's okay to this, pylint
+            if os.environ.get('CHIAKILISP__OPTS_RC_FILE_SHOW_ERRORS'):
+                print(exc)
+            else:
+                print("Options' rc is broken. Set CHIAKILISP__OPTS_RC_FILE_SHOW_ERRORS=1 to see more")
+    else:
+        with open(rc_file, 'w', encoding='utf-8') as w:
+            w.write('(def repl-show-traceback false) ;; set to true to see the exception\' traceback')
+
+    linter_config: dict = {}  # <--- if we could not load linter config from user prefs, use a default
+
+    rc_file = os.path.join(os.environ.get('HOME', os.environ.get('USER')), '.chiakilang-linter-rc.cl')
+    if os.path.exists(rc_file):
+        try:
+            linter_config = require(rc_file, merge=False)  # <- prevent global env from updating there
+            if not linter_config.get('Rules'):
+                linter_config = {}  # <-- actually, we should manually check linter config correctness
+        except (Exception,) as exc:   # pylint: disable=broad-except       # it's okay to this, pylint
+            if os.environ.get('CHIAKILISP__LINTER_RC_FILE_SHOW_ERRORS'):
+                print(exc)
+            else:
+                print('Linter rc is broken. Set CHIAKILISP__LINTER_RC_FILE_SHOW_ERRORS=1 to see more')
+    else:
+        with open(rc_file, 'w', encoding='utf-8') as w:
+            w.write(';; this is the ChiakiLisp linter rc-file\n(def Rules ["UnusedGlobalVariables"])')
+
+    if os.path.exists('chiakilisp/corelib/core.cl'):
+        require('chiakilisp/corelib/core.cl', merge=True)  # <---------------- load chiakilisp corelib
+    else:
+        execute('corelib.cl',  pkgutil.get_data('chiakilisp', 'corelib/core.cl').decode('utf-8'),  silent=True)
+
+    if len(sys.argv) > 1:
+        self: str = sys.argv[0]
+        assert len(sys.argv) == 2, f'Usage: {self} [source]'
+        file_path: str = sys.argv[1]
+        assert os.path.exists(file_path), f'{self}: {file_path}: no such file or directory'
+        assert os.path.isfile(file_path) or os.path.islink(file_path), f'{self}: {file_path}: invalid pathnode'
+        with open(file_path, 'r', encoding='utf-8') as r:
+
+            if os.environ.get('CHIAKILISP__AST_DUMPER'):
+                dump(r.read(), file_path.split('/')[-1])  # <------ this will dump out AST and exit the program
+                sys.exit(0)
+
+            if os.environ.get('CHIAKILISP__LINTER_MODE'):
+                linter = BuiltinLinter(wood(r.read(), '<linter>'), ENVIRONMENT, linter_config)  # <- initialize
+                linter.run()
+                linter.fancy_print_report()  # <----------------- this will fancy print generated linter report
+                sys.exit(0)  # <----------------------- exit chiakilang after showing report of built-in linter
+
+            if os.environ.get('CHIAKILISP__COMPILER_MODE'):
+                generate(r.read(), file_path.split('/')[-1], 'generated.cpp')  # <------- produce generated.cpp
+                sys.exit(0)  # <------------------------------ exit chiakilang after successful code-generation
+
+            ENVIRONMENT['argc'] = len(sys.argv) - 1  # <------------------ do not count "./chiakilang" argument
+            ENVIRONMENT['argv'] = sys.argv[1:]  # <--------------------- skip the first "./chiakilang" argument
+
+            execute(r.read(), file_path.split('/')[-1],  silent=True)  # <-- set silent to avoid extra printing
+    else:
+        print('Press Ctrl+C to cancel input, press Ctrl+D to exit REPL, press Tab to see all global functions')
+        repl()  # <------------------------------------------------------------ start built-in REPL environment
