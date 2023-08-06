@@ -1,0 +1,443 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "format": "uri"
+        },
+        "configuration_identifier": {
+            "type": "string",
+            "description": "An unique identifier for this configuration. Only save files created with this identifier can be loaded."
+        },
+        "starting_location": {
+            "$ref": "#/$defs/actor_reference"
+        },
+        "pickups": {
+            "type": "array",
+            "minItems": 146,
+            "maxItems": 148,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pickup_type": {
+                        "type": "string",
+                        "enum": [
+                            "actor",
+                            "emmi",
+                            "corex",
+                            "corpius",
+                            "cutscene"
+                        ]
+                    },
+                    "caption": {
+                        "type": "string"
+                    },
+                    "resources": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "item_id": {
+                                    "type": "string"
+                                },
+                                "quantity": {
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "item_id",
+                                "quantity"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "pickup_type",
+                    "caption",
+                    "resources"
+                ],
+                "if": {
+                    "properties": {
+                        "pickup_type": {
+                            "const": "actor"
+                        }
+                    }
+                },
+                "then": {
+                    "properties": {
+                        "pickup_actor": {
+                            "$ref": "#/$defs/actor_reference_with_layer"
+                        },
+                        "model": {
+                            "type": "string"
+                        },
+                        "map_icon": {
+                            "type": "object",
+                            "properties": {
+                                "original_actor": {
+                                    "$ref": "#/$defs/actor_reference_with_layer"
+                                }
+                            },
+                            "oneOf": [
+                                {
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "properties": {
+                                        "icon_id": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "icon_id"
+                                    ]
+                                },
+                                {
+                                    "properties": {
+                                        "custom_icon": {
+                                            "type": "object",
+                                            "properties": {
+                                                "label": {
+                                                    "type": "string"
+                                                },
+                                                "coords": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "row": {
+                                                            "type": "integer"
+                                                        },
+                                                        "col": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "row",
+                                                        "col"
+                                                    ],
+                                                    "default": {
+                                                        "row": 0,
+                                                        "col": 4
+                                                    }
+                                                },
+                                                "is_global": {
+                                                    "type": "boolean",
+                                                    "default": true
+                                                },
+                                                "full_zoom_scale": {
+                                                    "type": "boolean",
+                                                    "default": true
+                                                },
+                                                "extras": {
+                                                    "type": "object",
+                                                    "additionalProperties": true
+                                                }
+                                            },
+                                            "required": [
+                                                "label"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "custom_icon"
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "required": [
+                        "pickup_actor",
+                        "model"
+                    ]
+                },
+                "else": {
+                    "properties": {
+                        "pickup_lua_callback": {
+                            "$ref": "#/$defs/scenario_lua_callback"
+                        }
+                    },
+                    "required": [
+                        "pickup_lua_callback"
+                    ],
+                    "if": {
+                        "not": {
+                            "properties": {
+                                "pickup_type": {
+                                    "const": "cutscene"
+                                }
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "pickup_actordef": {
+                                "type": "string",
+                                "pattern": "[a-zA-Z0-9_/]+?\\.bmsad"
+                            },
+                            "pickup_string_key": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "pickup_actordef",
+                            "pickup_string_key"
+                        ]
+                    }
+                }
+            }
+        },
+        "elevators": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "teleporter": {
+                        "$ref": "#/$defs/actor_reference_with_layer"
+                    },
+                    "destination": {
+                        "$ref": "#/$defs/actor_reference"
+                    }
+                },
+                "required": [
+                    "teleporter",
+                    "destination"
+                ]
+            }
+        },
+        "debug_export_modified_files": {
+            "type": "boolean",
+            "default": false,
+            "description": "Saves all modified files to a _debug sub-directory."
+        },
+        "starting_items": {
+            "type": "object"
+        },
+        "starting_text": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "energy_per_tank": {
+            "description": "How much energy collecting an Energy Tank gives. Energy Parts give 1/4 of this value.",
+            "type": "number",
+            "default": 100.0
+        },
+        "immediate_energy_parts": {
+            "description": "If true, Energy Parts increases maximum energy when collected by 1/4 of the tank capacity.",
+            "type": "boolean",
+            "default": false
+        },
+        "hints": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "accesspoint_actor": {
+                        "$ref": "#/$defs/actor_reference_with_layer"
+                    },
+                    "hint_id": {
+                        "type": "string",
+                        "pattern": "[A-Z]+?_[0-9]+"
+                    },
+                    "text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "accesspoint_actor",
+                    "hint_id",
+                    "text"
+                ]
+            }
+        },
+        "text_patches": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "mod_compatibility": {
+            "type": "string",
+            "enum": [
+                "ryujinx",
+                "atmosphere"
+            ],
+            "description": "Decides how the files are organized in the output path, in order to be compatible with different mod formats.",
+            "default": "ryujinx"
+        },
+        "mod_category": {
+            "type": "string",
+            "enum": [
+                "pkg",
+                "romfs"
+            ],
+            "description": "When pkg, outputs fully modified pkg files. On romfs, output just the modified files but requires an exefs patch to load.",
+            "default": "pkg"
+        },
+        "cosmetic_patches": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object"
+                }
+            },
+            "required": [
+                "config"
+            ]
+        },
+        "game_patches": {
+            "type": "object",
+            "properties": {
+                "consistent_raven_beak_damage_table": {
+                    "type": "boolean",
+                    "description": "Change Raven Beak's damage multiplier for all beams and missiles to be consistent.",
+                    "default": true
+                },
+                "remove_grapple_blocks_hanubia_shortcut": {
+                    "type": "boolean",
+                    "description": "Remove the two Grapple Blocks in the entrance to Hanubia from Ferenia.",
+                    "default": true
+                },
+                "remove_grapple_block_path_to_itorash": {
+                    "type": "boolean",
+                    "description": "Remove the Grapple Block in the path to Itorash in upper Hanubia.",
+                    "default": true
+                },
+                "default_x_released": {
+                    "type": "boolean",
+                    "description": "When enabled, the game starts with the X Parasites being released already.",
+                    "default": false
+                }
+            },
+            "additionalProperties": false
+        },
+        "door_patches": {
+            "type": "array",
+            "description": "Changes the door types",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "actor": {
+                        "$ref": "#/$defs/actor_reference_with_layer"
+                    },
+                    "door_type": {
+                        "type": "string",
+                        "enum": [
+                            "frame",
+                            "power_beam",
+                            "charge_beam",
+                            "wide_beam",
+                            "plasma_beam",
+                            "wave_beam",
+                            "missile",
+                            "super_missile",
+                            "grapple_beam",
+                            "phantom_cloak",
+                            "phase_shift"
+                        ]
+                    }
+                },
+                "required": [
+                    "actor",
+                    "door_type"
+                ],
+                "additionalProperties": false
+            },
+            "default": []
+        }
+    },
+    "required": [
+        "configuration_identifier",
+        "starting_location",
+        "starting_items",
+        "pickups"
+    ],
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "immediate_energy_parts": {
+                        "const": false
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "energy_per_tank": {
+                        "const": 100.0
+                    }
+                }
+            }
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "scenario_lua_callback": {
+            "type": "object",
+            "properties": {
+                "scenario": {
+                    "$ref": "#/$defs/scenario_name"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "number",
+                    "default": 0
+                }
+            }
+        },
+        "actor_reference_with_layer": {
+            "type": "object",
+            "properties": {
+                "scenario": {
+                    "$ref": "#/$defs/scenario_name"
+                },
+                "layer": {
+                    "type": "string",
+                    "default": "default"
+                },
+                "actor": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "scenario",
+                "actor"
+            ]
+        },
+        "actor_reference": {
+            "type": "object",
+            "properties": {
+                "scenario": {
+                    "$ref": "#/$defs/scenario_name"
+                },
+                "actor": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "scenario",
+                "actor"
+            ]
+        },
+        "scenario_name": {
+            "type": "string",
+            "enum": [
+                "s010_cave",
+                "s020_magma",
+                "s030_baselab",
+                "s040_aqua",
+                "s050_forest",
+                "s060_quarantine",
+                "s070_basesanc",
+                "s080_shipyard",
+                "s090_skybase"
+            ]
+        }
+    }
+}
