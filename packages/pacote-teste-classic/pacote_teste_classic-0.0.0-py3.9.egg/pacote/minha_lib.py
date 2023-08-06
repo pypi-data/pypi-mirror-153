@@ -1,0 +1,13 @@
+
+from sklearn.covariance import MinCovDet
+from httpx import get
+
+
+def cli():
+    print(
+        get('http://httpbin.org/get?arg=Live de Python').json()['args']['arg']
+    )
+
+
+if __name__ == '__main__':
+    cli()
