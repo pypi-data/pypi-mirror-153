@@ -1,0 +1,1 @@
+An AI project aiming for cosnsolidating different functionalites under one global package.
