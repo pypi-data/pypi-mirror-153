@@ -1,0 +1,300 @@
+from fastapi import FastAPI, Body, Request, Query, File
+from fastapi.responses import FileResponse
+from fastapi_contrib.conf import settings
+from fastapi.encoders import jsonable_encoder
+from kafka import KafkaProducer
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from bson import ObjectId, json_util
+import uvicorn
+from pymongo import MongoClient
+import jwt
+from jaeger_client import Config
+from opentracing.scope_managers.asyncio import AsyncioScopeManager
+from prometheus_client import Counter
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
+from prometheus_fastapi_instrumentator.metrics import Info
+import os
+import json
+import time
+import uuid
+import shutil
+
+
+POSTS_URL = '/api/posts'
+COMMENTS_URL = '/api/comments'
+
+KAFKA_HOST = os.getenv('KAFKA_HOST', 'kafka')
+KAFKA_PORT = os.getenv('KAFKA_PORT', '9092')
+KAFKA_EVENTS_TOPIC = os.getenv('KAFKA_EVENTS_TOPIC', 'events')
+KAFKA_NOTIFICATIONS_TOPIC = os.getenv('KAFKA_NOTIFICATIONS_TOPIC', 'notifications')
+JWT_SECRET = os.getenv('JWT_SECRET', 'jwt_secret')
+JWT_ALGORITHM = os.getenv('JWT_ALGORITHM', 'HS256')
+
+
+app = FastAPI(title='Post Service API')
+client = MongoClient('mongodb://post_container:27017/post?authSource=admin', username='root', password='password')
+db = client.post
+post_col = db.post
+comment_col = db.comment
+like_col = db.like
+dislike_col = db.dislike
+kafka_producer = None
+
+def setup_opentracing(app):
+    config = Config(
+        config={
+            "local_agent": {
+                "reporting_host": settings.jaeger_host,
+                "reporting_port": settings.jaeger_port
+            },
+            "sampler": {
+                "type": settings.jaeger_sampler_type,
+                "param": settings.jaeger_sampler_rate,
+            },
+            "trace_id_header": settings.trace_id_header
+        },
+        service_name="post_service",
+        validate=True,
+        scope_manager=AsyncioScopeManager()
+    )
+
+    app.state.tracer = config.initialize_tracer()
+    app.tracer = app.state.tracer
+
+
+def http_404_requests():
+    METRIC = Counter(
+        "http_404_requests",
+        "Number of times a 404 request has occured.",
+        labelnames=("path",)
+    )
+
+    def instrumentation(info: Info):
+        if info.response.status_code == 404:
+            METRIC.labels(info.request.url).inc()
+
+    return instrumentation
+
+
+def http_unique_users():
+    METRIC = Counter(
+        "http_unique_users",
+        "Number of unique http users.",
+        labelnames=("user",)
+    )
+
+    def instrumentation(info: Info):
+        try:
+            user = f'{info.request.client.host} {info.request.headers["User-Agent"]}'
+        except:
+            user = f'{info.request.client.host} Unknown'
+        METRIC.labels(user).inc()
+
+    return instrumentation
+
+
+instrumentator = Instrumentator(excluded_handlers=["/metrics"])
+instrumentator.add(metrics.default())
+instrumentator.add(metrics.combined_size())
+instrumentator.add(http_404_requests())
+instrumentator.add(http_unique_users())
+instrumentator.instrument(app).expose(app)
+
+setup_opentracing(app)
+
+
+class PyObjectId(ObjectId):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError("Invalid objectid")
+        return ObjectId(v)
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(type="string")
+
+
+class Post(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    profile_id: int = Field(description='Profile ID')
+    text: str = Field(...)
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+        schema_extra = {
+            "example": {
+                "profile_id": "1",
+                "text": "Neki <b> rich </b> text."
+            }
+        }
+
+
+class PostResponse(BaseModel):
+    id: str = Field(...)
+    profile_id: int = Field(description='Profile ID')
+    text: str = Field(...)
+    likes: int = Field(description='Like count')
+    dislikes: int = Field(description='Dislike count')
+    opinion: str = Field(description='User opinion')
+
+
+class NavigationLinksPost(BaseModel):
+    base: str = Field('http://localhost:8010/api/posts', description='API base URL')
+    prev: Optional[str] = Field(None, description='Link to the previous page')
+    next: Optional[str] = Field(None, description='Link to the next page')
+
+
+class ResponsePost(BaseModel):
+    results: List[PostResponse]
+    links: NavigationLinksPost
+    offset: int
+    limit: int
+    size: int
+
+
+def register_kafka_producer():
+    global kafka_producer
+    while True:
+        try:
+            kafka_producer = KafkaProducer(bootstrap_servers=f'{KAFKA_HOST}:{KAFKA_PORT}', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+            break
+        except:
+            time.sleep(3)
+
+
+def record_action(status: int, message: str, span):
+    print("{0:10}{1}".format('ERROR:' if status >= 400 else 'INFO:', message))
+    span.set_tag('http_status', status)
+    span.set_tag('message', message)
+
+
+def record_event(type: str, data: dict):
+    kafka_producer.send(KAFKA_EVENTS_TOPIC, {
+        'type': type,
+        'data': data
+    })
+
+
+def get_current_user_id(request: Request):
+    try:
+        return jwt.decode(request.headers['Authorization'], JWT_SECRET, algorithms=[JWT_ALGORITHM])['id']
+    except:
+        return None
+
+
+def get_current_user_username(request: Request):
+    try:
+        return jwt.decode(request.headers['Authorization'], JWT_SECRET, algorithms=[JWT_ALGORITHM])['username']
+    except:
+        return None
+
+
+def get_stats(profile_id: int, post_id: str):
+    likes = len(list(like_col.find({"post_id": post_id})))
+    dislikes = len(list(dislike_col.find({"post_id": post_id})))
+    opinion = "neither"
+    
+    if likes != 0:
+        opinion = "liked" if len(list(like_col.find({"$and": [{"profile_id": profile_id}, {"post_id": post_id}]}))) != 0 else "neither"
+    if dislikes != 0 and opinion == "neither":
+        opinion = "disliked" if len(list(dislike_col.find({"$and": [{"profile_id": profile_id}, {"post_id": post_id}]}))) != 0 else "neither"
+    
+    return likes, dislikes, opinion
+
+
+def get_posts(offset: int = 0, limit: int = 7, profile_id: int = -1, link: str = 'posts'):
+    total_posts = len(list(post_col.find({"profile_id": profile_id})))
+    posts = list(post_col.find({"profile_id": profile_id}).skip(offset).limit(limit))
+
+    prev_link = f'/{link}/{profile_id}?offset={offset - limit}&limit={limit}' if offset - limit >= 0 else None
+    next_link = f'/{link}/{profile_id}?offset={offset + limit}&limit={limit}' if offset + limit < total_posts else None
+    links = NavigationLinksPost(prev=prev_link, next=next_link)
+
+    results = []
+
+    for p in posts:
+        like_cnt, dislike_cnt, opinion_str = get_stats(profile_id, str(p["_id"]))
+        results.append(PostResponse(id=str(p["_id"]), text=p["text"], profile_id=p["profile_id"], likes=like_cnt, dislikes=dislike_cnt, opinion=opinion_str))
+        post_col.insert_one({"proba": "proba"})
+    
+    return results, links
+
+
+def get_posts_mine(offset: int = 0, limit: int = 7, profile_id: int = -1):
+    total_posts = len(list(post_col.find({"profile_id": profile_id})))
+    posts = list(post_col.find({"profile_id": profile_id}).skip(offset).limit(limit))
+
+    prev_link = f'/posts/private/mine?offset={offset - limit}&limit={limit}' if offset - limit >= 0 else None
+    next_link = f'/posts/private/mine?offset={offset + limit}&limit={limit}' if offset + limit < total_posts else None
+    links = NavigationLinksPost(prev=prev_link, next=next_link)
+
+    results = []
+
+    for p in posts:
+        like_cnt, dislike_cnt, opinion_str = get_stats(profile_id, str(p["_id"]))
+        results.append(PostResponse(id=str(p["_id"]), text=p["text"], profile_id=p["profile_id"], likes=like_cnt, dislikes=dislike_cnt, opinion=opinion_str))
+        post_col.insert_one({"proba": "proba"})
+    
+    return results, links  
+
+
+@app.get(POSTS_URL + "/{profile_id}", response_description="List all posts")
+def list_posts(request: Request, offset: int = Query(0), limit: int = Query(7), profile_id: int = -1):
+    with app.tracer.start_span('List Posts Request') as span:
+        try:
+            span.set_tag('http_method', 'GET')
+            
+            results, links = get_posts(offset, limit, profile_id)
+
+            record_action(200, 'Request successful', span)
+            return ResponsePost(results=results, links=links, offset=offset, limit=limit, size=len(results))
+        except Exception as e:
+            record_action(500, 'Request failed', span)
+            raise e
+
+
+@app.get(POSTS_URL + "/public/{profile_id}", response_description="List all public posts")
+def list_posts_public(request: Request, offset: int = Query(0), limit: int = Query(7), profile_id: int = -1):
+    with app.tracer.start_span('List Public Posts Request') as span:
+        try:
+            span.set_tag('http_method', 'GET')
+            
+            results, links = get_posts(offset, limit, profile_id, 'posts/public')
+
+            record_action(200, 'Request successful', span)
+            return ResponsePost(results=results, links=links, offset=offset, limit=limit, size=len(results))
+        except Exception as e:
+            record_action(500, 'Request failed', span)
+            raise e
+
+
+@app.get(POSTS_URL + "/private/mine", response_description="List my posts")
+def list_posts_mine(request: Request, offset: int = Query(0), limit: int = Query(7)):
+    with app.tracer.start_span('List My Posts Request') as span:
+        try:
+            span.set_tag('http_method', 'GET')
+            
+            results, links = get_posts_mine(offset, limit, int(get_current_user_id(request)))
+
+            record_action(200, 'Request successful', span)
+            return ResponsePost(results=results, links=links, offset=offset, limit=limit, size=len(results))
+        except Exception as e:
+            record_action(500, 'Request failed', span)
+            raise e
+
+
+def run_service():
+    register_kafka_producer()
+    uvicorn.run(app, host="0.0.0.0", port=8010)
+
+
+if __name__ == '__main__':
+    run_service()
+
