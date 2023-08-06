@@ -1,0 +1,567 @@
+"""
+Type annotations for ecs service literal definitions.
+
+[Open documentation](https://youtype.github.io/boto3_stubs_docs/mypy_boto3_ecs/literals/)
+
+Usage::
+
+    ```python
+    from mypy_boto3_ecs.literals import AgentUpdateStatusType
+
+    data: AgentUpdateStatusType = "FAILED"
+    ```
+"""
+import sys
+
+if sys.version_info >= (3, 9):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
+
+
+__all__ = (
+    "AgentUpdateStatusType",
+    "AssignPublicIpType",
+    "CPUArchitectureType",
+    "CapacityProviderFieldType",
+    "CapacityProviderStatusType",
+    "CapacityProviderUpdateStatusType",
+    "ClusterFieldType",
+    "ClusterSettingNameType",
+    "CompatibilityType",
+    "ConnectivityType",
+    "ContainerConditionType",
+    "ContainerInstanceFieldType",
+    "ContainerInstanceStatusType",
+    "DeploymentControllerTypeType",
+    "DeploymentRolloutStateType",
+    "DesiredStatusType",
+    "DeviceCgroupPermissionType",
+    "EFSAuthorizationConfigIAMType",
+    "EFSTransitEncryptionType",
+    "EnvironmentFileTypeType",
+    "ExecuteCommandLoggingType",
+    "FirelensConfigurationTypeType",
+    "HealthStatusType",
+    "InstanceHealthCheckStateType",
+    "InstanceHealthCheckTypeType",
+    "IpcModeType",
+    "LaunchTypeType",
+    "ListAccountSettingsPaginatorName",
+    "ListAttributesPaginatorName",
+    "ListClustersPaginatorName",
+    "ListContainerInstancesPaginatorName",
+    "ListServicesPaginatorName",
+    "ListTaskDefinitionFamiliesPaginatorName",
+    "ListTaskDefinitionsPaginatorName",
+    "ListTasksPaginatorName",
+    "LogDriverType",
+    "ManagedAgentNameType",
+    "ManagedScalingStatusType",
+    "ManagedTerminationProtectionType",
+    "NetworkModeType",
+    "OSFamilyType",
+    "PidModeType",
+    "PlacementConstraintTypeType",
+    "PlacementStrategyTypeType",
+    "PlatformDeviceTypeType",
+    "PropagateTagsType",
+    "ProxyConfigurationTypeType",
+    "ResourceTypeType",
+    "ScaleUnitType",
+    "SchedulingStrategyType",
+    "ScopeType",
+    "ServiceFieldType",
+    "ServicesInactiveWaiterName",
+    "ServicesStableWaiterName",
+    "SettingNameType",
+    "SortOrderType",
+    "StabilityStatusType",
+    "TargetTypeType",
+    "TaskDefinitionFamilyStatusType",
+    "TaskDefinitionFieldType",
+    "TaskDefinitionPlacementConstraintTypeType",
+    "TaskDefinitionStatusType",
+    "TaskFieldType",
+    "TaskSetFieldType",
+    "TaskStopCodeType",
+    "TasksRunningWaiterName",
+    "TasksStoppedWaiterName",
+    "TransportProtocolType",
+    "UlimitNameType",
+    "ECSServiceName",
+    "ServiceName",
+    "ResourceServiceName",
+    "PaginatorName",
+    "WaiterName",
+    "RegionName",
+)
+
+
+AgentUpdateStatusType = Literal["FAILED", "PENDING", "STAGED", "STAGING", "UPDATED", "UPDATING"]
+AssignPublicIpType = Literal["DISABLED", "ENABLED"]
+CPUArchitectureType = Literal["ARM64", "X86_64"]
+CapacityProviderFieldType = Literal["TAGS"]
+CapacityProviderStatusType = Literal["ACTIVE", "INACTIVE"]
+CapacityProviderUpdateStatusType = Literal[
+    "DELETE_COMPLETE",
+    "DELETE_FAILED",
+    "DELETE_IN_PROGRESS",
+    "UPDATE_COMPLETE",
+    "UPDATE_FAILED",
+    "UPDATE_IN_PROGRESS",
+]
+ClusterFieldType = Literal["ATTACHMENTS", "CONFIGURATIONS", "SETTINGS", "STATISTICS", "TAGS"]
+ClusterSettingNameType = Literal["containerInsights"]
+CompatibilityType = Literal["EC2", "EXTERNAL", "FARGATE"]
+ConnectivityType = Literal["CONNECTED", "DISCONNECTED"]
+ContainerConditionType = Literal["COMPLETE", "HEALTHY", "START", "SUCCESS"]
+ContainerInstanceFieldType = Literal["CONTAINER_INSTANCE_HEALTH", "TAGS"]
+ContainerInstanceStatusType = Literal[
+    "ACTIVE", "DEREGISTERING", "DRAINING", "REGISTERING", "REGISTRATION_FAILED"
+]
+DeploymentControllerTypeType = Literal["CODE_DEPLOY", "ECS", "EXTERNAL"]
+DeploymentRolloutStateType = Literal["COMPLETED", "FAILED", "IN_PROGRESS"]
+DesiredStatusType = Literal["PENDING", "RUNNING", "STOPPED"]
+DeviceCgroupPermissionType = Literal["mknod", "read", "write"]
+EFSAuthorizationConfigIAMType = Literal["DISABLED", "ENABLED"]
+EFSTransitEncryptionType = Literal["DISABLED", "ENABLED"]
+EnvironmentFileTypeType = Literal["s3"]
+ExecuteCommandLoggingType = Literal["DEFAULT", "NONE", "OVERRIDE"]
+FirelensConfigurationTypeType = Literal["fluentbit", "fluentd"]
+HealthStatusType = Literal["HEALTHY", "UNHEALTHY", "UNKNOWN"]
+InstanceHealthCheckStateType = Literal["IMPAIRED", "INITIALIZING", "INSUFFICIENT_DATA", "OK"]
+InstanceHealthCheckTypeType = Literal["CONTAINER_RUNTIME"]
+IpcModeType = Literal["host", "none", "task"]
+LaunchTypeType = Literal["EC2", "EXTERNAL", "FARGATE"]
+ListAccountSettingsPaginatorName = Literal["list_account_settings"]
+ListAttributesPaginatorName = Literal["list_attributes"]
+ListClustersPaginatorName = Literal["list_clusters"]
+ListContainerInstancesPaginatorName = Literal["list_container_instances"]
+ListServicesPaginatorName = Literal["list_services"]
+ListTaskDefinitionFamiliesPaginatorName = Literal["list_task_definition_families"]
+ListTaskDefinitionsPaginatorName = Literal["list_task_definitions"]
+ListTasksPaginatorName = Literal["list_tasks"]
+LogDriverType = Literal[
+    "awsfirelens", "awslogs", "fluentd", "gelf", "journald", "json-file", "splunk", "syslog"
+]
+ManagedAgentNameType = Literal["ExecuteCommandAgent"]
+ManagedScalingStatusType = Literal["DISABLED", "ENABLED"]
+ManagedTerminationProtectionType = Literal["DISABLED", "ENABLED"]
+NetworkModeType = Literal["awsvpc", "bridge", "host", "none"]
+OSFamilyType = Literal[
+    "LINUX",
+    "WINDOWS_SERVER_2004_CORE",
+    "WINDOWS_SERVER_2016_FULL",
+    "WINDOWS_SERVER_2019_CORE",
+    "WINDOWS_SERVER_2019_FULL",
+    "WINDOWS_SERVER_2022_CORE",
+    "WINDOWS_SERVER_2022_FULL",
+    "WINDOWS_SERVER_20H2_CORE",
+]
+PidModeType = Literal["host", "task"]
+PlacementConstraintTypeType = Literal["distinctInstance", "memberOf"]
+PlacementStrategyTypeType = Literal["binpack", "random", "spread"]
+PlatformDeviceTypeType = Literal["GPU"]
+PropagateTagsType = Literal["NONE", "SERVICE", "TASK_DEFINITION"]
+ProxyConfigurationTypeType = Literal["APPMESH"]
+ResourceTypeType = Literal["GPU", "InferenceAccelerator"]
+ScaleUnitType = Literal["PERCENT"]
+SchedulingStrategyType = Literal["DAEMON", "REPLICA"]
+ScopeType = Literal["shared", "task"]
+ServiceFieldType = Literal["TAGS"]
+ServicesInactiveWaiterName = Literal["services_inactive"]
+ServicesStableWaiterName = Literal["services_stable"]
+SettingNameType = Literal[
+    "awsvpcTrunking",
+    "containerInsights",
+    "containerInstanceLongArnFormat",
+    "serviceLongArnFormat",
+    "taskLongArnFormat",
+]
+SortOrderType = Literal["ASC", "DESC"]
+StabilityStatusType = Literal["STABILIZING", "STEADY_STATE"]
+TargetTypeType = Literal["container-instance"]
+TaskDefinitionFamilyStatusType = Literal["ACTIVE", "ALL", "INACTIVE"]
+TaskDefinitionFieldType = Literal["TAGS"]
+TaskDefinitionPlacementConstraintTypeType = Literal["memberOf"]
+TaskDefinitionStatusType = Literal["ACTIVE", "INACTIVE"]
+TaskFieldType = Literal["TAGS"]
+TaskSetFieldType = Literal["TAGS"]
+TaskStopCodeType = Literal["EssentialContainerExited", "TaskFailedToStart", "UserInitiated"]
+TasksRunningWaiterName = Literal["tasks_running"]
+TasksStoppedWaiterName = Literal["tasks_stopped"]
+TransportProtocolType = Literal["tcp", "udp"]
+UlimitNameType = Literal[
+    "core",
+    "cpu",
+    "data",
+    "fsize",
+    "locks",
+    "memlock",
+    "msgqueue",
+    "nice",
+    "nofile",
+    "nproc",
+    "rss",
+    "rtprio",
+    "rttime",
+    "sigpending",
+    "stack",
+]
+ECSServiceName = Literal["ecs"]
+ServiceName = Literal[
+    "accessanalyzer",
+    "account",
+    "acm",
+    "acm-pca",
+    "alexaforbusiness",
+    "amp",
+    "amplify",
+    "amplifybackend",
+    "amplifyuibuilder",
+    "apigateway",
+    "apigatewaymanagementapi",
+    "apigatewayv2",
+    "appconfig",
+    "appconfigdata",
+    "appflow",
+    "appintegrations",
+    "application-autoscaling",
+    "application-insights",
+    "applicationcostprofiler",
+    "appmesh",
+    "apprunner",
+    "appstream",
+    "appsync",
+    "athena",
+    "auditmanager",
+    "autoscaling",
+    "autoscaling-plans",
+    "backup",
+    "backup-gateway",
+    "batch",
+    "billingconductor",
+    "braket",
+    "budgets",
+    "ce",
+    "chime",
+    "chime-sdk-identity",
+    "chime-sdk-media-pipelines",
+    "chime-sdk-meetings",
+    "chime-sdk-messaging",
+    "cloud9",
+    "cloudcontrol",
+    "clouddirectory",
+    "cloudformation",
+    "cloudfront",
+    "cloudhsm",
+    "cloudhsmv2",
+    "cloudsearch",
+    "cloudsearchdomain",
+    "cloudtrail",
+    "cloudwatch",
+    "codeartifact",
+    "codebuild",
+    "codecommit",
+    "codedeploy",
+    "codeguru-reviewer",
+    "codeguruprofiler",
+    "codepipeline",
+    "codestar",
+    "codestar-connections",
+    "codestar-notifications",
+    "cognito-identity",
+    "cognito-idp",
+    "cognito-sync",
+    "comprehend",
+    "comprehendmedical",
+    "compute-optimizer",
+    "config",
+    "connect",
+    "connect-contact-lens",
+    "connectparticipant",
+    "cur",
+    "customer-profiles",
+    "databrew",
+    "dataexchange",
+    "datapipeline",
+    "datasync",
+    "dax",
+    "detective",
+    "devicefarm",
+    "devops-guru",
+    "directconnect",
+    "discovery",
+    "dlm",
+    "dms",
+    "docdb",
+    "drs",
+    "ds",
+    "dynamodb",
+    "dynamodbstreams",
+    "ebs",
+    "ec2",
+    "ec2-instance-connect",
+    "ecr",
+    "ecr-public",
+    "ecs",
+    "efs",
+    "eks",
+    "elastic-inference",
+    "elasticache",
+    "elasticbeanstalk",
+    "elastictranscoder",
+    "elb",
+    "elbv2",
+    "emr",
+    "emr-containers",
+    "emr-serverless",
+    "es",
+    "events",
+    "evidently",
+    "finspace",
+    "finspace-data",
+    "firehose",
+    "fis",
+    "fms",
+    "forecast",
+    "forecastquery",
+    "frauddetector",
+    "fsx",
+    "gamelift",
+    "gamesparks",
+    "glacier",
+    "globalaccelerator",
+    "glue",
+    "grafana",
+    "greengrass",
+    "greengrassv2",
+    "groundstation",
+    "guardduty",
+    "health",
+    "healthlake",
+    "honeycode",
+    "iam",
+    "identitystore",
+    "imagebuilder",
+    "importexport",
+    "inspector",
+    "inspector2",
+    "iot",
+    "iot-data",
+    "iot-jobs-data",
+    "iot1click-devices",
+    "iot1click-projects",
+    "iotanalytics",
+    "iotdeviceadvisor",
+    "iotevents",
+    "iotevents-data",
+    "iotfleethub",
+    "iotsecuretunneling",
+    "iotsitewise",
+    "iotthingsgraph",
+    "iottwinmaker",
+    "iotwireless",
+    "ivs",
+    "ivschat",
+    "kafka",
+    "kafkaconnect",
+    "kendra",
+    "keyspaces",
+    "kinesis",
+    "kinesis-video-archived-media",
+    "kinesis-video-media",
+    "kinesis-video-signaling",
+    "kinesisanalytics",
+    "kinesisanalyticsv2",
+    "kinesisvideo",
+    "kms",
+    "lakeformation",
+    "lambda",
+    "lex-models",
+    "lex-runtime",
+    "lexv2-models",
+    "lexv2-runtime",
+    "license-manager",
+    "lightsail",
+    "location",
+    "logs",
+    "lookoutequipment",
+    "lookoutmetrics",
+    "lookoutvision",
+    "machinelearning",
+    "macie",
+    "macie2",
+    "managedblockchain",
+    "marketplace-catalog",
+    "marketplace-entitlement",
+    "marketplacecommerceanalytics",
+    "mediaconnect",
+    "mediaconvert",
+    "medialive",
+    "mediapackage",
+    "mediapackage-vod",
+    "mediastore",
+    "mediastore-data",
+    "mediatailor",
+    "memorydb",
+    "meteringmarketplace",
+    "mgh",
+    "mgn",
+    "migration-hub-refactor-spaces",
+    "migrationhub-config",
+    "migrationhubstrategy",
+    "mobile",
+    "mq",
+    "mturk",
+    "mwaa",
+    "neptune",
+    "network-firewall",
+    "networkmanager",
+    "nimble",
+    "opensearch",
+    "opsworks",
+    "opsworkscm",
+    "organizations",
+    "outposts",
+    "panorama",
+    "personalize",
+    "personalize-events",
+    "personalize-runtime",
+    "pi",
+    "pinpoint",
+    "pinpoint-email",
+    "pinpoint-sms-voice",
+    "pinpoint-sms-voice-v2",
+    "polly",
+    "pricing",
+    "proton",
+    "qldb",
+    "qldb-session",
+    "quicksight",
+    "ram",
+    "rbin",
+    "rds",
+    "rds-data",
+    "redshift",
+    "redshift-data",
+    "rekognition",
+    "resiliencehub",
+    "resource-groups",
+    "resourcegroupstaggingapi",
+    "robomaker",
+    "route53",
+    "route53-recovery-cluster",
+    "route53-recovery-control-config",
+    "route53-recovery-readiness",
+    "route53domains",
+    "route53resolver",
+    "rum",
+    "s3",
+    "s3control",
+    "s3outposts",
+    "sagemaker",
+    "sagemaker-a2i-runtime",
+    "sagemaker-edge",
+    "sagemaker-featurestore-runtime",
+    "sagemaker-runtime",
+    "savingsplans",
+    "schemas",
+    "sdb",
+    "secretsmanager",
+    "securityhub",
+    "serverlessrepo",
+    "service-quotas",
+    "servicecatalog",
+    "servicecatalog-appregistry",
+    "servicediscovery",
+    "ses",
+    "sesv2",
+    "shield",
+    "signer",
+    "sms",
+    "sms-voice",
+    "snow-device-management",
+    "snowball",
+    "sns",
+    "sqs",
+    "ssm",
+    "ssm-contacts",
+    "ssm-incidents",
+    "sso",
+    "sso-admin",
+    "sso-oidc",
+    "stepfunctions",
+    "storagegateway",
+    "sts",
+    "support",
+    "swf",
+    "synthetics",
+    "textract",
+    "timestream-query",
+    "timestream-write",
+    "transcribe",
+    "transfer",
+    "translate",
+    "voice-id",
+    "waf",
+    "waf-regional",
+    "wafv2",
+    "wellarchitected",
+    "wisdom",
+    "workdocs",
+    "worklink",
+    "workmail",
+    "workmailmessageflow",
+    "workspaces",
+    "workspaces-web",
+    "xray",
+]
+ResourceServiceName = Literal[
+    "cloudformation",
+    "cloudwatch",
+    "dynamodb",
+    "ec2",
+    "glacier",
+    "iam",
+    "opsworks",
+    "s3",
+    "sns",
+    "sqs",
+]
+PaginatorName = Literal[
+    "list_account_settings",
+    "list_attributes",
+    "list_clusters",
+    "list_container_instances",
+    "list_services",
+    "list_task_definition_families",
+    "list_task_definitions",
+    "list_tasks",
+]
+WaiterName = Literal["services_inactive", "services_stable", "tasks_running", "tasks_stopped"]
+RegionName = Literal[
+    "af-south-1",
+    "ap-east-1",
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "ap-northeast-3",
+    "ap-south-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ap-southeast-3",
+    "ca-central-1",
+    "eu-central-1",
+    "eu-north-1",
+    "eu-south-1",
+    "eu-west-1",
+    "eu-west-2",
+    "eu-west-3",
+    "me-south-1",
+    "sa-east-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-1",
+    "us-west-2",
+]
