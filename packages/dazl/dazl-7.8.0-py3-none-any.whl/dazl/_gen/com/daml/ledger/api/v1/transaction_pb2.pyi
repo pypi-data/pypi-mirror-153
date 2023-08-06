@@ -1,0 +1,69 @@
+# Copyright (c) 2017-2022 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+# fmt: off
+# isort: skip_file
+
+import builtins as _builtins, sys, typing as _typing
+
+from google.protobuf.internal.containers import MessageMap, RepeatedCompositeFieldContainer, RepeatedScalarFieldContainer
+from google.protobuf.message import Message as _Message
+from google.protobuf.timestamp_pb2 import Timestamp
+
+from .event_pb2 import CreatedEvent, Event, ExercisedEvent
+
+if sys.version_info >= (3, 8):
+    from typing import Literal as _L
+else:
+    from typing_extensions import Literal as _L
+
+__all__ = [
+    "TransactionTree",
+    "TreeEvent",
+    "Transaction",
+]
+
+
+class TransactionTree(_Message):
+    transaction_id: _builtins.str
+    command_id: _builtins.str
+    workflow_id: _builtins.str
+    @property
+    def effective_at(self) -> Timestamp: ...
+    offset: _builtins.str
+    @property
+    def events_by_id(self) -> MessageMap[_builtins.str, TreeEvent]: ...
+    @property
+    def root_event_ids(self) -> RepeatedScalarFieldContainer[_builtins.str]: ...
+    def __init__(self, *, transaction_id: _typing.Optional[_builtins.str] = ..., command_id: _typing.Optional[_builtins.str] = ..., workflow_id: _typing.Optional[_builtins.str] = ..., effective_at: _typing.Optional[Timestamp] = ..., offset: _typing.Optional[_builtins.str] = ..., events_by_id: _typing.Optional[_typing.Mapping[_builtins.str, TreeEvent]] = ..., root_event_ids: _typing.Optional[_typing.Iterable[_builtins.str]] = ...): ...
+    def HasField(self, field_name: _L["transaction_id", "command_id", "workflow_id", "effective_at", "offset", "events_by_id", "root_event_ids"]) -> _builtins.bool: ...
+    def ClearField(self, field_name: _L["transaction_id", "command_id", "workflow_id", "effective_at", "offset", "events_by_id", "root_event_ids"]) -> None: ...
+    def WhichOneof(self, oneof_group: _typing.NoReturn) -> _typing.NoReturn: ...
+
+class TreeEvent(_Message):
+    @property
+    def created(self) -> CreatedEvent: ...
+    @property
+    def exercised(self) -> ExercisedEvent: ...
+    @_typing.overload
+    def __init__(self): ...
+    @_typing.overload
+    def __init__(self, *, created: CreatedEvent = ...): ...
+    @_typing.overload
+    def __init__(self, *, exercised: ExercisedEvent = ...): ...
+    def HasField(self, field_name: _L["kind", "created", "exercised"]) -> _builtins.bool: ...
+    def ClearField(self, field_name: _L["kind", "created", "exercised"]) -> None: ...
+    def WhichOneof(self, oneof_group: _L["kind"]) -> _L[None, "created", "exercised"]: ...
+
+class Transaction(_Message):
+    transaction_id: _builtins.str
+    command_id: _builtins.str
+    workflow_id: _builtins.str
+    @property
+    def effective_at(self) -> Timestamp: ...
+    @property
+    def events(self) -> RepeatedCompositeFieldContainer[Event]: ...
+    offset: _builtins.str
+    def __init__(self, *, transaction_id: _typing.Optional[_builtins.str] = ..., command_id: _typing.Optional[_builtins.str] = ..., workflow_id: _typing.Optional[_builtins.str] = ..., effective_at: _typing.Optional[Timestamp] = ..., events: _typing.Optional[_typing.Iterable[Event]] = ..., offset: _typing.Optional[_builtins.str] = ...): ...
+    def HasField(self, field_name: _L["transaction_id", "command_id", "workflow_id", "effective_at", "events", "offset"]) -> _builtins.bool: ...
+    def ClearField(self, field_name: _L["transaction_id", "command_id", "workflow_id", "effective_at", "events", "offset"]) -> None: ...
+    def WhichOneof(self, oneof_group: _typing.NoReturn) -> _typing.NoReturn: ...
