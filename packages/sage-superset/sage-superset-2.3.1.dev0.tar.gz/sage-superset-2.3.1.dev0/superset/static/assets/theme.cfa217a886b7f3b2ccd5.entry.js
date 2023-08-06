@@ -1,0 +1,1 @@
+(()=>{"use strict";"undefined"!=typeof reactHotLoaderGlobal&&reactHotLoaderGlobal.default.signature})();
