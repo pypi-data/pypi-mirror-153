@@ -1,0 +1,184 @@
+# dialog specification schema version 2.0
+# discussed with Jose Robins and team 2021-02-03 at wed night mob programming
+#
+# Additional features not yet discussed:
+#   - next condition: `null` causes the chatbot program to say goodbye and exit
+#   - `yes`, `y`, `true` creates a default list of affirmative intents
+# If only a single next_condition intent string is found, additional intents are inferred:
+#   - If there is another list of intents that starts with a single intent string? use that
+#   - state names and keywords (like next_condition) fall back to normalized version that remove spaces, underscores, and fold case to lowercase (like wiki_normalize_text but dont delete/ignore digits) 
+
+-
+  # optional defaults for this yml file
+  state: __default__
+  nlp:
+    __default__: FUZZY_KEYWORD #change to SPACY; PLAY WITH THIS A BIT - KEYWORD. 
+  version: 2.0  # added by Hobson 2021-03-14
+-
+  state: __welcome__
+  
+  bot: 
+    - Describe an upsetting event.
+   
+  next: RECOGNIZE
+  next_condition:
+    RATE:
+      - mad
+      - worry
+      - sad
+      - cannot 
+    RECOGNIZE:  
+      - family
+      - everyone
+      - be    
+      - belief
+    EXTEND:  
+      - satisfied
+      - excited
+      - desire
+    __finish__:
+      - 'no'
+      - go back
+      - nope
+-
+  state: RATE
+  
+  bot: 
+    - On a scale of 0 (the least) to 100 (the highest). How would you rate this feeling?
+  next: RATE
+  next_condition:  
+    DISTORTION: 
+      - rating
+    __finish__:  
+
+      - finish
+      - stop
+      - I'm done
+-
+  state: RECOGNIZE
+  
+  bot: 
+    - How did this make you feel?
+  next: RATE
+  next_condition:
+    RATE:
+      - mad
+      - worry
+      - sad
+      - cannot 
+    EXTEND:  
+      - satisfied
+      - excited
+      - desire
+    __finish__:   
+      - finish
+      - stop
+      - I'm done
+-
+  state: DISTORTION
+  
+  bot: 
+    - Which distortion does this fall under?
+    - EVERYTHING = all or nothing thinking. 
+      You look at things in absolute, black and white categories.
+    - GENERALIZING = over generalization. You view a negative event as a 
+      never-ending pattern of defeat.
+    - FILTERING = mental filter. You dwell on the negatives and ignore the positives.
+    - DISCOUNTING = Discounting the positives. You insist that your accomplishments or positive qualities don't count.
+    - ASSUMPTIONS = Jumping to conclusions. A.) Mind Reading - you assume that people are reacting 
+      negativly to you when there's no definite evidince for this; B.) Fortune-Telling - You arbitrarily
+      predict that things will turn out badly. 
+    - DISPROPORTIONIZING = Magnification or minimization. You blow things way up out of proportion or you shrink their importance inappropriately.
+    - REASONING = Emotional Reasoning. You resaon from how you feel 'I feel like an idiot so I really must be one' Or 'I don't feel like doing this, so I'll put it off.''
+    - SHOULDING = Should statements. You criticize yourself or other people with shoulds or shouldn'ts. Must, oughts, and have tos are similar offenders.
+    - LABELING = labeling You identify with our shortcomings innstead of saying I made a mistake, you tell yourself I'm a jerk or a fool or a loser.
+    - BLAMING = Personalization and blame. You blame yourself for something you weren't entirely responsible for, or youblame other people and overlook ways your own attitucs and behavior might contribute to a problem. 
+    - If a proper selection is not made, I will ask the question again.
+  next: DISTORTION
+  next_condition:
+    RERATE:     
+    - distortions
+
+    __finish__:    
+      - finish
+      - stop
+      - I'm done
+
+-
+  state: RERATE
+   
+  bot: 
+    - all or nothing
+    - over generalization
+    - mental filter
+    - Discounting the positives
+    - Jumping to conclusions
+    - Magnification or minimization
+    - Emotional Reasoning
+    - Should statements
+    - labeling
+    - Personalization and blame
+
+    - Now that you've recognized the distortion. Re-rate your feelings on a scale of 0-100.
+  next: RATE
+  next_condition:
+    REEVALUATE: 
+      - rating
+    __finish__:   
+      - finish
+      - stop
+      - I'm done      
+-
+  state: REEVALUATE
+   
+  bot: 
+    - Now how do you feel?
+  next: EXTEND
+  next_condition:
+    RATE:
+      - mad
+      - worry
+      - sad
+      - cannot
+    resolve:  
+      - happy 
+      - gleeful
+      - better
+    __finish__:    
+      - finish
+      - stop
+      - I'm done
+-
+  state: EXTEND
+   
+  bot: 
+    - Is there anything else that you're feeling?
+  next: __welcome__
+  next_condition:
+    RATE:      
+      - mad
+      - worry
+      - sad
+      - cannot
+    __welcome__:
+      - re-do
+      - start over
+    __finish__:    
+      - finish
+      - stop
+      - I'm done
+      - nope
+-
+  state: resolve
+
+  bot:
+    - One can find themselves at a state of resolve once they recognize these negative emotions as being associated with cognitive distortions.
+      I'm glad you're feeling better.
+  next: __finish__  
+-
+  state: __finish__
+
+  bot: 
+    - See me again when you're ready to reflect and resolve against some negativity. 
+-
+
