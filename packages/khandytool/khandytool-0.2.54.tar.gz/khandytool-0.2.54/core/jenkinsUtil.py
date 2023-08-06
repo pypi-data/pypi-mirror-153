@@ -1,0 +1,1 @@
+# get jenkins job, execute on some node
