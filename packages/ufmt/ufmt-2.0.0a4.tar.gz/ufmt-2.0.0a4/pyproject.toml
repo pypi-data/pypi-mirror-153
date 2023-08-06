@@ -1,0 +1,95 @@
+[build-system]
+requires = ["flit_core >=3,<4,!=3.7.0"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "ufmt"
+author = "John Reese"
+author-email = "john@noswap.com"
+description-file = "README.md"
+home-page = "https://ufmt.omnilib.dev"
+requires = [
+    "black>=20.8b0",
+    "moreorless>=0.4.0",
+    "tomlkit>=0.7.2",
+    "trailrunner>=1.2.1",
+    "typing_extensions>=4.0",
+    "usort>=1.0",
+]
+requires-python = ">=3.6"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+[tool.flit.metadata.urls]
+Github = "https://github.com/omnilib/ufmt"
+
+[tool.flit.scripts]
+ufmt = "ufmt.cli:main"
+
+[tool.flit.sdist]
+exclude = [
+    ".github/",
+]
+
+[tool.attribution]
+name = "µfmt"
+package = "ufmt"
+version_file = true
+signed_tags = true
+
+[tool.coverage.run]
+branch = true
+parallel = true
+include = ["ufmt/*"]
+omit = ["ufmt/tests/*"]
+
+[tool.coverage.report]
+fail_under = 100
+precision = 1
+show_missing = true
+skip_covered = true
+
+[tool.mypy]
+python_version = "3.7"
+# strict = true
+ignore_missing_imports = true
+
+[tool.thx]
+default = ["docs", "test", "lint", "coverage"]
+module = "ufmt"
+srcs = "ufmt"
+python_versions = ["3.6", "3.7", "3.8", "3.9", "3.10"]
+watch_paths = ["README.md", "docs", "ufmt"]
+
+[tool.thx.jobs]
+deps = "python -m pessimist -c 'python -m {module}.tests' --fast ."
+docs = {run="sphinx-build -ab html docs html", once=true}
+format = {run="python -m ufmt format {srcs}", once=true}
+test = "python -m coverage run -m {module}.tests"
+
+[tool.thx.jobs.combine]
+requires = ["test"]
+run = "python -m coverage combine"
+once = true
+
+[tool.thx.jobs.coverage]
+requires = ["combine"]
+run = "python -m coverage report"
+once = true
+show_output = true
+
+[tool.thx.jobs.lint]
+run = [
+    "python -m mypy --install-types --non-interactive -p {module}",
+    "python -m flake8 {srcs}",
+    "python -m ufmt diff {srcs}",
+]
+parallel = true
