@@ -1,0 +1,1 @@
+from djangoldp.views import LDPViewSet

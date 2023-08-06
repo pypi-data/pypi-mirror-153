@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load i18n %}
+{% block title %}Inscription à la plate-forme{% endblock %}
+{% block content %}
+    <script>
+        window.addEventListener("DOMContentLoaded", () => {
+            let searchParams = new URLSearchParams(window.location.search);
+            if (searchParams.has('choice')) {
+                let param = searchParams.get('choice');
+                let choiceInput = document.querySelector('#id_choice')
+                choiceInput.value=param;
+            }
+      });
+    </script>
+    <section id="registration_form">
+        <div class="formulaire">
+            <h1>Créer un compte </h1>
+            <form class="flex-column register-form" method='post' action=''>
+                {% csrf_token %}
+                {% if form.errors %}
+                <p class="error">
+                    Il y a des erreurs dans le formulaire. Veuillez les corriger avant de valider.
+                    {% for key, value in form.errors.items %}
+                        {% for error in value %}
+                            <div class="errortext">{{ error }}</div>
+                        {% endfor %}
+                    {% endfor %}
+                </p>
+                {% endif %}
+                <div class="card">
+                    <h2>Créer un compte</h2>
+                    {{ form }}
+                    <input type="submit" class="submit_registration" value="s'inscrire" />
+                </div>
+            </form>
+            <div class="card">
+                <div class="helptext fw500 helplink">
+                    Déjà un compte ?
+                    <a class="sib-link sib-register-link" href="{% url 'login' %}?next={{next|urlencode}}"> Connectez-vous</a>
+                </div>
+                <div class="helptext fw500 helplink">
+                    Mot de passe oublié ?
+                    <a class="sib-link" href="/auth/password_reset/">cliquez ici</a>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Conditions générales</h2>
+                <div class="description">Dans le cadre de votre inscription à la plate-forme, vous devez accepter les conditions générales d'utilisation telles que <a href="{{ settings.MAINSITE }}/cgu">décrites ici</a>.</div>
+            </div>
+        </div>
+    </section>
+{% endblock %}
