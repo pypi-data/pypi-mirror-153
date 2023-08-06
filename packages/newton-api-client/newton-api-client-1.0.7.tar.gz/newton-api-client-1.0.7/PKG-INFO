@@ -1,0 +1,212 @@
+Metadata-Version: 2.1
+Name: newton-api-client
+Version: 1.0.7
+Summary: Python api client - https://api.objectways.com/docs
+Home-page: https://github.com/deepalirajale/newton-api
+Author: Objectways
+Author-email: tech-support@objectways.com
+Project-URL: Bug Tracker, https://github.com/deepalirajale/newton-api/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# Newton API client
+
+This is python package to call all API from (https://api.objectways.com/docs)
+
+## Import package and create a `client`
+## "api_url" is and optional parameter for private installs
+```python
+from pprint import pprint
+from objectways import newton
+
+client = newton.Newton(api_url="YOUR_API_URL",api_key="YOUR_API_KEY")
+```
+
+## 1. Task
+### 1.1. Add new task
+
+```python
+body = {
+  "project_id": "449354de1168469a8229f605",
+  "file_name": "document.pdf",
+  "file_type": "application/pdf",
+  "source": "s3://examples/pdfs/document.pdf"
+}
+
+pprint(client.add_task(body))
+```
+### 1.2. Add bulk tasks
+```python
+body = {
+  "project_id": "cd1a965e334a9a63e2f17932",
+  "task_list": [
+    {
+      "source": "s3://examples/pdfs/document.pdf",
+      "annotations": "s3://examples/pdfs/annotation.json"
+    },
+    {
+      "source": "s3://examples/pdfs/document2.pdf"
+    },
+    {
+      "source": "s3://examples/pdfs/document3.pdf",
+      "annotations": {
+        "tags": [
+          {
+            "page": 1,
+            "range": [
+              192,
+              198
+            ],
+            "text": "Oxford",
+            "id": 1,
+            "type": "NAME"
+          }
+        ]
+      }
+    }
+  ]
+}
+
+pprint(client.add_bulk_tasks(body))
+```
+### 1.3. Add labels to task
+```python
+body = {
+  "annotations": "s3://examples/pdfs/annotation.json"
+}
+
+pprint(client.add_labels_to_task(task_id=task_id,body))
+```
+### 1.4. Add task file
+
+```python
+data = client.add_task_file(
+    project_id="449354de1168469a8229f605", 
+    file_path="examples/pdfs/document.pdf",
+    mime_type="application/pdf",
+    annotations=None
+)
+
+pprint(data)
+```
+### 1.5. Get Task by task_id
+
+```python
+data = client.get_task(
+    task_id="449354de1168469a8229f605", 
+)
+
+pprint(data)
+```
+### 1.6. Delete Task by task_id
+
+```python
+data = client.delete_task(
+    task_id="449354de1168469a8229f605", 
+)
+
+pprint(data)
+```
+### 1.7. Get tasks by filters
+
+- Find all the tasks by `task_id`, `file_name`, `file_type` and `trail`
+- If all of `task_id`, `file_name`, `file_type` are `None`, it will return all possible tasks
+
+```python
+tasks = client.get_tasks(
+    project_id="449354de1168469a8229f605", 
+    task_id="449354de1168469a8229f605-0",
+    file_name=None,
+    file_type=None,
+    trail = False
+)
+
+pprint(tasks)
+```
+### 1.8. Export Tasks by project_id
+
+```python
+data = client.export_tasks(
+    project_id="449354de1168469a8229f605", 
+)
+
+pprint(data)
+```
+
+## 2. Project
+### 2.1. Create a new project
+```python
+body = {
+  "project_name": "TestProject",
+  "project_type": "NER",
+  "enable_text_mode_option": true,
+  "disable_quality_audit": true,
+  ...
+}
+# check API docs for the full body: https://api.objectways.com/docs/#/projects/upload_project
+
+pprint(client.create_project(body))
+```
+### 2.2. Get project by project_id
+```python
+projects = client.get_project(
+    project_id="449354de1168469a8229f605", 
+)
+
+```
+### 2.3. Update project 
+```python
+body = {
+  "project_name": "TestProject",
+  "project_type": "NER",
+  "enable_text_mode_option": true,
+  "disable_quality_audit": true,
+  ...
+}
+projects = client.update_project(
+    project_id="449354de1168469a8229f605",
+    body=body 
+)
+
+```
+### 2.4. Delete project 
+```python
+response = client.delete_project(
+    project_id="449354de1168469a8229f605",
+)
+```
+### 2.5. Get projects by Filters
+- Find all the projects by `project_id`, `project_name` or `active`
+- If all of `project_id`, `project_name`, `active` are `None`, it will return all possible projects 
+```python
+projects = client.get_projects(
+    project_id="449354de1168469a8229f605", 
+    project_name=None, 
+    active: bool=None
+)
+```
+## 3. Team Management
+### 3.1. Add member to the team
+```python
+member = client.add_team_member(
+    project_id="449354de1168469a8229f605", 
+    email="someone@email.com", 
+    role="annotator|reviewer|supervisor"
+)
+```
+### 3.2. Add member to the project team
+```python
+team = client.get_project_team_members(
+    project_id="449354de1168469a8229f605", 
+)
+```
+### 3.3. Remove member from the project team
+```python
+team = client.remove_project_team_member(
+    project_id="449354de1168469a8229f605", 
+)
+```
