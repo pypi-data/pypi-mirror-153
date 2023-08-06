@@ -1,0 +1,67 @@
+# -*- coding: utf-8; mode: python; -*-
+"""
+Widget data models
+"""
+
+import sqlalchemy as sa
+from sqlalchemy import orm
+
+from rattail.db import model
+
+
+class Widget(model.Base):
+    """
+    Represents a widget object
+    """
+    __tablename__ = '{{package}}_widget'
+
+    uuid = model.uuid_column()
+
+    description = sa.Column(sa.String(length=255), nullable=False, doc="""
+    Description for the widget.
+    """)
+
+    active = sa.Column(sa.Boolean(), nullable=False, default=True, doc="""
+    Flag indicating whether the widget is currently "active".
+    """)
+
+    def __str__(self):
+        return str(self.description)
+
+
+class Component(model.Base):
+    """
+    Represents a single component of a widget.
+    """
+    __tablename__ = '{{package}}_component'
+    __table_args__ = (
+        sa.ForeignKeyConstraint(['widget_uuid'], ['{{package}}_widget.uuid'],
+                                name='{{package}}_component_fk_widget'),
+    )
+
+    uuid = model.uuid_column()
+
+    widget_uuid = sa.Column(sa.String(length=32), nullable=False)
+    widget = orm.relationship(
+        Widget, doc="""
+        Reference to the widget to which this component belongs.
+        """,
+        backref=orm.backref(
+            'components', doc="""
+            List of components for the widget.
+            """))
+
+    item_code = sa.Column(sa.String(length=20), nullable=False, doc="""
+    Item code (as string) for the component.
+    """)
+
+    description = sa.Column(sa.String(length=255), nullable=False, doc="""
+    Description for the component.
+    """)
+
+    active = sa.Column(sa.Boolean(), nullable=False, default=True, doc="""
+    Flag indicating whether the component is currently "active".
+    """)
+
+    def __str__(self):
+        return str(self.description)

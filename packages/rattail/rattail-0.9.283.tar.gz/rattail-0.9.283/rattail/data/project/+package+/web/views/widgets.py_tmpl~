@@ -1,0 +1,74 @@
+# -*- coding: utf-8; mode: python; -*-
+"""
+Widget views
+"""
+
+from tailbone.views import MasterView
+
+from {{package}}.db import model
+
+
+class WidgetView(MasterView):
+    """
+    Widget master view
+    """
+    model_class = model.Widget
+    
+    has_rows = True
+    model_row_class = model.Component
+    rows_creatable = True
+    rows_editable = True
+    rows_deletable = True
+
+    grid_columns = [
+        'description',
+        'active',
+    ]
+
+    form_fields = [
+        'description',
+        'active',
+    ]
+
+    row_grid_columns = [
+        'item_code',
+        'description',
+        'active',
+    ]
+
+    row_form_fields = [
+        'item_code',
+        'description',
+        'active',
+    ]
+
+    def configure_grid(self, g):
+        super(WidgetView, self).configure_grid(g)
+        g.set_sort_defaults('description')
+        g.set_link('description')
+
+    def save_create_row_form(self, form):
+        widget = self.get_instance()
+        component = self.objectify(form)
+        # must explicitly connect "row" object to "parent"
+        widget.components.append(component)
+        self.Session.flush()
+        return component
+
+    def redirect_after_create_row(self, component, **kwargs):
+        return self.redirect(self.get_action_url('view', component.widget, **kwargs))
+
+    def get_row_data(self, widget):
+        return self.Session.query(model.Component)\
+                           .filter(model.Component.widget == widget)
+
+    def get_parent(self, component):
+        return component.widget
+
+    def row_grid_extra_class(self, component, i):
+        if not component.active:
+            return 'warning'
+
+
+def includeme(config):
+    WidgetView.defaults(config)

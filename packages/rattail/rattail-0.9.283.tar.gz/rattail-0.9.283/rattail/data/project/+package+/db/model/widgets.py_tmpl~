@@ -1,0 +1,41 @@
+# -*- coding: utf-8; mode: python; -*-
+"""
+Rattail core data model extensions
+"""
+
+import sqlalchemy as sa
+from sqlalchemy import orm
+
+from rattail.db import model
+from rattail.db.core import uuid_column
+
+
+class {{package_title}}Customer(model.Base):
+    """
+    {{project_title}} extensions to core Customer model
+    """
+    __tablename__ = '{{package}}_customer'
+    __table_args__ = (
+        sa.ForeignKeyConstraint(['uuid'], ['customer.uuid'], name='{{package}}_customer_fk_customer'),
+    )
+
+    uuid = uuid_column(default=None)
+
+    customer = orm.relationship(
+        model.Customer,
+        doc="""
+        Customer to which this extension record pertains.
+        """,
+        backref=orm.backref(
+            '_{{package}}',
+            uselist=False,
+            cascade='all, delete-orphan',
+            doc="""
+            {{project_title}}-specific extension record for the customer.
+            """),
+    )
+
+    mail_list_synced = sa.Column(sa.Boolean(), nullable=False, default=False, doc="""
+    Flag indicating whether the customer's email address has been synced to the
+    general mailing list.
+    """)

@@ -1,0 +1,33 @@
+# -*- coding: utf-8; mode: python; -*-
+"""
+{{project_title}} web app
+"""
+
+from tailbone import app
+
+
+def main(global_config, **settings):
+    """
+    This function returns a Pyramid WSGI application.
+    """
+    # prefer {{project_title}} templates over Tailbone
+    settings.setdefault('mako.directories', ['{{package}}.web:templates',
+                                             'tailbone:templates',])
+
+    # for graceful handling of postgres restart
+    settings.setdefault('retry.attempts', 2)
+
+    # make config objects
+    rattail_config = app.make_rattail_config(settings)
+    pyramid_config = app.make_pyramid_config(settings)
+
+    # bring in the rest of {{project_title}}
+    pyramid_config.include('{{package}}.web.static')
+    pyramid_config.include('{{package}}.web.subscribers')
+    pyramid_config.include('{{package}}.web.views')
+
+    # for graceful handling of postgres restart
+    pyramid_config.add_tween('tailbone.tweens.sqlerror_tween_factory',
+                             under='pyramid_tm.tm_tween_factory')
+
+    return pyramid_config.make_wsgi_app()

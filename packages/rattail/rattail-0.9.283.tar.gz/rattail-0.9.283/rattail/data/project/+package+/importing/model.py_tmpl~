@@ -1,0 +1,141 @@
+# -*- coding: utf-8; -*-
+"""
+{{project_title}} model importers
+"""
+
+from __future__ import unicode_literals, absolute_import
+
+from sqlalchemy import orm
+
+from rattail.importing import model as base
+from rattail.importing.model import ToRattail
+
+from dtail.db import model
+
+
+class TimeClockMixin(object):
+    """
+    Mixin for importers, which adds support for ``mjemp_id``.
+    """
+
+    @property
+    def supported_fields(self):
+        return super(TimeClockMixin, self).supported_fields + [
+            'mjemp_id',
+        ]
+
+    def cache_query_options(self):
+        options = super(TimeClockMixin, self).cache_query_options()
+        if 'mjemp_id' in self.fields:
+            options.append(orm.joinedload(self.model_class._dtail))
+        return options
+
+    def normalize_local_object(self, obj):
+        data = super(TimeClockMixin, self).normalize_local_object(obj)
+        if 'mjemp_id' in self.fields:
+            data['mjemp_id'] = obj.mjemp_id
+        return data
+
+    def update_object(self, obj, data, local_data=None):
+        obj = super(TimeClockMixin, self).update_object(obj, data, local_data)
+        if 'mjemp_id' in self.fields and obj.mjemp_id != data['mjemp_id']:
+            obj.mjemp_id = data['mjemp_id']
+        return obj
+
+
+##############################
+# core importer overrides
+##############################
+
+class UserImporter(TimeClockMixin, base.UserImporter):
+    pass
+
+class DepartmentImporter(TimeClockMixin, base.DepartmentImporter):
+    pass
+
+
+class ProductImporter(base.ProductImporter):
+
+    extension_attr = '_dtail'
+    extension_fields = [
+        'raw_classification',
+        'scheduled_for_sale',
+        'has_multiple_price_targets',
+    ]
+
+
+class EmployeeImporter(TimeClockMixin, base.EmployeeImporter):
+    pass
+
+class ScheduledShiftImporter(TimeClockMixin, base.ScheduledShiftImporter):
+    pass
+
+class WorkedShiftImporter(TimeClockMixin, base.WorkedShiftImporter):
+    pass
+
+class MessageImporter(TimeClockMixin, base.MessageImporter):
+    pass
+
+
+##############################
+# dtail core-extension models
+##############################
+
+class DtailUserImporter(ToRattail):
+    model_class = model.DtailUser
+
+class DtailStoreImporter(ToRattail):
+    model_class = model.DtailStore
+
+class DtailDepartmentImporter(ToRattail):
+    model_class = model.DtailDepartment
+
+class DtailCustomerImporter(ToRattail):
+    model_class = model.DtailCustomer
+
+class DtailEmployeeImporter(ToRattail):
+    model_class = model.DtailEmployee
+
+class DtailScheduledShiftImporter(ToRattail):
+    model_class = model.DtailScheduledShift
+
+class DtailWorkedShiftImporter(ToRattail):
+    model_class = model.DtailWorkedShift
+
+class DtailVendorImporter(ToRattail):
+    model_class = model.DtailVendor
+
+class DtailProductImporter(ToRattail):
+    model_class = model.DtailProduct
+
+class DtailMessageImporter(ToRattail):
+    model_class = model.DtailMessage
+
+
+##############################
+# dtail custom models
+##############################
+
+class ScheduledShiftTagImporter(ToRattail):
+    model_class = model.DtailScheduledShiftTag
+
+class EmployeeCallinImporter(ToRattail):
+    model_class = model.EmployeeCallin
+
+class PriceRuleImporter(ToRattail):
+    model_class = model.PriceRule
+
+class HonestGreenProductImporter(ToRattail):
+    model_class = model.HonestGreenProduct
+
+class HonestGreenProductPendingImporter(ToRattail):
+    model_class = model.HonestGreenProductPending
+
+class RevelProductImporter(ToRattail):
+    model_class = model.RevelProduct
+
+class RevelProductPendingImporter(ToRattail):
+    model_class = model.RevelProductPending
+
+class SageInvoiceImporter(ToRattail):
+    model_class = model.SageInvoice
