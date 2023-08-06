@@ -1,0 +1,260 @@
+# ===================
+# Import - Annotation
+# ===================
+---
+
+- slug: upload-gff3
+  name: GFF3 file
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      cores: 1
+      memory: 8192
+      network: true
+  data_name: '{{ src.file }}'
+  version: 3.5.0
+  type: data:annotation:gff3
+  category: Import
+  persistence: RAW
+  description: |
+    Import a General Feature Format (GFF) file which is a file format used for
+    describing genes and other features of DNA, RNA and protein sequences. See
+    [here](https://useast.ensembl.org/info/website/upload/gff3.html) and
+    [here](https://en.wikipedia.org/wiki/General_feature_format) for more
+    information.
+  input:
+    - name: src
+      label: Annotation (GFF3)
+      type: basic:file
+      description: |
+        Annotation in GFF3 format. Supported extensions are: .gff, .gff3 and .gtf
+      validate_regex: '\.(gff|gff3|gtf)(|\.gz|\.bz2|\.tgz|\.tar\.gz|\.tar\.bz2|\.zip|\.rar|\.7z)$'
+    - name: source
+      label: Gene ID database
+      type: basic:string
+      allow_custom_choice: true
+      choices:
+        - label: DICTYBASE
+          value: DICTYBASE
+        - label: ENSEMBL
+          value: ENSEMBL
+        - label: NCBI
+          value: NCBI
+        - label: UCSC
+          value: UCSC
+    - name: species
+      label: Species
+      type: basic:string
+      description: |
+        Species latin name.
+      allow_custom_choice: true
+      choices:
+        - label: Homo sapiens
+          value: Homo sapiens
+        - label: Mus musculus
+          value: Mus musculus
+        - label: Rattus norvegicus
+          value: Rattus norvegicus
+        - label: Dictyostelium discoideum
+          value: Dictyostelium discoideum
+    - name: build
+      label: Build
+      type: basic:string
+  output:
+    - name: annot
+      label: Uploaded GFF3 file
+      type: basic:file
+    - name: annot_sorted
+      label: Sorted GFF3 file
+      type: basic:file
+    - name: annot_sorted_idx_igv
+      label: IGV index for sorted GFF3
+      type: basic:file
+    - name: annot_sorted_track_jbrowse
+      label: Jbrowse track for sorted GFF3
+      type: basic:file
+    - name: source
+      label: Gene ID database
+      type: basic:string
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      re-import {{ src.file_temp }} {{ src.file }} "gff|gff3|gtf" "gff3" 0.1
+
+      gt gff3validator "${NAME}.gff3"
+      re-checkrc
+      re-progress 0.2
+
+      igvtools sort "${NAME}.gff3" "${NAME}"_sorted.gff3
+      re-checkrc "Sorting of GFF3 file failed."
+
+      igvtools index "${NAME}"_sorted.gff3
+      re-checkrc "Indexing of GFF3 file failed."
+
+      gt gff3 -tidy -retainids "${NAME}"_sorted.gff3 > "${NAME}_validated.gff3"
+      flatfile-to-json.pl \
+        --gff "${NAME}_validated.gff3" \
+        --out . \
+        --trackLabel "annotation" \
+        --nameAttributes "name,id,alias,gene_id,gene_name"
+      re-checkrc "Annotation track processing for JBrowse failed."
+
+      # Prepare Seq folder
+      prepare-refseqs.pl --gff-sizes "${NAME}_validated.gff3" --out .
+      re-checkrc "Refseq track processing for JBrowse failed."
+
+      # Index features
+      generate-names.pl --out .
+      re-checkrc "Gene name indexing for JBrowse failed."
+
+      re-progress 0.5
+      re-save-file annot "${NAME}.gff3"
+      re-save-file annot_sorted "${NAME}"_sorted.gff3
+      re-save-file annot_sorted_idx_igv "${NAME}"_sorted.gff3.idx
+      re-save-file annot_sorted_track_jbrowse trackList.json tracks/annotation seq names
+      re-save source {{ source }}
+      re-save species {{ species }}
+      re-save build {{ build }}
+
+- slug: upload-gtf
+  name: GTF file
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      cores: 1
+      memory: 8192
+      network: true
+  data_name: '{{ src.file }}'
+  version: 3.5.0
+  type: data:annotation:gtf
+  category: Import
+  persistence: RAW
+  description: |
+    Import a Gene Transfer Format (GTF) file.  It is a file format used to
+    hold information about gene structure. It is a tab-delimited text format
+    based on the general feature format (GFF), but contains some additional
+    conventions specific to gene information. See
+    [here](https://en.wikipedia.org/wiki/General_feature_format) for
+    differences between GFF and GTF files.
+  input:
+    - name: src
+      label: Annotation (GTF)
+      type: basic:file
+      description: |
+        Annotation in GTF format.
+      validate_regex: '\.(gtf|gff)(|\.gz|\.bz2|\.tgz|\.tar\.gz|\.tar\.bz2|\.zip|\.rar|\.7z)$'
+    - name: source
+      label: Gene ID database
+      type: basic:string
+      allow_custom_choice: true
+      choices:
+        - label: DICTYBASE
+          value: DICTYBASE
+        - label: ENSEMBL
+          value: ENSEMBL
+        - label: NCBI
+          value: NCBI
+        - label: UCSC
+          value: UCSC
+    - name: species
+      label: Species
+      type: basic:string
+      description: |
+        Species latin name.
+      allow_custom_choice: true
+      choices:
+        - label: Homo sapiens
+          value: Homo sapiens
+        - label: Mus musculus
+          value: Mus musculus
+        - label: Rattus norvegicus
+          value: Rattus norvegicus
+        - label: Dictyostelium discoideum
+          value: Dictyostelium discoideum
+    - name: build
+      label: Build
+      type: basic:string
+  output:
+    - name: annot
+      label: Uploaded GTF file
+      type: basic:file
+    - name: annot_sorted
+      label: Sorted GTF file
+      type: basic:file
+    - name: annot_sorted_idx_igv
+      label: IGV index for sorted GTF file
+      type: basic:file
+      required: false
+    - name: annot_sorted_track_jbrowse
+      label: Jbrowse track for sorted GTF
+      type: basic:file
+      required: false
+    - name: source
+      label: Gene ID database
+      type: basic:string
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      re-import {{ src.file_temp }} {{ src.file }} "gtf|gff" "gtf" 0.3
+
+      igvtools sort "${NAME}".gtf "${NAME}"_sorted.gtf
+      re-checkrc "Sorting of GTF file failed."
+      # add warning when GTF file is not acceptable by IGV, but can be used by other tools on platform
+      igvtools index "${NAME}"_sorted.gtf || re-warning "Indexing of GTF file failed."
+
+      gffread "${NAME}"_sorted.gtf -o- > tmp.gff3
+      re-checkrc "Conversion to GFF3 for JBrowse failed."
+
+      # if tmp.gff3 file is not empty create JBrowse track
+      if [ -s tmp.gff3 ]
+      then
+        # Fix the converted .gff3 file to include the required region definition lines
+        gt gff3 -tidy -retainids tmp.gff3 > tmp_tidy.gff3
+        re-checkrc "Reformating of GFF3 file failed."
+        flatfile-to-json.pl \
+          --gff tmp_tidy.gff3 \
+          --out . \
+          --trackLabel "annotation" \
+          --nameAttributes "name,id,alias,gene_id,gene_name"
+        re-checkrc "Annotation track processing for JBrowse failed."
+        # Prepare Seq folder
+        prepare-refseqs.pl --gff-sizes tmp_tidy.gff3 --out .
+        re-checkrc "Refseq track processing for JBrowse failed."
+        # Index features
+        generate-names.pl --out .
+        re-checkrc "Gene name indexing for JBrowse failed."
+        re-save-file annot_sorted_track_jbrowse trackList.json tracks/annotation seq names
+      else
+        re-warning "JBrowse track was not created. Please validate your GTF file."
+      fi
+
+      re-save-file annot "${NAME}.gtf"
+      re-save-file annot_sorted "${NAME}"_sorted.gtf
+
+      if [ -f "${NAME}"_sorted.gtf.idx ]; then
+         re-save-file annot_sorted_idx_igv "${NAME}"_sorted.gtf.idx
+      fi
+
+      re-save source {{ source }}
+      re-save species {{ species }}
+      re-save build {{ build }}

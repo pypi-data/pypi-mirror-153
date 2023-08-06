@@ -1,0 +1,46 @@
+# =========================
+# Processors for unit tests
+# =========================
+---
+
+- slug: test-sleep-progress
+  name: Test sleep progress
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/s4q6j6e8/resolwebio/base:ubuntu-20.04-03042021
+  data_name: "Test"
+  version: 1.2.2
+  type: data:test:result
+  persistence: CACHED
+  description: |
+    Test for the progress bar by sleeping 5 times for the specified amount of time.
+  input:
+    - name: t
+      label: Sleep time
+      type: basic:integer
+      default: 5
+  output:
+    - name: output
+      label: Result
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      echo "Starting..."
+      re-progress 0.0
+      sleep {{ t }}
+      re-progress 0.2
+      sleep {{ t }}
+      re-progress 0.4
+      sleep {{ t }}
+      re-progress 0.6
+      sleep {{ t }}
+      re-progress 0.8
+      sleep {{ t }}
+      re-progress 1
+
+      re-save output Done
+      echo "Done."

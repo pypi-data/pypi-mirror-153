@@ -1,0 +1,647 @@
+# =============
+# Aligner - BWA
+# =============
+---
+
+- slug: alignment-bwa-mem
+  name: BWA MEM
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      cores: 4
+      memory: 32768
+      storage: 300
+  data_name: "{{ reads|name|default('?') }}"
+  version: 3.6.0
+  type: data:alignment:bam:bwamem
+  category: Align
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    BWA MEM is a read aligner for mapping low-divergent sequences against a
+    large reference genome. Designed for longer sequences ranged from 70bp to
+    1Mbp. The algorithm works by seeding alignments with maximal exact matches
+    (MEMs) and then extending seeds with the affine-gap Smith-Waterman
+    algorithm (SW). See [here](http://bio-bwa.sourceforge.net/) for more
+    information.
+  input:
+    - name: genome
+      label: Reference genome
+      type: data:index:bwa
+    - name: reads
+      label: Reads
+      type: data:reads:fastq
+    - name: seed_l
+      label: Minimum seed length
+      type: basic:integer
+      default: 19
+      description: |
+        Minimum seed length. Matches shorter than minimum seed length
+        will be missed. The alignment speed is usually insensitive to
+        this value unless it significantly deviates from 20.
+    - name: band_w
+      label: Band width
+      type: basic:integer
+      default: 100
+      description: |
+        Gaps longer than this will not be found.
+    - name: re_seeding
+      label: Re-seeding factor
+      type: basic:decimal
+      default: 1.5
+      description: |
+        Trigger re-seeding for a MEM longer than minSeedLen*FACTOR.
+        This is a key heuristic parameter for tuning the performance.
+        Larger value yields fewer seeds, which leads to faster alignment
+        speed but lower accuracy.
+    - name: m
+      label: Mark shorter split hits as secondary
+      type: basic:boolean
+      default: false
+      description: |
+        Mark shorter split hits as secondary (for Picard compatibility)
+    - name: scoring
+      label: Scoring
+      group:
+      - name: match
+        label: Score of a match
+        type: basic:integer
+        default: 1
+      - name: missmatch
+        label: Mismatch penalty
+        type: basic:integer
+        default: 4
+      - name: gap_o
+        label: Gap open penalty
+        type: basic:integer
+        default: 6
+      - name: gap_e
+        label: Gap extension penalty
+        type: basic:integer
+        default: 1
+      - name: clipping
+        label: Clipping penalty
+        type: basic:integer
+        default: 5
+        description: |
+          Clipping is applied if final alignment score is smaller than
+          (best score reaching the end of query) - (Clipping penalty)
+      - name: unpaired_p
+        label: Penalty for an unpaired read pair
+        type: basic:integer
+        default: 9
+        description: |
+          Affinity to force pair. Score: scoreRead1+scoreRead2-Penalty
+    - name: reporting
+      label: Reporting
+      group:
+      - name: report_all
+        label: Report all found alignments
+        type: basic:boolean
+        default: false
+        description: |
+          Output all found alignments for single-end or unpaired
+          paired-end reads. These alignments will be flagged as
+          secondary alignments.
+      - name: report_tr
+        label: Report threshold score
+        type: basic:integer
+        default: 30
+        description: |
+          Don't output alignment with score lower than defined number.
+          This option only affects output.
+  output:
+    - name: bam
+      label: Alignment file
+      type: basic:file
+      description: Position sorted alignment
+    - name: bai
+      label: Index BAI
+      type: basic:file
+    - name: unmapped
+      label: Unmapped reads
+      type: basic:file
+      required: false
+    - name: stats
+      label: Statistics
+      type: basic:file
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      GENOME_NAME=`basename {{ genome.fasta.file }} .fasta`
+      INDEX={{genome.index.dir}}/"${GENOME_NAME}.fasta"
+
+      {% set species = ["Caenorhabditis elegans", "Cricetulus griseus", "Dictyostelium discoideum",
+                        "Dictyostelium purpureum", "Drosophila melanogaster", "Homo sapiens", "Macaca mulatta",
+                        "Mus musculus", "Odocoileus virginianus texanus", "Rattus norvegicus", "Solanum tuberosum"] %}
+
+      {% if reads|sample|descriptor("general.species") %}
+        {% if reads|sample|descriptor("general.species") != genome.species %}
+          re-warning \
+            {{ ('Species of reads (%s) and genome (%s) do not match.')
+            | format(reads|sample|descriptor("general.species"), genome.species) }}
+        {% endif %}
+      {% elif genome.species in species %}
+        re-annotate-entity "general.species" {{ genome.species }}
+        re-info "Sample species was automatically annotated to match the genome."
+      {% endif %}
+
+      FW_READS=()
+      RW_READS=()
+
+      {% for r in reads.fastq %}
+        FW_READS+=({{ r.file }})
+      {% endfor %}
+
+      cat "${FW_READS[@]}" > fw_reads.fastq.gz
+      gzip -d fw_reads.fastq.gz
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        {% for r in reads.fastq2 %}
+          READS_NAME=`basename {{ r.file }} .fastq.gz`
+          RW_READS+=({{ r.file }})
+        {% endfor %}
+        cat "${RW_READS[@]}" > rw_reads.fastq.gz
+        gzip -d rw_reads.fastq.gz
+      {% endif %}
+
+      NAME=`basename {{ reads.fastq.0.file }} .fastq.gz`
+
+      re-progress 0.3
+
+      echo "ALIGNING with BWA-MEM:"
+      {% if reads|type|subtype('data:reads:fastq:single:') %}
+        bwa \
+          mem \
+          {% if reporting.report_all %}-a{% endif %} \
+          -r {{re_seeding}} \
+          -k {{ seed_l }} \
+          -w {{ band_w }} \
+          -A {{scoring.match}} \
+          -B {{scoring.missmatch}} \
+          -O {{scoring.gap_o}} \
+          -E {{scoring.gap_e}} \
+          -L {{scoring.clipping}} \
+          -T {{ reporting.report_tr }} \
+          {% if m %}-M{% endif %} \
+          -t {{ requirements.resources.cores }} \
+          "${INDEX}" \
+          fw_reads.fastq 1> "${NAME}_align_unsorted.sam"
+      {% else %}
+        bwa \
+          mem \
+          {% if reporting.report_all %}-a{% endif %} \
+          -U {{scoring.unpaired_p}} \
+          -r {{re_seeding}} \
+          -k {{ seed_l }} \
+          -w {{ band_w }} \
+          -A {{scoring.match}} \
+          -B {{scoring.missmatch}} \
+          -O {{scoring.gap_o}} \
+          -E {{scoring.gap_e}} \
+          -L {{scoring.clipping}} \
+          -T {{ reporting.report_tr }} \
+          {% if m %}-M{% endif %} \
+          -t {{ requirements.resources.cores }} \
+          "${INDEX}" \
+          fw_reads.fastq \
+          rw_reads.fastq 1> "${NAME}_align_unsorted.sam"
+      {% endif %}
+
+      re-checkrc
+      re-progress 0.5
+
+      echo "COMPRESSING sam to sorted bam:"
+      # Samtools sort may require 4-5 GB RAM per thread, so the CPU
+      # limit for this command is set to 3
+      samtools view \
+        -@ {{ requirements.resources.cores }} \
+        -bS "${NAME}_align_unsorted.sam" | \
+      samtools sort \
+        -@ {{ [3, requirements.resources.cores]|min }} \
+        -o "${NAME}.bam" -
+      re-progress 0.6
+
+      echo -e "\nINDEXING bam:"
+      samtools index "${NAME}.bam" "${NAME}.bam.bai"
+      re-checkrc
+
+      echo "Calculating statistics"
+      samtools flagstat "${NAME}.bam" > "${NAME}_report.txt"
+      re-checkrc
+      re-progress 0.75
+
+      echo "Creating unmapped fastq file"
+      samtools view  -@ {{ requirements.resources.cores }} -u -f 4 -F 264 "${NAME}.bam" > "${NAME}_unmapped.bam"
+      bamToFastq -i "${NAME}_unmapped.bam" -fq "${NAME}_unmapped.fastq"
+      pigz -c "${NAME}_unmapped.fastq" > "${NAME}_unmapped.fastq.gz"
+
+      re-save-file bam "${NAME}.bam"
+      re-save-file bai "${NAME}.bam.bai"
+      re-save-file stats "${NAME}_report.txt"
+      re-save species {{genome.species}}
+      re-save build {{genome.build}}
+
+      if [ -f "${NAME}_unmapped.fastq.gz" ]; then
+        re-save-file unmapped "${NAME}_unmapped.fastq.gz"
+      fi
+
+
+- slug: alignment-bwa-sw
+  name: BWA SW
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      cores: 20
+      memory: 16384
+  data_name: "{{ reads.fastq.0.file|basename|default('?') }}"
+  version: 2.5.0
+  type: data:alignment:bam:bwasw
+  category: Align
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    Read aligner for mapping low-divergent sequences against a large
+    reference genome. Designed for longer sequences ranged from
+    70bp to 1Mbp. The paired-end mode only works for reads Illumina
+    short-insert libraries.
+  input:
+    - name: genome
+      label: Reference genome
+      type: data:index:bwa
+    - name: reads
+      label: Reads
+      type: data:reads:fastq
+    - name: match
+      label: Score of a match
+      type: basic:integer
+      default: 1
+    - name: missmatch
+      label: Mismatch penalty
+      type: basic:integer
+      default: 3
+    - name: gap_o
+      label: Gap open penalty
+      type: basic:integer
+      default: 5
+    - name: gap_e
+      label: Gap extension penalty
+      type: basic:integer
+      default: 2
+  output:
+    - name: bam
+      label: Alignment file
+      type: basic:file
+      description: Position sorted alignment
+    - name: bai
+      label: Index BAI
+      type: basic:file
+    - name: unmapped
+      label: Unmapped reads
+      type: basic:file
+      required: false
+    - name: stats
+      label: Statistics
+      type: basic:file
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      GENOME_NAME=`basename {{ genome.fasta.file }} .fasta`
+      INDEX={{genome.index.dir}}"/${GENOME_NAME}.fasta"
+
+      {% set species = ["Caenorhabditis elegans", "Cricetulus griseus", "Dictyostelium discoideum",
+                        "Dictyostelium purpureum", "Drosophila melanogaster", "Homo sapiens", "Macaca mulatta",
+                        "Mus musculus", "Odocoileus virginianus texanus", "Rattus norvegicus", "Solanum tuberosum"] %}
+
+      {% if reads|sample|descriptor("general.species") %}
+        {% if reads|sample|descriptor("general.species") != genome.species %}
+          re-warning \
+            {{ ('Species of reads (%s) and genome (%s) do not match.')
+            | format(reads|sample|descriptor("general.species"), genome.species) }}
+        {% endif %}
+      {% elif genome.species in species %}
+        re-annotate-entity "general.species" {{ genome.species }}
+        re-info "Sample species was automatically annotated to match the genome."
+      {% endif %}
+
+      FW_READS=()
+      RW_READS=()
+
+      {% for r in reads.fastq %}
+        FW_READS+=({{ r.file }})
+      {% endfor %}
+
+      cat "${FW_READS[@]}" > fw_reads.fastq.gz
+      gzip -d fw_reads.fastq.gz
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        {% for r in reads.fastq2 %}
+          READS_NAME=`basename {{ r.file }} .fastq.gz`
+          RW_READS+=({{ r.file }})
+        {% endfor %}
+
+        cat "${RW_READS[@]}" > rw_reads.fastq.gz
+        gzip -d rw_reads.fastq.gz
+      {% endif %}
+
+      NAME=`basename {{ reads.fastq.0.file }} .fastq.gz`
+
+      echo "ALIGNING with BWA-SW:"
+      {% if reads|type|subtype('data:reads:fastq:single:') %}
+        bwa \
+          bwasw \
+          -a {{match}} \
+          -b {{missmatch}} \
+          -q {{gap_o}} \
+          -r {{gap_e}} \
+          -t {{ requirements.resources.cores }} \
+          "${INDEX}" \
+          fw_reads.fastq 1> "${NAME}_align_unsorted.sam"
+      {% else %}
+        bwa \
+          bwasw \
+          -a {{match}} \
+          -b {{missmatch}} \
+          -q {{gap_o}} \
+          -r {{gap_e}} \
+          -t {{ requirements.resources.cores }} \
+          "${INDEX}" \
+          fw_reads.fastq \
+          rw_reads.fastq 1> "${NAME}_align_unsorted.sam"
+      {% endif %}
+
+      re-checkrc
+      re-progress 0.5
+
+      echo "COMPRESSING sam to sorted bam:"
+      # Samtools sort may require 4-5 GB RAM per thread, so the CPU
+      # limit for this command is set to 3
+      samtools view \
+        -@ {{ requirements.resources.cores }} \
+        -bS "${NAME}_align_unsorted.sam" | \
+      samtools sort \
+        -@ {{ [3, requirements.resources.cores]|min }} \
+        -o "${NAME}.bam" -
+      re-progress 0.6
+
+      echo -e "\nINDEXING bam:"
+      samtools index "${NAME}.bam" "${NAME}.bam.bai"
+      re-checkrc
+
+      echo "Calculating statistics"
+      samtools flagstat "${NAME}.bam" > "${NAME}_report.txt"
+      re-checkrc
+      re-progress 0.75
+
+      echo "Creating unmapped fastq file"
+      samtools view -@ {{ requirements.resources.cores }} -u -f 4 -F 264 "${NAME}.bam" > "${NAME}_unmapped.bam"
+      bamToFastq -i "${NAME}_unmapped.bam" -fq "${NAME}_unmapped.fastq"
+      pigz -c "${NAME}_unmapped.fastq" > "${NAME}_unmapped.fastq.gz"
+
+      re-save-file bam "${NAME}.bam"
+      re-save-file bai "${NAME}.bam.bai"
+      re-save-file stats "${NAME}_report.txt"
+      re-save species {{genome.species}}
+      re-save build {{genome.build}}
+
+      if [ -f "${NAME}_unmapped.fastq.gz" ]; then
+        re-save-file unmapped "${NAME}_unmapped.fastq.gz"
+      fi
+
+
+- slug: alignment-bwa-aln
+  name: BWA ALN
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      cores: 20
+      memory: 16384
+  data_name: "{{ reads|name|default('?') }}"
+  version: 2.6.0
+  type: data:alignment:bam:bwaaln
+  category: Align
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    Read aligner for mapping low-divergent sequences against a large
+    reference genome. Designed for Illumina sequence reads up to 100bp.
+  input:
+    - name: genome
+      label: Reference genome
+      type: data:index:bwa
+    - name: reads
+      label: Reads
+      type: data:reads:fastq
+    - name: q
+      label: Quality threshold
+      type: basic:integer
+      default: 0
+      range: [0, 60]
+      description: |
+        Parameter for dynamic read trimming.
+    - name: use_edit
+      label: Use maximum edit distance (excludes fraction of missing alignments)
+      type: basic:boolean
+      default: false
+    - name: edit_value
+      label: Maximum edit distance
+      type: basic:integer
+      default: 5
+      hidden: "!use_edit"
+    - name: fraction
+      label: Fraction of missing alignments
+      type: basic:decimal
+      default: 0.04
+      hidden: "use_edit"
+      description: |
+        The fraction of missing alignments given 2% uniform base error
+        rate. The maximum edit distance is automatically chosen for
+        different read lengths.
+    - name: seeds
+      label: Use seeds
+      type: basic:boolean
+      default: false
+    - name: seed_length
+      label: Seed length
+      type: basic:integer
+      default: 35
+      hidden: "!seeds"
+      description: |
+        Take the first X subsequence as seed. If X is larger than the
+        query sequence, seeding will be disabled. For long reads,
+        this option is typically ranged from 25 to 35 for value 2 in
+        seed maximum edit distance.
+    - name: seed_dist
+      label: Seed maximum edit distance
+      type: basic:integer
+      default: 2
+      hidden: "!seeds"
+  output:
+    - name: bam
+      label: Alignment file
+      type: basic:file
+      description: Position sorted alignment
+    - name: bai
+      label: Index BAI
+      type: basic:file
+    - name: unmapped
+      label: Unmapped reads
+      type: basic:file
+      required: false
+    - name: stats
+      label: Statistics
+      type: basic:file
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      GENOME_NAME=`basename {{ genome.fasta.file }} .fasta`
+      INDEX={{genome.index.dir}}"/${GENOME_NAME}.fasta"
+
+      {% set species = ["Caenorhabditis elegans", "Cricetulus griseus", "Dictyostelium discoideum",
+                        "Dictyostelium purpureum", "Drosophila melanogaster", "Homo sapiens", "Macaca mulatta",
+                        "Mus musculus", "Odocoileus virginianus texanus", "Rattus norvegicus", "Solanum tuberosum"] %}
+
+      {% if reads|sample|descriptor("general.species") %}
+        {% if reads|sample|descriptor("general.species") != genome.species %}
+          re-warning \
+            {{ ('Species of reads (%s) and genome (%s) do not match.')
+            | format(reads|sample|descriptor("general.species"), genome.species) }}
+        {% endif %}
+      {% elif genome.species in species %}
+        re-annotate-entity "general.species" {{ genome.species }}
+        re-info "Sample species was automatically annotated to match the genome."
+      {% endif %}
+
+      FW_READS=()
+      RW_READS=()
+
+      {% for r in reads.fastq %}
+        FW_READS+=({{ r.file }})
+      {% endfor %}
+
+      cat "${FW_READS[@]}" > fw_reads.fastq.gz
+      gzip -d fw_reads.fastq.gz
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        {% for r in reads.fastq2 %}
+          READS_NAME=`basename {{ r.file }} .fastq.gz`
+          RW_READS+=({{ r.file }})
+        {% endfor %}
+
+        cat "${RW_READS[@]}" > rw_reads.fastq.gz
+        gzip -d rw_reads.fastq.gz
+      {% endif %}
+
+      NAME=`basename {{ reads.fastq.0.file }} .fastq.gz`
+
+      echo "ALIGNING with BWA-ALN:"
+      {% if reads|type|subtype('data:reads:fastq:single:') %}
+        bwa \
+          aln \
+          {% if use_edit %}-n {{edit_value}}{% else %}-n {{fraction}}{% endif %} \
+          {% if seeds %}-l {{ seed_length }} -k {{ seed_dist }}{% endif %} \
+          -t {{ requirements.resources.cores }} \
+          -q {{ q }} \
+          "${INDEX}" \
+          fw_reads.fastq > "${NAME}_align.sai"
+
+        bwa \
+          samse \
+          "${INDEX}" \
+          "${NAME}_align.sai" \
+          fw_reads.fastq > "${NAME}_align_unsorted.sam"
+      {% else %}
+        bwa \
+          aln \
+          {% if use_edit %}-n {{edit_value}}{% else %}-n {{fraction}}{% endif %} \
+          {% if seeds %}-l {{ seed_length }} -k {{ seed_dist }}{% endif %} \
+          -t {{ requirements.resources.cores }} \
+          -q {{ q }} \
+          "${INDEX}" \
+          fw_reads.fastq > fw_align.sai
+
+        bwa \
+          aln \
+          {% if use_edit %}-n {{edit_value}}{% else %}-n {{fraction}}{% endif %} \
+          {% if seeds %}-l {{ seed_length }} -k {{ seed_dist }}{% endif %} \
+          -t {{ requirements.resources.cores }} \
+          "${INDEX}" \
+          -q {{ q }} \
+          rw_reads.fastq > rw_align.sai
+
+        bwa \
+          sampe \
+          "${INDEX}" \
+          fw_align.sai \
+          rw_align.sai \
+          fw_reads.fastq \
+          rw_reads.fastq > "${NAME}_align_unsorted.sam"
+      {% endif %}
+
+      re-checkrc
+      re-progress 0.5
+
+      echo "COMPRESSING sam to sorted bam:"
+      # Samtools sort may require 4-5 GB RAM per thread, so the CPU
+      # limit for this command is set to 3
+      samtools view \
+       -@ {{ requirements.resources.cores }} \
+       -bS "${NAME}_align_unsorted.sam" | \
+      samtools sort \
+       -@ {{ [3, requirements.resources.cores]|min }} \
+       -o "${NAME}.bam" -
+      re-progress 0.6
+
+      echo -e "\nINDEXING bam:"
+      samtools index "${NAME}.bam" "${NAME}.bam.bai"
+      re-checkrc
+
+      echo "Calculating statistics"
+      samtools flagstat "${NAME}.bam" > "${NAME}.stats.txt"
+      re-checkrc
+      re-progress 0.75
+
+      echo "Creating unmapped fastq file"
+      samtools view -@ {{ requirements.resources.cores }} -u -f 4 -F 264 "${NAME}.bam" > "${NAME}_unmapped.bam"
+      bamToFastq -i "${NAME}_unmapped.bam" -fq "${NAME}_unmapped.fastq"
+      pigz -c "${NAME}_unmapped.fastq" > "${NAME}_unmapped.fastq.gz"
+
+      re-save-file bam "${NAME}.bam"
+      re-save-file bai "${NAME}.bam.bai"
+      re-save-file stats "${NAME}.stats.txt"
+      re-save species {{genome.species}}
+      re-save build {{genome.build}}
+
+      if [ -f "${NAME}_unmapped.fastq.gz" ]; then
+        re-save-file unmapped "${NAME}_unmapped.fastq.gz"
+      fi

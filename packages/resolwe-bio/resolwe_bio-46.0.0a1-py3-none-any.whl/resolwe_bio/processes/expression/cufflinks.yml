@@ -1,0 +1,169 @@
+# ======================
+# Expression - Cufflinks
+# ======================
+---
+
+- slug: cufflinks
+  name: Cufflinks 2.2
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      cores: 10
+  data_name: "{{ alignment.bam.file|basename|default('?') }}"
+  version: 3.2.0
+  type: data:cufflinks:cufflinks
+  category: Quantify
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    Cufflinks assembles transcripts, estimates their abundances, and tests for
+    differential expression and regulation in RNA-Seq samples. It accepts
+    aligned RNA-Seq reads and assembles the alignments into a parsimonious set
+    of transcripts. Cufflinks then estimates the relative abundances of these
+    transcripts based on how many reads support each one, taking into account
+    biases in library preparation protocols. See
+    [here](http://cole-trapnell-lab.github.io/cufflinks/) for more information.
+  input:
+    - name: alignment
+      label: Aligned reads
+      type: data:alignment:bam
+    - name: annotation
+      label: Annotation (GTF/GFF3)
+      type: data:annotation
+      required: false
+    - name: genome
+      label: Run bias detection and correction algorithm
+      type: data:seq:nucleotide
+      required: false
+      description: |
+        Provide Cufflinks with a multifasta file (genome file) via this
+        option to instruct it to run a bias detection and correction
+        algorithm which can significantly improve accuracy of transcript
+        abundance estimates.
+    - name: mask_file
+      label: Mask file
+      type: data:annotation:gtf
+      required: false
+      description: |
+        Ignore all reads that could have come from transcripts in this
+        GTF file. We recommend including any annotated rRNA,
+        mitochondrial transcripts other abundant transcripts you wish
+        to ignore in your analysis in this file. Due to variable
+        efficiency of mRNA enrichment methods and rRNA depletion kits,
+        masking these transcripts often improves the overall robustness
+        of transcript abundance estimates.
+    - name: library_type
+      label: Library type
+      type: basic:string
+      description: |
+        In cases where Cufflinks cannot determine the platform and
+        protocol used to generate input reads, you can supply this
+        information manually, which will allow Cufflinks to infer source
+        strand information with certain protocols. The available options
+        are listed below. For paired-end data, we currently only support
+        protocols where reads are point towards each other: fr-unstranded
+        - Reads from the left-most end of the fragment (in transcript
+        coordinates) map to the transcript strand, and the right-most
+        end maps to the opposite strand; fr-firststrand - Same as above
+        except we enforce the rule that the right-most end of the
+        fragment (in transcript coordinates) is the first sequenced
+        (or only sequenced for single-end reads). Equivalently, it is
+        assumed that only the strand generated during first strand
+        synthesis is sequenced; fr-secondstrand - Same as above except
+        we enforce the rule that the left-most end of the fragment
+        (in transcript coordinates) is the first sequenced (or only
+        sequenced for single-end reads). Equivalently, it is assumed
+        that only the strand generated during second strand synthesis
+        is sequenced.
+      default: fr-unstranded
+      choices:
+        - label: fr-unstranded
+          value: fr-unstranded
+        - label: fr-firststrand
+          value: fr-firststrand
+        - label: fr-secondstrand
+          value: fr-secondstrand
+    - name: annotation_usage
+      label: Instruct Cufflinks how to use the provided annotation (GFF/GTF) file
+      type: basic:string
+      description: |
+        GTF-guide - tells Cufflinks to use the supplied reference
+        annotation (GFF) to guide RABT assembly. Reference transcripts
+        will be tiled with faux-reads to provide additional information
+        in assembly. Output will include all reference transcripts as
+        well as any novel genes and isoforms that are assembled. --GTF
+        - tells Cufflinks to use the supplied reference annotation
+        (a GFF file) to estimate isoform expression. It will not
+        assemble novel transcripts, and the program will ignore
+        alignments not structurally compatible with any reference
+        transcript.
+      default: --GTF-guide
+      choices:
+        - label: Use supplied reference annotation to guide RABT assembly (--GTF-guide)
+          value: --GTF-guide
+        - label: Use supplied reference annotation to estimate isoform expression (--GTF)
+          value: --GTF
+    - name: multi_read_correct
+      label: Do initial estimation procedure to more accurately weight reads with multiple genome mappings
+      type: basic:boolean
+      default: false
+      description: |
+        Run an initial estimation procedure that weights reads mapping
+        to multiple locations more accurately.
+  output:
+    - name: transcripts
+      label: Assembled transcript isoforms
+      type: basic:file
+    - name: isoforms_fpkm_tracking
+      label: Isoforms FPKM tracking
+      type: basic:file
+    - name: genes_fpkm_tracking
+      label: Genes FPKM tracking
+      type: basic:file
+    - name: skipped_loci
+      label: Skipped loci
+      type: basic:file
+    - name: source
+      label: Gene ID database
+      type: basic:string
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      NAME=`basename {{ alignment.bam.file }} .bam`
+
+      re-progress 0.1
+
+      cufflinks \
+        {% if annotation %} {{ annotation_usage }} {{ annotation.annot.file }} {% endif %} \
+        {% if genome %} --frag-bias-correct {{ genome.fasta.file }} {% endif %} \
+        {% if multi_read_correct %} --multi-read-correct {% endif %} \
+        {% if mask_file %} -M {{ mask_file.annot.file }} {% endif %} \
+        --library-type {{ library_type }} \
+        --num-threads {{ requirements.resources.cores }} \
+        --quiet {{ alignment.bam.file }}
+
+      re-checkrc
+      re-progress 0.9
+
+      mv transcripts.gtf "${NAME}_transcripts.gtf"
+      mv isoforms.fpkm_tracking "${NAME}_isoforms_fpkm_tracking.txt"
+      mv genes.fpkm_tracking "${NAME}_genes_fpkm_tracking.txt"
+      mv skipped.gtf "${NAME}_skipped.gtf"
+
+      re-save-file transcripts "${NAME}_transcripts.gtf"
+      re-save-file isoforms_fpkm_tracking "${NAME}_isoforms_fpkm_tracking.txt"
+      re-save-file genes_fpkm_tracking "${NAME}_genes_fpkm_tracking.txt"
+      re-save-file skipped_loci "${NAME}_skipped.gtf"
+      re-save source {% if annotation %}{{ annotation.source }}{% else %}cufflinks{% endif %}
+      re-save species {{ alignment.species }}
+      re-save build {{ alignment.build }}

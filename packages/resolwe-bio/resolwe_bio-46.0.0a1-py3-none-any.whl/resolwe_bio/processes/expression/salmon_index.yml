@@ -1,0 +1,124 @@
+- slug: salmon-index
+  name: Salmon Index
+  requirements:
+    expression-engine: jinja
+    resources:
+      cores: 8
+      memory: 32768
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+  data_name: 'Salmon index, k-mer size: {{ kmerlen }} ({{ nucl.fasta.file|basename|default("?") }})'
+  version: 2.2.0
+  type: data:index:salmon
+  persistence: CACHED
+  description: |
+    Generate index files for Salmon transcript quantification tool.
+  input:
+    - name: nucl
+      label: Nucleotide sequence
+      type: data:seq:nucleotide
+      description: |
+        A CDS sequence file in .FASTA format.
+    - name: decoys
+      label: Decoys
+      type: data:file
+      required: false
+      description: |
+        Treat these sequences as decoys that may have sequence
+        homologous to some known transcript.
+    - name: gencode
+      label: Gencode
+      type: basic:boolean
+      default: false
+      description: |
+        This flag will expect the input transcript FASTA
+        to be in GENCODE format, and will split the
+        transcript name at the first '|' character.  These
+        reduced names will be used in the output and when
+        looking for these transcripts in a gene to
+        transcript GTF.
+    - name: keep_duplicates
+      label: Keep duplicates
+      type: basic:boolean
+      default: false
+      description: |
+        This flag will disable the default indexing
+        behavior of discarding sequence-identical
+        duplicate transcripts.  If this flag is passed,
+        then duplicate transcripts that appear in the
+        input will be retained and quantified separately.
+    - name: source
+      label: Source of attribute ID
+      type: basic:string
+      allow_custom_choice: true
+      choices:
+        - label: DICTYBASE
+          value: DICTYBASE
+        - label: ENSEMBL
+          value: ENSEMBL
+        - label: NCBI
+          value: NCBI
+        - label: UCSC
+          value: UCSC
+    - name: species
+      label: Species
+      type: basic:string
+      description: |
+        Species latin name.
+      allow_custom_choice: true
+      choices:
+        - label: Homo sapiens
+          value: Homo sapiens
+        - label: Mus musculus
+          value: Mus musculus
+        - label: Rattus norvegicus
+          value: Rattus norvegicus
+        - label: Dictyostelium discoideum
+          value: Dictyostelium discoideum
+    - name: build
+      label: Genome build
+      type: basic:string
+    - name: kmerlen
+      label: Size of k-mers
+      type: basic:integer
+      default: 31
+      description: |
+        The size of k-mers that should be used for the quasi index.
+        We find that a k of 31 seems to work well for reads of 75bp
+        or longer, but you might consider a smaller k if you plan to
+        deal with shorter reads.
+  output:
+    - name: index
+      label: Salmon index
+      type: basic:dir
+    - name: source
+      label: Source of attribute ID
+      type: basic:string
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      mkdir salmon_index
+
+      salmon --no-version-check index \
+        -t {{ nucl.fastagz.file }} \
+        {% if decoys %} -d {{ decoys.file.file }} {% endif %} \
+        {% if gencode %} --gencode {% endif %} \
+        {% if keep_duplicates %} --keepDuplicates {% endif %} \
+        -i salmon_index \
+        -p {{ requirements.resources.cores }} \
+        -k {{ kmerlen }}
+
+      re-checkrc 'Salmon index build failed.'
+
+      re-save-dir index salmon_index
+      re-save source {{ source }}
+      re-save species {{ species }}
+      re-save build {{ build }}

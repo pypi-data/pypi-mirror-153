@@ -1,0 +1,177 @@
+# ================
+# Aligner - HISAT2
+# ================
+---
+
+- slug: alignment-hisat2
+  name: HISAT2
+  requirements:
+    expression-engine: jinja
+    resources:
+      memory: 32768
+      cores: 10
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+  data_name: "{{ reads|name|default('?') }}"
+  version: 2.6.0
+  type: data:alignment:bam:hisat2
+  category: Align
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    HISAT2 is a fast and sensitive alignment program for mapping
+    next-generation sequencing reads (both DNA and RNA) to a population of
+    genomes (as well as to a single reference genome). See
+    [here](https://ccb.jhu.edu/software/hisat2/index.shtml) for more
+    information.
+  input:
+    - name: genome
+      label: Reference genome
+      type: data:index:hisat2
+    - name: reads
+      label: Reads
+      type: data:reads:fastq
+    - name: softclip
+      label: Disallow soft clipping
+      type: basic:boolean
+      default: false
+    - name: spliced_alignments
+      label: Spliced alignment options
+      group:
+        - name: noncansplice
+          label: Non-canonical splice sites penalty (optional)
+          type: basic:integer
+          required: false
+          description: |
+            Sets the penalty for each pair of non-canonical splice sites (e.g. non-GT/AG).
+        - name: cufflinks
+          label: Report alignments tailored specifically for Cufflinks
+          type: basic:boolean
+          default: false
+          description: |
+            With this option, HISAT2 looks for novel splice sites with
+            three signals (GT/AG, GC/AG, AT/AC), but all user-provided splice sites
+            are used irrespective of their signals.
+            HISAT2 produces an optional field, XS:A:[+-], for every spliced alignment.
+  output:
+    - name: bam
+      label: Alignment file
+      type: basic:file
+      description: Position sorted alignment
+    - name: bai
+      label: Index BAI
+      type: basic:file
+    - name: stats
+      label: Statistics
+      type: basic:file
+    - name: splice_junctions
+      label: Splice junctions
+      type: basic:file
+    - name: unmapped_f
+      label: Unmapped reads (mate 1)
+      type: basic:file
+      required: false
+    - name: unmapped_r
+      label: Unmapped reads (mate 2)
+      type: basic:file
+      required: false
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      GENOME_NAME=`basename {{ genome.fasta.file }} .fasta`
+      INDEX={{genome.index.dir}}/"${GENOME_NAME}_index"
+
+      NAME={{ reads.fastq.0.file | basename | replace(".fastq.gz", "") | replace(" ", "") }}
+
+      {% set species = ["Caenorhabditis elegans", "Cricetulus griseus", "Dictyostelium discoideum",
+                        "Dictyostelium purpureum", "Drosophila melanogaster", "Homo sapiens", "Macaca mulatta",
+                        "Mus musculus", "Odocoileus virginianus texanus", "Rattus norvegicus", "Solanum tuberosum"] %}
+
+      {% if reads|sample|descriptor("general.species") %}
+        {% if reads|sample|descriptor("general.species") != genome.species %}
+          re-warning \
+            {{ ('Species of reads (%s) and genome (%s) do not match.')
+            | format(reads|sample|descriptor("general.species"), genome.species) }}
+        {% endif %}
+      {% elif genome.species in species %}
+        re-annotate-entity "general.species" {{ genome.species }}
+        re-info "Sample species was automatically annotated to match the genome."
+      {% endif %}
+
+      re-progress 0.1
+
+      FW_READS=()
+      RW_READS=()
+
+      {% for r in reads.fastq %}
+        FW_READS+=({{ r.file }})
+      {% endfor %}
+
+      cat "${FW_READS[@]}" > fw_reads.fastq.gz
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        {% for r in reads.fastq2 %}
+          RW_READS+=({{ r.file }})
+        {% endfor %}
+        cat "${RW_READS[@]}" > rw_reads.fastq.gz
+      {% endif %}
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        RW_READS={{ reads.fastq2|join(',', attribute='file') }}
+      {% endif %}
+
+      hisat2 \
+        -p {{requirements.resources.cores}} \
+        --no-unal \
+        -x "${INDEX}" \
+        {% if reads|type|subtype('data:reads:fastq:single:') %}-U fw_reads.fastq.gz{% endif %} \
+        {% if reads|type|subtype('data:reads:fastq:paired:') %}-1 fw_reads.fastq.gz -2 rw_reads.fastq.gz{% endif %} \
+        -S alignment_unsorted.sam \
+        {% if spliced_alignments.noncansplice %}--pen-noncansplice {{spliced_alignments.noncansplice}}{% endif %} \
+        {% if softclip %}--no-softclip{% endif %} \
+        {% if spliced_alignments.cufflinks %}--dta-cufflinks{% endif %} \
+        {% if reads|type|subtype('data:reads:fastq:single:') %}--un-gz "${NAME}_unmapped.out.mate1.fastq.gz"{% endif %} \
+        {% if reads|type|subtype('data:reads:fastq:paired:') %}--un-conc-gz "${NAME}_unmapped.out.mate%.fastq.gz"{% endif %} \
+        --novel-splicesite-outfile "${NAME}_junctions.txt" \
+        --summary-file "${NAME}_stats.txt"
+      re-checkrc "HISAT2 alignment failed."
+      re-progress 0.6
+
+      samtools view -bS alignment_unsorted.sam > alignment_unsorted.bam
+      re-checkrc
+      re-progress 0.7
+      samtools sort alignment_unsorted.bam -o alignment.bam
+      re-checkrc
+      re-progress 0.8
+      samtools index alignment.bam alignment.bam.bai
+      re-checkrc
+      re-progress 0.9
+
+      mv alignment.bam "${NAME}.bam"
+      mv alignment.bam.bai "${NAME}.bam.bai"
+
+      re-save-file bam "${NAME}.bam"
+      re-save-file bai "${NAME}.bam.bai"
+      re-save-file stats "${NAME}_stats.txt"
+      re-save-file splice_junctions "${NAME}_junctions.txt"
+
+      if [ -s "${NAME}_unmapped.out.mate1.fastq.gz" ]
+        then
+          re-save-file unmapped_f "${NAME}_unmapped.out.mate1.fastq.gz"
+      fi
+
+      if [ -s "${NAME}_unmapped.out.mate2.fastq.gz" ]
+        then
+          re-save-file unmapped_r "${NAME}_unmapped.out.mate2.fastq.gz"
+      fi
+
+      re-save species {{ genome.species }}
+      re-save build {{ genome.build }}

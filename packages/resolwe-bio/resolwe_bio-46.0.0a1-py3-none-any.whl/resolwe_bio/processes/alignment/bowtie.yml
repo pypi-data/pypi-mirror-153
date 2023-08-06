@@ -1,0 +1,801 @@
+# ================
+# Aligner - Bowtie
+# ================
+---
+
+- slug: alignment-bowtie
+  name: Bowtie (Dicty)
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      cores: 10
+  data_name: "{{ reads.fastq.0.file|basename|default('?') }}"
+  version: 2.5.0
+  type: data:alignment:bam:bowtie1
+  category: Align
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    An ultrafast memory-efficient short read aligner.
+  input:
+    - name: genome
+      label: Reference genome
+      type: data:index:bowtie
+    - name: reads
+      label: Reads
+      type: data:reads:fastq
+    - name: mode
+      label: Alignment mode
+      type: basic:string
+      description: |
+        When the -n option is specified (which is the default), bowtie determines which alignments are valid according to the following policy, which is similar to Maq's default policy.
+        1. Alignments may have no more than N mismatches (where N is a number 0-3, set with -n) in the first L bases (where L is a number 5 or greater, set with -l) on the high-quality (left) end of the read. The first L bases are called the "seed".
+        2. The sum of the Phred quality values at all mismatched positions (not just in the seed) may not exceed E (set with -e). Where qualities are unavailable (e.g. if the reads are from a FASTA file), the Phred quality defaults to 40.
+        In -v mode, alignments may have no more than V mismatches, where V may be a number from 0 through 3 set using the -v option. Quality values are ignored. The -v option is mutually exclusive with the -n option.
+      default: -n
+      choices:
+        - label: Use qualities (-n)
+          value: -n
+        - label: Use mismatches (-v)
+          value: -v
+    - name: m
+      label: Allowed mismatches
+      type: basic:integer
+      description: |
+        When used with "Use qualities (-n)" it is the maximum number of mismatches permitted in the "seed", i.e. the first L base pairs of the read (where L is set with -l/--seedlen). This may be 0, 1, 2 or 3 and the default is 2
+        When used with "Use mismatches (-v)" report alignments with at most <int> mismatches.
+      default: 2
+    - name: l
+      label: Seed length (for -n only)
+      type: basic:integer
+      description: |
+        Only for "Use qualities (-n)". Seed length (-l) is the number of bases on the high-quality end of the read to which the -n ceiling applies. The lowest permitted setting is 5 and the default is 28. bowtie is faster for larger values of -l.
+      default: 28
+    - name: use_se
+      label: Map as single-ended (for paired end reads only)
+      type: basic:boolean
+      default: false
+      description: |
+        If this option is selected paired-end reads will be mapped as single-ended.
+    - name: start_trimming
+      label: Initial trimming
+      group:
+        - name: trim_5
+          label: Bases to trim from 5'
+          type: basic:integer
+          description: |
+            Number of bases to trim from from 5' (left) end of each read before alignment
+          default: 0
+        - name: trim_3
+          label: Bases to trim from 3'
+          type: basic:integer
+          description: |
+            Number of bases to trim from from 3' (right) end of each read before alignment
+          default: 0
+    - name: trimming
+      label: Iterative trimming
+      group:
+        - name: trim_nucl
+          label: Bases to trim
+          type: basic:integer
+          description: |
+            Number of bases to trim from 3' end in each iteration.
+          default: 2
+        - name: trim_iter
+          label: Iterations
+          type: basic:integer
+          description: |
+            Number of iterations.
+          default: 0
+    - name: reporting
+      label: Reporting
+      group:
+        - name: r
+          label: Reporting mode
+          type: basic:string
+          description: |
+            Report up to <int> valid alignments per read or pair (-k) (default: 1). Validity of alignments is determined by the alignment policy (combined effects of -n, -v, -l, and -e). If more than one valid alignment exists and the --best and --strata options are specified, then only those alignments belonging to the best alignment "stratum" will be reported. Bowtie is designed to be very fast for small -k but bowtie can become significantly slower as -k increases. If you would like to use Bowtie for larger values of -k, consider building an index with a denser suffix-array sample, i.e. specify a smaller -o/--offrate when invoking bowtie-build for the relevant index (see the Performance tuning section for details).
+          default: -a -m 1 --best --strata
+          choices:
+            - label: Report unique alignments
+              value: -a -m 1 --best --strata
+            - label: Report all alignments
+              value: -a --best
+            - label: Report all alignments in the best stratum
+              value: -a --best --strata
+  output:
+    - name: bam
+      label: Alignment file
+      type: basic:file
+      description: Position sorted alignment
+    - name: bai
+      label: Index BAI
+      type: basic:file
+    - name: unmapped
+      label: Unmapped reads
+      type: basic:file
+      required: false
+    - name: stats
+      label: Statistics
+      type: basic:file
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      GENOME_NAME=`basename {{ genome.fasta.file }} .fasta`
+      INDEX={{genome.index.dir}}"/${GENOME_NAME}_index"
+
+      {% set species = ["Caenorhabditis elegans", "Cricetulus griseus", "Dictyostelium discoideum",
+                        "Dictyostelium purpureum", "Drosophila melanogaster", "Homo sapiens", "Macaca mulatta",
+                        "Mus musculus", "Odocoileus virginianus texanus", "Rattus norvegicus", "Solanum tuberosum"] %}
+
+      {% if reads|sample|descriptor("general.species") %}
+        {% if reads|sample|descriptor("general.species") != genome.species %}
+          re-warning \
+            {{ ('Species of reads (%s) and genome (%s) do not match.')
+            | format(reads|sample|descriptor("general.species"), genome.species) }}
+        {% endif %}
+      {% elif genome.species in species %}
+        re-annotate-entity "general.species" {{ genome.species }}
+        re-info "Sample species was automatically annotated to match the genome."
+      {% endif %}
+
+      # TODO: This should be made available in common runtime.
+      function join_by { local IFS="$1"; shift; echo "$*"; }
+
+      fw_reads=()
+      rw_reads=()
+      reporting={{reporting.r}}
+
+      {% for r in reads.fastq %}
+        READS_NAME={{ r.file | basename | replace(".fastq.gz", "") | replace(" ", "") }}
+        fw_reads+=("${READS_NAME}.fastq")
+        gzip -cd {{ r.file }} > "${READS_NAME}.fastq"
+      {% endfor %}
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        {% for r in reads.fastq2 %}
+          READS_NAME={{ r.file | basename | replace(".fastq.gz", "") | replace(" ", "") }}
+          rw_reads+=("${READS_NAME}.fastq")
+          gzip -cd {{ r.file }} > "${READS_NAME}.fastq"
+        {% endfor %}
+      {% endif %}
+
+      {% if use_se and reads|type|subtype('data:reads:fastq:paired:') %}
+        cat "${fw_reads[@]}" "${rw_reads[@]}" > reads.fastq
+        fw_reads="reads.fastq"
+      {% else %}
+        fw_reads=$(join_by , "${fw_reads[@]}")
+        rw_reads=$(join_by , "${rw_reads[@]}")
+      {% endif %}
+
+      re-progress 0.3
+
+      FW_NAME={{ reads.fastq.0.file | basename | replace(".fastq.gz", "") | replace(" ", "") }}
+      STATS="0 ${FW_NAME}_align_unsorted.stats"
+
+      echo "ALIGNING with bowtie:"
+      {% if reads|type|subtype('data:reads:fastq:single:') or use_se %}
+        bowtie \
+          --un "${FW_NAME}_unmapped1.fq" \
+          --trim5 {{start_trimming.trim_5}} \
+          --trim3 {{start_trimming.trim_3}} \
+          --chunkmbs 200 {{ mode }} {{ m }} \
+          -l {{ l }} ${reporting} \
+          --sam "${INDEX}" \
+          "${fw_reads}" 1>"${FW_NAME}_align_unsorted.sam" 2> "${FW_NAME}_align_unsorted.stats"
+        re-checkrc
+
+        cp "${FW_NAME}_unmapped1.fq" "${FW_NAME}_unmapped.fastq" | gzip -c - >"${FW_NAME}_unmapped.fastq.gz"
+
+        {% if trimming.trim_iter >= 1 %}
+          echo "iterative alignment of unmapped reads:"
+          {% for c in range(1, trimming.trim_iter + 1) %}
+            bowtie \
+              --un "${FW_NAME}_unmapped"{{ c+1 }}".fq" \
+              --trim5 {{start_trimming.trim_5}} \
+              --trim3 {{ c * trimming.trim_nucl + start_trimming.trim_3}} \
+              --chunkmbs 200 {{ mode }} {{ m }} \
+              -l {{ l }} ${reporting} \
+              --sam "${INDEX}" \
+              "${FW_NAME}_unmapped"{{ c }}".fq" 1>"${FW_NAME}_new_mapped"{{ c+1 }}".sam" 2>"${FW_NAME}_new_mapped"{{ c+1 }}".stats"
+
+            samtools \
+              view \
+              -bS "${FW_NAME}_new_mapped"{{ c+1 }}".sam" > "${FW_NAME}_new_mapped"{{ c+1 }}".bam"
+
+            STATS="$STATS "{{ c * trimming.trim_nucl }}" ${FW_NAME}_new_mapped"{{ c+1 }}".stats"
+            cp "${FW_NAME}_unmapped"{{ c+1 }}".fq" "${FW_NAME}_unmapped.fastq" | gzip -c - >"${FW_NAME}_unmapped.fastq.gz"
+          {% endfor %}
+        {% endif %}
+
+      {% else %}
+        re-progress 0.4
+        bowtie \
+          --un "${FW_NAME}_unmapped1.fq" \
+          --trim5 {{start_trimming.trim_5}} \
+          --trim3 {{start_trimming.trim_3}} \
+          --chunkmbs 200 {{ mode }} {{ m }} \
+          -l {{ l }} ${reporting} \
+          --sam "${INDEX}" \
+          -1 "${fw_reads}" \
+          -2 "${rw_reads}" 1> "${FW_NAME}_align_unsorted.sam" 2> "${FW_NAME}_align_unsorted.stats"
+        re-checkrc
+
+        cat "${FW_NAME}_unmapped1_1.fq" "${FW_NAME}_unmapped1_2.fq" | gzip -c - >"${FW_NAME}_unmapped.fastq.gz"
+
+        {% if trimming.trim_iter >= 1 %}
+          echo "iterative alignment of unmapped reads:"
+          {% for c in range(1, trimming.trim_iter + 1) %}
+            bowtie \
+              --un "${FW_NAME}_unmapped"{{ c+1 }}".fq" \
+              --trim5 {{start_trimming.trim_5}} \
+              --trim3 {{ c * trimming.trim_nucl + start_trimming.trim_3}} \
+              --chunkmbs 200 {{ mode }} {{ m }} \
+              -l {{ l }} ${reporting} \
+              --sam "${INDEX}" \
+              -1 "${FW_NAME}_unmapped"{{ c }}"_1.fq" \
+              -2 "${FW_NAME}_unmapped"{{ c }}"_2.fq" 1>"${FW_NAME}_new_mapped"{{ c+1 }}".sam" 2>"${FW_NAME}_new_mapped"{{ c+1 }}".stats"
+            re-checkrc
+
+            samtools \
+              view \
+              -bS "${FW_NAME}_new_mapped"{{ c+1 }}".sam" > "${FW_NAME}_new_mapped"{{ c+1 }}".bam"
+
+            STATS="$STATS "{{ c * trimming.trim_nucl }}" ${FW_NAME}_new_mapped"{{ c+1 }}".stats"
+            cat "${FW_NAME}_unmapped"{{ c }}"_1.fq" "${FW_NAME}_unmapped"{{ c }}"_2.fq" | gzip -c - > "${FW_NAME}_unmapped.fastq.gz"
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+
+      re-progress 0.5
+      echo "Formatting, merging, and sorting reads:"
+      samtools view -bS "${FW_NAME}_align_unsorted.sam" > "${FW_NAME}_align_unsorted.bam"
+      re-checkrc
+
+      {% if trimming.trim_iter >= 1 %}
+        samtools merge -h "${FW_NAME}_align_unsorted.sam" "${FW_NAME}_align_merged_unsorted.bam" ${FW_NAME}_*.bam
+        re-checkrc
+        samtools sort -o "${FW_NAME}_align.bam" "${FW_NAME}_align_merged_unsorted.bam"
+        re-checkrc
+      {% else %}
+        samtools sort -o "${FW_NAME}_align.bam" "${FW_NAME}_align_unsorted.bam"
+        re-checkrc
+      {% endif %}
+
+      samtools view -b -F 4 "${FW_NAME}_align.bam" > "${FW_NAME}_mapped.bam"
+      samtools view -b -f 4 "${FW_NAME}_align.bam" > "${FW_NAME}_unmapped.bam"
+
+      re-progress 0.6
+
+      echo -e "\nINDEXING bam:"
+      samtools index "${FW_NAME}_mapped.bam" "${FW_NAME}_mapped.bam.bai"
+      re-checkrc
+      mergebowtiestats.py $STATS
+      re-checkrc
+      gzip stats.tab
+
+      re-save-file bam "${FW_NAME}_mapped.bam"
+      re-save-file bai "${FW_NAME}_mapped.bam.bai"
+      re-save-file stats stats.tab.gz
+      re-save species {{genome.species}}
+      re-save build {{genome.build}}
+
+      if [ -f "${FW_NAME}_unmapped.bam" ]; then
+        re-save-file unmapped "${FW_NAME}_unmapped.fastq.gz"
+      fi
+
+
+- slug: alignment-bowtie2
+  name: Bowtie2
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      memory: 16384
+      cores: 20
+  data_name: "{{ reads|name|default('?') }}"
+  version: 2.8.0
+  type: data:alignment:bam:bowtie2
+  category: Align
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    Bowtie is an ultrafast, memory-efficient short read aligner. It aligns
+    short DNA sequences (reads) to the human genome at a rate of over 25
+    million 35-bp reads per hour. Bowtie indexes the genome with a
+    Burrows-Wheeler index to keep its memory footprint small--typically about
+    2.2 GB for the human genome (2.9 GB for paired-end). See
+    [here](http://bowtie-bio.sourceforge.net/index.shtml) for more information.
+  input:
+    - name: genome
+      label: Reference genome
+      type: data:index:bowtie2
+    - name: reads
+      label: Reads
+      type: data:reads:fastq
+    - name: mode
+      label: Alignment mode
+      type: basic:string
+      description: |
+        End to end: Bowtie 2 requires that the entire read align from one end to the other, without any trimming (or "soft clipping") of characters from either end.
+        local: Bowtie 2 does not require that the entire read align from one end to the other. Rather, some characters may be omitted ("soft clipped") from the ends in order to achieve the greatest possible alignment score.
+      default: --end-to-end
+      choices:
+        - label: end to end mode
+          value: --end-to-end
+        - label: local
+          value: --local
+    - name: speed
+      label: Speed vs. Sensitivity
+      description: |
+        A quick setting for aligning fast or accurately. This option is a shortcut for parameters as follows:
+
+        For --end-to-end:
+         --very-fast            -D 5 -R 1 -N 0 -L 22 -i S,0,2.50
+         --fast                 -D 10 -R 2 -N 0 -L 22 -i S,0,2.50
+         --sensitive            -D 15 -R 2 -N 0 -L 22 -i S,1,1.15 (default)
+         --very-sensitive       -D 20 -R 3 -N 0 -L 20 -i S,1,0.50
+
+        For --local:
+         --very-fast-local      -D 5 -R 1 -N 0 -L 25 -i S,1,2.00
+         --fast-local           -D 10 -R 2 -N 0 -L 22 -i S,1,1.75
+         --sensitive-local      -D 15 -R 2 -N 0 -L 20 -i S,1,0.75 (default)
+         --very-sensitive-local -D 20 -R 3 -N 0 -L 20 -i S,1,0.50
+      type: basic:string
+      required: false
+      choices:
+        - label: Very fast
+          value: --very-fast
+        - label: Fast
+          value: --fast
+        - label: Sensitive
+          value: --sensitive
+        - label: Very sensitive
+          value: --very-sensitive
+
+    - name: PE_options
+      label: Paired end alignment options
+      group:
+        - name: use_se
+          label: Map as single-ended (for paired-end reads only)
+          type: basic:boolean
+          default: false
+          description: |
+            If this option is selected paired-end reads will be mapped as single-ended and other paired-end options are ignored.
+        - name: discordantly
+          label: Report discordantly matched read
+          type: basic:boolean
+          default: true
+          description: |
+            If both mates have unique alignments, but the alignments do not match paired-end expectations (orientation and relative distance) then alignment will be reported. Useful for detecting structural variations.
+        - name: rep_se
+          label: Report single ended
+          type: basic:boolean
+          default: true
+          description: |
+            If paired alignment can not be found Bowtie2 tries to find alignments for the individual mates.
+        - name: minins
+          label: Minimal distance
+          type: basic:integer
+          description: |
+            The minimum fragment length for valid paired-end alignments. 0 imposes no minimum.
+          default: 0
+        - name: maxins
+          label: Maximal distance
+          type: basic:integer
+          description: |
+            The maximum fragment length for valid paired-end alignments.
+          default: 500
+        - name: no_overlap
+          label: Not concordant when mates overlap
+          type: basic:boolean
+          default: false
+          description: |
+            When true, it is considered not concordant when mates overlap at all. Defaul is false.
+        - name: dovetail
+          label: Dovetail
+          type: basic:boolean
+          default: false
+          description: |
+            If the mates “dovetail”, that is if one mate alignment extends past the beginning of the other such that the
+            wrong mate begins upstream, consider that to be concordant. Default: mates cannot dovetail in a concordant
+            alignment.
+
+    - name: alignment_options
+      label: Alignment options
+      group:
+        - name: N
+          label: Number of mismatches allowed in seed alignment (N)
+          type: basic:integer
+          required: false
+          description: |
+            Sets the number of mismatches to allowed in a seed alignment during multiseed alignment. Can be set to 0 or
+            1. Setting this higher makes alignment slower (often much slower) but increases sensitivity. Default: 0.
+        - name: L
+          label: Length of seed substrings (L)
+          type: basic:integer
+          required: false
+          description: |
+            Sets the length of the seed substrings to align during multiseed alignment. Smaller values make alignment
+            slower but more sensitive. Default: the --sensitive preset is used by default for end-to-end alignment and
+            --sensitive-local for local alignment. See documentation for details.
+        - name: gbar
+          label: Disallow gaps within positions (gbar)
+          type: basic:integer
+          required: false
+          description: |
+            Disallow gaps within <int> positions of the beginning or end of the read. Default: 4.
+        - name: mp
+          label: Maximal and minimal mismatch penalty (mp)
+          type: basic:string
+          required: false
+          description: |
+            Sets the maximum (MX) and minimum (MN) mismatch penalties, both integers. A number less than or equal to
+            MX and greater than or equal to MN is subtracted from the alignment score for each position where a read
+            character aligns to a reference character, the characters do not match, and neither is an N. If
+            --ignore-quals is specified, the number subtracted quals MX. Otherwise, the number subtracted is
+            MN + floor((MX-MN)(MIN(Q, 40.0)/40.0)) where Q is the Phred quality value. Default for MX, MN: 6,2.
+        - name: rdg
+          label: Set read gap open and extend penalties (rdg)
+          type: basic:string
+          required: false
+          description: |
+            Sets the read gap open (<int1>) and extend (<int2>) penalties. A read gap of length N gets a penalty of
+            <int1> + N * <int2>. Default: 5,3.
+        - name: rfg
+          label: Set reference gap open and close penalties (rfg)
+          type: basic:string
+          required: false
+          description: |
+            Sets the reference gap open (<int1>) and extend (<int2>) penalties. A reference gap of length N gets a
+            penalty of <int1> + N * <int2>. Default: 5,3.
+        - name: score_min
+          label: Minimum alignment score needed for "valid" alignment (score_min)
+          type: basic:string
+          required: false
+          description: |
+            Sets a function governing the minimum alignment score needed for an alignment to be considered "valid" (i.e.
+            good enough to report). This is a function of read length. For instance, specifying L,0,-0.6 sets the
+            minimum-score function to f(x) = 0 + -0.6 * x, where x is the read length. The default in
+            --end-to-end mode is L,-0.6,-0.6 and the default in --local mode is G,20,8.
+
+    - name: start_trimming
+      label: Initial trimming
+      group:
+        - name: trim_5
+          label: Bases to trim from 5'
+          type: basic:integer
+          description: |
+            Number of bases to trim from from 5' (left) end of each read before alignment
+          default: 0
+        - name: trim_3
+          label: Bases to trim from 3'
+          type: basic:integer
+          description: |
+            Number of bases to trim from from 3' (right) end of each read before alignment
+          default: 0
+    - name: trimming
+      label: Iterative trimming (Trimming options only apply to single-end reads and paired-end reads mapped as single-ended)
+      group:
+        - name: trim_iter
+          label: Iterations
+          type: basic:integer
+          description: |
+            Number of iterations.
+          default: 0
+        - name: trim_nucl
+          label: Bases to trim
+          type: basic:integer
+          description: |
+            Number of bases to trim from 3' end in each iteration.
+          default: 2
+
+    - name: reporting
+      label: Reporting
+      group:
+        - name: rep_mode
+          label: Report mode
+          type: basic:string
+          description: |
+            Default mode: search for multiple alignments, report the best one;
+            -k mode: search for one or more alignments, report each;
+            -a mode: search for and report all alignments
+          default: def
+          choices:
+            - label: Default mode
+              value: def
+            - label: -k mode
+              value: k
+            - label: -a mode (very slow)
+              value: a
+        - name: k_reports
+          label: Number of reports (for -k mode only)
+          type: basic:integer
+          description: |
+            Searches for at most X distinct, valid alignments for each read. The search terminates when it can't find more distinct valid alignments, or when it finds X, whichever happens first.          default: 5
+          default: 5
+
+    - name: output_opts
+      label: Output options
+      group:
+        - name: no_unal
+          label: Suppress SAM records for unaligned reads
+          type: basic:boolean
+          default: false
+          description: |
+            When true, suppress SAM records for unaligned reads. Default is false.
+
+  output:
+    - name: bam
+      label: Alignment file
+      type: basic:file
+      description: Position sorted alignment
+    - name: bai
+      label: Index BAI
+      type: basic:file
+    - name: unmapped
+      label: Unmapped reads
+      type: basic:file
+      required: false
+    - name: stats
+      label: Statistics
+      type: basic:file
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      GENOME_NAME=`basename {{ genome.fasta.file }} .fasta`
+      INDEX={{genome.index.dir}}"/${GENOME_NAME}_index"
+
+      {% set species = ["Caenorhabditis elegans", "Cricetulus griseus", "Dictyostelium discoideum",
+                        "Dictyostelium purpureum", "Drosophila melanogaster", "Homo sapiens", "Macaca mulatta",
+                        "Mus musculus", "Odocoileus virginianus texanus", "Rattus norvegicus", "Solanum tuberosum"] %}
+
+      {% if reads|sample|descriptor("general.species") %}
+        {% if reads|sample|descriptor("general.species") != genome.species %}
+          re-warning \
+            {{ ('Species of reads (%s) and genome (%s) do not match.')
+            | format(reads|sample|descriptor("general.species"), genome.species) }}
+        {% endif %}
+      {% elif genome.species in species %}
+        re-annotate-entity "general.species" {{ genome.species }}
+        re-info "Sample species was automatically annotated to match the genome."
+      {% endif %}
+
+      # TODO: This should be made available in common runtime.
+      function join_by { local IFS="$1"; shift; echo "$*"; }
+
+      # mode selection
+      if [ {{reporting.rep_mode}} == def ]; then
+        a_mode=
+      else
+        if [ {{reporting.rep_mode}} == a ]; then
+        a_mode="-a"
+        else
+        a_mode="-k {{reporting.k_reports}}"
+        fi
+      fi
+
+      s_mode={{ speed }}
+      if [ {{ mode }} == --local ]; then
+        s_mode={{ speed }}-local
+      fi
+
+      fw_reads=()
+      rw_reads=()
+
+      {% for r in reads.fastq %}
+        READS_NAME=`basename {{ r.file }} .fastq.gz`
+        fw_reads+=("${READS_NAME}.fastq")
+        gzip -cd {{ r.file }} > "${READS_NAME}.fastq"
+      {% endfor %}
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        {% for r in reads.fastq2 %}
+          READS_NAME=`basename {{ r.file }} .fastq.gz`
+          rw_reads+=("${READS_NAME}.fastq")
+          gzip -cd {{ r.file }} > "${READS_NAME}.fastq"
+        {% endfor %}
+      {% endif %}
+
+      FW_NAME={{ reads.fastq.0.file | basename | replace(".fastq.gz", "") | replace(" ", "") }}
+
+      {% if PE_options.use_se and reads|type|subtype('data:reads:fastq:paired:') %}
+        cat "${fw_reads[@]}" "${rw_reads[@]}" > reads.fastq
+        fw_reads="reads.fastq"
+      {% else %}
+        fw_reads=$(join_by , "${fw_reads[@]}")
+        rw_reads=$(join_by , "${rw_reads[@]}")
+      {% endif %}
+
+      echo "ALIGNING with bowtie2:"
+      {% if reads|type|subtype('data:reads:fastq:single:') or PE_options.use_se %}
+        bowtie2 \
+          {{ mode }} $a_mode \
+          {% if speed %} $s_mode {% endif %} \
+          -p {{requirements.resources.cores}} \
+          --trim5 {{start_trimming.trim_5}} \
+          --trim3 {{start_trimming.trim_3}} \
+          {% if alignment_options.N or alignment_options.N == 0 %} -N {{ alignment_options.N }} {% endif %} \
+          {% if alignment_options.L or alignment_options.L == 0 %} -L {{ alignment_options.L }} {% endif %} \
+          {% if alignment_options.gbar or alignment_options.gbar == 0 %} --gbar {{ alignment_options.gbar }} \
+          {% endif %} \
+          {% if alignment_options.mp %} --mp {{ alignment_options.mp }} {% endif %} \
+          {% if alignment_options.rdg %} --rdg {{ alignment_options.rdg }} {% endif %} \
+          {% if alignment_options.rfg %} --rfg {{ alignment_options.rfg }} {% endif %} \
+          {% if alignment_options.score_min %} --score-min {{ alignment_options.score_min }} {% endif %} \
+          {% if output_opts.no_unal %} --no-unal {% endif %} \
+          -x "${INDEX}" \
+          -U "${fw_reads}" \
+          -S "${FW_NAME}_align_unsorted.sam" \
+          --un "${FW_NAME}_unmapped1.fq" 2> report.txt
+        re-checkrc
+
+        cp "${FW_NAME}_unmapped1.fq" "${FW_NAME}_unmapped.fastq" | gzip -c - >"${FW_NAME}_unmapped.fastq.gz"
+        cp "report.txt" "${FW_NAME}_report.txt"
+
+        {% if trimming.trim_iter >= 1 %}
+          echo "iterative alignment of unmapped reads:"
+          {% for c in range(1, trimming.trim_iter + 1) %}
+            echo -e "\nTrimming iteration "{{ c }}"; "{{ c * trimming.trim_nucl }}" bases trimmed" >> "report.txt"
+            bowtie2 \
+              {{ mode }} $a_mode \
+              {% if speed %} $s_mode {% endif %} \
+              -x "${INDEX}" \
+              -p {{requirements.resources.cores}} \
+              --trim5 {{start_trimming.trim_5}} \
+              --trim3 {{c * trimming.trim_nucl + start_trimming.trim_3 }} \
+              {% if alignment_options.N or alignment_options.N == 0 %} -N {{ alignment_options.N }} {% endif %} \
+              {% if alignment_options.L or alignment_options.L == 0 %} -L {{ alignment_options.L }} {% endif %} \
+              {% if alignment_options.gbar or alignment_options.gbar == 0 %} --gbar {{ alignment_options.gbar }} \
+              {% endif %} \
+              {% if alignment_options.mp %} --mp {{ alignment_options.mp }} {% endif %} \
+              {% if alignment_options.rdg %} --rdg {{ alignment_options.rdg }} {% endif %} \
+              {% if alignment_options.rfg %} --rfg {{ alignment_options.rfg }} {% endif %} \
+              {% if alignment_options.score_min %} --score-min {{ alignment_options.score_min }} {% endif %} \
+              {% if output_opts.no_unal %} --no-unal {% endif %} \
+              -U "${FW_NAME}_unmapped"{{ c }}".fq" \
+              -S "${FW_NAME}_new_mapped"{{ c+1 }}".sam" \
+              --un "${FW_NAME}_unmapped"{{ c+1 }}".fq" 2>> "report.txt"
+
+            re-checkrc
+            samtools view -bS "${FW_NAME}_new_mapped"{{ c+1 }}".sam" > "${FW_NAME}_new_mapped"{{ c+1 }}".bam"
+            re-checkrc
+            mergebowtie2stats.py "report.txt"
+            re-checkrc
+
+            mv stats.tab "${FW_NAME}_report.txt"
+            cp "${FW_NAME}_unmapped"{{ c+1 }}".fq" "${FW_NAME}_unmapped.fastq" | gzip -c - >"${FW_NAME}_unmapped.fastq.gz"
+          {% endfor %}
+        {% endif %}
+
+      {% else %}
+        bowtie2 \
+          {{ mode }} $a_mode \
+          {% if speed %} $s_mode {% endif %} \
+          -x "${INDEX}" \
+          -p {{ requirements.resources.cores }} \
+          --trim5 {{ start_trimming.trim_5 }} \
+          --trim3 {{ start_trimming.trim_3 }} \
+          {% if not PE_options.discordantly %} --no-discordant {% endif %} \
+          {% if not PE_options.rep_se %} --no-mixed {% endif %} \
+          {% if PE_options.dovetail %} --dovetail {% endif %} \
+          {% if alignment_options.N or alignment_options.N == 0 %} -N {{ alignment_options.N }} {% endif %} \
+          {% if alignment_options.L or alignment_options.L == 0 %} -L {{ alignment_options.L }} {% endif %} \
+          {% if alignment_options.gbar or alignment_options.gbar == 0 %} --gbar {{ alignment_options.gbar }} \
+          {% endif %} \
+          {% if alignment_options.mp %} --mp {{ alignment_options.mp }} {% endif %} \
+          {% if alignment_options.rdg %} --rdg {{ alignment_options.rdg }} {% endif %} \
+          {% if alignment_options.rfg %} --rfg {{ alignment_options.rfg }} {% endif %} \
+          {% if alignment_options.score_min %} --score-min {{ alignment_options.score_min }} {% endif %} \
+          {% if output_opts.no_unal %} --no-unal {% endif %} \
+          --minins {{ PE_options.minins }} \
+          --maxins {{ PE_options.maxins }} \
+          {% if PE_options.no_overlap %} --no-overlap {% endif %} \
+          -1 "${fw_reads}" \
+          -2 "${rw_reads}" \
+          -S "${FW_NAME}_align_unsorted.sam" \
+          --un-conc "${FW_NAME}_unmapped1_%.fq" 2> "report.txt"
+
+        cat "${FW_NAME}_unmapped1_1.fq" "${FW_NAME}_unmapped1_2.fq" | gzip -c - >"${FW_NAME}_unmapped.fastq.gz"
+        cp "report.txt" "${FW_NAME}_report.txt"
+
+        {% if trimming.trim_iter >= 1 %}
+          echo "iterative alignment of unmapped reads:"
+          {% for c in range(1, trimming.trim_iter + 1) %}
+            echo -e "\nTrimming iteration "{{ c }}"; "{{ c * trimming.trim_nucl }}" bases trimmed" >> "report.txt"
+            bowtie2 \
+              {{ mode }} $a_mode \
+              {% if speed %} $s_mode {% endif %} \
+              -x "${INDEX}" \
+              -p {{requirements.resources.cores }} \
+              --trim5 {{start_trimming.trim_5 }} \
+              --trim3 {{ c * trimming.trim_nucl + start_trimming.trim_3 }} \
+              {% if not PE_options.discordantly %} --no-discordant {% endif %} \
+              {% if not PE_options.rep_se %} --no-mixed {% endif %} \
+              {% if PE_options.dovetail %} --dovetail {% endif %} \
+              {% if alignment_options.N or alignment_options.N == 0 %} -N {{ alignment_options.N }} {% endif %} \
+              {% if alignment_options.L or alignment_options.L == 0 %} -L {{ alignment_options.L }} {% endif %} \
+              {% if alignment_options.gbar or alignment_options.gbar == 0 %} --gbar {{ alignment_options.gbar }} \
+              {% endif %} \
+              {% if alignment_options.mp %} --mp {{ alignment_options.mp }} {% endif %} \
+              {% if alignment_options.rdg %} --rdg {{ alignment_options.rdg }} {% endif %} \
+              {% if alignment_options.rfg %} --rfg {{ alignment_options.rfg }} {% endif %} \
+              {% if alignment_options.score_min %} --score-min {{ alignment_options.score_min }} {% endif %} \
+              {% if output_opts.no_unal %} --no-unal {% endif %} \
+              --minins {{ PE_options.minins }} \
+              --maxins {{ PE_options.maxins }} \
+              {% if PE_options.no_overlap %} --no-overlap {% endif %} \
+              -1 "${FW_NAME}_unmapped"{{ c }}"_1.fq" \
+              -2 "${FW_NAME}_unmapped"{{ c }}"_2.fq" \
+              -S "${FW_NAME}_new_mapped"{{ c+1 }}".sam" \
+              --un-conc "${FW_NAME}_unmapped"{{ c+1 }}"_%.fq" 2>> "report.txt"
+
+            re-checkrc
+            samtools view -bS "${FW_NAME}_new_mapped"{{ c+1 }}".sam" > "${FW_NAME}_new_mapped"{{ c+1 }}".bam"
+            re-checkrc
+            mergebowtie2stats_paired.py "report.txt"
+            re-checkrc
+
+            mv stats.tab "${FW_NAME}_report.txt"
+            cat "${FW_NAME}_unmapped"{{ c+1 }}"_1.fq" "${FW_NAME}_unmapped"{{ c+1 }}"_2.fq" | gzip -c - >"${FW_NAME}_unmapped.fastq.gz"
+
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+
+      re-progress 0.5
+
+      echo "Formatting, merging, and sorting reads:"
+        samtools view -bS "${FW_NAME}_align_unsorted.sam" > "${FW_NAME}_align_unsorted.bam"
+        {%  if trimming.trim_iter >= 1 %}
+          samtools merge -h "${FW_NAME}_align_unsorted.sam" "${FW_NAME}_align_merged_unsorted.bam" ${FW_NAME}_*.bam
+          re-checkrc
+          samtools sort \
+            -@ {{ requirements.resources.cores }} \
+            -m {{ (requirements.resources.memory * 1024 * 1024 / requirements.resources.cores * 0.8) | int }} \
+            -o "${FW_NAME}_align.bam" \
+            "${FW_NAME}_align_merged_unsorted.bam"
+          re-checkrc
+        {% else %}
+          samtools sort \
+            -@ {{ requirements.resources.cores }} \
+            -m {{ (requirements.resources.memory * 1024 * 1024 / requirements.resources.cores * 0.8) | int }} \
+            -o "${FW_NAME}_align.bam" \
+            "${FW_NAME}_align_unsorted.bam"
+          re-checkrc
+        {% endif %}
+
+      samtools view -b -F 4 "${FW_NAME}_align.bam" > "${FW_NAME}.bam"
+
+      re-save-file bam "${FW_NAME}.bam"
+      re-save-file stats "${FW_NAME}_report.txt"
+
+      if [ -f "${FW_NAME}_unmapped.fastq" ]; then
+        re-save-file unmapped "${FW_NAME}_unmapped.fastq.gz"
+      fi
+
+      echo -e "\nINDEXING bam:"
+      samtools index "${FW_NAME}.bam" "${FW_NAME}.bam.bai"
+      re-checkrc
+      re-save-file bai "${FW_NAME}.bam.bai"
+      re-save species {{genome.species}}
+      re-save build {{genome.build}}

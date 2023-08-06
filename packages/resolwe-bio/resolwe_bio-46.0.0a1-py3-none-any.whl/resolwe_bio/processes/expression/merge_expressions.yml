@@ -1,0 +1,58 @@
+# =================
+# Merge Expressions
+# =================
+---
+
+- slug: mergeexpressions
+  name: Expression matrix
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/s4q6j6e8/resolwebio/common:3.0.0
+  data_name: Expression matrix
+  version: 1.4.0
+  type: data:expressionset
+  category: Other
+  persistence: CACHED
+  description: |
+    Merge expression data to create an expression matrix where each column
+    represents all the gene expression levels from a single experiment, and
+    each row represents the expression of a gene across all experiments.
+  input:
+    - name: exps
+      label: Gene expressions
+      type: list:data:expression
+    - name: genes
+      label: Filter genes
+      type: list:basic:string
+      required: false
+  output:
+    - name: expset
+      label: Expression set
+      type: basic:file
+    - name: expset_type
+      label: Expression set type
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      EXPSET_TYPE={{ exps.0.exp_type }}
+
+      {% for e in exps %}
+        {% if (exps|first).exp_type != e.exp_type %}
+          re-warning "Expressions must be of the same expression type"
+          re-error "Expression {{ exps|first|name }} has expression type {{ (exps|first).exp_type }}, while expression {{ e|name }} has expression type {{ e.exp_type }}"
+        {% endif %}
+      {% endfor %}
+
+      expressionmerge.py \
+        {% for e in exps %}{{e.exp.file}} {% endfor %} \
+        --experiments {% for e in exps %}{{e|name}} {% endfor %} \
+        {% if genes %}--genes {% for g in genes %}{{g}} {% endfor %}{% endif %} \
+        --intersection \
+        --out 'sample.tab'
+      re-checkrc "Merging of expressions failed."
+      re-save expset_type "$EXPSET_TYPE"
+      re-save-file expset sample.tab

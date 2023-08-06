@@ -1,0 +1,276 @@
+# ==============
+# Aligner - WALT
+# ==============
+---
+
+- slug: walt
+  name: WALT
+  requirements:
+    expression-engine: jinja
+    resources:
+      memory: 32768
+      cores: 10
+      storage: 600
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/wgbs:3.0.0
+  data_name: "{{ reads|name|default('?') }}"
+  version: 3.7.0
+  type: data:alignment:bam:walt
+  category: Align
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    WALT (Wildcard ALignment Tool) is a read mapping program for bisulfite sequencing in DNA
+    methylation studies.
+  input:
+    - name: genome
+      label: Reference genome
+      type: data:index:walt
+    - name: reads
+      label: Reads
+      type: data:reads:fastq
+    - name: rm_dup
+      label: Remove duplicates
+      type: basic:boolean
+      default: true
+    - name: optical_distance
+      label: Optical duplicate distance
+      type: basic:integer
+      disabled: >
+        !rm_dup
+      default: 0
+      description: |
+        The maximum offset between two duplicate clusters in order to
+        consider them optical duplicates. Suggested settings of 100 for
+        HiSeq style platforms or about 2500 for NovaSeq ones. Default is
+        0 to not look for optical duplicates.
+    - name: mismatch
+      label: Maximum allowed mismatches
+      type: basic:integer
+      required: false
+    - name: number
+      label: Number of reads to map in one loop
+      type: basic:integer
+      required: false
+      description: |
+        Sets the number of reads to mapping in each loop. Larger number results in program taking
+        more memory. This is especially evident in paired-end mapping.
+    - name: spikein_options
+      label: Spike-in options
+      group:
+      - name: spikein_name
+        label: Chromosome name of unmethylated control sequence
+        type: basic:string
+        required: false
+        description: |
+          Specifies the name of unmethylated control sequence which is output as a separate alignment file.
+          It is recomended to remove duplicates to reduce any bias introduced by incomplete conversion
+          on PCR duplicate reads.
+      - name: filter_spikein
+        label: Remove control/spike-in sequences.
+        type: basic:boolean
+        disabled: >
+            !spikein_options.spikein_name
+        default: false
+        description: |
+          Remove unmethylated control reads in the final alignment based on the provided name. It is recomended to remove
+          any reads that are not naturally occuring in the sample (e.g. lambda virus spike-in).
+  output:
+    - name: bam
+      label: Alignment file (BAM)
+      type: basic:file
+      description: |
+        Position sorted alignment in .bam format
+    - name: bai
+      label: Index BAI
+      type: basic:file
+    - name: stats
+      label: Statistics
+      type: basic:file
+    - name: mr
+      label: Alignment file (MR)
+      type: basic:file
+      description: |
+        Position sorted alignment in .mr format.
+    - name: duplicates_report
+      label: Removed duplicates statistics
+      type: basic:file
+      required: false
+    - name: unmapped
+      label: Unmapped reads
+      type: basic:file
+      required: false
+    - name: spikein_mr
+      label: Alignment file of unmethylated control reads
+      type: basic:file
+      required: false
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      NAME=`basename {{ reads.fastq.0.file }} .fastq.gz`
+      GENOME_NAME=`basename {{ genome.fasta.file }} .fasta`
+      INDEX={{genome.index.dir}}/"${GENOME_NAME}.dbindex"
+
+      {% set species = ["Caenorhabditis elegans", "Cricetulus griseus", "Dictyostelium discoideum",
+                        "Dictyostelium purpureum", "Drosophila melanogaster", "Homo sapiens", "Macaca mulatta",
+                        "Mus musculus", "Odocoileus virginianus texanus", "Rattus norvegicus", "Solanum tuberosum"] %}
+
+      {% if reads|sample|descriptor("general.species") %}
+        {% if reads|sample|descriptor("general.species") != genome.species %}
+          re-warning \
+            {{ ('Species of reads (%s) and genome (%s) do not match.')
+            | format(reads|sample|descriptor("general.species"), genome.species) }}
+        {% endif %}
+      {% elif genome.species in species %}
+        re-annotate-entity "general.species" {{ genome.species }}
+        re-info "Sample species was automatically annotated to match the genome."
+      {% endif %}
+
+      FW_READS=()
+      RW_READS=()
+
+      {% for r in reads.fastq %}
+        FW_READS+=({{ r.file }})
+      {% endfor %}
+
+      cat "${FW_READS[@]}" > fw_reads.fastq.gz
+      gunzip fw_reads.fastq.gz
+
+      re-progress 0.2
+
+      {% if reads|type|subtype('data:reads:fastq:paired:') %}
+        {% for r in reads.fastq2 %}
+          RW_READS+=({{ r.file }})
+        {% endfor %}
+        cat "${RW_READS[@]}" > rw_reads.fastq.gz
+        gunzip rw_reads.fastq.gz
+      {% endif %}
+
+      {% if reads|type|subtype('data:reads:fastq:single:') %}
+        walt \
+          -reads fw_reads.fastq \
+          -index "${INDEX}" \
+          {% if mismatch is defined %}-mismatch {{ mismatch }}{% endif %} \
+          {% if number %}-number {{ number }}{% endif %} \
+          -thread {{requirements.resources.cores}} \
+          -output "${NAME}.sam" \
+          -u
+        re-checkrc "WALT alignment failed."
+        re-progress 0.7
+      {% else %}
+        walt \
+          -reads1 fw_reads.fastq \
+          -reads2 rw_reads.fastq \
+          -index "${INDEX}" \
+          {% if mismatch is defined %}-mismatch {{ mismatch }}{% endif %} \
+          {% if number %}-number {{ number }}{% endif %} \
+          -thread {{requirements.resources.cores}} \
+          -output "${NAME}.sam" \
+          -u
+        re-checkrc "WALT alignment failed."
+        re-progress 0.7
+      {% endif %}
+
+      samtools view -b "${NAME}.sam" -o "${NAME}_unsorted.bam"
+
+      {% if rm_dup and reads|type|subtype('data:reads:fastq:paired:')%}
+        samtools collate \
+              -@ {{ requirements.resources.cores }} \
+              -o "${NAME}_name_sorted.bam" \
+              "${NAME}_unsorted.bam"
+        re-checkrc "Samtools collate command failed."
+
+        samtools fixmate -m -@ {{ requirements.resources.cores }} "${NAME}_name_sorted.bam" "${NAME}_fixmate.bam"
+        re-checkrc "Samtools fixmate command failed."
+      {% else %}
+        mv "${NAME}_unsorted.bam" "${NAME}_fixmate.bam"
+      {% endif %}
+
+      samtools sort \
+            -@ {{ requirements.resources.cores }} \
+            -m {{ (requirements.resources.memory * 1024 * 1024 / requirements.resources.cores * 0.8) | int }} \
+            -o "${NAME}_coordinate_sorted.bam" \
+            "${NAME}_fixmate.bam"
+      re-checkrc "Samtools sort command failed."
+
+      {% if reads|type|subtype('data:reads:fastq:single:') %}
+        samtools view "${NAME}_coordinate_sorted.bam" -F 0x4 -o "${NAME}_mapped.bam"
+        samtools view "${NAME}_coordinate_sorted.bam" -f 0x4 -o "${NAME}_unmapped.bam"
+      {% else %}
+        samtools view "${NAME}_coordinate_sorted.bam" -f 0x2 -o "${NAME}_mapped.bam"
+        samtools view "${NAME}_coordinate_sorted.bam" -F 0x2 -o "${NAME}_unmapped.bam"
+      {% endif %}
+
+      {% if rm_dup %}
+        samtools markdup \
+            -@ {{ requirements.resources.cores }} \
+            -r \
+            -s \
+            -d {{ optical_distance }} \
+            -f "${NAME}_markdup.txt" \
+            "${NAME}_mapped.bam" \
+            "${NAME}_sorted.bam"
+      {% else %}
+        mv "${NAME}_mapped.bam" "${NAME}_sorted.bam"
+      {% endif %}
+
+      to-mr -o "${NAME}_mapped.mr" -m general "${NAME}_sorted.bam"
+      re-checkrc "Conversion of bam to mr failed."
+
+      LC_ALL=C \
+      sort \
+        -k 1,1 -k 2,2n -k 3,3n -k 6,6 \
+        -S{{ requirements.resources.memory }}M \
+        -o "${NAME}_sorted.mr" \
+        "${NAME}_mapped.mr"
+      re-progress 0.8
+
+      {% if spikein_options.spikein_name %}
+        grep ^{{ spikein_options.spikein_name }} "${NAME}_sorted.mr" > "${NAME}_spikein.mr"
+        if [ -s "${NAME}_spikein.mr" ]
+        then
+          pigz "${NAME}_spikein.mr"
+          re-save-file spikein_mr "${NAME}_spikein.mr.gz"
+        else
+          re-warning "Given spike-in sequence name was not found in the alignment file."
+        fi
+      {% endif %}
+
+      {% if spikein_options.spikein_name and spikein_options.filter_spikein %}
+        samtools index "${NAME}_sorted.bam" "${NAME}_sorted.bam.bai"
+        samtools idxstats "${NAME}_sorted.bam" | \
+            cut -f 1 | grep -v {{ spikein_options.spikein_name }} | \
+            xargs samtools view -o "${NAME}.bam" "${NAME}_sorted.bam"
+        re-checkrc "Removal of of spike-in reads from BAM file failed."
+        grep -v ^{{ spikein_options.spikein_name }} "${NAME}_sorted.mr" > "${NAME}.mr"
+        re-checkrc "Removal of spike-in reads from MR file failed."
+      {% else %}
+        mv "${NAME}_sorted.bam" "${NAME}.bam"
+        mv "${NAME}_sorted.mr" "${NAME}.mr"
+      {% endif %}
+
+      samtools index "${NAME}.bam" "${NAME}.bam.bai"
+      re-checkrc "Samtools index command failed."
+
+      pigz "${NAME}.mr"
+      re-progress 0.9
+
+      mv "${NAME}.sam.mapstats" "${NAME}_report.txt"
+      {% if rm_dup %}
+        re-save-file duplicates_report "${NAME}_markdup.txt"
+      {% endif %}
+      re-save-file bam "${NAME}.bam"
+      re-save-file bai "${NAME}.bam.bai"
+      re-save-file unmapped "${NAME}_unmapped.bam"
+      re-save-file mr "${NAME}.mr.gz"
+      re-save-file stats "${NAME}_report.txt"
+      re-save species {{ genome.species }}
+      re-save build {{ genome.build }}
