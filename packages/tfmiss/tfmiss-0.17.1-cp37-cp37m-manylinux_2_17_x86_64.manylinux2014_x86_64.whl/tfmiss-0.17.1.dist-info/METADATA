@@ -1,0 +1,83 @@
+Metadata-Version: 2.1
+Name: tfmiss
+Version: 0.17.1
+Summary: Missing layers, ops & etc. for TensorFlow
+Home-page: https://github.com/shkarupa-alex/tfmiss
+Author: Shkarupa Alex
+Author-email: shkarupa.alex@gmail.com
+License: MIT
+Keywords: tensorflow layers ops
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Description-Content-Type: text/markdown
+Requires-Dist: absl-py (>=1.0.0)
+Requires-Dist: keras (>=2.9.0)
+Requires-Dist: matplotlib (>=3.5.1)
+Requires-Dist: nlpvocab (>=1.2.0)
+Requires-Dist: scipy (>=1.7.3)
+Requires-Dist: tabulate (>=0.8.9)
+Requires-Dist: tensorflow (==2.9.1)
+
+# tfmiss
+The missing OPs, layer & etc. for TensorFlow
+
+## Development
+### Environment
+Install all [dependencies including python headers](https://www.tensorflow.org/install/install_sources).
+Do not use `pyenv` on MacOS X, otherwise tests mostly likely will fail.
+
+### Build PIP package manually
+You can build the pip package with Bazel v0.25.3:
+```bash
+# GPU support
+export TF_NEED_CUDA="1"
+
+# Set these if the below defaults are different on your system
+export TF_CUDA_VERSION="11.2"
+export TF_CUDNN_VERSION="8"
+export CUDA_TOOLKIT_PATH="/usr/local/cuda"
+export CUDNN_INSTALL_PATH="/usr/lib/x86_64-linux-gnu"
+
+./configure.py
+bazel clean --expunge
+bazel test --test_output=errors //tfmiss/...
+bazel build build_pip_pkg
+bazel-bin/build_pip_pkg wheels
+```
+
+### Build release with Linux docker container
+```bash
+# Requires about 4Gb of RAM allocated to Docker
+DOCKER_BUILDKIT=1 docker build -t miss --output type=local,dest=wheels --build-arg PY_VERSION=3.8 ./
+```
+
+### Install and test PIP package
+Once the pip package has been built, you can install it with:
+```bash
+pip install wheels/*.whl
+```
+
+Now you can test out the pip package:
+```bash
+cd /
+python -c "import tensorflow as tf;import tfmiss as tfm;print(tfm.text.zero_digits('123').numpy())"
+```
+
+You should see the op zeroed out all nonzero digits in string "123":
+```bash
+000
+```
+
+
