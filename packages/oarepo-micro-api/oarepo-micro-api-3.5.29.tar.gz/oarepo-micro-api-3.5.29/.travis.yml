@@ -1,0 +1,73 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2020 CESNET.
+#
+# OARepo Micro API is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+addons:
+  postgresql: 9.6
+
+services:
+  - postgresql
+  - redis-server
+
+dist: xenial
+
+notifications:
+  email: false
+
+sudo: false
+
+language: python
+
+matrix:
+  fast_finish: true
+
+cache:
+  - pip
+
+branches:
+  except:
+    - /^test-.*$/
+
+env:
+  global:
+    - POSTGRESQL_SQLALCHEMY_DATABASE_URI="postgresql+psycopg2://postgres@localhost:5432/invenio"
+    - ES7_DOWNLOAD_URL="https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.5.1-linux-x86_64.tar.gz"
+    - ES_HOST=127.0.0.1
+  matrix:
+    - REQUIREMENTS=release OAREPO_VERSION=3.5.34 EXTRAS=tests-es7 ES=$ES7_DOWNLOAD_URL SQLALCHEMY_DATABASE_URI=$POSTGRESQL_SQLALCHEMY_DATABASE_URI
+    - REQUIREMENTS=release OAREPO_VERSION=3.5.34 EXTRAS=tests-es7 ES=$ES7_DOWNLOAD_URL
+
+python:
+  - "3.8"
+
+before_install:
+  - "travis_retry pip install --upgrade pip setuptools py"
+  - "travis_retry pip install twine wheel coveralls pydocstyle>=5.0.2 isort requirements-builder pip-tools"
+  - mkdir /tmp/elasticsearch
+  - wget -O - $ES | tar xz --directory=/tmp/elasticsearch --strip-components=1
+  - "/tmp/elasticsearch/bin/elasticsearch &"
+  - sleep 10
+
+install:
+  - "travis_retry pip install -e ."
+  - "travis_retry pip uninstall -y oarepo"
+  - "travis_retry pip install oarepo[tests]"
+
+script:
+  - ./run-tests.sh
+
+after_success:
+  - coveralls
+
+deploy:
+  provider: pypi
+  user: "__token__"
+  password:
+    secure: "ackE5qIsJkfYUgIEel7W8dUzJ5+I8yu/8hpjsbYFyWTvp+VN2Yw5nHvtyhOWifd+pTgfnHNnV6KZmOwblY8ms54tIq/zxGgJCJ6p769PuQDRJkZZYuq+KkB04DqxzA23IhJPG6c6faCmtE8J8HdvTFGiiUBPv6K47TBXTjrbP3ReuZpjwvqKehiay0Pwi5k+/GbkYl2q3kdtZAUf7/mIrNfVNnpn9QJvxlKHGXWuZIyhKoP36smjiW/tM8TsLQKYoGnzgTmFflljUOVIWQJ54cvTCedhKNL454WXRe8RHKLhwMsLAJ89it1Sp6SRinLplzgEnt9epR8aLbCfxL0g5hA558CHPMM5KjUXRHnuBeINspsAdKaKvjZZtFJXqk/2XE+SLm+fmb0LpfwCUA7JanmibnYRHJKD5J4pHmu3lSFIpmKyEp7T0MZ/4I/60WLLEI0xJRec/QmnmC/updgyAuKxMHbkTo6fdg6hZaDwh2lCGfNxWA2ml83fUxvEFJb8EtqYrZS4i/6poncPysTb1bWn6w54CFZPwBe0ohjjDZQu16bzyaqTn2jM4kgfPIRuO1x5Xe8bWK8Aqu2o6JPmd/QWVT9HKTrHJNE/TMMM6j0AgUEBdHtusIhfydBcmwdZlugiQZaZakT78IVt9fTlZ/2uEyOsPkYeL3ZySw5RqRI="
+  on:
+    tags: true
+    branch: master
+  distributions: "sdist bdist_wheel"
+  skip_existing: true
