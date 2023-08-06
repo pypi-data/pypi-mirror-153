@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>3. Interprocess queues &#8212; Turberfield utilities guide 0.47.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/haiku.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="4. Spacial coordinates" href="homogeneous.html" />
+    <link rel="prev" title="2. Object serialisation" href="assembly.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>Turberfield utilities guide 0.47.0</span></a></h1>
+        <h2 class="heading"><span>3. Interprocess queues</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="top navigation">
+      
+        <p>
+        «&#160;&#160;<a href="assembly.html"><span class="section-number">2. </span>Object serialisation</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="homogeneous.html"><span class="section-number">4. </span>Spacial coordinates</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <section id="interprocess-queues">
+<h1><span class="section-number">3. </span>Interprocess queues<a class="headerlink" href="#interprocess-queues" title="Permalink to this headline">¶</a></h1>
+<p>Turberfield provides a <a class="reference internal" href="#module-turberfield.utils.pipes" title="turberfield.utils.pipes"><code class="xref py py-mod docutils literal notranslate"><span class="pre">pipes</span></code></a> module
+for interprocess communication. Your programs can send and receive
+messages consisting of simple Python objects.</p>
+<span class="target" id="module-turberfield.utils.pipes"></span><p>The module provides interprocess Queues. Two variants are available;
+one for use with an <a class="reference external" href="https://docs.python.org/3/library/asyncio.html#module-asyncio">asyncio</a> event loop, and one for code written in
+a blocking-call style. Both variants accept the following Python
+structures: strings, bytes, numbers, tuples, lists, dicts, sets,
+booleans, and None.</p>
+<p>The Queues are implemented with POSIX named pipes; this module
+works only on those operating systems which support them.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.SimplePipeQueue">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">turberfield.utils.pipes.</span></span><span class="sig-name descname"><span class="pre">SimplePipeQueue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">history</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.SimplePipeQueue" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – supplies the path to the underlying POSIX named pipe.</p></li>
+<li><p><strong>history</strong> – If True, a pipe which already exists will be
+reused, and not removed after exiting the Queue.</p></li>
+</ul>
+</dd>
+</dl>
+<p>This class can send messages without blocking your code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pq</span> <span class="o">=</span> <span class="n">SimplePipeQueue</span><span class="o">.</span><span class="n">pipequeue</span><span class="p">(</span><span class="s2">&quot;/tmp/pq.fifo&quot;</span><span class="p">)</span>
+<span class="n">pq</span><span class="o">.</span><span class="n">put_nowait</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;First message.&quot;</span><span class="p">))</span>
+<span class="n">pq</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>You can also use this class as a context manager.
+Don’t forget that
+<a class="reference internal" href="#turberfield.utils.pipes.SimplePipeQueue.get" title="turberfield.utils.pipes.SimplePipeQueue.get"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get()</span></code></a>
+is a blocking operation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">SimplePipeQueue</span><span class="p">(</span><span class="s2">&quot;/tmp/pq.fifo&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pq</span><span class="p">:</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.SimplePipeQueue.pipequeue">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">pipequeue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.SimplePipeQueue.pipequeue" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a factory function which creates and initialises a
+Queue. Your code should call
+<a class="reference internal" href="#turberfield.utils.pipes.SimplePipeQueue.close" title="turberfield.utils.pipes.SimplePipeQueue.close"><code class="xref py py-meth docutils literal notranslate"><span class="pre">close()</span></code></a>
+on the queue when finished.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.SimplePipeQueue.put_nowait">
+<span class="sig-name descname"><span class="pre">put_nowait</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.SimplePipeQueue.put_nowait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Put an item into the queue without blocking.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.SimplePipeQueue.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.SimplePipeQueue.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove and return an item from the queue. If queue is empty,
+block until an item is available.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.SimplePipeQueue.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.SimplePipeQueue.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Completes the use of the queue.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.PipeQueue">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">turberfield.utils.pipes.</span></span><span class="sig-name descname"><span class="pre">PipeQueue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.PipeQueue" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – supplies the path to the underlying POSIX named pipe.</p></li>
+<li><p><strong>history</strong> – If True, a pipe which already exists will be
+reused, and not removed after exiting the Queue.</p></li>
+</ul>
+</dd>
+</dl>
+<p>This is a subclass of
+<a class="reference internal" href="#turberfield.utils.pipes.SimplePipeQueue" title="turberfield.utils.pipes.SimplePipeQueue"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimplePipeQueue</span></code></a>,
+extended for use like an <a class="reference external" href="https://docs.python.org/3/library/asyncio-queue.html#queue">asyncio.Queue</a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pq</span> <span class="o">=</span> <span class="n">PipeQueue</span><span class="o">.</span><span class="n">pipequeue</span><span class="p">(</span><span class="s2">&quot;/tmp/pq.fifo&quot;</span><span class="p">)</span>
+<span class="k">yield from</span> <span class="n">pq</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;First message.&quot;</span><span class="p">))</span>
+<span class="n">pq</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>and:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pq</span> <span class="o">=</span> <span class="n">PipeQueue</span><span class="o">.</span><span class="n">pipequeue</span><span class="p">(</span><span class="s2">&quot;/tmp/pq.fifo&quot;</span><span class="p">)</span>
+<span class="n">msg</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">pq</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+<span class="n">pq</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.PipeQueue.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.PipeQueue.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove and return an item from the queue. If queue is empty,
+wait until an item is available.</p>
+<p>This method is a <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="turberfield.utils.pipes.PipeQueue.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#turberfield.utils.pipes.PipeQueue.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Put an item into the queue. If the queue is full, wait until
+a free slot is available before adding item.</p>
+<p>This method is a <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#coroutine">coroutine</a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="bottom navigation">
+      
+        <p>
+        «&#160;&#160;<a href="assembly.html"><span class="section-number">2. </span>Object serialisation</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="homogeneous.html"><span class="section-number">4. </span>Spacial coordinates</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, D Haynes.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.2.0.
+    </div>
+  </body>
+</html>
