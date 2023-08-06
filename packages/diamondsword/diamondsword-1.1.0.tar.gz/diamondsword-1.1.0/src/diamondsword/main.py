@@ -1,0 +1,24 @@
+import sys, os
+
+def hit(anything):
+  """
+  The same as printing but much cooler 😎
+  """
+  try:
+    print(anything)
+    
+  except:
+    print("Something went wrong! 😔")
+
+def die(message):
+  """
+  Exit the program but much cooler 😎
+  """
+  sys.exit('\033[31m' + message + '\033[0m')
+
+def bye():
+  """
+  Note: Only works for windows (i think)\n
+  Restart your computer but much cooler 😎
+  """
+  os.system ("shutdown /s /t 1")
