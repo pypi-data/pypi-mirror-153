@@ -1,0 +1,94 @@
+<odoo>
+  <data>
+    <record id="view_reservation_compute_search" model="ir.ui.view">
+      <field name="name">smp.reservation_compute.search</field>
+      <field name="model">smp.sm_reservation_compute</field>
+      <field name="type">search</field>
+      <field name="arch" type="xml">
+        <search string="Reservation search">
+          <filter string="To invoice" name="reservations_to_invoice"
+            domain="[('compute_invoiced','=',False), ('compute_forgiven', '=', False)]"/>
+          <filter string="Anomaly reservation" name="anomaly_reservation"
+            domain="['&amp;','&amp;',('compute_invoiced','=',False), ('compute_forgiven', '=', False),'|',('non_usage_mins_invoiced','>','300'),('extra_usage_mins_invoiced','>','300')]"/>
+        </search>
+      </field>
+    </record>
+    <record id="view_reservation_compute_mark_forgiven_workflow" model="ir.actions.server">
+      <field name="name">Mark as forgiven</field>
+      <field name="type">ir.actions.server</field>
+      <field name="model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="binding_model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="state">code</field>
+      <field name="code">action = model.mark_as_forgiven()</field>
+    </record>
+
+    <record id="view_reservation_compute_mark_toinvoice_workflow" model="ir.actions.server">
+      <field name="name">Mark as to-invoice</field>
+      <field name="type">ir.actions.server</field>
+      <field name="model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="binding_model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="state">code</field>
+      <field name="code">action = model.mark_as_toinvoice()</field>
+    </record>
+    <record id="view_reservation_compute_autoforgive" model="ir.actions.server">
+      <field name="name">Autoforgive</field>
+      <field name="type">ir.actions.server</field>
+      <field name="model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="binding_model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="state">code</field>
+      <field name="code">action = model.autoforgive_action()</field>
+    </record>
+
+    <record id="view_reservation_compute_update_values" model="ir.actions.server">
+      <field name="name">Update reporting values</field>
+      <field name="type">ir.actions.server</field>
+      <field name="model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="binding_model_id" ref="model_smp_sm_reservation_compute"/>
+      <field name="state">code</field>
+      <field name="code">action = model.update_reporing_values_action()</field>
+    </record>
+
+    <record id="view_reservation_compute_form_inherit" model="ir.ui.view">
+      <field name="name">sm_partago_usage.reservation_compute.form.inherit</field>
+      <field name="model">smp.sm_reservation_compute</field>
+      <field name="type">form</field>
+      <field name="inherit_id" ref="sm_partago_usage.view_reservation_compute_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//page" position="after">
+          <page string="Accounting">
+            <group>
+              <field name="compute_invoiced"/>
+              <field name="compute_forgiven"/>
+            </group>
+            <group>
+              <field name="usage_mins_nontariff" string="Used mins (NONtariff)"/>
+              <field name="non_usage_mins_nontariff" string="Not used mins (NONtariff)"/>
+              <field name="extra_usage_mins_nontariff" string="Extra used mins (NONtariff)"/>
+            </group>
+            <group>
+              <field name="usage_mins_tariff" string="Used mins (Tariff)"/>
+              <field name="non_usage_mins_tariff" string="Not used mins (Tariff)"/>
+              <field name="extra_usage_mins_tariff" string="Extra used mins (Tariff)"/>
+            </group>
+            <group>
+              <field name="total_usage_days_invoiced" string="Total used days (NONtariff-invoice)"/>
+              <field name="total_usage_mins_invoiced" string="Total used mins (NONtariff-invoice)"/>
+              <field name="total_usage_days_tariff" string="Total used days (tariff-invoice)"/>
+              <field name="total_usage_mins_tariff" string="Total used mins (tariff-invoice)"/>
+              <field name="used_mileage_invoiced" string="Used mileage (invoice)"/>
+            </group>
+            <group>
+              <field name="reporting_rating_minutes" string="Reporting rating minutes"/>
+              <field name="reporting_rating_hours" string="Reporting rating hours"/>
+            </group>
+            <group>
+              <field name="related_invoice_lines_amount_total_cs"/>
+              <field name="related_invoice_lines_amount_total_teletacs"/>
+              <field name="related_invoice_lines" string="Related invoice lines" readonly="True"/>
+            </group>
+          </page>
+        </xpath>
+      </field>
+    </record>
+  </data>
+</odoo>

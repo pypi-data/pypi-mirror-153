@@ -1,0 +1,48 @@
+<odoo>
+  <data noupdate="1">
+    <record id="sale.email_template_edi_sale" model="mail.template">
+      <field name="name">email_tmpl_sales_order</field>
+      <field name="email_from">
+          ${(object.user_id.email and '%s &lt;%s&gt;' % (object.user_id.name, object.user_id.email) or '')|safe}
+      </field>
+      <field name="subject">${object.company_id.name}
+          ${object.state in ('draft', 'sent') and 'Quotation' or 'Order'} (Ref ${object.name or 'n/a' })
+      </field>
+      <field name="partner_to">${object.partner_invoice_id.id}</field>
+      <field name="model_id" ref="sale.model_sale_order"/>
+      <field name="auto_delete" eval="False"/>
+      <field name="report_template" ref="sale.action_report_saleorder"/>
+      <field name="report_name">
+          ${(object.name or '').replace('/','_')}_${object.state == 'draft' and 'draft' or ''}
+      </field>
+      <field name="lang">${object.partner_id.lang}</field>
+      <field name="body_html"><![CDATA[
+
+<div style="font-family: helvetica;font-size: 14px;">
+  <p style="margin-bottom: 0.14in;" align="justify">Hola ${object.partner_id.name},</p>
+  <p style="margin-bottom: 0.14in;" align="justify">Adjuntem el pressupost de ${object.company_id.name}: </p>
+  <p style="border-left: 1px solid #1B313E; margin-left: 30px;">
+  Número de comanda: <strong>${object.name}</strong><br />
+  Total: <strong>${object.amount_total} ${object.pricelist_id.currency_id.name}</strong><br />
+  Data:  ${format_tz(object.date_order, tz=user.tz, context={'lang':object.partner_id.lang})} <br />
+  % if object.origin:
+  Referència: ${object.origin}<br />
+  % endif
+  % if object.client_order_ref:
+  La teva referència: ${object.client_order_ref}<br />
+  % endif
+  </p>
+  <p style="margin-bottom: 0.14in;" align="justify">Si teniu qualsevol pregunta, no dubteu en contactar amb nosaltres.</p>
+  <p style="margin-bottom: 0.14in;" align="justify">Atentament</p>
+  <br/>
+</div>
+% if ctx.get('send_from_code'):
+  ${user.signature|safe}
+% endif
+
+      ]]></field>
+    </record>
+
+  </data>
+</odoo>
+

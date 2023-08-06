@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+  <data>
+
+    <template id="sm_invoice_report_report_view">
+      <t t-call="web.html_container">
+        <t t-call="sm_reports.sm_external_layout">
+          <t t-foreach="docs" t-as="doc">
+            <t t-set="doc" t-value="doc.with_context({'lang':doc.partner_id.lang})"/>
+            <div class="page">
+              <div class="row">
+                <div class="col-xs-5 col-xs-offset-7">
+
+                  <div t-field="doc.partner_id.name"/>
+                  <div t-field="doc.partner_id.vat"/>
+                  <div t-field="doc.partner_id.street"/>
+
+                  <span t-field="doc.partner_id.zip"/>
+                  <span t-field="doc.partner_id.city"/>
+
+                  <!-- <span t-if="doc.partner_id.state != False">(</span>
+                  <span t-if="doc.partner_id.state != False" t-field="doc.partner_id.state"/>
+                  <span t-if="doc.partner_id.state != False">)</span> -->
+
+
+                </div>
+              </div>
+
+
+              <h3 style="padding-bottom:25px;">
+                <t t-if="doc.has_cs_usage == True">
+                  <strong>Informe d'ús del servei de carsharing</strong>
+                </t>
+                <t t-if="doc.has_cs_usage == False">
+                  <strong>Informe sobre peatges i aparcaments de pagament</strong>
+                </t>
+              </h3>
+
+              <html>
+                <head>
+                  <meta charset="utf-8">
+                    <style>
+
+                      @media print {
+                      a[href]:after {
+                      content: none !important;
+                      color: red !important;
+                      }
+
+                      @media print{
+                      .blank_row {
+                      height: 30px !important;
+                      }
+                      }
+
+                      @media print{
+                      .next_page {
+                      display:block;
+                      page-break-before:always;
+                      }
+                      }
+                      @media print{
+                      .link{
+                      color: #0563b7 !important;
+                      }
+                      }
+                    </style>
+                  </meta>
+                </head>
+                <body>
+
+                  <div class="row">
+                    <div class="col-xs-7">
+                      <table class="table table-condensed">
+                        <tr class="border-black">
+                          <td>
+                            <strong>Data de creació de l'informe</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-field="doc.date"/>
+                          </td>
+                        </tr>
+                        <tr class="border-black">
+                          <td>
+                            <strong>Període</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-field="doc.timeframe_desc"/>
+                          </td>
+                        </tr>
+                        <tr t-if="doc.has_cs_usage" class="border-black">
+                          <td>
+                            <strong>km totals</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-field="doc.total_mileage"/>
+                            km
+                          </td>
+                        </tr>
+                        <tr class="border-black">
+                          <td>
+                            <strong>Saldo moneder inicial</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="str('%.2f'% doc.afterfee_pocketbook).replace('.',',')"/>
+                            €
+                          </td>
+                        </tr>
+                        <tr t-if="doc.has_cs_usage == True" class="border-black">
+                          <td>
+                            <strong>Total usos (sense IVA)</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="str('%.2f'% doc.total_amount_lines_untaxed).replace('.',',')"/>
+                            €
+                          </td>
+                        </tr>
+                        <tr t-if="doc.show_payment_info == True" class="border-black">
+                          <td>
+                            <strong>Total usos (amb IVA)</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="str('%.2f'% doc.total_amount_lines_taxed_no_initial).replace('.',',')"/>
+                            €
+                          </td>
+                        </tr>
+                        <tr t-if="doc.show_payment_info == True" class="border-black">
+                          <td>
+                            <strong>Total usos (amb IVA) + Preu inicial reserves</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="str('%.2f'% doc.total_amount_lines_taxed).replace('.',',')"/>
+                            €
+                          </td>
+                        </tr>
+                        <tr class="border-black">
+                          <td>
+                            <strong></strong>
+                          </td>
+                          <td class="text-right">
+
+                          </td>
+                        </tr>
+
+                      </table>
+
+                      <table class="table table-condensed">
+                        <tr t-if="doc.show_payment_info == True" class="border-black">
+                          <td>
+                            <strong>Descomptat del moneder</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="str('%.2f'% doc.discount_amount).replace('.',',')"/>
+                            €
+                          </td>
+                        </tr>
+                        <tr t-if="doc.show_payment_info == True" class="border-black">
+                          <td>
+                            <strong>Pendent a cobrar</strong>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="str('%.2f'% doc.total_amount).replace('.',',')"/>
+                            €
+                          </td>
+                        </tr>
+                        <tr t-if="doc.show_payment_info == True"
+                          class="border-black">
+                          <td>
+                            <strong>Total (Pendent a cobrar)</strong>
+                          </td>
+                          <td class="text-right">
+                            <strong>
+                              <span t-esc="str('%.2f'% doc.total_amount_signed).replace('.',',')"/>
+                              €
+                            </strong>
+                          </td>
+                        </tr>
+                        <tr t-if="doc.invoice_id" class="border-black">
+                          <td>
+                            <strong>Factura relacionada</strong>
+                          </td>
+                          <td class="text-right">
+                            <strong>
+                              <span t-field="doc.invoice_id"/>
+                            </strong>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- JUMP PAGE -->
+                  <p style="page-break-after:always;"/>
+
+                </body>
+              </html>
+
+              <t t-if="doc.has_cs_usage == True">
+                <h4 style="margin-top:25px;padding-bottom:15px;">
+                  <strong>Detall dels usos:</strong>
+                </h4>
+
+                <table class="table table-condensed">
+                  <thead>
+                    <tr>
+                      <th>Descripció</th>
+                      <th t-if="doc.show_payment_info == True">Tarifa</th>
+                      <th class="text-right">Temps efectiu</th>
+                      <th class="text-right">Temps no usat</th>
+                      <th class="text-right">Temps extra</th>
+                      <th class="text-right">Mins facturats</th>
+                      <th class="text-right">Dies facturats</th>
+                      <th class="text-right">km extra</th>
+                      <th t-if="doc.show_payment_info == True" class="text-right">Preu inici/€</th>
+                      <th t-if="doc.show_payment_info == True" class="text-right">Preu/€</th>
+                      <th t-if="doc.grouped_report">Usuari</th>
+                    </tr>
+                  </thead>
+                  <tbody class="invoice_tbody">
+                    <tr t-foreach="doc.cs_line_ids" t-as="l">
+                      <t t-if="l.line_type != 'cs_teletac'">
+                        <td>
+                          <span t-field="l.name"/>
+                        </td>
+
+                        <td t-if="doc.show_payment_info == True">
+                          <t t-if="l.related_tariff_id">
+                            <span t-field="l.related_tariff_id.name"/>
+                          </t>
+                          <t t-if="not l.related_tariff_id">
+                            <span>Ús esporàdic</span>
+                          </t>
+                        </td>
+
+                        <t t-if="l.related_tariff_id.carconfig_availability">
+                          <td class="text-right">
+                            <t t-if="l.line_type == 'cs_default'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.usage_mins_tariff"/>
+                            </t>
+                            <t t-if="l.line_type == 'cs_extra'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.usage_mins_nontariff"/>
+                            </t>
+                          </td>
+                          <td class="text-right">
+                            <t t-if="l.line_type == 'cs_default'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.non_usage_mins_tariff"/>
+                            </t>
+                            <t t-if="l.line_type == 'cs_extra'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.non_usage_mins_nontariff"/>
+                            </t>
+                          </td>
+                          <td class="text-right">
+                            <t t-if="l.line_type == 'cs_default'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.extra_usage_mins_tariff"/>
+                            </t>
+                            <t t-if="l.line_type == 'cs_extra'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.extra_usage_mins_nontariff"/>
+                            </t>
+                          </td>
+                          <td class="text-right">
+                            <t t-if="l.line_type == 'cs_default'">
+                              <span t-esc="str('%.2f'% l.related_reservation_compute_id.total_usage_mins_tariff).replace('.',',')"/>
+                            </t>
+                            <t t-if="l.line_type == 'cs_extra'">
+                              <span t-esc="str('%.2f'% l.related_reservation_compute_id.total_usage_mins_invoiced).replace('.',',')"/>
+                            </t>
+                          </td>
+                          <td class="text-right">
+                            <t t-if="l.line_type == 'cs_default'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.total_usage_days_tariff"/>
+                            </t>
+                            <t t-if="l.line_type == 'cs_extra'">
+                              <span t-esc="'%i'% l.related_reservation_compute_id.total_usage_days_invoiced"/>
+                            </t>
+                          </td>
+                        </t>
+                        <t t-if="not l.related_tariff_id.carconfig_availability">
+                          <td class="text-right">
+                            <span t-esc="'%i'% l.related_reservation_compute_id.usage_mins_nontariff"/>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="'%i'% l.related_reservation_compute_id.non_usage_mins_nontariff"/>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="'%i'% l.related_reservation_compute_id.extra_usage_mins_nontariff"/>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="str('%.2f'% l.related_reservation_compute_id.total_usage_mins_invoiced).replace('.',',')"/>
+                          </td>
+                          <td class="text-right">
+                            <span t-esc="'%i'% l.related_reservation_compute_id.total_usage_days_invoiced"/>
+                          </td>
+                        </t>
+                        <td class="text-right">
+                          <span t-esc="'%i'% l.related_reservation_compute_id.used_mileage_invoiced"/>
+                        </td>
+                        <td t-if="doc.show_payment_info == True" class="text-right">
+                          <strong>
+                            <span t-esc="str('%.2f'% l.initial_price_computed).replace('.',',')"/>
+                          </strong>
+                        </td>
+                        <td t-if="doc.show_payment_info == True" class="text-right">
+                          <strong>
+                            <span t-esc="str('%.2f'% l.price_unit).replace('.',',')"/>
+                          </strong>
+                        </td>
+                        <td t-if="doc.grouped_report">
+                          <span t-field="l.partner_id.name"/>
+                        </td>
+                      </t>
+                    </tr>
+                  </tbody>
+                </table>
+              </t>
+
+              <t t-if="doc.has_cs_usage == True">
+                <h4 style="padding-top:25px;padding-bottom:15px;">
+                  <strong>Info sobre usos:</strong>
+                </h4>
+                <div class="row">
+                  <div class="col-xs-12">
+                    <table class="table table-condensed">
+                      <tr class="border-black">
+                        <td>
+                          <strong>Inici de reserva:</strong>
+                          Data i hora d'inici de la reserva
+                          <br/>
+                          <strong>Final de reserva:</strong>
+                          Data i hora final de la reserva
+                          <br/>
+                          <strong>Inici real d'ús:</strong>
+                          Data i hora quan l'usuari activa la seva reserva per accedir al
+                          cotxe.
+                          <br/>
+                          <strong>Final real d'ús:</strong>
+                          Data i hora quan l'usuari finalitza el seu ús del servei i tanca la
+                          reserva.
+                          <br/>
+                          <strong>Temps efectiu:</strong>
+                          Temps entre [mínim d'<strong>inici de reserva</strong> o inici real
+                          d'ús] i
+                          [mínim entre final de reserva o final real d'ús]
+                          <br/>
+                          <strong>Temps no usat:</strong>
+                          Si final de reserva és superior al final real d'ús, temps entre
+                          final
+                          real
+                          d'ús i final de reserva.
+                          <br/>
+                          <strong>Temps extra:</strong>
+                          Si final de reserva és inferior al final real d'ús, temps entre
+                          final de
+                          reserva i final real d'ús
+                          <br/>
+                          <strong>Mins facturats:</strong>
+                          [Temps efectiu] + 0,2 * [Temps no usat] + [Temps extra]
+                          <br/>
+                          <strong>Dies facturats:</strong>
+                          Quan els minuts facturats superen les 10 hores comencem a facturar
+                          per
+                          dies.
+                          Entre 10 i 24 hores es considera un dia i es facturen només 10
+                          hores.
+                          <br/>
+                          <strong>km extra:</strong>
+                          El preu del servei inclou 40 km per hora o 200 km per dia. Un cop
+                          superats,
+                          la resta es comptabilitza i factura depenent de la teva tarifa. (Per
+                          defecte
+                          0,08€ per km )
+                        </td>
+                      </tr>
+                      <tr class="border-black">
+                        <td>
+                          <br/>
+                        </td>
+                      </tr>
+                    </table>
+                    <h4 style="padding-top:25px;padding-bottom:15px;">
+                      <strong>Info sobre tarifes:</strong>
+                    </h4>
+                    <t t-if="doc.show_payment_info == True">
+                      <p>Si vols informació sobre les tarifes i gaudir d'un millor preu
+                        <a class="link" href="https://www.sommobilitat.coop/tarifes/">Fes click
+                          aquí
+                        </a>
+                      </p>
+                    </t>
+
+                  </div>
+                </div>
+                <p style="page-break-after:always;"/>
+              </t>
+
+
+              <t t-if="doc.has_teletacs">
+                <h4>
+                  <strong>Detall servei Via-T:</strong>
+                </h4>
+                <table class="table table-condensed">
+                  <thead>
+                    <tr>
+                      <th>Descripció</th>
+                      <th>Reserva rel.</th>
+                      <th t-if="doc.grouped_report">Usuari</th>
+                      <th class="text-right">Preu/€</th>
+                    </tr>
+                  </thead>
+                  <tbody class="invoice_tbody">
+                    <tr t-foreach="doc.cs_line_ids" t-as="l">
+                      <t t-if="l.line_type == 'cs_teletac'">
+                        <td>
+                          <span t-field="l.name"/>
+                        </td>
+                        <td t-if="l.related_reservation_compute_id">
+                          <span t-field="l.related_reservation_compute_id.name_nice"/>
+                        </td>
+                        <td t-if="doc.grouped_report" class="text-right">
+                          <span t-field="l.partner_id"/>
+                        </td>
+                        <td class="text-right">
+                          <strong>
+                            <span t-esc="str('%.2f'% l.price_unit).replace('.',',')"/>
+                          </strong>
+                        </td>
+                      </t>
+                    </tr>
+                  </tbody>
+                </table>
+              </t>
+
+            </div>
+          </t>
+        </t>
+      </t>
+
+    </template>
+
+    <report
+        id="sm_invoice_report_report"
+        model="sm.invoice_report"
+        string="Invoice reports PDF"
+        name="sm_partago_invoicing.sm_invoice_report_report_view"
+        file="sm_partago_invoicing.sm_invoice_report_report"
+        report_type="qweb-pdf"/>
+
+  </data>
+</odoo>

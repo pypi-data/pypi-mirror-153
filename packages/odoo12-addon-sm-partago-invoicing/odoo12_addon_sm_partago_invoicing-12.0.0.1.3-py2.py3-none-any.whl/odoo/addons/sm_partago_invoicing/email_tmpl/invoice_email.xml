@@ -1,0 +1,41 @@
+<!-- TODO: System overwrites this on update all. Delete all system ones and add one with different name -->
+<odoo>
+  <data noupdate="1">
+    <!-- <delete model='mail.template' id="account.email_template_edi_invoice"/> -->
+    <record id="email_template_edi_invoice" model="mail.template">
+      <field name="name">email_tmpl_invoice</field>
+      <field name="email_from">factura@sommobilitat.coop</field>
+      <field name="email_to">${object.partner_id.accounting_notification_email}</field>
+      <field name="subject">${object.company_id.name} Factura (Ref ${object.number or 'n/a'})</field>
+      <field name="model_id" ref="account.model_account_invoice"/>
+
+      <field name="auto_delete" eval="False"/>
+      <field name="report_template" ref="account.account_invoices"/>
+      <field name="report_name">
+        Invoice_${(object.number or '').replace('/','_')}_${object.state == 'draft' and 'draft' or ''}
+      </field>
+      <field name="lang">${object.partner_id.lang}</field>
+      <field name="body_html"><![CDATA[
+
+<div style="font-family: helvetica;font-size: 14px;">
+    <p style="margin-bottom: 0.14in;" align="justify">Hola ${object.partner_id.name},</p>
+    <p style="margin-bottom: 0.14in;" align="justify">Una nova factura està disponible per a tu: </p>
+    <p style="border-left: 1px solid #1B313E; margin-left: 30px;">
+       &nbsp;&nbsp;Número: <strong>${object.number}</strong><br>
+       &nbsp;&nbsp;Total: <strong>${object.amount_total} ${object.currency_id.name}</strong><br>
+       &nbsp;&nbsp;Data: ${object.date_invoice}<br>
+    </p>
+    <br>
+    <p style="margin-bottom: 0.14in;" align="justify">Si tens alguna pregunta, no dubtis en contactar amb nosaltres.</p>
+    <p style="margin-bottom: 0.14in;" align="justify">Atentament</p>
+    <br>
+</div>
+% if ctx.get('send_from_code'):
+  ${user.signature|safe}
+% endif
+
+      ]]></field>
+    </record>
+
+  </data>
+</odoo>

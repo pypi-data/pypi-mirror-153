@@ -1,0 +1,129 @@
+<odoo>
+  <data>
+
+    <record id="reset state_batch_reservation_compute" model="ir.actions.server">
+      <field name="name">Reset state</field>
+      <field name="type">ir.actions.server</field>
+      <field name="model_id" ref="model_smp_sm_batch_reservation_compute"/>
+      <field name="binding_model_id" ref="model_smp_sm_batch_reservation_compute"/>
+      <field name="state">code</field>
+      <field name="code">action = model.reset_state()</field>
+    </record>
+
+    <record id="view_batch_reservation_compute_window" model="ir.actions.act_window">
+      <field name="name">Batch reservation computes</field>
+      <field name="res_model">smp.sm_batch_reservation_compute</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_batch_reservation_compute_search" model="ir.ui.view">
+      <field name="name">smp.batch_reservation_compute.search</field>
+      <field name="model">smp.sm_batch_reservation_compute</field>
+      <field name="type">search</field>
+      <field name="arch" type="xml">
+        <search string="DB batch reservation search">
+          <field name="description"/>
+          <field name="name"/>
+        </search>
+      </field>
+    </record>
+
+    <record id="view_batch_reservation_compute_list" model="ir.ui.view">
+      <field name="name">smp.batch_reservation_compute.tree</field>
+      <field name="model">smp.sm_batch_reservation_compute</field>
+      <field name="arch" type="xml">
+        <tree>
+          <field name="name"/>
+          <field name="description"/>
+          <field name="state"/>
+          <field name="total_invoiced_amount_no_discount" />
+          <field name="total_discount" />
+          <field name="total_invoiced_amount" />
+          <field name="invoice_total" />
+          <field name="invoice_taxes" />
+        </tree>
+      </field>
+    </record>
+
+    <record id="view_batch_reservation_compute_form" model="ir.ui.view">
+      <field name="name">smp.batch_reservation_compute.form</field>
+      <field name="model">smp.sm_batch_reservation_compute</field>
+      <field name="type">form</field>
+      <field name="arch" type="xml">
+        <form string="Edit place" version="7.0" create="false" edit="true" delete="false">
+          <header>
+            <button name="create_invoice_report" type="object"
+              string="Create inv report"
+              attrs="{'invisible': [('state','!=','invoice_report')]}"/>
+
+            <button name="account_invoice_reports" string="Account invoice reports"
+              confirm="Are you sure?" type="object"
+              attrs="{'invisible': [('state','!=','account_invoices_report')]}"/>
+
+            <button name="apply_discounts" string="Apply discounts"
+              confirm="Are you sure?" type="object"
+              attrs="{'invisible': [('state','!=','apply_discounts')]}"/>
+
+            <button name="generate_invoices" string="Generate invoices" confirm="Are you sure?"
+              type="object"
+              attrs="{'invisible': [('state','!=','generate_invoices')]}"/>
+
+            <button name="validate_invoices" string="Validate invoices" confirm="Are you sure?"
+              type="object"
+              attrs="{'invisible': [('state','!=','validate_invoices')]}"/>
+
+            <button name="email_send_invoices" string="Send inv emails" confirm="Are you sure?"
+              type="object"
+              attrs="{'invisible': [('state','!=','closed'),('state','!=','closed_sent')]}"/>
+            
+            <button name="set_closed_sent" string="Set closed sent" confirm="Are you sure?"
+              type="object" 
+              attrs="{'invisible': [('state','!=','closed')]}"/>
+
+            <field name="state" widget="statusbar"/>
+
+          </header>
+          <sheet>
+            <notebook>
+              <page string="General">
+                <group>
+                  <field name="name"/>
+                  <field name="description"/>
+                </group>
+                <group>
+                  <field name="batch_type" required="True"/>
+                  <field name="is_grouped_report" readonly="True"/>
+                  <field name="invoice_report_id"/>
+                  <field name="total_invoiced_amount_no_discount" readonly="True"/>
+                  <field name="total_discount" readonly="True"/>
+                  <field name="total_invoiced_amount" readonly="True"/>
+                  <field name="invoice_id"/>
+                  <field name="invoice_total" readonly="True" />
+                  <field name="invoice_taxes" readonly="True" />
+                </group>
+                <group>
+                  <field name="reports_id" widget="one2many_list">
+                    <tree string="Reports" create="true" edit="true" delete="true" open="true">
+                      <field name="name"/>
+                      <field name="invoice_report_id" />
+                      <field name="invoice_id"/>
+                      <field name="report_total_no_discounts" />
+                      <field name="report_discount"/>
+                      <field name="report_total"/>
+                      <field name="invoice_taxes"/>
+                      <field name="invoice_total"/>
+                    </tree>
+                  </field>
+                </group>
+              </page>
+            </notebook>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <menuitem name="Batch Reservations" id="batch_computations" parent="sm_partago_invoicing.menu_root"
+      action="view_batch_reservation_compute_window"/>
+
+  </data>
+</odoo>

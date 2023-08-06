@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <template id="sm_report_invoice_payment_mode_inherit" 
+      inherit_id="account.report_invoice_document">
+      <xpath expr="//p[@t-if='o.payment_term_id']" position="after">
+        <h4 t-if="o.payment_mode_id" style="margin-top:45px;padding-bottom:15px;">
+          <strong>Info sobre pagament:</strong>
+        </h4>
+      </xpath>
+    </template>
+    <template id="sm_report_invoice_document_inherit" 
+      inherit_id="account.report_invoice_document">
+
+
+      <!--xpath expr="//div[@name='invoice_address']" position="replace">
+        <div name="invoice_address" class="col-xs-5 mt-16">
+          <address t-field="o.partner_id"
+            t-options='{"widget": "contact", "fields": [], "no_marker": True}' />
+        </div>
+      </xpath-->
+
+      <!-- INVOICE DEFAULT TABLE -->
+      <xpath expr="//table[@name='invoice_line_table']" position="replace">
+        <t t-set="decimal_precision" t-value="request.env['decimal.precision'].precision_get('Discount')"/>
+        <table class="table table-condensed" name="invoice_line_table">
+          <thead>
+            <tr>
+              <th>Descripció</th>
+              <th class="hidden">Source Document</th>
+              <th class="text-right">Quantitat</th>
+              <th class="text-right">Preu</th>
+              <th class="text-right">Impostos</th>
+              <th class="text-right">Subtotal</th>
+              <th class="text-right">Total</th>
+
+            </tr>
+          </thead>
+          <tbody class="invoice_tbody">
+            <tr t-foreach="o.invoice_line_ids" t-as="l">
+              <td>
+                <span t-field="l.name"/>
+              </td>
+              <td class="hidden">
+                <span t-field="l.origin"/>
+              </td>
+              <td class="text-right">
+                <span t-field="l.quantity" t-options='{"widget": "float", "precision": decimal_precision}'/>
+              </td>
+              <td class="text-right">
+                <span t-field="l.price_unit" t-options='{"widget": "float", "precision": decimal_precision}'/>
+              </td>
+              <td class="text-right">
+                <span t-esc="', '.join(map(lambda x: (x.description or x.name), l.invoice_line_tax_ids))"/>
+              </td>
+              <td class="text-right">
+                <span t-field="l.price_subtotal_signed"
+                    t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+              </td>
+              <td class="text-right">
+                <span t-field="l.price_total"
+                    t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </xpath>
+      <xpath expr="//div[@class='page']" position="inside">
+        <t t-if="o.invoice_template == 'cs_default' or o.invoice_template == 'cs_teletac'">
+          <t t-if="o.invoice_report_id.final_pocketbook_taxed > 0 or o.invoice_report_id.previous_pocketbook_taxed > 0 or o.invoice_report_id.timeframe_desc">
+            <h4 style="margin-top:45px;padding-bottom:15px;">
+              <strong>Dades de l'informe</strong>
+            </h4>
+            <table class="table table-condensed">
+              <t t-if="o.invoice_report_id.timeframe_desc">
+                <tr class="border-black">
+                  <td>
+                    <strong>Periode d'ús</strong>
+                  </td>
+                  <td class="text-right">
+                    <strong>
+                      <span t-field="o.invoice_report_id.timeframe_desc" />
+                    </strong>
+                  </td>
+                </tr>
+              </t>
+              <t t-if="o.invoice_report_id.total_mileage">
+                <tr class="border-black">
+                  <td>
+                    <strong>km totals</strong>
+                  </td>
+                  <td class="text-right">
+                    <strong>
+                      <span t-field="o.invoice_report_id.total_mileage" />
+                    </strong>
+                  </td>
+                </tr>
+              </t>
+              <t t-if="o.invoice_report_id.previous_pocketbook_taxed > 0">
+                <tr class="border-black">
+                  <td>
+                    <strong>Saldo moneder inicial</strong>
+                  </td>
+                  <td class="text-right">
+                    <strong>
+                      <span t-field="o.invoice_report_id.previous_pocketbook_taxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}' />
+                    </strong>
+                  </td>
+                </tr>
+              </t>
+              <t t-if="o.invoice_report_id.final_pocketbook_taxed > 0">
+                <tr class="border-black">
+                  <td>
+                    <strong>Saldo moneder final</strong>
+                  </td>
+                  <td class="text-right">
+                    <strong>
+                      <span t-field="o.invoice_report_id.final_pocketbook_taxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}' />
+                    </strong>
+                  </td>
+                </tr>
+              </t>
+            </table>
+          </t>
+        </t>
+        <!-- CARSHARING USAGE -->
+        <t t-if="o.invoice_template == 'cs_default'">
+          <h4 style="margin-top:45px;padding-bottom:15px;">
+            <strong>Detall dels usos:</strong>
+          </h4>
+          <table class="table table-condensed">
+            <thead>
+              <tr>
+                <th style="border-top:none !important;">Descripció</th>
+                <th class="text-right" style="border-top:none !important;">Tarifa</th>
+                <th class="text-right" style="border-top:none !important;">Temps efectiu</th>
+                <th class="text-right" style="border-top:none !important;">Temps no usat</th>
+                <th class="text-right" style="border-top:none !important;">Temps extra</th>
+                <th class="text-right" style="border-top:none !important;">Minuts facturats</th>
+                <th class="text-right" style="border-top:none !important;">Dies facturats</th>
+                <th class="text-right" style="border-top:none !important;">km extra</th>
+                <th class="text-right" style="border-top:none !important;">Preu inici/€ (sense IVA)</th>
+                <th t-if="o.invoice_report_id.grouped_report" style="border-top:none !important;">Usuari</th>
+              </tr>
+            </thead>
+            <tbody class="invoice_tbody">
+              <tr t-foreach="o.invoice_line_ids" t-as="l" class="border-black">
+                <t t-if="l.line_type == 'cs_default' or  l.line_type == 'cs_extra'">
+                  <td>
+                    <span t-field="l.name"/>
+                  </td>
+                  <td>
+                    <t t-if="l.related_tariff_id">
+                      <span t-field="l.related_tariff_id.name"/>
+                    </t>
+                    <t t-if="not l.related_tariff_id">
+                      <span>Ús esporàdic</span>
+                    </t>
+                  </td>
+                  <t t-if="l.related_tariff_id.carconfig_availability">
+                    <td class="text-right">
+                      <t t-if="l.line_type == 'cs_default'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.usage_mins_tariff"/>
+                      </t>
+                      <t t-if="l.line_type == 'cs_extra'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.usage_mins_nontariff"/>
+                      </t>
+                    </td>
+                    <td class="text-right">
+                      <t t-if="l.line_type == 'cs_default'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.non_usage_mins_tariff"/>
+                      </t>
+                      <t t-if="l.line_type == 'cs_extra'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.non_usage_mins_nontariff"/>
+                      </t>
+                    </td>
+                    <td class="text-right">
+                      <t t-if="l.line_type == 'cs_default'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.extra_usage_mins_tariff"/>
+                      </t>
+                      <t t-if="l.line_type == 'cs_extra'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.extra_usage_mins_nontariff"/>
+                      </t>
+                    </td>
+                    <td class="text-right">
+                      <t t-if="l.line_type == 'cs_default'">
+                        <span t-field="l.related_reservation_compute_id.total_usage_mins_tariff" t-options='{"widget": "float", "precision": decimal_precision}' />
+                      </t>
+                      <t t-if="l.line_type == 'cs_extra'">
+                        <span t-field="l.related_reservation_compute_id.total_usage_mins_invoiced" t-options='{"widget": "float", "precision": decimal_precision}' />
+                      </t>
+                    </td>
+                    <td class="text-right">
+                      <t t-if="l.line_type == 'cs_default'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.total_usage_days_tariff"/>
+                      </t>
+                      <t t-if="l.line_type == 'cs_extra'">
+                        <span t-esc="'%i'% l.related_reservation_compute_id.total_usage_days_invoiced"/>
+                      </t>
+                    </td>
+                  </t>
+                  <t t-if="not l.related_tariff_id.carconfig_availability">
+                    <td class="text-right">
+                      <span t-esc="'%i'% l.related_reservation_compute_id.usage_mins_nontariff"/>
+                    </td>
+                    <td class="text-right">
+                      <span t-esc="'%i'% l.related_reservation_compute_id.non_usage_mins_nontariff"/>
+                    </td>
+                    <td class="text-right">
+                      <span t-esc="'%i'% l.related_reservation_compute_id.extra_usage_mins_nontariff"/>
+                    </td>
+                    <td class="text-right">
+                      <span t-field="l.related_reservation_compute_id.total_usage_mins_invoiced" t-options='{"widget": "float", "precision": decimal_precision}' />
+                    </td>
+                    <td class="text-right">
+                      <span t-esc="'%i'% l.related_reservation_compute_id.total_usage_days_invoiced"/>
+                    </td>
+                  </t>
+                  <td class="text-right">
+                    <span t-esc="'%i'% l.related_reservation_compute_id.used_mileage_invoiced"/>
+                  </td>
+                  <td>
+                    <strong>
+                      <span t-if="l.line_type == 'cs_default'" t-field="l.initial_price_computed" t-options='{"widget": "float", "precision": decimal_precision}' />
+                      <span t-if="l.line_type == 'cs_extra'">0,00</span>
+                    </strong>
+
+                  </td>
+                  <td t-if="o.invoice_report_id.grouped_report">
+                    <span t-field="l.related_reservation_compute_id.member_id.name"/>
+                  </td>
+                </t>
+              </tr>
+              <tr class="border-black">
+                <td></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td t-if="o.invoice_report_id.grouped_report"></td>
+              </tr>
+            </tbody>
+          </table>
+          <h4 style="padding-top:25px;padding-bottom:15px;">
+            <strong>Info sobre usos:</strong>
+          </h4>
+          <p style="padding-bottom:15px;">
+            <strong>Inici de reserva:</strong>
+            Data i hora d'inici de la reserva
+            <br/>
+            <strong>Final de reserva:</strong>
+            Data i hora final de la reserva
+            <br/>
+            <strong>Inici real d'ús:</strong>
+            Data i hora quan l'usuari activa la seva reserva per accedir al
+            cotxe.
+            <br/>
+            <strong>Final real d'ús:</strong>
+            Data i hora quan l'usuari finalitza el seu ús del servei i tanca la
+            reserva.
+            <br/>
+            <strong>Temps efectiu:</strong>
+            Temps entre [mínim d'<strong>inici de reserva</strong> o inici real
+            d'ús] i
+            [mínim entre final de reserva o final real d'ús]
+            <br/>
+            <strong>Temps no usat:</strong>
+            Si final de reserva és superior al final real d'ús, temps entre
+            final
+            real
+            d'ús i final de reserva.
+            <br/>
+            <strong>Temps extra:</strong>
+            Si final de reserva és inferior al final real d'ús, temps entre
+            final de
+            reserva i final real d'ús
+            <br/>
+            <strong>Mins facturats:</strong>
+            [Temps efectiu] + 0,2 * [Temps no usat] + [Temps extra]
+            <br/>
+            <strong>Dies facturats:</strong>
+            Quan els minuts facturats superen les 10 hores comencem a facturar
+            per
+            dies.
+            Entre 10 i 24 hores es considera un dia i es facturen només 10
+            hores.
+            <br/>
+            <strong>km extra:</strong>
+            El preu del servei inclou 30 km per hora o 200 km per dia. Un cop
+            superats,
+            la resta es comptabilitza i factura depenent de la teva tarifa. (Per
+            defecte
+            0,08€ per km )
+          </p>
+          <h4 style="padding-top:25px;padding-bottom:15px;">
+            <strong>Info sobre tarifes:</strong>
+          </h4>
+          <t t-if="o.partner_id.has_active_tariffs">
+            <table class="table table-condensed" style="padding-top:25px;padding-bottom:15px;">
+              <tr t-foreach="o.partner_id.cs_tariffs_id" t-as="t" class="border-black">
+                <t t-if="not t.closed">
+                  <td>
+                    <strong><span t-field="t.name"/></strong>
+                  </td>
+                  <td class="text-right">
+                    <strong><span t-field="t.tariff_model_id.description"/></strong>
+                  </td>
+                </t>
+              </tr>
+            </table>
+          </t>
+          <p style="margin-bottom:40px;">Si vols informació sobre les tarifes i gaudir d'un millor preu
+            <a class="link" href="https://www.sommobilitat.coop/tarifes/">Fes click
+              aquí
+            </a>
+          </p>
+        </t>
+        <!-- TELETAC USAGE -->
+        <t t-if="o.invoice_template == 'cs_teletac'">
+          <h4>
+            <strong>Detall servei Via-T:</strong>
+          </h4>
+          <table class="table table-condensed">
+            <thead>
+              <tr>
+                <th style="border-top:none !important;">Descripció</th>
+                <th style="border-top:none !important;">Reserva rel.</th>
+                <th style="border-top:none !important;" t-if="o.invoice_report_id.grouped_report">Usuari</th>
+              </tr>
+            </thead>
+            <tbody class="invoice_tbody">
+              <tr t-foreach="o.invoice_line_ids" t-as="l">
+                <t t-if="l.line_type == 'cs_teletac'">
+                  <td>
+                    <span t-field="l.name"/>
+                  </td>
+                  <td t-if="l.related_reservation_compute_id">
+                    <span t-field="l.related_reservation_compute_id.name_nice"/>
+                  </td>
+                  <td t-if="not l.related_reservation_compute_id">
+                    No te reserva associada
+                  </td>
+                  <td t-if="o.invoice_report_id.grouped_report" class="text-right">
+                    <span t-field="l.related_reservation_compute_id.member_id.name"/>
+                  </td>
+                </t>
+              </tr>
+              <tr class="border-black">
+                <td></td>
+                <td class="text-right"></td>
+                <td class="text-right"></td>
+                <td t-if="o.invoice_report_id.grouped_report"></td>
+              </tr>
+            </tbody>
+          </table>
+        </t>
+      </xpath>
+    </template>
+  </data>
+</odoo>
