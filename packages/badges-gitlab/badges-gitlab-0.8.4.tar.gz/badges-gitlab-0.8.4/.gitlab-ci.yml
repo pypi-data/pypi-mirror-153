@@ -1,0 +1,191 @@
+# Author: Felipe Pinheiro Silva - felipefoz@gmail.com
+stages:
+  - dependencies
+  - static analysis
+  - unit test
+  - build
+  - release
+  - test
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
+# Variables definition
+variables:
+  PIPENV_VENV_IN_PROJECT: 1
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+default:
+  # Global image, used in all jobs
+  image: python:3.8.10-slim
+  # Setting a global cache for all jobs
+  cache:
+    key: ${CI_PROJECT_PATH} 
+    paths:
+      - .cache/pip
+      - .venv/
+  # Before script functions for cache optimization
+  before_script:
+    - python -V
+    - pip install pipenv
+    - pipenv install --dev
+badges-docker:
+  stage: dependencies
+  image: docker:latest
+  cache: {}
+  variables:
+    REPOSITORY: $CI_REGISTRY_IMAGE/$CI_JOB_NAME
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd images/$CI_JOB_NAME
+    - docker build -f Dockerfile -t $REPOSITORY:latest .
+    - docker push $REPOSITORY:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - images/$CI_JOB_NAME/Dockerfile
+
+# General Workflow Rules
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
+
+# Dependencies
+# only when changing Pipfile
+deps:
+  stage: dependencies
+  before_script:
+    - python -V
+    - pip install pipenv
+    - pipenv install --dev
+  script:
+    - echo "Downloading and caching dependencies for next jobs..."
+
+# Static Analysis
+mypy:
+  stage: static analysis
+  script:
+  - pipenv run mypy --verbose src/
+
+flake8:
+  stage: static analysis
+  script:
+  - pipenv run flake8 --verbose --max-line-length=120 src/
+
+pylint:
+  stage: static analysis
+  script:
+  - pipenv run pylint --exit-zero src/* | tee pylint.txt
+  - score=$(sed -n 's/^Your code has been rated at \([-0-9.]*\)\/.*/\1/p' pylint.txt)
+  - echo "Pylint score was $score"
+  - mkdir -p public/badges | pipenv run anybadge --value=$score --file=public/badges/pylint.svg pylint # pylint badge
+  artifacts:
+    paths:
+      - public/badges/pylint.svg
+
+isort:
+  stage: static analysis
+  script:
+  - pipenv run isort --check src/*
+
+ # Unit Testing and Coverage
+unittest:
+  stage: unit test
+  variables:
+    CI_JUNIT_REPORT: tests/report.xml
+  needs: [isort, pylint, flake8, mypy]
+  script:
+    - pipenv run python -m xmlrunner discover -s tests/ -p "*.py" --output-file ${CI_JUNIT_REPORT}
+  artifacts:
+    when: always
+    paths:
+      - ${CI_JUNIT_REPORT}
+    reports:
+      junit: ${CI_JUNIT_REPORT}
+
+coverage:
+  stage: unit test
+  script:
+    - pipenv run coverage run --branch -m unittest discover -s tests/ -p "*.py" 
+  after_script:
+    - pipenv run coverage report src/badges_gitlab/*.py | tee coverage.txt
+  artifacts:
+    when: always
+    paths:
+      - coverage.txt
+  allow_failure: true
+
+# Build and Check
+build:
+  stage: build
+  needs: [unittest]
+  script:
+    - pip install build
+    - python -m build
+    - pipenv run twine check dist/*
+  artifacts:
+    when: on_success
+    paths:
+      - dist/*
+
+build_test:
+  stage: build
+  cache: {}
+  needs: [build, unittest]
+  before_script:
+    - python -V
+    - pip install dist/badges-gitlab-*.tar.gz
+  script:
+    - badges-gitlab --junit-xml tests/report.xml
+  rules:
+    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+
+release:
+  stage: release
+  variables:
+    GL_TOKEN: $PRIVATE_TOKEN
+    PYPI_TOKEN: $PYPY_API_TOKEN
+  script:
+    - apt update && apt install -y git
+    - git config user.name "$GITLAB_USER_NAME" && git config user.email "$GITLAB_USER_EMAIL"
+    - pipenv run semantic-release publish
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Post Jobs
+safety:
+  stage: test
+  script:
+  - pipenv run pipenv check
+  allow_failure: true
+
+semgrep-sast:
+  rules:
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+bandit-sast:
+  rules:
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+badges:
+  stage: .post
+  needs: [unittest, release]
+  script:
+    - python -V
+    - pip install badges-gitlab
+    - badges-gitlab -V
+    - badges-gitlab --junit-xml tests/report.xml
+  artifacts:
+    when: always
+    paths:
+      - public/badges/*.svg
+  # Runs the job even if previous jobs fail
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+      allow_failure: true
