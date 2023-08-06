@@ -1,0 +1,173 @@
+Metadata-Version: 2.1
+Name: motion_detector_g4
+Version: 1.0.0
+Summary: Motion Detector
+Home-page: https://github.com/Genzo4/motion_detector
+Author: Genzo
+Author-email: genzo@bk.ru
+License: MIT
+Project-URL: Bug Tracker, https://github.com/Genzo4/motion_detector/issues
+Keywords: motiondetector,motion_detector,motion-detector,opencv,opencv-contrib-python,g4
+Classifier: Development Status :: 4 - Beta
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Information Technology
+Classifier: Natural Language :: English
+Classifier: Natural Language :: Russian
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Image Recognition
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# Motion Detector
+
+Python module for comparing two frames from a video for motion.
+
+***
+
+## Installation
+
+### Package Installation from PyPi
+
+```bash
+$ pip install motion-detector-g4
+```
+
+### Package Installation from Source Code
+
+The source code is available on [GitHub](https://github.com/Genzo4/motion_detector).  
+Download and install the package:
+
+```bash
+$ git clone https://github.com/Genzo4/motion_detector
+$ cd motion_detector
+$ pip3 install .
+```
+
+***
+
+## Basic usage
+
+Import:
+```python
+from motion_detector_g4 import MotionDetector
+```
+
+Create an instance of the motion detector. You can specify additional options:
+- minArea - minimum tracked change size (blob size).
+  Default value: 4000.
+- maxArea - maximum tracked change size (blob size).
+  Default value: 150000.
+- noiseSize - the maximum size of the removed noise.
+  Default value: 10.
+- debug - debug mode. If it is enabled, intermediate frames are created, 
+  showing the process of processing.
+  Default value: False.
+
+```python
+md = MotionDetector(minArea = 4000, maxArea = 150000, noiseSize = 10, debug = False)
+```
+
+The module uses the following algorithm:
+1. The first frame is being processed (method applyFirstFrame).
+![Img. 1](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_1.png "Img. 1 - First frame")
+2. The next frame is being processed (method checkMotion):
+![Img. 2](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.png "Img. 2 - Next frame")
+   - the first frame is subtracted from this frame using the module BackgroundSubtractorMOG2
+     from the library OpenCV. If debug mode is enabled, then a file is created with an additional 
+     extension "mask" with the result of the module.  
+     ![Img. 3](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.mask.png "Img. 3 - Removed the background")
+   - remove noise using the morphologyEx module from the OpenCV library. This process 
+     configured using the noiseSize parameter. If debug mode is enabled, then 
+     a file is created with the additional extension "clear" with the result of the module's operation.
+     ![Img. 4](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.clear.png "Img. 4 - Очистили от шума")
+   - looking for areas of motion (blobs) larger than minArea but smaller than maxArea. If debug mode is enabled, then 
+     files are created with the extension "blobs" and "blobs2" with the result of the module's operation 
+     (found areas are circled in red).
+     ![Img. 5](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.blobs.png "Img. 5 - Found areas of interest")
+     ![Img. 6](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.blobs2.png "Img. 6 - Found areas of interest")
+
+See the example.py file for an example of usage.
+
+***
+
+# Motion Detector
+
+Python модуль для сравнения двух кадров из видеозаписи на предмет наличия движения в них.
+
+***
+
+## Установка
+
+### Установка пакета с PyPi
+
+```bash
+$ pip install motion-detector-g4
+```
+
+### Установка пакета из исходного кода
+
+Исходный код размещается на [GitHub](https://github.com/Genzo4/motion_detector).  
+Скачайте его и установите пакет:
+
+```bash
+$ git clone https://github.com/Genzo4/motion_detector
+$ cd motion_detector
+$ pip3 install .
+```
+
+***
+
+## Использование
+
+Подключаем:
+```python
+from motion_detector_g4 import MotionDetector
+```
+
+Создаём экземпляр детектора движения. Можно указать дополнительные параметры:
+- minArea - минимальный размер отслеживаемого изменения (размера blob'а).
+  Значение по умолчанию: 4000.
+- maxArea - максимальный размер отслеживаемого изменения (размера blob'а).
+  Значение по умолчанию: 150000.
+- noiseSize - максимальный размер удаляемого "шума".
+  Значение по умолчанию: 10.
+- debug - режим отладки. Если его включить, то создаются промежуточные кадры,
+  показывающие процесс обработки.
+  Значение по умолчанию: False.
+
+```python
+md = MotionDetector(minArea = 4000, maxArea = 150000, noiseSize = 10, debug = False)
+```
+
+В модуле используется следующий алгоритм:
+1. Подаётся на обработку первый кадр (метод applyFirstFrame).
+![Рис. 1](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_1.png "Рис. 1 - Первый кадр")
+2. Подаётся на обработку следующий кадр (метод checkMotion):
+![Рис. 2](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.png "Рис. 2 - следующий кадр")
+   - из этого кадра "вычитается" первый кадр с помощью модуля BackgroundSubtractorMOG2
+     из библиотеки OpenCV. Если включён режим отладки, то создаётся файл с добавочным
+     расширением "mask" с результатом работы модуля.  
+     ![Рис. 3](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.mask.png "Рис. 3 - Убрали фон")
+   - удаляем "шум" с помощью модуля morphologyEx из библиотеки OpenCV. Данный процесс
+     настраивается с помощью параметра noiseSize. Если включён режим отладки, то
+     создаётся файл с добавочным расширением "clear" с результатом работы модуля.
+     ![Рис. 4](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.clear.png "Рис. 4 - Очистили от шума")
+   - ищем области движения (blob'ы) размером больше minArea, но меньше maxArea. Если включён режим отладки, то
+     создаются файлы с добавочным расширением "blobs" и "blobs2" с результатом работы модуля 
+     (найденные области обводятся красными кругами).
+     ![Рис. 5](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.blobs.png "Рис. 5 - Нашли интересующие области движения")
+     ![Рис. 6](https://github.com/Genzo4/motion_detector/raw/main/images/01_frame_2.blobs2.png "Рис. 6 - Нашли интересующие области движения")
+
+Пример использования см. в файле example.py
