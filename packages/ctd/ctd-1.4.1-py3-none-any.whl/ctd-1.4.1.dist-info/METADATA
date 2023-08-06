@@ -1,0 +1,92 @@
+Metadata-Version: 2.1
+Name: ctd
+Version: 1.4.1
+Summary: Tools to load hydrographic data into pandas DataFrame
+Home-page: https://github.com/pyoceans/python-ctd
+Author: Filipe Fernandes
+Author-email: ocefpaf@gmail.com
+License: BSD-3-Clause
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Science/Research
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Requires-Dist: chardet
+Requires-Dist: gsw (>=3.3.0)
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: pandas (>=0.24.0)
+Requires-Dist: pandas-flavor (>=0.1.2)
+Requires-Dist: scipy
+
+# python-ctd
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11396.svg)](https://doi.org/10.5281/zenodo.11396)
+[![Tests](https://github.com/pyoceans/python-ctd/actions/workflows/tests.yml/badge.svg)](https://github.com/pyoceans/python-ctd/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/ctd.svg?style=plastic)](https://pypi.python.org/pypi/ctd)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg?style=flat)](https://github.com/pyoceans/python-ctd/blob/main/LICENSE.txt)
+
+Tools to load hydrographic data as pandas DataFrame with some handy methods for
+data pre-processing and analysis
+
+This module can load [SeaBird CTD (CNV)](https://www.seabird.com/software/SBEDataProcforWindows.htm),
+[Sippican XBT (EDF)](https://www.lockheedmartin.com/en-us/products/oceanographic-instrumentation.html),
+and [Falmouth CTD (ASCII)](https://www.falmouth.com/) formats.
+
+## Quick intro
+
+You can install the CTD package with
+
+```shell
+conda install ctd --channel conda-forge
+```
+
+or
+
+```shell
+pip install ctd
+```
+
+
+and then,
+
+```python
+from pathlib import Path
+import ctd
+
+path = Path('tests', 'data', 'CTD')
+fname = path.joinpath('g01l06s01.cnv.gz')
+
+down, up = ctd.from_cnv(fname).split()
+ax = down['t090C'].plot_cast()
+```
+
+![Bad Processing](https://raw.githubusercontent.com/pyoceans/python-ctd/main/docs/readme_01.png)
+
+We can do [better](https://www.go-ship.org/Manual/McTaggart_et_al_CTD.pdf):
+
+```python
+temperature = down['t090C']
+
+fig, ax = plt.subplots(figsize=(5.5, 6))
+temperature.plot_cast(ax=ax)
+temperature.remove_above_water()\
+           .despike()\
+           .lp_filter()\
+           .press_check()\
+           .interpolate(method='index',
+                        limit_direction='both',
+                        limit_area='inside')\
+           .bindata(delta=1, method='interpolate')\
+           .smooth(window_len=21, window='hanning') \
+           .plot_cast(ax=ax)
+ax.set_ylabel('Pressure (dbar)')
+ax.set_xlabel('Temperature (°C)')
+```
+
+![Good Processing](https://raw.githubusercontent.com/pyoceans/python-ctd/main/docs/readme_02.png)
