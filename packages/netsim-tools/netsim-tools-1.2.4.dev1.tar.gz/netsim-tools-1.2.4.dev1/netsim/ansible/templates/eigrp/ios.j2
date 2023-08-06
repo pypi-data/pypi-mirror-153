@@ -1,0 +1,47 @@
+{#
+
+Configure IPv4 EIGRP
+
+#}
+{% if eigrp.af.ipv4 is defined %}
+router eigrp {{ eigrp.as }}
+{% if eigrp.router_id|ipv4 %}
+ eigrp router-id {{ eigrp.router_id }}
+{% endif %}
+{% for l in interfaces|default([]) if 'eigrp' in l and 'ipv4' in l  %}
+ network {{ l.ipv4|ipaddr('address') }} 0.0.0.0
+{% endfor %}
+{% for l in interfaces|default([]) if 'eigrp' in l and l.eigrp.passive %}
+ passive-interface {{ l.ifname }}
+{% endfor %}
+{% if mgmt.ifname|default("") %}
+ passive-interface {{ mgmt.ifname }}
+{% endif %}
+!
+{% endif %}
+{#
+
+Configure IPv6 EIGRP - totally separate configuration
+
+#}
+{% if eigrp.af.ipv6 is defined %}
+ipv6 router eigrp {{ eigrp.as }}
+{% if eigrp.router_id|ipv4 %}
+ eigrp router-id {{ eigrp.router_id }}
+{% endif %}
+
+{% for l in interfaces|default([]) if 'eigrp' in l and l.eigrp.passive %}
+ passive-interface {{ l.ifname }}
+{% endfor %}
+{% if 'ipv6' in loopback and 'ipv6' in eigrp.af %}
+!
+interface Loopback0
+ ipv6 eigrp {{ eigrp.as }}
+{% endif %}
+!
+{% for l in interfaces|default([]) if 'eigrp' in l and 'ipv6' in l and 'ipv6' in eigrp.af %}
+interface {{ l.ifname }}
+ ipv6 eigrp {{ eigrp.as }}
+!
+{% endfor %}
+{% endif %}

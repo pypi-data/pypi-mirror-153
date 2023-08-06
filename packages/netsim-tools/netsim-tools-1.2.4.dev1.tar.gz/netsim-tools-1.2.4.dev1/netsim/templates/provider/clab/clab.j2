@@ -1,0 +1,67 @@
+name: {{ name }}
+
+topology:
+  nodes:
+{% for name,n in nodes.items() %}
+{%   set clab = n.clab|default({}) %}
+    {{ name }}:
+      kind: {{ clab.kind | default(n.device) }}
+{%    if clab.type is defined %}
+      type: {{ clab.type }}
+{%    endif %}
+      image: {{ clab.image|default(n.box) }}
+{%    if groups is defined %}
+      group: {% for g in groups if n.name in groups[g].members %}{{'' if loop.first else ','}}{{g}}{% endfor %}
+
+{%    endif %}
+{% if 'srl-agents' in clab %}
+      extras:
+        srl-agents: {{ clab['srl-agents'] }}
+{% endif %}
+{% if 'env' in clab %}
+      env: {{ clab.env }}
+{% endif %}
+{% if n.binds is defined %}
+      binds:
+{% for b in n.binds %}
+      - {{ b }}
+{% endfor %}
+{% endif %}
+{% if 'runtime' in n %}
+      runtime: {{ n.runtime }}
+{% endif %}
+{% if clab.license is defined %}
+      license: {{ clab.license }}
+{% endif %}
+{% endfor %}
+
+{% if links|default([]) %}
+{# Define bridges for links with less (stub) or more than 2 nodes #}
+{% set bridge_type = defaults.providers.clab.bridge_type|default('bridge') %}
+{% for b in links|rejectattr('node_count','eq',2)|map(attribute='bridge')|unique %}
+    {{ b }}:
+      kind: {{ bridge_type }}
+{% endfor %}
+
+  links:
+{% for l in links %}
+{% if (l.bridge is not defined) or l.node_count==2 %}
+  - endpoints:
+{%   for n in nodes.values() %}
+{%     for nl in n.interfaces|default([]) if nl.linkindex|default(0) == l.linkindex %}
+{%       set clab = nl.clab|default({}) %}
+    - "{{ n.name }}:{{ clab.name|default(nl.ifname) }}"
+{%     endfor %}
+{%   endfor %}
+{% else %}
+{%   for n in nodes.values() %}
+{%     for nl in n.interfaces|default([]) if nl.linkindex|default(0) == l.linkindex %}
+{%       set clab = nl.clab|default({}) %}
+  - endpoints:
+    - "{{ n.name }}:{{ clab.name|default(nl.ifname) }}"
+    - "{{ l.bridge }}:{{ n.name }}_{{ clab.name|default(nl.ifname) }}"
+{%     endfor %}
+{%   endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}

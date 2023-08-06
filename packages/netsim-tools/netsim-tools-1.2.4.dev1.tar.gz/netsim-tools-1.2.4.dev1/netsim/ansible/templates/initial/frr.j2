@@ -1,0 +1,86 @@
+#!/bin/bash
+#
+set -e
+#
+# Create bash profile script
+#
+cat <<SCRIPT >/root/.bash_profile
+#!/bin/bash
+#
+export PS1="\h(bash)#"
+echo "Use vtysh to connect to FRR daemon"
+echo
+SCRIPT
+#
+# Build hosts file
+#
+{% for k,v in hostvars.items() if k != inventory_hostname and v.af.ipv4|default(False) %}
+echo "{%- if v.loopback.ipv4 is defined %}{{ v.loopback.ipv4|ipaddr('address') }} {% endif %}
+{%- for l in v.interfaces|default([]) if 'ipv4' in l and l.ipv4 != True and l.ipv4|ipv4 %}{{ l.ipv4|ipaddr('address') }} {% endfor %}{{ k }}" >>/tmp/hosts
+{% endfor %}
+sort /tmp/hosts|uniq >>/etc/hosts
+#
+# Enable FRR modules
+#
+{% set modlist = {'bgp':'bgpd','ospf':['ospfd','ospf6d'],'isis':'isisd'} %}
+{% for m in module|default([]) if modlist[m] is defined %}
+{%   for frr_m in [modlist[m]]|flatten %}
+echo "{{ frr_m }}=yes" >>/etc/frr/daemons
+{%   endfor %}
+{% endfor %}
+/usr/lib/frr/frrinit.sh restart
+#
+# Add lo0 interface
+#
+if [ ! -e /sys/devices/virtual/net/lo0 ]; then
+  ip link add lo0 type dummy
+fi
+#
+# Add vtysh.conf file
+echo "service integrated-vtysh-config" >/etc/frr/vtysh.conf
+#
+# Set Ethernet interface MTU
+{% for l in interfaces|default([]) if l.mtu is defined %}
+ip link set {{ l.ifname }} mtu {{ l.mtu }}
+{% endfor %}
+#
+# Rest of initial configuration done through VTYSH
+#
+cat >/tmp/config <<CONFIG
+hostname {{ inventory_hostname }}
+!
+ipv6 forwarding
+!
+interface lo0
+ no shutdown
+{% if 'ipv4' in loopback %}
+ ip address {{ loopback.ipv4 }}
+{% endif %}
+{% if 'ipv6' in loopback %}
+ ipv6 address {{ loopback.ipv6 }}
+{% endif %}
+!
+{% for l in interfaces|default([]) %}
+interface {{ l.ifname }}
+! no shutdown
+{% if l.name is defined %}
+ description {{ l.name }}{{ " ["+l.role+"]" if l.role is defined else "" }}
+{% elif l.type|default("") == "stub" %}
+ description Stub interface
+{% endif %}
+{% if l.ipv4 is defined %}
+ ip address {{ l.ipv4 }}
+{% endif %}
+{% if l.ipv6 is defined %}
+ ipv6 address {{ l.ipv6 }}
+ ipv6 nd ra-interval 5
+ no ipv6 nd suppress-ra
+{% endif %}
+{% if l.bandwidth is defined %}
+ bandwidth {{ l.bandwidth  }}
+{% endif %}
+!
+{% endfor %}
+do write
+CONFIG
+vtysh -f /tmp/config
