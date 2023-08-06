@@ -1,0 +1,186 @@
+image: &wiliot-ci-image
+  name: 142654642153.dkr.ecr.us-east-1.amazonaws.com/aws-ci:latest
+  aws:
+    access-key: $AWS_ACCESS_KEY_ID
+    secret-key: $AWS_SECRET_ACCESS_KEY
+
+pipelines:
+  branches:
+    master:
+      - step:
+            name: update minor version number
+            <<: *wiliot-ci-image
+            script:
+              - pip3 install setuptools_scm
+              - pip3 install gitpython
+              - apk add tree
+              #print current version:
+              - python3 wiliot/get_version.py
+              #Update patch version by git tag:
+              - version="`python3 wiliot/get_version.py next_minor`" && echo $version && git tag -a -m "[skip ci] build number $BITBUCKET_BUILD_NUMBER set the library patch version to $version." $version  && git push origin $version
+              #print new version
+              - python3 wiliot/get_version.py
+
+      - step:
+          name: Build and publish full version py-wilot into codeartifact
+          <<: *wiliot-ci-image
+          script:
+            - pip3 install setuptools_scm
+            - pip3 install gitpython
+            # get updated version number:
+            - version="`python3 wiliot/get_version.py`"
+            # update minor version:
+            - python3 setup.py sdist bdist_wheel
+            #update version.py with new minor version and build number (first step is done by setup as well- but we want to add build number as well):
+            - echo "__version__ = '$version'" > wiliot/version.py
+            - echo "build_number = '$BITBUCKET_BUILD_NUMBER'" >> wiliot/version.py
+            - aws codeartifact login --tool twine --domain wiliot-cloud --domain-owner 142654642153 --repository pypi
+            - twine upload --repository codeartifact dist/*
+
+      - step:
+          name: Build and publish slim version py-wilot into pypi
+          <<: *wiliot-ci-image
+          script:
+            - pip3 install setuptools_scm
+            - pip3 install gitpython
+            - apk add tree
+            #Get current version (was already updated by prev steps) before cleaning internal files:
+            - version="`python3 wiliot/get_version.py`"
+            #update version.py with new patch version and build number:
+            - echo "__version__ = '$version'" > wiliot/version.py
+            - echo "build_number = '$BITBUCKET_BUILD_NUMBER'" >> wiliot/version.py
+            # configure testpypi and pypi access
+            - echo "[pypi]" > ~/.pypirc && echo "username = __token__" >> ~/.pypirc && echo "password = $PYPI_KEY" >> ~/.pypirc && echo "[testpypi]" >> ~/.pypirc && echo "username = __token__" >> ~/.pypirc && echo "password = $TEST_PYPI_KEY" >> ~/.pypirc
+            # cleanup all the "internal" folders
+            - tree && find ./ -name "internal" && find ./ -name "internal" -type d -prune -exec rm -rf {} \; && tree
+            - python3 setup.py sdist bdist_wheel
+            #Logging(?):
+            - ls -al dist/ && ls -al build/
+            # push into pypi
+            - python3 -m twine upload --repository pypi dist/* #python3 -m twine upload --repository testpypi dist/*
+
+    develop:
+    - step:
+          name: update patch version number
+          <<: *wiliot-ci-image
+          script:
+            - pip3 install setuptools_scm
+            - pip3 install gitpython
+            - apk add tree
+            #print current version:
+            - python3 wiliot/get_version.py
+            #Update patch version by git tag:
+            - version="`python3 wiliot/get_version.py next_patch`" && echo $version && git tag -a -m "[skip ci] build number $BITBUCKET_BUILD_NUMBER set the library patch version to $version." $version  && git push origin $version
+            #print new version
+            - python3 wiliot/get_version.py
+
+    - step:
+        name: Build and publish slim version py-wilot into test-pypi
+        <<: *wiliot-ci-image
+        script:
+          - pip3 install setuptools_scm
+          - pip3 install gitpython
+          - apk add tree
+          # configure testpypi and pypi access
+          - echo "[testpypi]" >> ~/.pypirc && echo "username = __token__" >> ~/.pypirc && echo "password = $TEST_PYPI_KEY" >> ~/.pypirc
+          # get updated version- before cleaning internal trees:
+          - version="`python3 wiliot/get_version.py`"
+          #update version.py with new patch version and build number:
+          - echo "__version__ = '$version'" > wiliot/version.py
+          - echo "build_number = '$BITBUCKET_BUILD_NUMBER'" >> wiliot/version.py
+          #Print version to log:
+          - cat wiliot/version.py
+          # cleanup all the "internal" folders
+          - tree && find ./ -name "internal" && find ./ -name "internal" -type d -prune -exec rm -rf {} \; && tree
+          - python3 setup.py sdist bdist_wheel
+          - ls -al dist/ && ls -al build/
+          # push into test-pypi
+          - python3 -m twine upload --repository testpypi dist/*
+
+  #Leave as reference:
+    feature/version_control_by_git_DEBUG_BRANCH:
+      - step:
+          name: update patch version number
+          <<: *wiliot-ci-image
+          script:
+            - pip3 install setuptools_scm
+            - pip3 install gitpython
+            - apk add tree
+            #Update version by git tag:
+            - version="`python3 wiliot/get_version.py next_patch`" && echo $version && git tag -a -m "[skip ci] build number $BITBUCKET_BUILD_NUMBER set the library patch version to $version." $version  && git push origin $version
+            # get updated version:
+            - version="`python3 wiliot/get_version.py`"
+            # cleanup all the "internal" folders
+            - tree && find ./ -name "internal" && find ./ -name "internal" -type d -prune -exec rm -rf {} \; && tree
+            - python3 setup.py sdist bdist_wheel
+            - ls -al dist/ && ls -al build/
+            - echo "__version__ = $version" > wiliot/version.py
+            - echo "build_number = $BITBUCKET_BUILD_NUMBER" >> wiliot/version.py
+            - cat wiliot/version.py
+            # configure testpypi and pypi access
+            - echo "[testpypi]" >> ~/.pypirc && echo "username = __token__" >> ~/.pypirc && echo "password = $TEST_PYPI_KEY" >> ~/.pypirc
+            # push into test-pypi
+            #- python3 -m twine upload --repository testpypi dist/*
+
+  custom:
+    publish-into-test-pypi:
+      - step:
+          name: Build and publish library into test pypi
+          <<: *wiliot-ci-image
+          script:
+            - pip3 install setuptools_scm
+            - pip3 install gitpython
+            - apk add tree
+            #Update version by git tag:
+            - version="`python3 wiliot/get_version.py next_patch`" && echo $version && git tag -a -m "[skip ci] build number $BITBUCKET_BUILD_NUMBER set the library patch version to $version." $version  && git push origin $version
+            # get updated version:
+            - version="`python3 wiliot/get_version.py`"
+            - echo "[pypi]" > ~/.pypirc && echo "username = __token__" >> ~/.pypirc && echo "password = $PYPI_KEY" >> ~/.pypirc && echo "[testpypi]" >> ~/.pypirc && echo "username = __token__" >> ~/.pypirc && echo "password = $TEST_PYPI_KEY" >> ~/.pypirc
+            - tree && find ./ -name "internal" && find ./ -name "internal" -type d -prune -exec rm -rf {} \; && tree
+            - python3 setup.py sdist bdist_wheel
+            - echo "__version__ = $version" > wiliot/version.py
+            - echo "build_number = $BITBUCKET_BUILD_NUMBER" >> wiliot/version.py
+            - cat wiliot/version.py
+            - ls -al dist/ && ls -al build/
+            - python3 -m twine upload --repository testpypi dist/*
+
+    publish-into-codearfact:
+      - step:
+          name: Build and publish library into codeartifact
+          <<: *wiliot-ci-image
+          script:
+            #Update version by git tag:
+            - version="`python3 wiliot/get_version.py next_patch`" && echo $version && git tag -a -m "[skip ci] build number $BITBUCKET_BUILD_NUMBER set the library patch version to $version." $version  && git push origin $version
+            - python3 setup.py sdist bdist_wheel
+            - echo "__version__ = $version" > wiliot/version.py
+            - echo "build_number = $BITBUCKET_BUILD_NUMBER" >> wiliot/version.py
+            - aws codeartifact login --tool twine --domain wiliot-cloud --domain-owner 142654642153 --repository pypi
+            - twine upload --repository codeartifact dist/*
+
+    run-unit-tests:
+      - step:
+          name: Run unit tests
+          <<: *wiliot-ci-image
+          script:
+            - apk add tree
+            - pip3 install pytest
+            - tree
+            - cd wiliot
+            - pytest wiliot/cloud_apis/internal/tests
+
+    publish-test:
+      - step:
+          name: publish
+          <<: *wiliot-ci-image
+          script:
+            #- version=$(cat wiliot/version.py | grep __version__ | grep -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,10}")
+            #- patch_ver=$(echo $version | cut -d . -f 3)
+            #- new_ver=$((patch_ver+1))
+            #- sed -Ei "s/[0-9]{1,100}\'$/$BITBUCKET_BUILD_NUMBER\'/g" wiliot/version.py
+            #- git add wiliot/version.py
+            #- git commit -m "[skip ci] set the library patch version to $BITBUCKET_BUILD_NUMBER."
+            #- git push
+            - echo "Publish-test is currently not in use"
+
+options:
+  docker: true
