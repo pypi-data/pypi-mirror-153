@@ -1,0 +1,578 @@
+#!/usr/bin/env python3
+
+#REMARKS ========================
+#        ... cv2.V4L2 is used to avoid stuck while cap.read()
+
+# to override print <= can be a big problem with exceptions
+from __future__ import print_function # must be 1st
+import builtins
+
+import sys
+
+from fire import Fire
+
+from flashcam.version import __version__
+
+from flashcam import config
+from flashcam import usbcheck
+from flashcam import direct
+
+from flashcam import v4lc
+# from flashcam.v4lc import set_gem
+
+from flashcam import web # THIS IS THE MOST IMPORTANT PART:CONFIG LOAD
+
+import json
+
+import webbrowser
+import multiprocessing
+import time
+import psutil
+###from flashcam.real_camera import Camera
+#from flask_script import Manager, Server
+import subprocess as sp
+import atexit
+
+import flashcam.config as config
+
+import flashcam.uniwrec as uniwrec
+
+import os #  for exit
+
+import numpy as np
+
+import datetime as dt
+
+class Bcolors:
+    HEADER = '[95m'
+    OKBLUE = '[94m'
+    OKGREEN = '[92m'
+    WARNING = '[93m'
+    FAIL = '[91m'
+    ENDC = '[0m'
+    BOLD = '[1m'
+    UNDERLINE = '[4m'
+
+
+
+def exit_handler():
+
+    ok=False
+    kill_gunicorn()
+
+def GUNI():
+    CMD="gunicorn -w 1 -b 0.0.0.0:8000 -k gevent --timeout 15 web:app"
+    CMD="gunicorn --threads 5  -w 1 -b 0.0.0.0:8000  --timeout 15 web:app"
+    print(CMD)
+    proc = sp.Popen(CMD.split(), shell=False)
+    print(CMD)
+    proc.wait()
+    proc.kill()
+    return proc.pid
+
+def API():
+   print('i... In API n',config.CONFIG['port'])
+   web.app.run(host='0.0.0.0', port=config.CONFIG['port'], threaded=True)
+
+
+def kill(proc_pid):
+    print(f"kiilling  {proc_pid}")
+    process = psutil.Process(proc_pid)
+    for proc in process.children(recursive=True):
+        proc.kill()
+    process.kill()
+
+def kill_gunicorn():
+    CMD = f"killall -9 gunicorn"
+    print("X... KIILLING", CMD)
+    sp.Popen(CMD, shell = True )
+
+
+
+def initiate_port( port ):
+    config.load_config()
+    CMD = f'wget --user  {config.CONFIG["user"]} --password {config.CONFIG["password"]} http://localhost:{port}/video -O /dev/null '
+    print("\n\n\ni... ",CMD,"\n\n\n")
+    #return
+    proc = sp.Popen(CMD, shell=True)
+    try:
+        proc.wait(timeout=4)
+    except sp.TimeoutExpired:
+        print("D... wget timeout expired")
+    try:
+        kill(proc.pid)
+    except:
+        print("X...  killing wget failed")
+        ##    Camera = Camera # creating the OBJECT
+
+
+
+
+
+#=============================================================
+#
+#                   MAIN
+#
+#=============================================================
+def main(cmd = "usage",
+         product = None,
+         res = None,
+         framekind = None,
+         threshold = None,
+         average = None,
+         blur = None,
+         laps = None,
+         web5000 = None,
+         expo = None,
+         gain = None,
+         mmaga = None,
+         histogram = None,
+         save = None,
+         qpassfile = None,
+         otate = None,
+         x = None,
+         y = None,
+         debug = None,
+         vof = None,
+         zoom = None
+):
+
+    ''' Main function of the project, alphabetical order
+|    |                                           |    |
+| -a | average  averaging                        |  6 |
+| -b | blur                                      |  7 |
+| -c | command                                   |  2 |
+| -d | debug                                     |  1 |
+| -e | expo ( in v4l )                           | 11 |
+| -f | framekind  target_frame                   |  5 |
+| -g | gain                                      | 12 |
+| -h | histogram (show mean in image)            | 14 |
+|    |                                           |    |
+| -l | laps                                      |  9 |
+| -m | gamma                                     | 13 |
+|    |                                           |    |
+| -o | rOtate                                    | 19 |
+| -p | product/pathID                            |  3 |
+| -q | passfile in UNI                           | 16 |
+| -r | resolution                                |  4 |
+| -s | in UNI save AVI                           | 15 |
+| -t | threshold                                 |  8 |
+| -v | field of View in degrees                  |110 |
+| -w | web5000 ... view flask                    | 10 |
+| -x | speed of translation for astrophotography | 17 |
+| -y | speed of translation for astrophotography | 18 |
+| -z | zoom                                      | 20 |
+|    | i j k n  p u v                            |    |
+|    |                                           |    |
+    '''
+
+    # CONFIG IS LOADED AT THIS MOMENT
+    # from flashcam import web # THIS IS THE MOST IMPORTANT PART:CONFIG LOAD
+
+    # I CHECK THE PARAMETERS-REQUIRING-VALUES
+    #print(f"gain = {gain}")
+    #print(f"expo = {expo}")
+    #print(f"mmaga = {mmaga}")
+
+    # HERE I DEFINE DEFAULTS.
+    main_defaults={}
+    main_defaults["product"]=""
+    main_defaults["res"]="640x480"
+    main_defaults["framekind"] = "direct"
+    main_defaults["threshold"] = 0
+    main_defaults["average"] = 0
+    main_defaults["blur"] = 0
+    main_defaults["laps"] = -1
+    main_defaults["web5000"] = False
+    main_defaults["expo"] = "auto"
+    main_defaults["gain"] = -1
+    main_defaults["mmaga"] = -1
+    main_defaults["histogram"] = False
+    main_defaults["save"] = False,  # for UNI
+    main_defaults["qpassfile"] = "~/.pycamfw_userpass"
+    main_defaults["otate"] = False # for UNI, also for CONFIG, also for show
+    main_defaults["x"] = 0
+    main_defaults["y"] = 0
+    main_defaults["debug"]=False
+    main_defaults["vof"]="110,2"
+    main_defaults["zoom"]=1
+
+    # ACTUALS - get from commandline
+    main_actual={}
+    main_actual["product"]=product
+    main_actual["res"]=res
+    main_actual["framekind"] = framekind
+    main_actual["threshold"] = threshold
+    main_actual["average"] = average
+    main_actual["blur"] = blur
+    main_actual["laps"] = laps
+    main_actual["web5000"] = web5000
+    main_actual["expo"] = expo
+    main_actual["gain"] = gain
+    main_actual["mmaga"] = mmaga
+    main_actual["histogram"] = histogram
+    main_actual["save"] = save  # for UNI
+    main_actual["qpassfile"] = qpassfile
+    main_actual["otate"] = otate # for UNI, also for CONFIG, also for show
+    main_actual["x"] = x
+    main_actual["y"] = y
+    main_actual["debug"]=debug
+    main_actual["vof"]=vof
+    main_actual["zoom"]=zoom
+
+    #----- check -- invalids - bool type:  True/False -------------------------
+    for k,v in main_actual.items():
+        if ( type(v) == bool) and not(k in ['web5000','histogram','save','otate','debug']):
+            print(f"!... missing a value for parameter {k}: {v}")
+            sys.exit(1)
+
+
+
+    # ----- print nicely AND UPDATE config ---------------------
+    for k,v in main_actual.items():
+        if not v is None: # value injected
+            print(f"i... =====> | {k:>13s} | {str(v):20s} |")
+            config.CONFIG[k] = v  # UPDATE HERE
+
+
+
+    #----- check --invalids -------------------------
+    if (config.CONFIG["threshold"]>0) and (config.CONFIG["blur"]==0) and (config.CONFIG["average"]<2):
+        print("X... cannot be -thr>0 and average==0")
+        sys.exit(1)
+
+
+
+    #problematic - i cannot SAVE directly, it rewrites the changes
+
+    #======================= I copy this to web.py so that gunicorn runs ok
+    if not debug:
+        # print("X... NO DEBUG colors in main")
+        _print = print # keep a local copy of the original print
+        builtins.print =lambda *args, **kwargs:  None  if (isinstance(args[0], str)) and (args[0].find("D...")==0) else  _print( *args, **kwargs) if ('file' in kwargs) else _print( "{}".format(Bcolors.FAIL   if ((isinstance(args[0], str)) and (args[0].find("X...")>=0)) else Bcolors.ENDC) , *args, Bcolors.ENDC, **kwargs, file=sys.stderr)
+    else:
+        print("X... DEBUG COLORS FROM MAIN")
+        # debug - show all + colors
+        _print = print # keep a local copy of the original print
+        builtins.print =lambda *args, **kwargs:   _print( *args, **kwargs) if ('file' in kwargs) else _print( "{}".format(Bcolors.FAIL   if ((isinstance(args[0], str)) and (args[0].find("X...")>=0)) else Bcolors.OKGREEN if  ((isinstance(args[0], str)) and (args[0].find("i...")>=0)) else Bcolors.ENDC  ), *args, Bcolors.ENDC, **kwargs, file=sys.stderr)
+
+    #======== DEFINE THE CONFIG FILE HERE ========
+    #========   NONONONO   NO              ======
+    #======== in this case, all config handling must be win web.py
+    #------- as it is the second ENTRY point
+    #-------- and the only for gunicorn -----------------
+
+
+
+
+
+    all_commands = ["usage","savecfg","save","flask5000",
+                    "flask", "show", "ls" , "getres" ,
+                    "v4l", "uni",
+                    "test"]
+    if not (cmd in all_commands):
+        print(f"X... unknown command {cmd} !! ... ",  all_commands)
+        sys.exit(1)
+
+
+
+
+#=====================================================CONFIG UPDATE
+    # saveme = False
+    # # print( "i... USER  bin_fla:", config.CONFIG['user'] )
+    # # if main_defaults["framekind"] is None:
+
+    # if config.CONFIG['target_frame'] != framekind:
+    #     config.CONFIG['target_frame'] = framekind
+    #     saveme = True
+    # if config.CONFIG['threshold']    != threshold:
+    #     config.CONFIG['threshold']    = threshold
+    #     saveme = True
+    # if config.CONFIG['average']      != average:
+    #     config.CONFIG['average']      = average
+    #     saveme = True
+    # if config.CONFIG['blur']         != blur:
+    #     config.CONFIG['blur']         = blur
+    #     saveme = True
+    # if config.CONFIG['timelaps']         != laps:
+    #     config.CONFIG['timelaps']         = laps
+    #     saveme = True
+    # if config.CONFIG['histogram']         != histogram:
+    #     config.CONFIG['histogram']         = histogram
+    #     saveme = True
+    # if config.CONFIG['resolution']         != res:
+    #     config.CONFIG['resolution']         = res
+    #     saveme = True
+    # if config.CONFIG['x']         != x:
+    #     config.CONFIG['x']         = x
+    #     saveme = True
+    # if config.CONFIG['y']         != y:
+    #     config.CONFIG['y']         = y
+    #     saveme = True
+
+    # if config.CONFIG['rotate180']         != otate:
+    #     config.CONFIG['rotate180'] = otate
+    #     saveme = True
+
+    # if product != "":
+    #     config.CONFIG['recommended'] = product
+    #     saveme = True
+#====================== I update the values from CONFIG for now ========
+
+
+
+    if cmd == "usage":
+        print(''' ... usage:
+    flashcam command [options]
+_____________________________________________________
+    commands:
+        ls        ... see available cameras, IDPath (use in -p)
+        getres    ... show resolutions available for product
+        show      ... direct show
+        flask5000 ... start flask on port 5000, consider -w
+        savecfg   ... save commandline parameters to config
+        v4l       ...
+        uni       ... uninteruptible stream: uni http://192.168.0.91:8000/video
+_____________________________________________________
+    options:                         EXAMPLE:
+        -p ... product or IDpath       | -p 14.0-usb-0:2:1.0
+        -r ... resolution (see getres) | -r 320x240
+        -a ... accumulation* : n frames| -a 10
+        -b ... blur* : blur the frame  | -b 3
+        -t ... threshold for motiondet | -t 100
+        -f ... frame kind (direct,delta*,detect*,histo)
+        -h ... show a mean histo value | -h
+        -l ... save timelaps [seconds] | -l 3600
+        -w ... open web (for flask5000)| -w
+        -e ... exposure (0-1;auto)     | -e 0.02
+        -g ... gain     (0-1; default) | -g 0.1
+        -m ... gamma    (0-1;default)  | -m 0.1
+        -q ... passfile for UNI        | -q ~/.pycamfw_userpass
+        -x ... move image in x ( -y)   | -x 0.01
+           ... <1 is speed/s >1 fixed  | -x -200 -y 100
+        -o ... rotate by N degrees     | -o 180
+           ...  -x,-y>1 = center       | -x 100 -y 10 -o 30
+        -z ... zoom (center from cross)| -z 2
+        -d ... debug info
+        -s ... save avi in UNI         | -s
+_____________________________________________________
+       * usefull with -t
+''')
+        sys.exit(0)
+
+    elif cmd == "uni":
+        uniok = True
+
+
+        product2 = str(product)
+
+        if os.path.exists( product2): # i can see a file
+            uniwrec.display2( product2, save = save, passfile = qpassfile, rotate = otate, vof = str(config.CONFIG['vof']))
+            sys.exit(0)
+
+        if (product2 == None) or (product2=="None"):
+            product2 = "http://127.0.0.1:5000/video"
+            uniok = False
+        if (product2 == "5000") or (product2 == ":5000") :
+            product2 = "http://127.0.0.1:5000/video"
+            uniok = False
+        if (product2 == "8000") or (product2 == ":8000") :
+            product2 = "http://127.0.0.1:8000/video"
+            uniok = False
+        if product2.find("http://")!=0:
+            product2= "http://"+product2
+            uniok = False
+
+        # if only IP given
+
+        print( product2 )
+        print( product2 )
+        print( product2 )
+        print( product2 )
+
+        if ((product2.find(":8000")>0)or(product2.find(":5000")>0) ) \
+           and (product2.find("/video")!= len(product2)-len("/video")):
+            product2+= "/video"
+            uniok = False
+        elif product2.find("000/video")!= len(product2)-len("000/video"):
+            product2+= ":8000/video"
+            uniok = False
+            print( product2 )
+            print( product2 )
+            print( product2 )
+            print( product2 )
+            print( product2 )
+            print( product2 )
+
+        if not uniok:
+            #print("a")
+            print(f"i... ADDRESS CHANGED FROM {product} TO : {product2}")
+
+        uniwrec.display2( product2, save = save, passfile = qpassfile, rotate = otate, vof = str(config.CONFIG['vof']))  # i can see a stream
+        sys.exit(0)
+
+
+    elif cmd == "v4l":
+
+        recomvid = usbcheck.recommend_video( product )
+
+        cc = v4lc.V4L2_CTL("/dev/video"+str(recomvid[0]))
+        output = v4lc.get_resolutions( recomvid[0]  )
+        print(f"i... /dev/video{recomvid[0]}: res== {output}")
+        #print(cc._list_controls())
+
+        print(f"required gain  = {gain}")
+        print(f"required expo  = {expo}")
+        print(f"required gamma = {mmaga}")
+        v4lc.set_gem(cc, gain, expo, mmaga)
+        # print(f"gain = {gain}")
+        # print(f"expo = {expo}")
+        # print(f"mmaga = {mmaga}")
+        sys.exit(0)
+
+    elif cmd == "ls":
+        usbcheck.recommend_video()
+
+
+    elif (cmd == "savecfg") or (cmd=="save"):   # i dont have it loaded ....
+        # print( "i... USER  bin_fla:", config.CONFIG['user'] )
+        # config.CONFIG['target_frame'] = framekind
+        # config.CONFIG['threshold'] = threshold
+        # config.CONFIG['timelaps'] = laps
+        # config.CONFIG['average'] = average
+        # config.CONFIG['blur'] = blur
+        # config.CONFIG['histogram'] = histogram
+        # config.CONFIG['x'] = x
+        # config.CONFIG['y'] = y
+
+        # config.CONFIG['rotate180'] = otate
+
+        # config.CONFIG['expo'] = expo
+        # config.CONFIG['gamma'] = mmaga
+        # config.CONFIG['gain'] = gain
+
+        config.save_config()
+        print("i... Configuration SAVED")
+
+    # elif cmd == "show2":
+    #     recomvid = usbcheck.recommend_video( product )
+    #     # usbcheck.show_cam( recomvid[0], res, recommended= product)
+
+    # --------------------------------------------------
+    elif cmd == "show":
+
+        recomvid = usbcheck.recommend_video( product )
+
+        # config.CONFIG["recommended"] = recomvid
+        # config.CONFIG['timelaps'] = laps
+        # config.CONFIG['target_frame'] = framekind
+        # config.CONFIG['threshold'] = threshold
+        # config.CONFIG['average'] = average
+        # config.CONFIG['blur'] = blur
+        # config.CONFIG['histogram'] = histogram
+        # config.CONFIG['resolution'] = res
+        # config.CONFIG['x'] = x
+        # config.CONFIG['y'] = y
+        # config.CONFIG['rotate180'] = otate
+
+        # config.CONFIG['expo'] = expo
+        # config.CONFIG['gain'] = gain
+        # config.CONFIG['gamma'] = mmaga
+
+        # v4lc.set_gem(cc, gain, expo, mmaga)
+
+
+        direct.show_cam( )
+
+    # ------------------------------------------------------------------------------
+    elif cmd == "getres":
+        recomvid = usbcheck.recommend_video( product )
+        resolutions = usbcheck.get_resolutions( recomvid[0] )
+    # ------------------------------------------------------------------------------
+    elif cmd == "flask":
+        print("i... NOT STARTING flask NOT STARTING GUNICORN")
+
+        CMD="gunicorn --threads 5  -w 1 -b 0.0.0.0:8000  --timeout 15 web:app"
+        print(CMD)
+        print(CMD)
+        print(CMD)
+        print("i... now i ONLY try to initiate the port 8000 and I quit")
+        time.sleep(4)
+        initiate_port(8000)
+        sys.exit(0)
+
+
+    # ------------------------------------------------------------------------------
+    elif cmd == "flask5000":
+
+        # [x] why I am saving ? because it is the way to tune real flask 8000?
+        #     - i can only pass to real_cam by saving CONFIG !
+
+
+        # config.CONFIG[''] =
+
+        # NOW i dont want to save during flask5000!
+        #if saveme:
+        #    config.save_config()
+
+        #OR     - i must save it to config, because else config if only x y====
+        #EITHER - I must remove x,y from  cfg.json  file
+        #CHECK WHERE IS THE PROBLEM
+
+        #print(config.CONFIG)
+        #print(config.CONFIG["histogram"]) # here it is true BUT
+        #print("===================")
+        print("i... flask starting on port 5000 - with autosaving POWER")
+        p = multiprocessing.Process(target=API)
+        p.start()
+        if web5000:
+            webbrowser.open('http://localhost:5000')
+        else:
+            time.sleep(3)
+            initiate_port(5000)
+
+
+    # ------------------------------------------------------------------------------
+    elif cmd == "test":
+        print("i... test")
+        recomvid = usbcheck.recommend_video( product )
+
+        cc = v4lc.V4L2_CTL("/dev/video"+str(recomvid[0]))
+        output = v4lc.get_resolutions( recomvid[0]  )
+        print(f"i... /dev/video{recomvid[0]}: res== {output}")
+        #print(cc._list_controls())
+
+        now = dt.datetime.now()
+        now = f"{now}".replace(" ","_")
+
+
+        direct.get_frame( )
+        for i in np.arange(np.log(0.001), np.log(1),0.1):
+            expo = np.exp( i )
+            print(f"required gain  = {gain}")
+            print(f"required expo  = {expo}")
+            print(f"required gamma = {mmaga}")
+            v4lc.set_gem(cc, gain, expo, mmaga )
+            hmean = direct.get_frame( )
+            if hmean[-1].upper()=="B": hmean = hmean[0:-1]
+            if hmean[-1].upper()=="W": hmean = hmean[0:-1]
+            print(f"i..............{expo:.3f}............... {hmean}")
+            print(f"i..............{expo:.3f}............... {hmean}")
+            print(f"i..............{expo:.3f}............... {hmean}\n")
+            with open(f"calib{now}.txt","a") as f:
+                f.write(f"{expo:.4f} {hmean}\n")
+            #time.sleep(1)
+        hmean = direct.get_frame(last=True )
+
+
+        time.sleep(1)
+        v4lc.set_gem(cc, "def", "auto", "def" )
+        sys.exit(0)
+
+    else:
+        print("X... NO COMMAND GIVEN, ENDING")
+        unitname.func()
+
+
+if __name__=="__main__":
+    Fire(main)
