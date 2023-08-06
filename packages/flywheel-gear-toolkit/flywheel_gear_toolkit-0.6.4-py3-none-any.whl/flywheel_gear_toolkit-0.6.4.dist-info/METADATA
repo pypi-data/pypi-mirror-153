@@ -1,0 +1,112 @@
+Metadata-Version: 2.1
+Name: flywheel-gear-toolkit
+Version: 0.6.4
+Summary: Tooling for developing Flywheel gears
+Home-page: https://gitlab.com/flywheel-io/public/gear-toolkit
+License: MIT
+Author: Flywheel
+Author-email: support@flywheel.io
+Requires-Python: >=3.7,<4.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Provides-Extra: all
+Provides-Extra: dicom
+Provides-Extra: fw-file
+Provides-Extra: nipype
+Provides-Extra: numpy
+Provides-Extra: sdk
+Requires-Dist: backports.zoneinfo (>=0.2.1,<0.3.0); python_version == "3.8"
+Requires-Dist: dotty-dict (>=1.2.1,<2.0.0)
+Requires-Dist: flywheel-bids (>=1.0.4,<2.0.0); extra == "all" or extra == "sdk"
+Requires-Dist: flywheel-gears (>=0.2,<0.3)
+Requires-Dist: flywheel-sdk (>=14.2.0); extra == "all" or extra == "sdk"
+Requires-Dist: fw-file (>=1,<2); extra == "all" or extra == "fw-file" or extra == "dicom"
+Requires-Dist: fw-meta (>=2,<3)
+Requires-Dist: jsonschema (>=3.2.0,<4.0.0)
+Requires-Dist: nibabel (>=3.2.1,<4.0.0); extra == "all" or extra == "dicom" or extra == "nipype"
+Requires-Dist: nipype (>=1.6,<2.0); extra == "all" or extra == "nipype"
+Requires-Dist: numpy (>=1,<2); extra == "all" or extra == "numpy"
+Requires-Dist: pathvalidate (>=2.5.0,<3.0.0)
+Requires-Dist: pydantic (>=1.8.1,<2.0.0)
+Project-URL: Documentation, https://gear-toolkit.readthedocs.io/en/latest/
+Project-URL: Repository, https://gitlab.com/flywheel-io/public/gear-toolkit
+Description-Content-Type: text/markdown
+
+# Flywheel Gear Toolkit
+
+**flywheel-gear-toolkit** is a library that provides tooling for developing Flywheel gears.
+
+## Installation
+
+```
+pip install flywheel-gear-toolkit
+```
+
+## Documentation
+
+The documentation for the **flywheel-gear-toolkit** can be found
+[here](https://flywheel-io.gitlab.io/public/gear-toolkit/index.html).
+
+## Contributing
+
+### Building
+
+The dependency and virtual environment manager for the gear toolkit is [poetry](https://python-poetry.org/).
+
+```
+poetry install
+```
+
+### Testing, Linting, Building doc
+
+Linting, Testing and Documentation building are all done using `pre-commit`.
+
+After installing poetry, the `pre-commit` command will be installed.  Make sure pre-commit hooks are installed by running either `poetry run pre-commit install` or from within the poetry shell `pre-commit install`.  After hooks are installed, they will automatically be run on each `git commit`, they can all be skipped by running `git commit --no-verify` or specific hooks can be skipped by setting the enviromental variable, ex. `SKIP=test:pre-commit:pytest git commit`.
+
+Individual hooks can also be run independently.  For example, to build sphinx-doc, you can run `pre-commit run publish:doc:test`, or to run black on all files: `pre-commit run test:flywheel-lint -a`.  For a list of all hooks, view the [pre-commit-config](./.pre-commit-config.yaml).
+
+### Managing dependencies
+
+To add new dependencies to this repo, please use [poetry](https://python-poetry.org/)
+and to follow the below steps:
+
+```
+# Install my-package:
+poetry add my-package
+# or install my-package as part of the required packages for development (e.g. pytest):
+poetry add my-package --dev
+# Sync poetry.lock
+poetry lock
+```
+
+### Building and releasing
+
+#### Local building
+
+To build the project locally and verify if the build was succesful, you can run
+
+```
+poetry build --format wheel
+twine check dist/*.whl
+```
+
+#### Versioning and project information
+
+The `pyproject.toml` file has replaced the usual `setup.py` in this repository and contains information on contributers, maintainers, project description, project URLs, and project version.  In order to change any information on the project, it must be changed in the `pyproject.toml`, file. Documentation for this file can be found [here](https://python-poetry.org/docs/pyproject/), and information on dependency version specification syntax can be found [here](https://python-poetry.org/docs/dependency-specification/)
+
+#### CI for tagging and releasing
+
+There is CI in place to help with tagging and releasing versions and hotfixes of the flywheel-gear-toolkit.
+
+##### Automatic tagging (Not yet enabled)
+
+When a commit that contains the word 'release' is pushed to master or a branch beginning with 'hotfix-' and there are changes to the pyproject.toml file (such as version), gitlab CI will automatically checkout the fix/release, label the branch with the tag found in the current pyproject.toml version, and push the tags.
+
+##### Automatic publishing
+
+When tags are pushed, either manually or by the previous automatic tagging CI, the publish job wil be triggered which will automatically build the project wheel and push the version to PYPI.
+
