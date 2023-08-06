@@ -1,0 +1,35 @@
+# -*- coding: utf-8 -*-
+# vim: ft=jinja
+
+{#- Start with  defaults from defaults.sls #}
+{% import_yaml 'letsencrypt/defaults.yaml' as defaults %}
+{% import_yaml 'letsencrypt/osfamilymap.yaml' as osfamilymap %}
+{% import_yaml 'letsencrypt/osmap.yaml' as osmap %}
+{% import_yaml 'letsencrypt/osfingermap.yaml' as osfingermap %}
+
+{% set letsencrypt = salt['grains.filter_by'](
+    defaults,
+    merge = salt['grains.filter_by'](
+        osfamilymap,
+        grain='os_family',
+        merge=salt['grains.filter_by'](
+            osmap,
+            grain='os',
+            merge=salt['grains.filter_by'](
+                osfingermap,
+                grain='osfinger',
+                merge=salt['config.get']('letsencrypt', merge='recurse'),
+            ),
+        ),
+    ),
+    base='letsencrypt')
+%}
+
+{# Make backwards compatible with use_package #}
+{% if letsencrypt.use_package is defined %}
+  {% if letsencrypt.use_package %}
+    {{ letsencrypt | set_dict_key_value('install_method', 'package') }}
+  {% else %}
+    {{ letsencrypt | set_dict_key_value('install_method', 'git') }}
+  {% endif %}
+{% endif %}

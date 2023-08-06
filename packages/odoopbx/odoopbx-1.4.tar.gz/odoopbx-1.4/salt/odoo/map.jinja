@@ -1,0 +1,16 @@
+{% import_yaml 'odoo/defaults.yaml' as defaults %}
+
+{% set odoo = salt['grains.filter_by'](
+  defaults,
+  merge=salt['grains.filter_by'](
+    { 'default':
+      { 'admin_passwd': 999999999999999 | random_hash,
+        'version': salt['environ.get']('ODOO_VERSION', default='15.0'),
+        'db': salt['environ.get']('ODOO_DB', default='odoopbx_15'),
+      }
+    },
+    merge=salt['config.get']('odoo', merge='recurse')
+    ),
+  base='odoo'
+  )
+%}

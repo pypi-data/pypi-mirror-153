@@ -1,0 +1,85 @@
+###
+# Include master_*.conf in Salt config directory to override defaults or add new params.
+include: 'master_*.conf'
+
+###
+# Salt master listen address.
+interface: 127.0.0.1
+
+###
+# Log level, default ``info``.
+log_level: info
+###
+# Log file, default /var/log/salt/master
+log_file: {{ log_file }}
+log_fmt_logfile: '[%(levelname)-8s] %(name)s:%(lineno)s %(message)s'
+log_fmt_console: '%(asctime)s %(colorlevel)s %(name)s:%(lineno)s %(message)s'
+
+autosign_grains_dir: /etc/salt/autosign
+
+file_roots:
+  base:
+    - /etc/salt/roots
+
+external_auth:
+  file:
+    ^filename: /etc/salt/auth
+    ^filetype: text
+    ^hashtype: md5
+    ^field_separator: '|'
+    odoo:
+      - .*
+      - '@wheel'
+      - '@runner'
+      - '@jobs'
+
+###
+# `REST CherryPy <https://docs.saltproject.io/en/latest/ref/netapi/all/salt.netapi.rest_cherrypy.html>`__ HTTP(S) Salt API server.
+rest_cherrypy:
+  ###
+  # API server listen address, default ``0.0.0.0``.
+  address: 0.0.0.0
+  ###
+  # API server listen port, default ``48008``.
+  port: 48008
+  ###
+  # Disable connection SSL, default ``False``.
+  disable_ssl: False
+  ###
+  # SSL certificate path, default ``/etc/pki/current/fullchain.pem``.
+  ssl_crt: /etc/pki/current/fullchain.pem
+  ###
+  # SSL private key path, default ``/etc/pki/current/privkey.pem``.
+  ssl_key: /etc/pki/current/privkey.pem
+  ###
+  # Access log file path, default ``/var/log/salt/api_access``.
+  log_access_file: none
+  ###
+  # Error log file path, ``/var/log/salt/api_errors``.
+  log_error_file: none
+  ###
+  # Debug mode, default ``False``.
+  debug: False
+  ###
+  # Maximum request body size in bytes, default ``1048576``.
+  max_request_body_size: 1048576
+
+###
+# Master reactor processes priority, default ``9``.
+reactor_niceness: 9
+###
+# Master reactor threads, default ``64``.
+reactor_worker_threads: 64
+###
+# List of reactor patterns. See `Salt reactor docs <https://docs.saltproject.io/en/latest/topics/reactor/index.html>`__ for details.
+reactor:
+  - 'ami_event/ChallengeSent':
+      - /etc/salt/reactor/ipset_expire.sls
+  - 'ami_event/SuccessfulAuth':
+      - /etc/salt/reactor/ipset_authed.sls
+  - 'ami_event/InvalidPassword':
+      - /etc/salt/reactor/ipset_banned.sls
+  - 'ami_event/InvalidAccountID':
+      - /etc/salt/reactor/ipset_banned.sls
+  - 'ami_event/ChallengeResponseFailed':
+      - /etc/salt/reactor/ipset_banned.sls

@@ -1,0 +1,17 @@
+{% import_yaml 'agent/defaults.yaml' as defaults %}
+{% import_yaml "agent/osfamilymap.yaml" as osfamilymap %}
+{% import_yaml "agent/osfingermap.yaml" as osfingermap %}
+
+{% set agent = salt['grains.filter_by'](
+    defaults,
+    merge = salt['grains.filter_by'](
+        osfamilymap,
+        grain='os_family',
+        merge=salt['grains.filter_by'](
+            osfingermap,
+            grain='osfinger',
+            merge=salt['config.get']('agent', merge='recurse')
+        ),
+     ),
+    base='agent')
+%}
