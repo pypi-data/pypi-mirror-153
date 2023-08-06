@@ -1,0 +1,134 @@
+{
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "definitions" : {
+    "types" : {
+      "nullable_string" : {
+        "oneOf" : [
+          {
+            "type" : "null"
+          },
+          {
+            "type" : "string"
+          }
+        ]
+      },
+      "nullable_boolean" : {
+        "oneOf" : [
+          {
+            "type" : "null"
+          },
+          {
+            "type" : "boolean"
+          }
+        ]
+      }
+    },
+    "type" : {
+      "type" : "string",
+      "enum" : [
+        "device-property",
+        "channel-property"
+      ]
+    }
+  },
+  "type" : "object",
+  "properties" : {
+    "id" : {
+      "type" : "string",
+      "description" : "Entity unique uuid v4 identifier"
+    },
+    "type" : {
+      "$ref" : "#/definitions/type"
+    },
+    "enabled" : {
+      "type" : "boolean",
+      "default" : false
+    },
+    "is_triggered" : {
+      "$ref" : "#/definitions/types/nullable_boolean",
+      "default" : null
+    },
+    "trigger" : {
+      "type" : "string",
+      "description" : "Trigger unique uuid v4 identifier"
+    },
+    "owner" : {
+      "$ref" : "#/definitions/types/nullable_string",
+      "description" : "Entity owner uuid v4 identifier"
+    }
+  },
+  "if" : {
+    "properties" : {
+      "type" : {
+        "const" : "channel-property"
+      }
+    }
+  },
+  "then" : {
+    "properties" : {
+      "device" : {
+        "type" : "string"
+      },
+      "channel" : {
+        "type" : "string"
+      },
+      "property" : {
+        "type" : "string"
+      },
+      "value" : {
+        "type" : "string",
+        "description" : "Value to be sent to the device"
+      }
+    },
+    "required" : [
+      "id",
+      "type",
+      "enabled",
+      "trigger",
+      "device",
+      "channel",
+      "property",
+      "value"
+    ]
+  },
+  "else" : {
+    "if" : {
+      "properties" : {
+        "type" : {
+          "const" : "device-property"
+        }
+      }
+    },
+    "then" : {
+      "properties" : {
+        "device" : {
+          "type" : "string"
+        },
+        "property" : {
+          "type" : "string"
+        },
+        "value" : {
+          "type" : "string",
+          "description" : "Value to be sent to the device"
+        }
+      },
+      "required" : [
+        "id",
+        "type",
+        "enabled",
+        "trigger",
+        "device",
+        "property",
+        "value"
+      ]
+    },
+    "else" : {
+      "required" : [
+        "id",
+        "type",
+        "enabled",
+        "trigger"
+      ]
+    }
+  }
+}
