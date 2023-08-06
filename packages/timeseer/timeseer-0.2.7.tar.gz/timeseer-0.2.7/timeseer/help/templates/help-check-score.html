@@ -1,0 +1,87 @@
+{% extends 'timeseer.html' %}
+
+{% from 'help.html' import help_menu with context %}
+
+{% block menu %}
+{{ help_menu('Score documentation') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Score documentation</h2>
+</div>
+
+<div class="my-3 py-3">
+    <div class="card card-body mb-3">
+        The metadata checks are scored binary as simple OK / NOK flags per group. If any of the lowest level checks are NOK, then
+        the corresponding group will also be scored NOK.</br>
+
+        The scoring of the time-series quality checks is generally based on 2 different mechanisms: time- and count-based.
+        <ul>
+            <li>For some check that return event-frames, i.e. start-stop time-frames in which the check returns (potential) issues,
+                the score corresponds to the ratio between the total time of these event-frames and the total time being analyzed.</li>
+            <li>For checks that do not return event-frames and certain that do,
+                the score is given as the total number of points where the check
+                returns (potential) issues divided by the total number of points in the time being analyzed.</li>
+        </ul>
+    </div>
+    <ul class="ts-checks">
+    {% for group in checks|rejectattr("default_kpi", "none")|groupby("default_kpi") %}
+        {% set outer_loop = loop %}
+        <li class="mb-2"> {{ group.grouper|capitalize }}
+            <ul >
+                {% for check in group.list %}
+                <li>
+                    <p>
+                        <a  data-bs-toggle="offcanvas"
+                            href="#check-help-text-{{ outer_loop.index }}-{{ loop.index }}"
+                            aria-controls="check-help-text-{{ outer_loop.index }}-{{ loop.index }}">
+                        {{ check.name }}
+                        </a>
+                    </p>
+
+                    <div class="ts-help-sidebar offcanvas offcanvas-end" tabindex="-1" id="check-help-text-{{ outer_loop.index }}-{{ loop.index }}">
+                        <div class="offcanvas-header">
+                            <h6 class="offcanvas-title">{{ check.name }}</h6>
+                            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                        </div>
+                        <div class="offcanvas-body">
+                        {{ check.html_help_text|safe }}
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </li>
+    {% endfor %}
+    {% if checks|selectattr("default_kpi", "none")|list|count > 0 %}
+    <li class="mb-2">
+        No KPI
+        <ul >
+            {% for check in checks|selectattr("default_kpi", "none") %}
+            <li>
+                <p>
+                    <a  data-bs-toggle="offcanvas"
+                        href="#check-help-text-no-kpi-{{ loop.index }}"
+                        aria-controls="check-help-text-no-kpi-{{ loop.index }}">
+                    {{ check.name }}
+                    </a>
+                </p>
+
+                <div class="ts-help-sidebar offcanvas offcanvas-end" tabindex="-1" id="check-help-text-no-kpi-{{ loop.index }}">
+                    <div class="offcanvas-header">
+                        <h6 class="offcanvas-title">{{ check.name }}</h6>
+                        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                    {{ check.html_help_text|safe }}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </li>
+    {% endif %}
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'timeseer.html' %}
+{% from 'macros.html' import menu_back %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Time Series</h2>
+</div>
+
+<div class="row my-3 py-3">
+    <div class="col-lg mb-3">
+        <div class="card shadow-sm">
+            <h5 class="card-header">Visualize time series</h5>
+            <div class="card-body">
+                <form action="{{ url_for('.search') }}" method="POST">
+                    <input type='hidden' name='flowname' value='{{ flow_name }}'/>
+                    <div class="mb-3">
+                        <label for="sourceSelect" class="form-label">Select a source</label>
+                        <select name="sourcename" id="sourceSelect" class="form-select">
+                            {% for source in sources %}
+                            <option {% if source == flow_name %}selected{% endif %}>{{ source }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="seriesInput" class="form-label">Select a time series</label>
+                        <input type="text"
+                            class="form-control"
+                            id="seriesInput"
+                            name="seriesname"
+                            placeholder="Type to search time series"
+                            autocomplete="off"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">Visualize time series</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $('#seriesInput').autoComplete({
+        bootstrapVersion: '4',
+        noResultsText: 'No matching series known.',
+        resolver: 'custom',
+        events: {
+            search: function (pattern, callback) {
+                var params = {
+                    'source': $('#sourceSelect').val(),
+                    'pattern': pattern,
+                };
+                $.ajax('{{ url_for('api.search_series_names') }}', {data: params}).done(callback);
+            },
+        },
+    });
+</script>
+{% endblock %}

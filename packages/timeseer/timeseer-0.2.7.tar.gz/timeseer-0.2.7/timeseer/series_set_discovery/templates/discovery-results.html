@@ -1,0 +1,59 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, menu_back, progress_bar, visualize_series %}
+
+{% block menu %}
+{{ menu_back(url_for('.select_configuration', templatename=discovery_configuration.template.name, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center gx-2">
+        <div class="col-md">
+            <h2 class="h4">Series set discovery</h2>
+            <p class="h6 text-break">
+                {{ discovery_configuration.template.name }}
+                -
+                {% if discovery_configuration.time_range.is_relative() %}
+                during the {{ discovery_configuration.time_range.relative_date|lower }}.
+                {% else %}
+                from {{ discovery_configuration.time_range.start_date|datetimeformat}} to {{ discovery_configuration.time_range.end_date|datetimeformat}}
+                {% endif %}
+            </p>
+            {% if last_run_datetime %}
+            <p class="text-muted">Last run: {{ last_run_datetime|datetimeformat }}</p>
+            {% endif %}
+        </div>
+        <div class="col-md-auto">
+            <form method="POST" action="{{ url_for('.analyze', sourcename=source_name) }}">
+                <input type="hidden" name="configurationid" value="{{ discovery_configuration.db_id }}">
+                <div class="btn-toolbar">
+                    <button type="submit" class="btn btn-primary me-2" role="button">
+                        Rerun
+                    </button>
+                    <a class="btn btn-secondary" href="{{ url_for('.remove_configuration', configurationid=discovery_configuration.db_id ,sourcename=source_name) }}">Remove</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    {% call progress_bar(analysis_state, url_for('.get_analysis_state', configurationid=discovery_configuration.db_id)) %}
+    Series set discovery
+    {% endcall %}
+
+    <div class="discovery-results"
+         data-configuration-id="{{ discovery_configuration.db_id }}"
+         data-results-url="{{ url_for('.get_results', configurationid=discovery_configuration.db_id) }}"
+         data-series-url="{{ url_for('prepare.tags') }}"
+         data-create-url="{{ url_for('.create_series_sets') }}">
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_bottom %}
+<script src="{{ url_for('static', filename='dist/series-set-discovery.js') }}"></script>
+{% endblock %}

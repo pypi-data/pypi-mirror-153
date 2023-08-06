@@ -1,0 +1,70 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import bootstrap_icon, menu_back %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(back_url) }}
+{% endblock %}
+
+{% block main %}
+{{ flows_header(block_evaluation.flow_evaluation, score.name|capitalize + ' history') }}
+
+<div class="pt-3 my-3">
+    {% if score.short_help_text %}
+    <p>
+        {{ score.short_help_text }}
+        <a data-bs-toggle="offcanvas"
+           href="#score-help-text"
+           aria-controls="score-help-text"
+           aria-expanded="false">
+            {{ bootstrap_icon('question-circle') }}
+        </a>
+    </p>
+
+    <div class="ts-help-sidebar offcanvas offcanvas-end" tabindex="-1" id="score-help-text">
+        <div class="offcanvas-header">
+            <h3 class="offcanvas-title h5">{{ score.name }}</h3>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+        {{ score.html_help_text|safe }}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if evolution|count > 1 %}
+    <div class="report-evolution">
+        <table class="visually-hidden">
+            {% for group in flow_evaluation_groups|sort(attribute='date') %}
+            {% for block_evaluation_score in evolution if block_evaluation_score.block_evaluation.flow_evaluation.group.db_id == group.db_id %}
+            <tr data-report-url="{{ url_for('.open_report', blockevaluationid=block_evaluation_score.block_evaluation.db_id, sourcename=source_name) }}">
+                <td class="report-date" data-date="{{ group.date.isoformat() }}">{{ group.date|datetimeformat }}</td>
+                <td class="report-score">{{ block_evaluation_score.score }}</td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+        </table>
+    </div>
+    {% else %}
+    <p>
+        <a href="{{ url_for('flows.display_flow', flowname=flow_name, sourcename=source_name) }}">Evaluate</a> "{{ flow_name }}" multiple times to visualize the history of "{{ score.name }}".
+    </p>
+    {% endif %}
+</div>
+<script>
+    $(document).ready(function(){
+        $('[data-toggle="popover"]').popover({
+            placement : 'right',
+            trigger : 'hover'
+        });
+    });
+
+    {% if evolution|count > 1 %}
+    {% include 'scripts/score-evolution.js' %}
+    {% endif %}
+</script>
+{% endblock %}

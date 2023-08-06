@@ -1,0 +1,62 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, menu_back %}
+
+{% block menu %}
+{{ menu_back(url_for('kpis.show_kpis', sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Create a new KPI</h2>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    <form method="POST">
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        <div class="mb-3">
+            <label class="form-label" for="kpiName">Name</label>
+            <input class="form-control" id="kpiName" name="kpiname" autofocus required>
+        </div>
+        <div class="mb-3">
+            <label for="kpiDescription" class="form-label">Description</label>
+            <textarea id="kpiDescription" name="kpidescription" class="form-control" rows="10"></textarea>
+            <div class="form-text">
+                The description will appear as help text wherever the KPI is used.
+                For maximum effect,
+                use a one-liner with a general description,
+                followed by a blank line,
+                followed by longer explanation of why the KPI is important.
+                The longer explanation can contain HTML markup.
+            </div>
+        </div>
+        <div class="mb-3">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="kpioption" id="emptyKPI" value="blank" checked data-bs-toggle="collapse" data-bs-target="#kpiListCollapse.show">
+                <label class="form-check-label" for="emptyKPI">Create an empty KPI</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="kpioption" id="duplicateKPI" value="duplicate" data-bs-toggle="collapse" data-bs-target="#kpiListCollapse:not(.show)">
+                <label class="form-check-label" for="duplicateKPI">Create a copy of an existing KPI</label>
+            </div>
+        </div>
+        <div class="mb-3 collapse" id="kpiListCollapse">
+            <label class="form-label" for="kpiList">Select the KPI to be copied:</label>
+            <select class="form-select" name="kpiselect" id="kpiList">
+                {% for kpi in kpis %}
+                <option value="{{ kpi.db_id }}">
+                    {{ kpi.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary me-2">Create</button>
+        <a href="{{ url_for('.show_kpis', sourcename=source_name) }}"
+            class="btn btn-secondary">
+            Cancel
+        </a>
+    </form>
+</div>
+{% endblock %}

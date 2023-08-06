@@ -1,0 +1,103 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import menu %}
+
+{% macro configure_menu(active) %}
+{{
+    menu(
+        'Configuration',
+        [
+            ('Getting started', url_for('home.configure', sourcename=source_name)),
+            ('API keys', url_for('global_preferences.create_api_key', sourcename=source_name)),
+            ('Background jobs', url_for('background_jobs.list_background_jobs', sourcename=source_name)),
+            ('Date and time', url_for('user_preferences.configure_locale', sourcename=source_name)),
+            ('KPIs', url_for('kpis.show_kpis', sourcename=source_name)),
+            ('KPI sets', url_for('kpi_sets.show_kpi_sets', sourcename=source_name)),
+            ('Series set templates', url_for('series_sets.list_templates', sourcename=source_name)),
+            ('Series sets', url_for('series_sets.show_series_sets', sourcename=source_name)),
+            ('Sources', url_for('sources.display_configuration', sourcename=source_name)),
+            ('Time series names', url_for('user_preferences.configure_series', sourcename=source_name)),
+        ],
+        active,
+    )
+}}
+{% endmacro %}
+
+{% block menu %}
+{{ configure_menu('Getting started') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Configure Timeseer.AI</h2>
+</div>
+
+<div class="my-3 py-3">
+    <a class="btn btn-primary" href="mailto:feedback@timeseer.ai">Make a wish</a>
+    <a class="btn btn-primary" href="mailto:bugs@timeseer.ai">Report a bug</a>
+</div>
+
+{% if user_identity %}
+<p>Currently logged in as: {{ user_identity }}</p>
+{% endif %}
+
+{% if user_tenants|count > 1 %}
+<p>Available tenants:</p>
+<table class="ts-table table table-borderless">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">Tenant</th>
+            <th scope="col">Action</th>
+        </tr>
+    </thead>
+    {% for tenant in user_tenants|sort(attribute="tenant_id") %}
+    <tr>
+        <td>{{ tenant.tenant_id }}</td>
+        {% if tenant.tenant_id == current_tenant.tenant_id %}
+        <td>(current)</td>
+        {% else %}
+        <td>
+            <form method="POST" action="{{ url_for('user_preferences.manage_account') }}">
+                {% if source_name %}
+                <input type="hidden" name="sourcename" value="{{ source_name }}">
+                {% endif %}
+                <input type="hidden" name="tenant" value="{{ tenant.tenant_id }}">
+                <button type="submit" class="btn btn-primary">Activate</button>
+            </form>
+        </td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if inconsistencies|count > 0 %}
+<div class="my-3 py-3">
+    <h5>Resource inconsistencies</h5>
+    <table class="ts-table table table-borderless mt-3" data-ts-target="selectionDropdown">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">Resource name</th>
+                <th scope="col">Resource type</th>
+                <th scope="col">Inconsistency</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inconsistency in inconsistencies|sort(attribute='resource_name') %}
+            <tr class="border-bottom">
+                <td>
+                    {{ inconsistency.resource_name|capitalize }}
+                </td>
+                <td>
+                    {{ inconsistency.resource_type.value }}
+                </td>
+                <td>
+                    "{{ inconsistency.inconsistency }}" does not exist
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,71 @@
+{% set multivariate_title = 'Checks' %}
+{% extends 'multivariate-layout.html' %}
+
+{% from "macros.html" import info_popover, visualize_check_result %}
+
+{% block styles %}
+<style>
+    .score-table {
+        table-layout: fixed;
+    }
+    .score-table .score-grouping {
+        width: 20%;
+    }
+    .score-table .score {
+        width: 20%;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ multivariate_menu(multivariate_title) }}
+{% endblock %}
+
+{% block multivariate_content %}
+
+{% if quality_checks %}
+<table class="ts-table table table-borderless score-table">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">Series checks</th>
+            <th scope="col" class="score">Event frames</th>
+            <th scope="col" class="score">Result</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for check in quality_checks|sort(attribute='metadata.name')|sort(attribute='result')|sort(attribute='metadata.data_type') %}
+        <tr class="border-bottom">
+            <td>{{ check.metadata.name }} {{ info_popover(check.metadata.short_help_text) }}</td>
+            <td>
+                {% if check.metadata.event_frame_types %}
+                <div class="dropdown">
+                    <button type="button"
+                            class="btn btn-sm btn-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown"
+                            aria-haspopup="true"
+                            aria-expanded="false">
+                        List event frames
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for type in check.metadata.event_frame_types %}
+                        <a class="dropdown-item"
+                            href="{{ url_for('.show_event_frames', blockevaluationid=block_evaluation.db_id, flowname=flow.name, type=type, sourcename=source_name) }}">
+                            {{ type }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+            {{ visualize_check_result(check) }}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% else %}
+<div class="alert alert-info">
+    No checks available.
+</div>
+{% endif %}
+{% endblock %}

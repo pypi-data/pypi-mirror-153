@@ -1,0 +1,108 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, bootstrap_icon %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('KPI sets') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row justify-content-between">
+        <h2 class="col-sm-6 h4">Manage KPI sets</h2>
+        <div class="col-sm-auto">
+            <a  href="{{ url_for('.create_kpi_set', sourcename=source_name) }}"
+                class="btn btn-primary">
+                Create new
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="my-3 py-3">
+    {{ alerter() }}
+
+    <form class="pb-3">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        <div class="row g-2">
+            {% if kpi_sets and kpi_sets|selectattr('origin.value', '==', 'ui')|list|count > 0 %}
+            <div class="col-sm-auto">
+                <div class="btn-group ts-dropdown-select-button">
+                    <a class="btn border border-secondary dropdown-toggle"
+                       href="#"
+                       role="button"
+                       id="selectionDropdown"
+                       data-bs-toggle="dropdown"
+                       aria-haspopup="true"
+                       aria-expanded="false">
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                        <button type="submit"
+                                class="dropdown-item ts-dropdown-action"
+                                form="kpisetselection"
+                                formmethod="POST"
+                                formaction="{{ url_for('.remove_multiple_kpi_set', sourcename=source_name) }}"
+                                >
+                                Remove selected
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if kpi_sets|count > 1 or pattern %}
+            <div class="col">
+                <label class="visually-hidden" for="setFilterInput">Filter KPI sets by name</label>
+                <input class="form-control" id="setFilterInput" name="kpisetpattern" value="{{ pattern }}" placeholder="Filter kpi sets by name">
+            </div>
+            <div class="col-sm-auto">
+                <button class="btn btn-secondary" type="submit">Filter</button>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if kpi_sets %}
+    <form id="kpisetselection">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        <table class="ts-table ts-table-checkbox table table-borderless mt-3" data-ts-target="selectionDropdown">
+            <thead class="thead-secondary">
+                <tr class="border-top border-bottom">
+                    <th scope="col">
+                        {% if kpi_sets|selectattr('origin.value', '==', 'ui')|list|count > 0 %}
+                        <input type="checkbox" class="form-check-input">
+                        {% endif %}
+                    </th>
+                    <th scope="col">KPI set name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for set in kpi_sets|sort(attribute='name') %}
+                <tr class="border-bottom">
+                    <td>
+                        {% if set.origin.value == 'ui' %}
+                        <input class="form-check-input" type="checkbox" name="{{ set.db_id }}" {% if checked %}checked{% endif %}>
+                        {% else %}
+                        {{ bootstrap_icon('lock', 'text-muted') }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <input type="hidden" name="kpisetids" value="{{ set.db_id }}">
+                        <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('.configure_kpi_set', kpisetname=set.name, sourcename=source_name) }}">
+                            {{ set.name }}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    {% else %}
+    <p class="alert alert-info">No kpi sets found.</p>
+    {% endif %}
+</div>
+{% endblock %}

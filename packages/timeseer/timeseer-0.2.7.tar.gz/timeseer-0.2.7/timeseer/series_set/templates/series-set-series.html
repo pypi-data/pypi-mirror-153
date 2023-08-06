@@ -1,0 +1,452 @@
+{% extends 'series-set-layout.html' %}
+
+{% from 'macros.html' import alerter, bootstrap_icon, visualize_series %}
+
+{% block styles %}
+<style>
+    .series-table {
+        table-layout: fixed;
+    }
+    .series-table .series-add {
+        width: 10%;
+    }
+    .pattern-table {
+        table-layout: fixed;
+    }
+    .table-check {
+        width: 10%;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ series_set_menu('Time series') }}
+{% endblock %}
+
+
+{% block custom_actions %}
+{% if series_set.origin.value == 'ui' %}
+<a class="btn btn-primary me-2 mb-2 mb-sm-0" data-bs-toggle="offcanvas" href="#seriesAddOffCanvas">
+    Add series
+</a>
+{% endif %}
+{% endblock %}
+
+{% block series_set_content %}
+<div class="offcanvas offcanvas-end {% if pattern %}show{% endif %}" tabindex="-1" id="seriesAddOffCanvas">
+    <div class="offcanvas-header">
+        <h3 class="offcanvas-title h5">Add time series</h3>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if not pattern %}active{% endif %}" id="seriesAddTabLabel" data-bs-toggle="tab" data-bs-target="#seriesAddPanel" type="button" role="tab" aria-controls="seriesAddPanel" aria-selected="true">
+                    Series
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if pattern %}active{% endif %}" id="patternAddTabLabel" data-bs-toggle="tab" data-bs-target="#patternAddPanel" type="button" role="tab" aria-controls="patternAddPanel" aria-selected="false">
+                    Pattern
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bulkAddTabLabel" data-bs-toggle="tab" data-bs-target="#bulkAddPanel" type="button" role="tab" aria-controls="bulkAddPanel" aria-selected="false">
+                    Bulk
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="seriesAddContent">
+            <div class="tab-pane {% if not pattern %}show active{% endif %}" id="seriesAddPanel" role="tabpanel" aria-labelledby="seriesAddTabLabel">
+                <form method="POST">
+                    <input type="hidden" name="seriessetname" value="{{ series_set.name }}">
+
+                    <div class="my-3">
+                        <label for="sourcenameSelect" class="form-label">Select time series source</label>
+                        <select class="form-select" id="sourcenameSelect" name="sourcename">
+                            {% for source in sources %}
+                            <option {% if source == source_name %}selected{% endif %}>{{ source }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="my-3">
+                        <label for="seriesnameInput" class="form-label">Select time series</label>
+                        <input type="text"
+                               class="form-control"
+                               id="seriesnameInput"
+                               name="seriesname"
+                               value=""
+                               autocomplete="off"
+                               placeholder="Type to search time series"
+                               required>
+                    </div>
+
+                    <div class="my-3">
+                        <button type="submit" class="btn btn-primary">Add series</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-pane {% if pattern %}show active{% endif %}" id="patternAddPanel" role="tabpanel" aria-labelledby="patternAddTabLabel">
+                <form>
+                    <input type="hidden" name="seriessetname" value="{{ series_set.name }}">
+
+                    <div class="my-3">
+                        <label for="patternSourcenameSelect" class="form-label">Select time series source</label>
+                        <select class="form-select" id="patternSourcenameSelect" name="sourcename">
+                            {% for source in sources %}
+                            <option {% if source == source_name %}selected{% endif %}>{{ source }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="my-3">
+                        <label for="patternInput" class="form-label">Enter series name pattern</label>
+                        <a data-bs-toggle="collapse"
+                            href="#structured-help-text"
+                            aria-controls="structured-help-text"
+                            aria-expanded="false">
+                            {{ bootstrap_icon('question-circle') }}
+                        </a>
+                        <input type="text"
+                               class="form-control"
+                               id="patternInput"
+                               name="pattern"
+                               value="{{ pattern or '' }}"
+                               autocomplete="off"
+                               placeholder="Series pattern"
+                               required>
+                    </div>
+
+                    <div class="my-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="structured" id="structured" {% if is_structured %}checked{% endif %}>
+                            <label for="structured" class="form-check-label">Structured</label>
+                        </div>
+                    </div>
+
+                    <div class="collapse form-text" id="structured-help-text">
+                        <p>
+                            Time series are found by searching for the text pattern in the series name.
+                            This pattern can occur at any position in the name.
+                        </p>
+                        <p>
+                            By using <code>*</code>, it is possible to search for simple patterns.
+                            <code>*.PV</code> searches for all series that end on <code>.PV</code>.
+                            <code>10_*</code> searches for all series that start with <code>10_</code>.
+                            <code>10_*.PV</code> searches for all series that start with <code>10_</code> and end on <code>.PV</code>.
+                        </p>
+                        <p>
+                            When the 'Structured' checkbox is enabled the pattern is a <a href="https://docs.python.org/3/library/re.html#regular-expression-syntax">regular expression</a>.
+                            The <code>10_1234\d{2}\.((PV)|(SP))$</code> regular expression selects all <code>PV</code>s and <code>SP</code>s that are part of <code>10_1234</code> and are themselves identified by 2 numbers (<code>\d{2}</code>).
+                        </p>
+                    </div>
+
+
+                    <div class="my-3">
+                        {% if not new_series %}
+                        <button type="submit" class="btn btn-primary">Preview</button>
+                        {% else %}
+                        <button type="submit" class="btn btn-secondary">Preview</button>
+                        {% endif %}
+
+                        {% if new_series %}
+                        <div class="btn-group ts-dropdown-select-button">
+                            <a class="btn btn-primary dropdown-toggle"
+                               href="#"
+                               role="button"
+                               id="selectionDropdown"
+                               data-bs-toggle="dropdown"
+                               aria-haspopup="true"
+                               aria-expanded="false">
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                                <button type="submit"
+                                        class="dropdown-item ts-dropdown-action"
+                                        form="seriesselection"
+                                        formaction="{{ url_for('.add_series') }}"
+                                        >
+                                        Add all series
+                                </button>
+                                <button type="submit"
+                                        class="dropdown-item ts-dropdown-action"
+                                        form="seriesselection"
+                                        formaction="{{ url_for('.add_pattern') }}"
+                                        >
+                                        Add pattern
+                                </button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </form>
+
+                {% if new_series %}
+                <p>
+                    {{ new_series|count }} series found.
+                </p>
+
+                <form id='seriesselection' method="POST">
+                    <input type="hidden" name="seriessetname" value="{{ series_set.name }}">
+                    <input type="hidden" name="sourcename" value="{{ source_name }}">
+                    <input type="hidden" name="seriespattern" value="{{ pattern }}">
+                    {% if is_structured %}
+                    <input type="hidden" name="structured" value="on">
+                    {% endif %}
+
+                    <table class="ts-table ts-table-checkbox table table-borderless series-table" data-ts-target="selectionDropdown">
+                        <thead class="thead-secondary">
+                            <tr class="border-top border-bottom">
+                                <th scope="col">
+                                    <input class="form-check-input" type="checkbox">
+                                </th>
+                                <th scope="col">Series name</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for series in new_series|sort(attribute='name') %}
+                            <tr class="border-bottom">
+                                <td>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="seriesinclude-{{ loop.index0 }}" checked>
+                                    </div>
+                                </td>
+                                <td class="align-middle">
+                                    <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('prepare.tags', sourcename=series.source, seriesid=series.series_id) }}">
+                                        {{ visualize_series(series) }}
+                                    </a>
+                                    <input type="hidden" name="seriesid" value="{{ series.series_id }}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </form>
+                {% elif pattern %}
+                <p>No series found.</p>
+                {% endif %}
+
+            </div>
+
+            <div class="tab-pane" id="bulkAddPanel" role="tabpanel" aria-labelledby="bulkAddTabLabel">
+                <form method="POST" action="{{ url_for('.add_series_in_bulk') }}">
+                    <input type="hidden" name="seriessetname" value="{{ series_set.name }}">
+
+                    <div class="my-3">
+                        <label for="bulkSourcenameSelect" class="form-label">Select time series source</label>
+                        <select class="form-select" id="bulkSourcenameSelect" name="sourcename">
+                            {% for source in sources %}
+                            <option {% if source == source_name %}selected{% endif %}>{{ source }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="my-3">
+                        <label for="bulkInput" class="form-label">Provide time series names</label>
+                        <textarea id="bulkInput"
+                                  class="form-control"
+                                  name="seriesnames"
+                                  rows="10"
+                                  placeholder="SINUSOID
+SINUSOIDU
+ATCAI"
+                                  required></textarea>
+                        <div class="form-text">
+                            Enter one time series name per line.
+                        </div>
+                    </div>
+
+                    <div class="my-3">
+                        <button type="submit" class="btn btn-primary">Add series</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    {% if series_patterns %}
+    {% if series_set.origin.value == 'ui' %}
+    <div class="mb-3">
+        <div class="btn-group ts-dropdown-select-button">
+            <a class="btn border border-secondary dropdown-toggle"
+            href="#"
+            role="button"
+            id="patternSelectionDropdown"
+            data-bs-toggle="dropdown"
+            aria-haspopup="true"
+            aria-expanded="false">
+            </a>
+            <div class="dropdown-menu" aria-labelledby="patternSelectionDropdown">
+                <button type="submit"
+                        class="dropdown-item ts-dropdown-action"
+                        form="patternSelection"
+                        >
+                        Remove selected
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form id="patternSelection" method="POST" action="{{ url_for('.remove_patterns', sourcename=source_name) }}">
+        <input type="hidden" name="seriessetname" value="{{ series_set.name }}">
+        <table class="ts-table {% if series_set.origin.value == 'ui' %}ts-table-checkbox{% endif %} table table-borderless pattern-table mb-3" data-ts-target="patternSelectionDropdown">
+            <thead class="thead-secondary">
+                <tr class="border-top border-bottom">
+                    {% if series_set.origin.value == 'ui' %}
+                    <th scope="col" class="table-check">
+                        <input class="form-check-input" type="checkbox">
+                    </th>
+                    {% endif %}
+                    <th scope="col">Source name</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Pattern</th>
+                    <th scope="col">Field pattern</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pattern in series_patterns|sort(attribute='source_name') %}
+                {% set outer_loop = loop %}
+                {% for pattern_key, pattern_value in pattern.tag_patterns|dictsort %}
+                <tr class="border-bottom">
+                    {% if loop.first %}
+                    {% if series_set.origin.value == 'ui' %}
+                    <td rowspan="{{ pattern.tag_patterns|count }}">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="removepattern" value="{{ outer_loop.index0 }}">
+                        </div>
+                    </td>
+                    {% endif %}
+                    <td rowspan="{{ pattern.tag_patterns|count }}">
+                        <input type="hidden" name="sourcename" value="{{ pattern.source_name }}">
+                        <span>{{ pattern.source_name }}</span>
+                    </td>
+                    {% endif %}
+                    <td class="align-middle">
+                        <input type="hidden" name="pattern_key" value="{{ pattern_key }}">
+                        <span>{{ pattern_key }}</span>  
+                    </td>
+                    <td class="align-middle">
+                        <input type="hidden" name="pattern_value" value="{{ pattern_value }}">
+                        <span>{{ pattern_value }}</span>  
+                    </td>
+                    {% if loop.first %}
+                    <td rowspan="{{ pattern.tag_patterns|count }}">
+                        <input type="hidden" name="field_pattern" value="{{ pattern.field_pattern }}">
+                        <span>{{ pattern.field_pattern }}</span>
+                    </td>
+                    {% endif %}
+                    
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    {% endif %}
+
+    {% if all_series|count > 0 %}
+    {% if individual_series|count > 0 %}
+    <div class="mb-3">
+        <div class="btn-group ts-dropdown-select-button">
+            <a class="btn border border-secondary dropdown-toggle"
+            href="#"
+            role="button"
+            id="seriesSelectionDropdown"
+            data-bs-toggle="dropdown"
+            aria-haspopup="true"
+            aria-expanded="false">
+            </a>
+            <div class="dropdown-menu" aria-labelledby="seriesSelectionDropdown">
+                <button type="submit"
+                        class="dropdown-item ts-dropdown-action"
+                        form="seriesOverview"
+                        >
+                        Remove selected
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form id="seriesOverview" method="POST" action="{{ url_for('.remove_series', sourcename=source_name) }}">
+        <input type="hidden" name="seriessetname" value="{{ series_set.name }}">
+        <table class="ts-table ts-table-checkbox table table-borderless series-table mt-3" data-ts-target="seriesSelectionDropdown">
+            <thead class="thead-secondary">
+                <tr class="border-top border-bottom">
+                    {% if individual_series|count > 0 %}
+                    <th scope="col" class="table-check">
+                        <input class="form-check-input" type="checkbox">
+                    </th>
+                    {% endif %}
+                    <th scope="col">Series name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for series in all_series|sort(attribute='name,source') %}
+                <tr class="border-bottom" data-ts-series-source="{{ series.source }}" data-ts-series-name="{{ series.name }}">
+                    {% if individual_series|count > 0 %}
+                    <td class="align-middle">
+                        {% if series in individual_series %}
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="seriesid" value="{{ series.series_id }}">
+                        </div>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td class="align-middle">
+                        <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('prepare.tags', sourcename=series.source, seriesid=series.series_id) }}">
+                            {{ visualize_series(series) }}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    {% else %}
+    <p class="alert alert-info">
+        Series set empty.
+    </p>
+    {% endif %}
+</div>
+
+
+<script>
+    (function () {
+        var existingSeries = [];
+        for (const series of document.querySelectorAll('[data-ts-series-name]')) {
+            existingSeries.push({source: series.getAttribute('data-ts-series-source'), name: series.getAttribute('data-ts-series-name')});
+        }
+
+        $('#seriesnameInput').autoComplete({
+            bootstrapVersion: '4',
+            noResultsText: 'No matching series known.',
+            resolver: 'custom',
+            events: {
+                search: function (pattern, callback) {
+                    var sourceName = $('#sourcenameSelect').val();
+                    var params = {
+                        'source': sourceName,
+                        'pattern': pattern,
+                    };
+                    $.ajax('{{ url_for("api.search_series_names") }}', {data: params})
+                    .done(function(data) {
+                        var seriesInSource = existingSeries
+                            .filter(function (series) {return series.source === sourceName;})
+                            .map(function (series) {return series.name;});
+                        callback(data.filter(function (seriesName) {return !seriesInSource.includes(seriesName);}));
+                    });
+                },
+            },
+        });
+    })();
+    </script>
+{% endblock %}

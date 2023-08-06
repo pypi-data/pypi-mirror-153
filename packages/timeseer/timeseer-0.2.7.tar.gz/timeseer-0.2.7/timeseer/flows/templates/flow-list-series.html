@@ -1,0 +1,50 @@
+{% extends 'timeseer.html' %}
+{% from 'macros.html' import bootstrap_icon, menu_back, visualize_series %}
+
+{% block menu %}
+{{ menu_back(url_for('flows.display_flow', flowevaluationid=flow_evaluation.db_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row justify-content-between">
+        <h2 class="col-sm-6 h4">Time series</h2>
+        <p class="h6">
+            {{ flow_evaluation.group.flow.name }}
+        </p>
+        <p class="text-muted">
+            For
+            {% if series_set %}
+            <a href="{{ url_for('series_sets.manage_series_set', seriessetname=series_set.name, sourcename=source_name) }}"
+               target="_blank">
+                {{ series_set.name }}
+                <sup>{{ bootstrap_icon('box-arrow-up-right') }}</sup>
+            </a>
+            {% else %}
+            {{ flow_evaluation.series_set_name }}
+            in
+            <a href="{{ url_for('series_sets.preview_template', templatename=series_set_template.name, sourcename=source_name) }}"
+               target="_blank">
+                {{ series_set_template.name }}
+                <sup>{{ bootstrap_icon('box-arrow-up-right') }}</sup>
+            </a>
+            {% endif %}
+            at {{ flow_evaluation.group.date|datetimeformat }}.
+        </p>
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    <ul class="list-group">
+        {% for series in all_series|sort(attribute='source,name') %}
+        <li class="list-group-item">
+            <a class="ts-table-link text-decoration-none text-dark"
+               href="{{ url_for('prepare.tags', sourcename=series.source, seriesid=series.series_id) }}"
+               target="_blank">
+                {{ visualize_series(series) }} <sup>{{ bootstrap_icon('box-arrow-up-right') }}</sup>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

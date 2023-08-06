@@ -1,0 +1,122 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import bootstrap_icon %}
+{% from 'flow-menu.html' import flow_menu with context %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block menu %}
+{{ flow_menu(kpi.name) }}
+{% endblock %}
+
+{% block main %}
+{% call flows_header(block_evaluation.flow_evaluation, score.name|capitalize) %}
+<div class="row">
+    <div class="col-md-auto mt-2 mt-md-0">
+        <a  href="{{ url_for('.score_evolution', sourcename=source_name, kpi=kpi.name, score=score.name, blockevaluationid=block_evaluation.db_id) }}"
+            class="btn btn-primary">
+            History
+        </a>
+    </div>
+</div>
+{% endcall %}
+
+<div class="pt-3 my-3">
+    {% if score.short_help_text %}
+    <p>
+        {{ score.short_help_text }}
+        <a data-bs-toggle="offcanvas"
+           href="#score-help-text"
+           aria-controls="score-help-text"
+           aria-expanded="false">
+            {{ bootstrap_icon('question-circle') }}
+        </a>
+    </p>
+
+    <div class="ts-help-sidebar offcanvas offcanvas-end" tabindex="-1" id="score-help-text">
+        <div class="offcanvas-header">
+            <h3 class="offcanvas-title h5">{{ score.name }}</h3>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+        {{ score.html_help_text|safe }}
+        </div>
+    </div>
+    {% endif %}
+
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="{{ url_for('.score_summary', blockevaluationid=block_evaluation.db_id, kpi=kpi.name, score=score.name, sourcename=source_name) }}">
+                Summary
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('.score_report', blockevaluationid=block_evaluation.db_id, kpi=kpi.name, score=score.name, sourcename=source_name) }}">
+                Time series
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('.score_event_frames', blockevaluationid=block_evaluation.db_id, kpi=kpi.name, score=score.name, sourcename=source_name) }}">
+                Event frames
+            </a>
+        </li>
+    </ul>
+
+</div>
+
+<div class="my-3">
+    {% if score_distribution|map('last')|sum > 0 %}
+    <div class="card card-body mb-3">
+        <p>Evaluated over {{ score_distribution|map('last')|sum }} series:</p>
+        {% if score.data_type == 'bool' %}
+        <div class="score-pie" data-height="300">
+            <table class="visually-hidden">
+                <tbody>
+                    {% for value, count in score_distribution %}
+                    {% if value in [0, 90] %}
+                    <tr>
+                        <td class="pie-label">{{ value }}</td>
+                        <td class="pie-value">{{ count }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="histogram" data-score-coloring="yes">
+            <table class="visually-hidden">
+                <thead>
+                    <tr>
+                        <th class="histogram-bin-label" colspan="2">{{ score.name }} score</th>
+                        <th>Bin start</th>
+                        <th>Bin end</th>
+                        <th class="histogram-value-label">Number of time series</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for value, count in score_distribution %}
+                    <tr>
+                        <td class="histogram-bin-text">{{ value }} - {{ value + 10 }}</td>
+                        <td class="histogram-bin-start">{{ value }}</td>
+                        <td class="histogram-bin-end">{{ value + 10 }}</td>
+                        <td class="histogram-value">{{ count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+{% include 'scripts/histogram.js' %}
+{% include 'scripts/pie.js' %}
+})();
+</script>
+{% endblock %}

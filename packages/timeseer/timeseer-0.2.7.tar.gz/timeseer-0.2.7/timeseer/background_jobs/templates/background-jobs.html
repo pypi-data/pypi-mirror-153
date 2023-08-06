@@ -1,0 +1,241 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import pagination %}
+{% from 'configure.html' import configure_menu with context %}
+{% block styles %}
+<style>
+    .background-job-table {
+        table-layout: fixed;
+    }
+    .table .state, .table .error {
+        width: 10%;
+    }
+</style>
+{% endblock %}
+{% macro visualize_sorting(sort_field, sort_direction, field) %}
+    {% if sort_field == field %}
+        {% if sort_direction == 'asc' %}
+        {% set other_direction = 'desc' %}
+        {% else %}
+        {% set other_direction = 'asc' %}
+        {% endif %}
+        <a class="text-reset text-decoration-none" href="{{ url_for('.list_background_jobs', sourcename=source_name, sort=sort_field, direction=other_direction, filter=state_filter.name) }}">
+            {{ caller() }}
+            {% if sort_direction == 'desc' %}
+            {{ bootstrap_icon('caret-down-fill') }}
+            {% else %}
+            {{ bootstrap_icon('caret-up-fill') }}
+            {% endif %}
+        </a>
+    {% else %}
+        <a class="text-reset text-decoration-none" href="{{ url_for('.list_background_jobs', sourcename=source_name, sort=field, direction=sort_direction, filter=state_filter.name) }}">
+            {{ caller() }}
+            {% if sort_direction == 'desc' %}
+            {{ bootstrap_icon('caret-down', 'text-secondary') }}
+            {% else %}
+            {{ bootstrap_icon('caret-up', 'text-secondary') }}
+            {% endif %}
+        </a>
+    {% endif %}
+{% endmacro %}
+
+{% block menu %}
+{{ configure_menu('Background jobs') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="col-sm-6 h4">Background jobs</h2>
+</div>
+
+<form>
+    <div class="row mb-3 gx-2 align-items-center">
+        {% if source_name is not none %}
+        <input type='hidden' name='sourcename' value='{{ source_name }}'/>
+        {% endif %}
+        <label for="stateFilter" >Filter on state: </label>
+        <div class="col-lg mt-2">
+            <select class="form-select" id="stateFilter" name="filter">
+                {% for filter in filters %}
+                <option {% if filter == state_filter.name %}selected{% endif %} value="{{ filter }}">{{ filter|capitalize }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-lg-auto mt-2">
+            <div class="btn-toolbar">
+                <button type="submit" class="btn btn-primary me-2">Filter</button>
+                {% if state_filter is not none %}
+                <a class="btn btn-secondary"
+                    href="{{ url_for('.list_background_jobs', sourcename=source_name) }}"
+                    role="button">
+                    Remove filter
+                </a>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</form>
+
+{% if background_jobs|count > 0 %}
+<div class="pt-3 my-3">
+    {{ pagination(
+        paging,
+        url_for('.list_background_jobs', sourcename=source_name, page=paging.page-1, sort=sort_field, direction=sort_direction, filter=state_filter.name),
+        url_for('.list_background_jobs', sourcename=source_name, page=paging.page+1, sort=sort_field, direction=sort_direction, filter=state_filter.name)
+    ) }}
+    <table class="ts-table table table-borderless background-job-table">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">
+                    {% call visualize_sorting(sort_field, sort_direction, 'name') %}
+                    Name
+                    {% endcall %}
+                </th>
+                <th scope="col" class="state">
+                    {% call visualize_sorting(sort_field, sort_direction, 'state') %}
+                    State
+                    {% endcall %}
+                </th>
+                <th scope="col">
+                    {% call visualize_sorting(sort_field, sort_direction, 'creation_date') %}
+                    Creation date
+                    {% endcall %}
+                </th>
+                <th scope="col">
+                    {% call visualize_sorting(sort_field, sort_direction, 'start_date') %}
+                    Start date
+                    {% endcall %}
+                </th>
+                <th scope="col">
+                    {% call visualize_sorting(sort_field, sort_direction, 'end_date') %}
+                    End date
+                    {% endcall %}
+                </th>
+                <th scope="col" class="error">Error</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in background_jobs %}
+            <tr class="border-bottom">
+                <td class="text-break">
+                    {% if background_job is not none and job.db_id == background_job.db_id %}
+                    <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('.list_background_jobs', sourcename=source_name, page=paging.page, sort=sort_field, direction=sort_direction, filter=state_filter.name) }}">
+                    {% else %}
+                    <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('.list_background_jobs', sourcename=source_name, page=paging.page, sort=sort_field, direction=sort_direction, filter=state_filter.name, jobid=job.db_id) }}">
+                    {% endif %}
+                        {{ job.name}}
+                    </a>
+                </td>
+                <td>{{ job.state.value|capitalize}}</td>
+                <td>{{ job.creation_date|datetimeformat}}</td>
+                <td>{{ job.start_date|datetimeformat}}</td>
+                <td>{{ job.end_date|datetimeformat}}</td>
+                <td>
+                    {% if job.error is not none %}
+                    <button class="btn btn-primary btn-sm collapsed" type="button" id="showErrorButton{{ loop.index }}" data-bs-toggle="collapse" data-bs-target="#showError{{ loop.index }}" aria-expanded="false" aria-controls="showError{{ loop.index }}">
+                        Show Error
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+
+            {% if job.error is not none %}
+            <tr id="showError{{ loop.index }}" class="collapse" aria-labelledby="showErrorButton{{ loop.index }}">
+                <td colspan="6">
+                    <div class="accordion-body">
+                        <pre>
+{{ job.error }}
+                        </pre>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+
+            {% if background_job is not none and job.db_id == background_job.db_id %}
+            <tr>
+                <td colspan="6">
+                    <div class="px-3">
+                        {% if background_job.arguments|count > 0 %}
+                        <h5>Arguments</h5>
+                        <table class="ts-table table table-borderless">
+                            <thead class="thead-secondary">
+                                <tr class="border-top border-bottom">
+                                    <th>Name</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            {% for name, argument in background_job.arguments|dictsort %}
+                            <tr>
+                                <td>{{ name }}</td>
+                                {% if name == 'series_id' %}
+                                <td>
+                                    <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('prepare.tags', seriesid=argument) }}">
+                                        {{ argument }}
+                                    </a>
+                                </td>
+                                {% else %}
+                                <td>{{ argument }}</td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </table>
+                        {% endif %}
+
+                        {% if tasks|count > 0 %}
+                        <h5>Tasks</h5>
+                        <table class="ts-table table table-borderless table-hover">
+                            <thead class="thead-secondary">
+                                <tr class="border-top border-bottom">
+                                    <th>Name</th>
+                                    <th>State</th>
+                                    <th>Error</th>
+                                </tr>
+                            </thead>
+                            {% for task in tasks|sort(attribute='name') %}
+                            <tr>
+                                <td>{{ task.name }}</td>
+                                <td>{{ task.state.value|capitalize }}</td>
+                                <td>
+                                    {% if task.error is not none %}
+                                    <button class="btn btn-primary btn-sm collapsed" type="button" id="showTaskErrorButton{{ loop.index }}" data-bs-toggle="collapse" data-bs-target="#showTaskError{{ loop.index }}" aria-expanded="false" aria-controls="showTaskError{{ loop.index }}">
+                                        Show Error
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if task.error is not none %}
+                            <tr id="showTaskError{{ loop.index }}" class="collapse" aria-labelledby="showTaskError{{ loop.index }}">
+                                <td colspan="3">
+                                    <div class="accordion-body">
+                                        <pre>
+{{ task.error }}
+                                        </pre>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </table>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+
+            {% endfor %}
+        </tbody>
+    </table>
+    {{ pagination(
+        paging,
+        url_for('.list_background_jobs', sourcename=source_name, page=paging.page-1, sort=sort_field, direction=sort_direction, filter=state_filter.name),
+        url_for('.list_background_jobs', sourcename=source_name, page=paging.page+1, sort=sort_field, direction=sort_direction, filter=state_filter.name)
+    ) }}
+</div>
+{% else %}
+<div class="alert alert-info">
+    No background jobs matching filter criteria found.
+</div>
+{% endif %}
+
+{% endblock %}

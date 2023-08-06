@@ -1,0 +1,100 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import alerter, menu_back %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .report-table {
+        table-layout: fixed;
+    }
+    .report-table .action, .report-table .score {
+        width: 20%;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(url_for('.display_dashboard', blockevaluationid=block_evaluation.db_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+{{ flows_header(block_evaluation.flow_evaluation, 'Evaluations') }}
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    {% if evolution|count > 1 %}
+    <div class="report-evolution">
+        <table class="visually-hidden">
+            {% for block_evaluation_score in evolution|sort(attribute='block_evaluation.flow_evaluation.group.date', reverse=True) %}
+            <tr data-report-url="{{ url_for ('.compare_evaluations', sourcename=source_name, blockevaluationid=block_evaluation.db_id, compareblockevaluationid=block_evaluation_score.block_evaluation.db_id) }}">
+                <td class="report-date" data-date="{{ block_evaluation_score.block_evaluation.flow_evaluation.group.date.isoformat() }}">{{ block_evaluation_score.block_evaluation.flow_evaluation.group.date|datetimeformat }}</td>
+                <td class="report-score">{{ block_evaluation_score.score }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
+    {% if evolution|count > 0 %}
+    <table class="ts-table table table-borderless report-table">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">Evaluation date</th>
+                {% if evolution|count > 1 %}
+                <th scope="col">Compare to</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for block_evaluation_score in evolution|sort(attribute='block_evaluation.flow_evaluation.group.date', reverse=True) %}
+            {% set block_evaluation = block_evaluation_score.block_evaluation %}
+            <tr class="border-bottom">
+                <td class="align-middle">
+                    <a class="ts-table-link text-dark fw-normal text-decoration-none" href="{{ url_for ('.display_dashboard', sourcename=source_name, blockevaluationid=block_evaluation.db_id) }}">
+                        {{ block_evaluation.flow_evaluation.group.date|datetimeformat }}
+                    </a>
+                </td>
+                {% if evolution|count > 1 %}
+                <td>
+                    <form action="{{ url_for('.compare_evaluations') }}">
+                        <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+                        {% if source_name %}
+                        <input type="hidden" name="sourcename" value="{{ source_name }}">
+                        {% endif %}
+                        <div class="row">
+                            <div class="col">
+                                <select class="form-select form-select-sm" name="compareblockevaluationid">
+                                    {% for other_block_evaluation_score in evolution if other_block_evaluation_score.block_evaluation.db_id != block_evaluation.db_id %}
+                                    <option value="{{ other_block_evaluation_score.block_evaluation.db_id }}">{{ other_block_evaluation_score.block_evaluation.flow_evaluation.group.date|datetimeformat }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    Compare
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No evaluations found.</p>
+    {% endif %}
+</div>
+
+{% if evolution|count > 1 %}
+<script>
+{% include 'scripts/score-evolution.js' %}
+</script>
+{% endif %}
+{% endblock %}

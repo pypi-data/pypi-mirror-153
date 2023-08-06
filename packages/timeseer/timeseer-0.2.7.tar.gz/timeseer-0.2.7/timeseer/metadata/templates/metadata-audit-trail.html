@@ -1,0 +1,96 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import pagination, progress_bar_flow, visualize_metadata_value, visualize_series_name %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('Sources') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Metadata audit trail</h2>
+    {% if sources|count > 0 %}
+    <form>
+        <div class="row mb-3 gx-2 align-items-center">
+            <label for="sourcenameSelect" class="visually-hidden">Source</label>
+            <div class="col-lg mt-2">
+                <select class="form-select" id="sourcenameSelect" name="sourcename">
+                    {% for source in sources %}
+                    <option {% if source == source_name %}selected{% endif %}>{{ source }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-auto mt-2">
+                {% if source_name %}
+                <button type="submit" class="btn btn-secondary">Configure</button>
+                {% else %}
+                <button type="submit" class="btn btn-primary">Configure</button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+{% if source_name %}
+{% if audit_trail|count > 0 %}
+{{ pagination(
+    paging,
+    url_for('.metadata_audit_trail', sourcename=source_name, page=paging.page-1),
+    url_for('.metadata_audit_trail', sourcename=source_name, page=paging.page+1)
+) }}
+<div class="my-3 py-3">
+    <table class="ts-table table table-borderless">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">
+                    Series
+                </th>
+                <th scope="col">
+                    Name
+                </th>
+                <th scope="col">
+                    Old value
+                </th>
+                <th scope="col">
+                    New value
+                </th>
+                <th scope="col">
+                    Modified date
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in audit_trail %}
+            <tr class="border-bottom">
+                <td>
+                    <a class="ts-table-link text-decoration-none text-dark"
+                       href="{{ url_for('prepare.tags', seriesid=event.series.series_id) }}">
+                        {{ visualize_series_name(event.series.name) }}
+                    </a>
+                </td>
+                <td>{{ event.field_name|capitalize }}</td>
+                {{ visualize_metadata_value(event.field_name, event.typed_old_value)}}
+                {{ visualize_metadata_value(event.field_name, event.typed_new_value)}}
+                <td>{{ event.modified_date|datetimeformat}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{{ pagination(
+    paging,
+    url_for('.metadata_audit_trail', sourcename=source_name, page=paging.page-1),
+    url_for('.metadata_audit_trail', sourcename=source_name, page=paging.page+1)
+) }}
+{% else %}
+<div class="pt-3 my-3">
+    <p class="alert alert-info">No audit trail available.</p>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}
+

@@ -1,0 +1,55 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, menu_back %}
+
+{% block menu %}
+{{ menu_back(url_for('kpi_sets.show_kpi_sets', sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Create a new KPI set</h2>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    <form method="POST">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        
+        <div class="mb-3">
+            <label class="form-label" for="kpiSetsName">KPI set name:</label>
+            <input class="form-control" id="kpiSetsName" name="kpisetname" autofocus required>
+        </div>
+
+        <div class="mb-3">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="kpisetoption" value="blank" id="emptyKPISet" checked data-bs-toggle="collapse" data-bs-target="#kpiSetCollapse.show">
+                <label class="form-check-label" for="emptyKPISet">Create an empty KPI set</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="kpisetoption" value="duplicate" id="duplicateKPISet" data-bs-toggle="collapse" data-bs-target="#kpiSetCollapse:not(.show)">
+                <label class="form-check-label" for="duplicateKPISet">Duplicate an existing KPI set</label>
+            </div>
+        </div>
+        <div class="mb-3 collapse" id="kpiSetCollapse">
+            <label class="form-label" for="kpiSets">KPI set to duplicate:</label>
+            <select class="form-select" name="kpisetselect" id="kpiSets">
+                {% for kpi_set in kpi_sets %}
+                <option value="{{ kpi_set.db_id }}" {% if kpi_set.name == "default" %}selected{% endif %}>
+                    {{ kpi_set.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary me-2">Create</button>
+        <a href="{{ url_for('.show_kpi_sets', sourcename=source_name) }}"
+            class="btn btn-secondary">
+            Cancel
+        </a>
+    </form>
+</div>
+{% endblock %}

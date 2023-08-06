@@ -1,0 +1,66 @@
+Metadata-Version: 2.1
+Name: timeseer
+Version: 0.2.7
+Summary: Timeseer Client allows querying of data and metadata from timeseer.
+Home-page: https://timeseer.ai/
+Author: Timeseer.AI
+Author-email: pypi@timeseer.ai
+License: Copyright Timeseer.AI 2021
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+## Timeseer.AI Client
+
+Timeseer includes a Python client that can connect to a running instance of Timeseer Bus.
+Get your api key in the Timeseer application under `Configure > Global preferences > Api keys`
+
+```
+>>> from timeseer_client import *
+>>> client = Client(('<api-key-name>', '<api-key>'), 'localhost', 8081)
+>>> list(client.search(SeriesSelector('row')))
+[Metadata(series=SeriesSelector(source='row', name='test-tag-1'), description='', unit='m', limit_low=0.0, limit_high=1.0, accuracy=0.1), Metadata(series=SeriesSelector(source='row', name='test-tag-2'), description='test-tag-2', unit='kg', limit_low=0.0, limit_high=1.0, accuracy=0.1), Metadata(series=SeriesSelector(source='row', name='test-tag-3'), description='', unit='kPa', limit_low=0.0, limit_high=10.0, accuracy=1.0)]
+>>> client.get_metadata(SeriesSelector('row', 'test-tag-1'))
+Metadata(series=SeriesSelector(source='row', name='test-tag-1'), description='', unit='m', limit_low=0.0, limit_high=1.0, accuracy=0.1)
+>>> client.get_data(SeriesSelector('row', 'test-tag-1'))
+pyarrow.Table
+ts: timestamp[us, tz=utc]
+value: double
+>>> client.get_data(SeriesSelector('row', 'test-tag-1')).to_pandas().set_index('ts')
+                           value
+ts
+2020-01-01 00:00:00+00:00    1.0
+2020-02-01 00:00:00+00:00    2.0
+2020-03-01 00:00:00+00:00    2.0
+2020-04-01 00:00:00+00:00    1.0
+2020-05-01 00:00:00+00:00    1.0
+>>> client.get_event_frames(SeriesSelector('row', 'test-tag-1'))
+pyarrow.Table
+interval: struct<start_date: timestamp[us, tz=UTC], end_date: timestamp[us, tz=UTC]>
+  child 0, start_date: timestamp[us, tz=UTC]
+  child 1, end_date: timestamp[us, tz=UTC]
+type: string
+source: string
+name: string
+>>> client.get_event_frames(selector=SeriesSelector('row', 'test-tag-2'), frame_type='Negative slopes').flatten().to_pandas()
+        interval.start_date         interval.end_date             type source        name
+0 2020-01-01 00:00:00+00:00 2020-02-08 00:00:00+00:00  Negative slopes    row  test-tag-2
+1 2020-03-19 00:00:00+00:00 2020-11-01 00:00:00+00:00  Negative slopes    row  test-tag-2
+>>> from dateutil.parser import parse as parse_date
+>>> client.get_event_frames(selector=SeriesSelector('row', 'test-tag-2'), frame_type='Negative slopes', start_date=parse_date('2020-03-01T00:00:00Z')).flatten().to_pandas()
+        interval.start_date         interval.end_date             type source        name
+0 2020-03-19 00:00:00+00:00 2020-11-01 00:00:00+00:00  Negative slopes    row  test-tag-2
+>>> client.get_event_frames(selector=SeriesSelector('row', 'test-tag-2'), frame_type='Negative slopes', end_date=parse_date('2020-03-01T00:00:00Z')).flatten().to_pandas()
+        interval.start_date         interval.end_date             type source        name
+0 2020-01-01 00:00:00+00:00 2020-02-08 00:00:00+00:00  Negative slopes    row  test-tag-2
+```
+
+Full documentation is available by running:
+
+```
+>>> help(timeseer_client)
+```
+
+

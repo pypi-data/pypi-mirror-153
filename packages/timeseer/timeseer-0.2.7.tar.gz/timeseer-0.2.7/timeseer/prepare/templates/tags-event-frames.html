@@ -1,0 +1,104 @@
+{% extends 'tags-layout.html' %}
+
+{% block menu %}
+{{ prepare_menu('Event frames') }}
+{% endblock %}
+
+{% block tags_title %}
+<h2 class="h4">Event frame count</h2>
+{% endblock %}
+
+{% block tags_content %}
+<form class="mb-3">
+    <input type="hidden" name="seriesid" value="{{ series.series_id }}">
+    <input type="hidden" name="sort" value="{{ sort_field }}">
+    <input type="hidden" name="direction" value="{{ sort_direction }}">
+    <input type="hidden" name="type" value="{{ event_frame_type }}">
+    <div class="row align-items-end gx-2">
+        {% if event_frames_count %}
+        <div class="col-sm-auto">
+            <div class="btn-group ts-dropdown-select-button">
+                <a class="btn btn-primary dropdown-toggle"
+                href="#"
+                role="button"
+                id="selectionDropdown"
+                data-bs-toggle="dropdown"
+                aria-haspopup="true"
+                aria-expanded="false">
+                </a>
+                <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                    <button type="submit"
+                            class="dropdown-item ts-dropdown-action"
+                            form="eventframetypeselection"
+                            formmethod="GET"
+                            formaction="{{ url_for('.event_frames_details') }}"
+                            >
+                            Show details
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <div class="col-lg">
+            <label for="startDateInput" class="col-form-label">Start date</label>
+            <input class="form-control bg-white" id="startDateInput" name="startDate" value="{{ start_date }}">
+        </div>
+        <div class="col-lg">
+            <label for="endDateInput" class="col-form-label">End date</label>
+            <input class="form-control bg-white" id="endDateInput" name="endDate" value="{{ end_date }}">
+        </div>
+        <div class="col-lg-auto mt-lg-0 mt-2">
+            {% if event_frames_count %}
+            <button type="submit" class="btn btn-secondary">Count</button>
+            {% else %}
+            <button type="submit" class="btn btn-primary">Count</button>
+            {% endif %}
+        </div>
+    </div>
+
+</form>
+
+{% if event_frames_count %}
+<form id="eventframetypeselection">
+    <input type="hidden" name="seriesid" value="{{ series.series_id }}">
+    <input type="hidden" name="startDate" value="{{ start_date }}">
+    <input type="hidden" name="endDate" value="{{ end_date }}">
+    <table class="ts-table ts-table-checkbox table table-borderless score-table" data-ts-target="selectionDropdown">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">
+                    <input type="checkbox" class="form-check-input">
+                </th>
+                <th scope="col">Event frame type</th>
+                <th scope="col" class="score">Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event_frame in event_frames_count %}
+            <tr class="border-bottom">
+                <td>
+                    <input type="checkbox" class="form-check-input" name="{{ event_frame.type }}">
+                </td>
+                <td>
+                    <input type="hidden" name="eventframetypes" value="{{ event_frame.type }}">
+                    <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('.event_frames', seriesid=series.series_id, type=event_frame.type, startDate=start_date, endDate=end_date)}}">
+                        {{ event_frame.type }}
+                    </a>
+                </td>
+                <td>{{ event_frame.count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</form>
+{% else %}
+<div class="alert alert-info">
+    No event frames available.
+</div>
+{% endif %}
+
+<script>
+    flatpickr("#startDateInput", flatpickrOptions);
+    flatpickr("#endDateInput", flatpickrOptions);
+</script>
+{% endblock tags_content %}

@@ -1,0 +1,179 @@
+{% extends "timeseer.html" %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import menu_back, visualize_series %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(url_for('.show_comparison', blockevaluationid=block_evaluation.db_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Before/after special event comparison</h2>
+    <div class="h6 text-break">
+        {{ block_evaluation.flow_evaluation.group.flow.name }} - {{ visualize_series(series) }}
+    </div>
+    <div class="text-muted">
+        Between
+        {{ reference_time_range.start_date|datetimeformat }} to {{ reference_time_range.end_date|datetimeformat }}
+        and
+        {{ block_evaluation.flow_evaluation.group.time_range.start_date|datetimeformat }} to {{ block_evaluation.flow_evaluation.group.time_range.end_date|datetimeformat }}
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    <div id="comparison-chart-status">
+        <div class="alert alert-primary">
+            <div class="row align-items-center">
+                <div class="col">
+                    Loading chart...
+                </div>
+                <div class="col-auto">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="comparison-chart-data" class="d-none">
+        <h4>
+            <label for="advanced-chart-0">Reference</label>
+        </h4>
+        <div id="advanced-chart-0"></div>
+        <h4>
+            <label for="advanced-chart-1">Comparison</label>
+        </h4>
+        <div id="advanced-chart-1"></div>
+    </div>
+</div>
+
+<script>
+
+function plot(plotDatas) {
+    var metadata = {{ metadata.to_data()|tojson }};
+    for(i = 0, len = plotDatas.length; i < len; i++){
+        var plotData = plotDatas[i]
+
+        if (metadata.interpolationType && metadata.interpolationType === 'STEPPED') {
+            var shape = 'hv';
+            var accuracyShape = 'hv';
+        } else {
+            var shape = 'linear';
+            var accuracyShape = 'linear';
+        }
+
+        if (metadata.dictionary && metadata.dictionary.length > 0) {
+            var mapping = {};
+            metadata.dictionary.forEach(function (pair) {
+                mapping[pair[0]] = pair[1];
+            });
+            plotData = plotData.map(function (point) {
+                return {
+                    t: point['t'],
+                    y: mapping[point['y']],
+                };
+            });
+        }
+
+        var original = {
+            x: plotData.map(point => {return point['t']}),
+            y: plotData.map(point => {return point['y']}),
+            type: 'scatter',
+            name: metadata.series.name,
+            line: {
+                color: 'blue',
+                shape: shape,
+            },
+        };
+
+        var data = [original];
+
+        if (metadata.hasOwnProperty("accuracy") && metadata.accuracy !== null) {
+            var accuracy = metadata.accuracy;
+            var timestamps = plotData.map(point => {return point["t"]});
+
+            var upperTrace = {
+                x: timestamps,
+                y: plotData.map(point => {return point["y"] + accuracy}),
+                type: 'scatter',
+                name: 'accuracy (high)',
+                legendgroup: 'accuracy',
+                connectgaps: true,
+                fill: 'tonexty',
+                line: {
+                    color: 'red',
+                    shape: accuracyShape,
+                },
+            };
+            var lowerTrace = {
+                x: timestamps,
+                y: plotData.map(point => {return point["y"] - accuracy}),
+                type: 'scatter',
+                name: 'accuracy (low)',
+                legendgroup: 'accuracy',
+                connectgaps: true,
+                fill: 'none',
+                line: {
+                    color: 'red',
+                    shape: accuracyShape,
+                },
+            };
+
+            data = [original, lowerTrace, upperTrace];
+        }
+
+        var layout = {
+            legend: {
+                yanchor: 'top',
+                y: -0.1,
+                xanchor: 'right',
+                x: 1,
+            },
+            margin: {
+                r: 0,
+                t: 0,
+            },
+        }
+
+        if (metadata.dictionary && metadata.dictionary.length > 0) {
+            layout.yaxis = {
+                type: 'category',
+                categoryorder: 'array',
+                categoryarray: metadata.dictionary.map(function (pair) {
+                    return pair[1];
+                }),
+            };
+        }
+
+        Plotly.newPlot('advanced-chart-' + i, data, layout, {responsive: true});
+    }
+}
+
+fetch('{{ url_for(".get_chart_data") }}?' + new URLSearchParams({
+    blockevaluationid: '{{ block_evaluation.db_id }}',
+    seriesid: '{{ series.series_id }}',
+}))
+    .then(function (response) {
+        if (response.status === 200) {
+            return response.json();
+        } else if (response.status === 408 || response.status === 504) {
+            throw new Error('Timeout while loading chart data.')
+        } else {
+            throw new Error('Failed to load chart data.')
+        }
+    }).then(function (data) {
+        var statusEl = document.getElementById('comparison-chart-status');
+        statusEl.parentNode.removeChild(statusEl);
+        document.getElementById('comparison-chart-data').classList.toggle('d-none');
+        plot(data);
+    }, function (exception) {
+        document.getElementById('comparison-chart-status').innerHTML = `
+            <div class="alert alert-danger">${exception.message}</div>
+        `;
+    });
+</script>
+
+{% endblock main %}

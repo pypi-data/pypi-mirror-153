@@ -1,0 +1,328 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import bootstrap_icon, info_popover, menu_back, visualize_score, visualize_series, visualize_series_name, visualize_split_kpi_score %}
+
+{% macro compare(a, b) %}
+<td>
+    {% if a == b %}
+    <span>=</span>
+    {% elif a > b %}
+    <a class="ts-table-link text-decoration-none"
+       href="{{ url_for('.compare_evaluations', blockevaluationid=block_evaluation.db_id, compareblockevaluationid=compare_evaluation.db_id, sourcename=source_name) }}">
+        <span class="text-danger">{{ b - a }}%</span>
+    </a>
+    {% else %}
+    <a class="ts-table-link text-decoration-none"
+       href="{{ url_for('.compare_evaluations', blockevaluationid=block_evaluation.db_id, compareblockevaluationid=compare_evaluation.db_id, sourcename=source_name) }}">
+        <span class="text-success">+{{ b - a }}%</span>
+    </a>
+    {% endif %}
+</td>
+{% endmacro %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block styles %}
+<style>
+.ts-score-column {
+    width: 5.5rem;
+}
+
+#timeseries_source_score {
+    max-width: 30rem;
+    max-height: 20rem;
+}
+
+.ts-series-table {
+    table-layout: fixed;
+}
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(url_for('flows.display_flow', flowevaluationid=block_evaluation.flow_evaluation.db_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+{% call flows_header(block_evaluation.flow_evaluation, 'Dashboard') %}
+<form>
+    <input type="hidden" name="flowname" value="{{ flow.name }}">
+    <div class="btn-group">
+        <a class="btn btn-primary" href="{{ url_for('.list_evaluations', sourcename=source_name, blockevaluationid=block_evaluation.db_id) }}">
+            History
+        </a>
+        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="visually-hidden">Toggle Dropdown</span>
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item" href="{{ url_for('.open_report', blockevaluationid=block_evaluation.db_id, sourcename=source_name) }}" target="_blank">
+                    Open print report
+                    <sup>{{ bootstrap_icon('box-arrow-up-right') }}</sup>
+                </a>
+            </li>
+        </ul>
+    </div>
+</form>
+{% endcall %}
+
+{% if favorite_kpi_scores|count > 0 %}
+<div class="ts-section my-3">
+    <div class="row">
+        {% for score in favorite_kpi_scores|sort(attribute='name') %}
+        <div class="col-md-3 mb-3">
+            {{ visualize_split_kpi_score(score.score) }}
+            <div class="row"><small class="text-muted">{{ score.name|capitalize }}</small></div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="pt-3 my-3">
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <div class="row align-items-center justify-content-between">
+                <h3 class="col-sm-6 mb-0 h5">Quality KPI scores</h3>
+                {% if kpi_scores|count > 0 and block_evaluations|count > 2 %}
+                <div class="dropdown col-sm-auto">
+                    <button type="button"
+                            class="btn btn-sm btn-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown"
+                            aria-haspopup="true"
+                            aria-expanded="false">
+                        Compare to
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <a class="dropdown-item {% if compare_to is none %}active{% endif %}"
+                           {% if compare_to is not none %}
+                           href="{{ url_for ('.display_dashboard', sourcename=source_name, blockevaluationid=block_evaluation.db_id) }}"
+                           {% endif %}>
+                           Previous
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <h6 class="dropdown-header">Evaluations</h6>
+                        {% for evaluation in block_evaluations|sort(attribute='flow_evaluation.group.date')|reverse if evaluation.db_id != block_evaluation.db_id %}
+                        <a class="dropdown-item {% if compare_evaluation.db_id == evaluation.db_id %}active{% endif %}"
+                           {% if compare_evaluation.db_id == evaluation.db_id %}
+                           {% elif previous_evaluation.db_id == evaluation.db_id %}
+                           href="{{ url_for('.display_dashboard', sourcename=source_name, blockevaluationid=block_evaluation.db_id) }}"
+                           {% elif compare_evaluation.db_id != evaluation.db_id %}
+                           href="{{ url_for('.display_dashboard', sourcename=source_name, compareTo=evaluation.db_id, blockevaluationid=block_evaluation.db_id) }}"
+                           {% endif %}>
+                            {{ evaluation.flow_evaluation.group.date|datetimeformat }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% if kpi_scores|count > 0 %}
+        <div class="row gx-0">
+            {% if kpi_scores|count > 2 %}
+            <div class="col border-end d-flex justify-content-center">
+                <div id='timeseries_source_score'></div>
+            </div>
+            {% endif %}
+            <div class="col">
+                <table class="ts-table table table-borderless">
+                    <thead class="table-secondary">
+                        <tr class="border-bottom">
+                            <th scope="col">KPI</th>
+                            <th scope="col">{{ flow.name }}</th>
+                            <th scope="col">Evolution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kpi in kpis|sort(attribute='name') %}
+                        <tr class="border-bottom">
+                            <th scope="row">
+                                <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('.kpi_report', flowname=flow.name, kpi=kpi.name, sourcename=source_name, blockevaluationid=block_evaluation.db_id) }}">
+                                    {{ kpi.name }}
+                                </a>
+                            </th>
+                            {% if kpi.name in kpi_scores %}
+                            {{ visualize_score(kpi_scores[kpi.name]) }}
+                            {% else %}
+                            <td>-</td>
+                            {% endif %}
+                            {% if kpi.name in kpi_scores and kpi.name in comparison_kpi_scores %}
+                            {{ compare(comparison_kpi_scores[kpi.name], kpi_scores[kpi.name]) }}
+                            {% else %}
+                            <td>-</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-muted text-center p-1">
+            No results to display.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if block_evaluation.flow_evaluation.group.time_range.has_no_time_range() is false %}
+<div class="mt-4" id="bad-actor-visualization-container">
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h3 class="mb-0 h5">Bad actor visualization</h3>
+        </div>
+        <div class="row gx-0">
+        <div id="bad-actor-visualization">
+            <div class="alert alert-primary mt-2">
+                <div class="row align-items-center">
+                    <div class="col">
+                        Loading chart...
+                    </div>
+                    <div class="col-auto">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-4">
+    <div class="row">
+        {% for kpi, scores in kpi_score_scores|dictsort %}
+        <div class="col-md-6 mt-4">
+            <div class="card shadow-sm h-100 ">
+                <div class="card-header">
+                    <h3 class="mb-0 h5">{{ kpi|capitalize }}</h3>
+                </div>
+                <table class="ts-card-table table table-sm table-borderless">
+                    <thead class="table-secondary">
+                        <tr class="border-bottom">
+                            <th scope="col">Name</th>
+                            <th scope="col" class="ts-score-column">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if scores|count > 0 %}
+                        {% for score in scores|sort(attribute="weight", reverse=True) %}
+                        <tr class="border-bottom {% if loop.nextitem and loop.nextitem.weight <= 1 and score.weight > 1 %} border-dark {% endif %} ">
+                            <th scope="row">
+                                <a class="ts-table-link text-dark fw-normal text-decoration-none" href="{{ url_for('.score_event_frames', sourcename=source_name, kpi=kpi, score=score.metadata.name, flowname=flow.name, blockevaluationid=block_evaluation.db_id) }}">
+                                    {{ score.metadata.name|capitalize }}
+                                </a>
+                                {% if score.metadata.short_help_text %}
+                                    {{info_popover(score.metadata.short_help_text)}}
+                                {% endif %}
+                            </th>
+                            {{ visualize_score(score.score) }}
+                        </tr>
+                        {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+                {% if scores|count == 0 %}
+                <div class="text-muted text-center p-1">
+                    No results to display.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="my-4">
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <div class="row align-items-center justify-content-between">
+                <h3 class="col-sm-8 mb-0 h5">Worst scoring series</h3>
+                {% if worst_series|count > 0 %}
+                <form class="col-sm-auto" action="{{ url_for('.series_score_report') }}">
+                    <input type="hidden" name="flowname" value="{{ flow.name }}">
+                    <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+                    {% if source_name %}
+                    <input type="hidden" name="sourcename" value="{{ source_name }}">
+                    {% endif %}
+                    <button type="submit" class="btn btn-sm btn-secondary">Display all</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if worst_series|count > 0 %}
+        <table class="ts-card-table ts-series-table table table-sm table-borderless table-hover">
+            <thead class="table-secondary">
+                <tr class="border-bottom">
+                    <th scope="col">Series name</th>
+                    <th scope="col">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for series, score in worst_series.items() %}
+                <tr class="border-bottom">
+                    <th scope="row">
+                        <a class="ts-table-link text-dark fw-normal text-decoration-none" href="{{ url_for('.show_checks', seriesid=series.series_id, blockevaluationid=block_evaluation.db_id) }}"
+                        class="text-break">
+                            {{ visualize_series_name(series.name) }}
+                        </a>
+                    </th>
+                    {{ visualize_score(score) }}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-muted text-center p-1">
+            No results to display.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+{% if kpi_scores|count > 2 %}
+{% include 'scripts/kpi-scores.js' %}
+{% endif %}
+
+
+{% if block_evaluation.flow_evaluation.group.time_range.has_no_time_range() is false %}
+{% include 'scripts/flow-bad-actor-visualization.js' %}
+
+fetch('{{ url_for(".bad_actors_data") }}?' + new URLSearchParams({
+    blockevaluationid: '{{ block_evaluation.db_id }}',
+    includelinks: true,
+}))
+    .then(function (response) {
+        if (response.status === 200) {
+            return response.json();
+        } else if (response.status === 408 || response.status === 504) {
+            throw new Error('Timeout while loading bad actors visualization data.')
+        } else {
+            throw new Error('Failed to load bad actors visualization data.')
+        }
+    }).then(function (data) {
+        var chartEl = document.getElementById('bad-actor-visualization');
+        while (chartEl.firstChild) {
+            chartEl.removeChild(chartEl.lastChild);
+        }
+        if (data.length == 0) {
+           document.getElementById('bad-actor-visualization').innerHTML = `
+                <div class="text-muted text-center p-1">No results to display.</div>
+           `
+        } else {
+            plotBadActors(data);
+        }
+    }, function (exception) {
+        document.getElementById('bad-actor-visualization').innerHTML = `
+            <div class="alert alert-danger mt-2">${exception.message}</div>
+        `;
+    });
+{% endif %}
+</script>
+
+{% endblock %}

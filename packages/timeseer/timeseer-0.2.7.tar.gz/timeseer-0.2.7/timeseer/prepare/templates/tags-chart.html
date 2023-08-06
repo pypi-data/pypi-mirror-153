@@ -1,0 +1,326 @@
+{% extends 'tags-layout.html' %}
+
+{% block menu %}
+{{ prepare_menu('Chart') }}
+{% endblock %}
+
+{% block tags_title %}
+<h2 class="h4">Chart</h2>
+{% endblock %}
+
+{% block tags_content %}
+{% if context_start_date and context_end_date %}
+<p class="alert alert-info">
+    Event frame from {{ context_start_date|datetimeformat }} to {{ context_end_date|datetimeformat }}.
+</p>
+{% endif %}
+
+<form class="mb-3">
+    <div class="row align-items-end gx-2">
+        <input type="hidden" name="seriesid" value="{{ series.series_id }}">
+        {% if context_start_date and context_end_date %}
+        <input type="hidden" name="contextStartDate" value="{{ context_start_date }}">
+        <input type="hidden" name="contextEndDate" value="{{ context_end_date }}">
+        {% endif %}
+
+        <div class="col-lg">
+            <label for="startDateInput" class="col-form-label">Start date</label>
+            <input class="form-control bg-white" id="startDateInput" name="startDate" value="{{ start_date }}">
+        </div>
+        <div class="col-lg">
+            <label for="endDateInput" class="col-form-label">End date</label>
+            <input class="form-control bg-white" id="endDateInput" name="endDate" value="{{ end_date }}">
+        </div>
+
+        <div class="col-lg-auto mt-lg-0 mt-2">
+            <button type="submit" class="btn btn-primary btn-block">Visualize</button>
+        </div>
+    </div>
+</form>
+
+<script>
+    flatpickr("#startDateInput", flatpickrOptions);
+    flatpickr("#endDateInput", flatpickrOptions);
+</script>
+
+<div id="advanced-chart">
+    <div class="alert alert-primary">
+        <div class="row align-items-center">
+            <div class="col">
+                Loading chart...
+            </div>
+            <div class="col-auto">
+                <div class="spinner-border text-primary" role="status"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="occurrence-chart"></div>
+
+
+{% if end_date < start_date %}
+<div class="alert alert-warning">
+    The end date ({{ end_date|datetimeformat }}) must be after the start date ({{ start_date|datetimeformat }}).
+</div>
+{% endif %}
+
+<script>
+
+function plot_data(plotData) {
+    var metadata = {{ metadata.to_data()|tojson }};
+
+    var startDate = '{{ start_date }}';
+    var endDate = '{{ end_date }}';
+    {% if context_start_date and context_end_date %}
+    var contextStartDate = "{{ context_start_date }}";
+    var contextEndDate = "{{ context_end_date }}";
+    {% else %}
+    var contextStartDate;
+    var contextEndDate;
+    {% endif %}
+
+    if (metadata.interpolationType && metadata.interpolationType === 'STEPPED') {
+        var shape = 'hv';
+        var accuracyShape = 'hv';
+    } else {
+        var shape = 'linear';
+        var accuracyShape = 'linear';
+    }
+
+    if (metadata.dictionary && metadata.dictionary.length > 0) {
+        var mapping = {};
+        metadata.dictionary.forEach(function (pair) {
+            mapping[pair[0]] = pair[1];
+        });
+        plotData = plotData.map(function (point) {
+            
+            return {
+                t: point['t'],
+                y: mapping[point['y']],
+            };
+        });
+    }
+    var original = {
+        x: plotData.map(point => {return point['t']}),
+        y: plotData.map(point => {return point['y']}),
+        type: 'scatter',
+        name: '{{ series.name }}',
+        line: {
+            color: 'blue',
+            shape: shape,
+        },
+    };
+
+    var data = [original];
+
+    if (metadata.hasOwnProperty('accuracy') && metadata.accuracy !== null) {
+        var accuracy = metadata.accuracy;
+        var timestamps = plotData.map(point => {return point['t']});
+
+        var upperTrace = {
+            x: timestamps,
+            y: plotData.map(point => {return point["y"] + accuracy}),
+            type: 'scatter',
+            name: 'accuracy (high)',
+            legendgroup: 'accuracy',
+            connectgaps: true,
+            fill: 'tonexty',
+            line: {
+                color: 'red',
+                shape: accuracyShape,
+            },
+        };
+        var lowerTrace = {
+            x: timestamps,
+            y: plotData.map(point => {return point["y"] - accuracy}),
+            type: 'scatter',
+            name: 'accuracy (low)',
+            legendgroup: 'accuracy',
+            connectgaps: true,
+            fill: 'none',
+            line: {
+                color: 'red',
+                shape: accuracyShape,
+            },
+        };
+
+        data = [original, lowerTrace, upperTrace];
+    }
+
+    shapes = [];
+    annotations = [];
+    if ((metadata.hasOwnProperty('limitLowFunctional') && metadata.limitLowFunctional !== null)
+            || (metadata.hasOwnProperty('limitLowPhysical') && metadata.limitLowPhysical !== null)) {
+        if (metadata.hasOwnProperty('limitLowFunctional') && metadata.limitLowFunctional !== null) {
+            var limitLow = metadata.limitLowFunctional;
+        } else {
+            var limitLow = metadata.limitLowPhysical;
+        }
+        shapes.push({
+            type: 'line',
+            xref: 'paper',
+            x0: 0,
+            y0: limitLow,
+            x1: 1,
+            y1: limitLow,
+            line:{
+                color: 'rgb(192, 3, 3)',
+                width: 2,
+                dash:'dot'
+            }
+        });
+
+        annotations.push({
+            xref: 'paper',
+            x: 0,
+            xanchor: 'right',
+            y: limitLow,
+            yanchor: 'bottom',
+            text: 'Lower',
+            font: {
+                color: 'rgb(192, 3, 3)'
+            },
+            showarrow: false
+        });
+    }
+    if ((metadata.hasOwnProperty('limitHighFunctional') && metadata.limitHighFunctional != null)
+            || (metadata.hasOwnProperty('limitHighPhysical') && metadata.limitHighPhysical != null)) {
+        if (metadata.hasOwnProperty('limitHighFunctional') && metadata.limitHighFunctional !== null) {
+            var limitHigh = metadata.limitHighFunctional;
+        } else {
+            var limitHigh = metadata.limitHighPhysical;
+        }
+        shapes.push({
+            type: 'line',
+            xref: 'paper',
+            x0: 0,
+            y0: limitHigh,
+            x1: 1,
+            y1: limitHigh,
+            line:{
+                color: 'rgb(192, 3, 3)',
+                width: 2,
+                dash:'dot'
+            }
+        });
+
+        annotations.push({
+            xref: 'paper',
+            x: 0,
+            xanchor: 'right',
+            y: limitHigh,
+            yanchor: 'bottom',
+            text: 'Upper',
+            font: {
+                color: 'rgb(192, 3, 3)'
+            },
+            showarrow: false
+        });
+    }
+
+    if (contextStartDate && contextEndDate) {
+        shapes.push({
+            type: 'rect',
+            xref: 'x',
+            yref: 'paper',
+            x0: contextStartDate,
+            x1: contextEndDate,
+            y0: 0,
+            y1: 1,
+            fillcolor: 'grey',
+            opacity: 0.2,
+            line: {
+                width: 0,
+            },
+        });
+    }
+
+    var layout = {
+        shapes: shapes,
+        annotations: annotations,
+        legend: {
+            yanchor: 'top',
+            y: -0.1,
+            xanchor: 'right',
+            x: 1,
+        },
+        margin: {
+            r: 0,
+            t: 0,
+        },
+        xaxis: {
+            range: [startDate, endDate],
+        },
+        yaxis: {
+            range: [Math.min.apply(Math, original.y), Math.max.apply(Math, original.y)]
+        }
+    }
+
+    if (metadata.dictionary && metadata.dictionary.length > 0) {
+        layout.yaxis = {
+            type: 'category',
+            categoryorder: 'array',
+            categoryarray: metadata.dictionary.map(function (pair) {
+                return pair[1];
+            }),
+        };
+    }
+
+    Plotly.newPlot('advanced-chart', data, layout, {responsive: true});
+}
+
+fetch('{{ url_for(".chart_data") }}?' + new URLSearchParams({
+    seriesid: '{{ series.series_id }}',
+    startDate: '{{ start_date }}',
+    endDate: '{{ end_date }}',
+}))
+    .then(function (response) {
+        if (response.status === 200) {
+            return response.json();
+        } else if (response.status === 408 || response.status === 504) {
+            throw new Error('Timeout while loading chart data.')
+        } else {
+            throw new Error('Failed to load chart data.')
+        }
+    }).then(function (data) {
+        var chartEl = document.getElementById('advanced-chart');
+        while (chartEl.firstChild) {
+            chartEl.removeChild(chartEl.lastChild);
+        }
+        plot_data(data);
+    }, function (exception) {
+        document.getElementById('advanced-chart').innerHTML = `
+            <div class="alert alert-danger">${exception.message}</div>
+        `;
+    });
+</script>
+
+<script>
+{% include 'scripts/event-frame-occurrence.js' %}
+
+fetch('{{ url_for(".occurrence_chart_data") }}?' + new URLSearchParams({
+    seriesid: '{{ series.series_id }}',
+    startDate: '{{ start_date }}',
+    endDate: '{{ end_date }}',
+}))
+    .then(function (response) {
+        if (response.status === 200) {
+            return response.json();
+        } else if (response.status === 408 || response.status === 504) {
+            throw new Error('Timeout while loading occurrence chart data.')
+        } else {
+            throw new Error('Failed to load occurrence chart data.')
+        }
+    }).then(function (data) {
+        var chartEl = document.getElementById('occurrence-chart');
+        while (chartEl.firstChild) {
+            chartEl.removeChild(chartEl.lastChild);
+        }
+        plot_occurrence(data);
+    }, function (exception) {
+        document.getElementById('occurrence-chart').innerHTML = `
+            <div class="alert alert-danger">${exception.message}</div>
+        `;
+    });
+</script>
+{% endblock tags_content %}

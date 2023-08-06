@@ -1,0 +1,221 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import visualize_split_kpi_score, bootstrap_icon %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Get started</h2>
+</div>
+{% if block_evaluations|count > 1 or pattern %}
+<div class="ts-section pb-3">
+    <form class="row align-items-center justify-content-start g-2">
+        <div class="col-md-3">
+            <label class="visually-hidden" for="setFilterInput">Filter by name</label>
+            <input class="form-control" id="setFilterInput" name="dataservicepattern" value="{{ pattern }}" placeholder="Filter by name">
+        </div>
+        <div class="col-sm-auto">
+            <button class="btn btn-secondary" type="submit">Filter</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<div class="row my-3 py-3">
+    {% for data_service, block_evaluation in block_evaluations.items() %}
+    <div class="col-lg-6 mb-3">
+        <div class="card shadow-sm h-100" data-e2e="improve">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col-md">
+                        <div class="row">
+                            <div class="col-md-auto">
+                                <div class="fw-bold">
+                                    {% if block_evaluation is none %}
+                                    {{ data_service }}
+                                    {% else %}
+                                    <a class="text-decoration-none text-reset" href="{{ url_for ('flow_univariate.display_dashboard', blockevaluationid=block_evaluation.db_id, sourcename=data_service) }}">
+                                        {{ data_service }}
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md">
+                                {% if data_service in sources %}
+                                <a role="button" class="ts-table-link text-muted text-decoration-none pe-auto" data-bs-toggle="modal" data-bs-target="#searchSeriesModal" data-bs-flow="{{ data_service }}" title="Click to search series">
+                                    {{ series_count[data_service] }} series
+                                </a>
+                                {% else %}
+                                <div class='text-muted'>{{ series_count[data_service] }} series</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-auto">
+                        <div class="dropdown">
+                            <button type="button"
+                                    class="btn btn-sm btn-secondary dropdown-toggle"
+                                    data-bs-toggle="dropdown"
+                                    aria-haspopup="true"
+                                    aria-expanded="false">
+                                Show
+                            </button>
+                            <div class="dropdown-menu">
+                                {% if data_service in sources %}
+                                <a class="dropdown-item"
+                                    href="{{ url_for('flows.display_flow', flowname=data_service, sourcename=source_name) }}">
+                                    Flow configuration
+                                </a>
+                                <a class="dropdown-item"
+                                    href="{{ url_for('sources.display_configuration', sourcename=data_service) }}">
+                                    Source configuration
+                                </a>
+                                {% else %}
+                                <a class="dropdown-item"
+                                    href="{{ url_for('flows.display_flow', flowname=block_evaluation.flow_evaluation.group.flow.name, flowevaluationid=block_evaluation.flow_evaluation.db_id, sourcename=source_name) }}">
+                                    Flow configuration
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row position-relative">
+                    {% if block_evaluation is none %}
+                    {% if series_count[data_service] == 0 %}
+                    <div class="text-muted text-center p-1">
+                        <a href="{{ url_for('sources.display_configuration', sourcename=data_service) }}">Evaluation not started</a>
+                    </div>
+                    {% else %}
+                    <div class="text-muted text-center p-1">
+                        <a href="{{ url_for('flows.display_flow', flowname=data_service, sourcename=source_name) }}">Evaluation not started</a>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                        {% if state[data_service].flow_state.is_completed() %}
+                        {% if state[data_service].block_state.failed == state[data_service].block_state.completed %}
+                            <div class="text-muted text-center p-1">
+                                <a href="{{ url_for('flows.display_flow', flowevaluationid=block_evaluation.flow_evaluation.db_id, sourcename=source_name) }}">Evaluation failed completely</a>
+                            </div>
+                        {% else %}
+                            {% if favorite_kpi_scores[data_service]|count > 0 %}
+                            {% for score in favorite_kpi_scores[data_service]|sort(attribute='name') %}
+                            <div class="col-md-3 mb-2">
+                                {{ visualize_split_kpi_score(score.score) }}
+                                <div class="row"><small class="text-muted">{{ score.name|capitalize }}</small></div>
+                            </div>
+                            {% endfor %}
+                            <a href="{{ url_for ('flow_univariate.display_dashboard', blockevaluationid=block_evaluation.db_id, sourcename=source_name) }}" class="stretched-link"></a>
+                            {% else %}
+                            <div class="text-muted text-center p-1">
+                                <a href="{{ url_for('kpi_sets.configure_kpi_set', kpisetname=kpi_sets[block_evaluation.flow_evaluation.group.flow.kpi_set.db_id], sourcename=source_name) }}">No favorite KPIs in KPI set</a>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                        {% else %}
+                        <div class="text-muted text-center p-1">
+                            <a href="{{ url_for('flows.display_flow', flowevaluationid=block_evaluation.flow_evaluation.db_id, sourcename=source_name) }}">Evaluation in progress</a>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% if block_evaluation is not none %}
+            <div class="card-footer">
+                <div class="text-end text-muted">
+                    <small>Last run: {{ block_evaluation.flow_evaluation.group.date|datetimeformat }}</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<div class="modal fade" id="searchSeriesModal" tabindex="-1" aria-labelledby="searchSeriesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-md-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="searchSeriesLabel">Search series</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('prepare.search_series') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="sourceSelect" class="form-label">Select a source</label>
+                        <select name="sourcename" id="sourceSelect" class="form-select">
+                            {% for source in sources %}
+                            <option {% if source == source_name %}selected{% endif %}>{{ source }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="seriesInput" class="form-label">Select a time series</label>
+                        <input type="text"
+                            class="form-control"
+                            id="seriesInput"
+                            name="seriesname"
+                            placeholder="Type to search time series"
+                            autocomplete="off"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">Visualize time series</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if inconsistencies|count > 0 %}
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div role="alert" aria-live="assertive" aria-atomic="true" class="toast" data-bs-autohide="false" data-bs-show="toast">
+        <div class="toast-header">
+        <strong class="me-auto">Inconsistent configuration</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <a href="{{ url_for('home.configure', sourcename=source_name) }}" class="stretched-link text-reset text-decoration-none">
+                {% if inconsistencies|count == 1 %}
+                There is {{inconsistencies|count}} inconsistency in the configuration.
+                {% else %}
+                There are {{inconsistencies|count}} inconsistencies in the configuration.
+                {% endif %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+<script>
+    $('#seriesInput').autoComplete({
+        bootstrapVersion: '4',
+        noResultsText: 'No matching series known.',
+        resolver: 'custom',
+        events: {
+            search: function (pattern, callback) {
+                var params = {
+                    'source': $('#sourceSelect').val(),
+                    'pattern': pattern,
+                };
+                $.ajax('{{ url_for('api.search_series_names') }}', {data: params}).done(callback);
+            },
+        },
+    });
+
+    var searchSeriesModal = document.getElementById('searchSeriesModal')
+    searchSeriesModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var flow = button.getAttribute('data-bs-flow');
+        var selection = document.getElementById('sourceSelect');
+        selection.value = flow;
+        document.getElementById('seriesInput').value = '';
+    });
+    searchSeriesModal.addEventListener('shown.bs.modal', function () {
+        document.getElementById('seriesInput').focus();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import bootstrap_icon, menu %}
+
+{% macro series_set_template_menu(active) %}
+{{
+    menu(
+        (bootstrap_icon('arrow-left', 'h5 fw-bolder m-0', 24), url_for('series_sets.list_templates', sourcename=source_name)),
+        [
+            ('Series sets', url_for('series_sets.preview_template', templatename=template.name, sourcename=source_name)),
+            ('Metadata', url_for('series_sets.template_metadata', templatename=template.name, sourcename=source_name)),
+        ],
+        active,
+    )
+}}
+{% endmacro %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center gx-2">
+        <div class="col-sm">
+            <h2 class="h4">{{ template.name }}</h2>
+        </div>
+        {% if template.origin.value == 'ui' %}
+        <div class="col-sm-auto">
+            <div class="btn-toolbar" role="toolbar">
+                {% block custom_actions %}
+                {% endblock %}
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="editDropdown" data-bs-toggle="dropdown">
+                        Edit
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="editDropdown">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('.edit_template', templatereferencename=template.name, sourcename=source_name) }}">
+                                Update pattern
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item"
+                               href="{{ url_for('.remove_template', templatename=template.name, sourcename=source_name) }}">
+                                Remove
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block series_set_template_content %}
+{% endblock %}
+{% endblock %}

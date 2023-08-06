@@ -1,0 +1,158 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import info_popover, menu_back, visualize_score %}
+
+{% macro compare_kpi(a, b) %}
+<td>
+    {% if a == b %}
+    <span>=</span>
+    {% elif a > b %}
+    <span class="text-danger">{{ b - a }}%</span>
+    {% else %}
+    <span class="text-success">+{{ b - a }}%</span>
+    {% endif %}
+</td>
+{% endmacro %}
+
+{% macro compare_score(a, b, score, kpi) %}
+<td>
+    <a class="ts-table-link text-decoration-none"
+       href="{{ url_for('.score_event_frames', blockevaluationid=block_evaluation.db_id, kpi=kpi.name, score=score.metadata.name, startDate=compare_evaluation.flow_evaluation.group.time_range.end_date, sourcename=source_name) }}">
+        {% if a == b %}
+        <span class="text-black">=</span>
+        {% elif a > b %}
+        <span class="text-danger">{{ b - a }}%</span>
+        {% else %}
+        <span class="text-success">+{{ b - a }}%</span>
+        {% endif %}
+    </a>
+</td>
+{% endmacro %}
+
+{% block styles %}
+<style>
+    .comparison-table {
+        table-layout: fixed;
+    }
+    .comparison-table .score {
+        width: 25%;
+    }
+    .comparison-table .evolution {
+        width: 15%;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(url_for('.list_evaluations', sourcename=source_name, blockevaluationid=block_evaluation.db_id)) }}
+{% endblock %}
+
+{% block main %}
+{{ flows_header(block_evaluation.flow_evaluation, 'Compare evaluations') }}
+
+<div class="pt-3 my-3">
+    <p>
+        Comparing evaluation on
+        <a href="{{ url_for('.display_dashboard', blockevaluationid=compare_evaluation.db_id, sourcename=source_name) }}">
+            {{ comparison.date|datetimeformat }}
+        </a>
+        to
+        <a href="{{ url_for('.display_dashboard', blockevaluationid=block_evaluation.db_id, sourcename=source_name) }}">
+            {{ report.date|datetimeformat }}
+        </a>
+        .
+    </p>
+
+    <table class="ts-table table table-borderless comparison-table">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">Score</th>
+                <th scope="col" class="score">{{ comparison.date|datetimeformat }}</th>
+                <th scope="col" class="score">{{ report.date|datetimeformat }}</th>
+                <th scope="col" class="evolution">Evolution</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="border-bottom">
+                <th scope="row" class="fw-normal">Aggregated score</th>
+                {{ visualize_score(comparison.score) }}
+                {{ visualize_score(report.score) }}
+                {{ compare_kpi(comparison.score, report.score) }}
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="ts-table table table-borderless comparison-table">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">KPI</th>
+                <th scope="col" class="score">{{ comparison.date|datetimeformat }}</th>
+                <th scope="col" class="score">{{ report.date|datetimeformat }}</th>
+                <th scope="col" class="evolution">Evolution</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for kpi in entries|map(attribute='kpi') %}
+            <tr class="border-bottom">
+                <th scope="row" class="fw-normal">
+                    {{ kpi.name }}
+                    {% if kpi.short_help_text %}
+                    {{ info_popover(kpi.short_help_text) }}
+                    {% endif %}
+                </th>
+                {% if kpi in comparison.kpi_scores %}
+                {{ visualize_score(comparison.kpi_scores[kpi]) }}
+                {% else %}
+                <td>-</td>
+                {% endif %}
+                {% if kpi in report.kpi_scores %}
+                {{ visualize_score(report.kpi_scores[kpi]) }}
+                {% else %}
+                <td>-</td>
+                {% endif %}
+                {% if kpi in comparison.kpi_scores and kpi in report.kpi_scores %}
+                {{ compare_kpi(comparison.kpi_scores[kpi], report.kpi_scores[kpi]) }}
+                {% else %}
+                <td>-</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% for kpi in entries|map(attribute='kpi') %}
+    <table class="ts-table table table-borderless comparison-table">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">{{ kpi.name }}</th>
+                <th scope="col" class="score">{{ comparison.date|datetimeformat }}</th>
+                <th scope="col" class="score">{{ report.date|datetimeformat }}</th>
+                <th scope="col" class="evolution">Evolution</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for score in report.kpi_score_scores[kpi.name]|sort(attribute='metadata.name') %}
+            <tr class="border-bottom">
+                <th scope="row" class="fw-normal">
+                    {{ score.metadata.name|capitalize }}
+                    {% if score.metadata.short_help_text %}
+                    {{ info_popover(score.metadata.short_help_text) }}
+                    {% endif %}
+                </th>
+                {% set comparison_scores = comparison.kpi_score_scores[kpi.name]|selectattr('metadata.name', 'eq', score.metadata.name)|list %}
+                {% if comparison_scores|count > 0 %}
+                {{ visualize_score(comparison_scores|first|attr('score')) }}
+                {% else %}
+                <td>-</td>
+                {% endif %}
+                {{ visualize_score(score.score) }}
+                {% if comparison_scores|count > 0 %}
+                {{ compare_score(comparison_scores|first|attr('score'), score.score, score, kpi) }}
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+</div>
+{% endblock %}

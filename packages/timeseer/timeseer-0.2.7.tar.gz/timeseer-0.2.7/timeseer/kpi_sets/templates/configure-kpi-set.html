@@ -1,0 +1,194 @@
+{% extends 'timeseer.html' %}
+{% from 'macros.html' import alerter, bootstrap_icon, menu_back %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('KPI sets') }}
+{% endblock %}
+{% block styles %}
+<style>
+    .icon{
+        vertical-align: -0.125em;
+    }
+</style>
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center gx-2">
+        <div class="col-sm">
+            <h2 class="h4">KPIs in KPI set</h2>
+            <p class="h6 text-break">{{ kpi_set.name }}</p>
+        </div>
+        {% if kpi_set.origin.value == 'ui' %}
+        <div class="col-sm-auto">
+            <div class="btn-toolbar" role="toolbar">
+                <a class="btn btn-primary me-2 mb-2 mb-sm-0" data-bs-toggle="offcanvas" href="#KPIsAddOffCanvas">
+                    Add KPI
+                </a>
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="editDropdown" data-bs-toggle="dropdown">
+                    Edit
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="editDropdown">
+                    <li>
+                        <a class="dropdown-item {%if kpi_set.origin.value != "ui" %}disabled{% endif %}" href="{{ url_for('.rename_kpi_set', kpisetid=kpi_set.db_id, sourcename=source_name) }}">
+                        Rename
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {%if kpi_set.origin.value != "ui" %}disabled{% endif %}"
+                        href="{{ url_for('.remove_kpi_set', kpisetid=kpi_set.db_id, sourcename=source_name) }}">
+                            Remove
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="KPIsAddOffCanvas">
+    <div class="offcanvas-header">
+        <h3 class="offcanvas-title h5">Add KPI</h3>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form method="POST">
+            <input type="hidden" name="kpisetid" value="{{ kpi_set.db_id }}">
+
+            <div class="my-3">
+                <label for="kpiidSelect" class="form-label">Select KPI</label>
+                <select class="form-select" id="kpiidSelect" name="kpiid">
+                    {% for kpi in KPIs|sort(attribute="name") %}
+                    {% if weights_per_kpi.get(kpi.name) is none %}
+                    <option value={{kpi.db_id}}>{{ kpi.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="favorite" name="favorite">
+                <label class="form-check-label" for="favorite">
+                  Favorite
+                </label>
+              </div>
+            <div class="my-3">
+                <button type="submit" class="btn btn-primary">Add KPI</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+    {% if weights_per_kpi|count > 0 %}
+    {% if kpi_set.origin.value == 'ui' %}
+    <div class="row gx-2 mb-3">
+        <div class="col-sm-auto">
+            <div class="btn-group ts-dropdown-select-button">
+                <a class="btn border border-secondary dropdown-toggle"
+                    href="#"
+                    role="button"
+                    id="selectionDropdown"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                </a>
+                <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                    <button type="submit"
+                            class="dropdown-item ts-dropdown-action"
+                            form="kpiselection"
+                            formmethod="POST"
+                            formaction="{{ url_for('.remove_multiple_kpis_from_kpi_set', sourcename=source_name) }}"
+                            >
+                            Remove selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <form id="kpiselection">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        <input type="hidden" name="kpisetid" value="{{ kpi_set.db_id }}">
+        <table class="ts-table {% if kpi_set.origin.value == 'ui' %}ts-table-checkbox{% endif %} table table-borderless mt-3" data-ts-target="selectionDropdown">
+            <thead class="table-secondary">
+                <tr class="border-bottom">
+                    {% if kpi_set.origin.value == 'ui' %}
+                    <th scope="col" class="table-check">
+                        <input class="form-check-input" type="checkbox">
+                    </th>
+                    {% endif %}
+                    <th scope="col">KPI</th>
+                    <th scope="col">Name</th>
+                    <th scope="col" >Weight</th>
+                    <th scope="col">Favorite</th>
+                </tr>
+            </thead>
+            {% for kpi_name, weights in weights_per_kpi|dictsort %}
+            {% for weight in weights|sort(attribute="name") %}
+            <tr class="border-bottom">
+                {% set loop_changed = loop.changed(kpi_name) %}
+                {% if loop_changed %}
+                {% if kpi_set.origin.value == 'ui' %}
+                <td rowspan="{{ weights|count }}">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="{{ kpi_name }}">
+                    </div>
+                </td>
+                {% endif %}
+                <th rowspan="{{ weights|count }}">
+                    <input type="hidden" name="kpinames" value="{{ kpi_name }}">
+                    <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('kpis.configure_kpi', kpiname=kpi_name, sourcename=source_name) }}">
+                        {{ kpi_name|capitalize }}
+                    </a>
+                </th>
+                {% endif %}
+                {% if weight.name is not none %}
+                <td>{{ weight.name|capitalize }}</td>
+                <td>
+                    {{ weight.weight }}
+                </td>
+                {% else %}
+                <td> - </td>
+                <td> - </td>
+                {% endif %}
+                {% if loop_changed %}
+                <td rowspan="{{ weights|count }}">
+                    <form>
+                        <input type="hidden" name="kpisetid" value="{{ kpi_set.db_id }}">
+                        <input type="hidden" name="kpiid" value="{{ kpi_set_kpis[kpi_name].kpi.db_id }}">
+                        <input type="hidden" name="favorite" value="{{ not kpi_set_kpis[kpi_name].favorite }}">
+                        <button
+                            type="submit"
+                            class=" btn text-decoration-none p-0 m-0"
+                            formaction="{{ url_for('.toggle_favorite', sourcename=source_name) }}"
+                            formmethod="POST"
+                            {% if kpi_set.origin.value != 'ui' %}
+                            disabled
+                            {% endif %}
+                            >
+                            {% if kpi_set_kpis[kpi_name].favorite == 0 %}
+                                {{ bootstrap_icon('star', 'icon') }}
+                            {% else %}
+                                {{ bootstrap_icon('star-fill', 'text-primary icon') }}
+                            {% endif %}
+                        </button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            {% endfor %}
+        </table>
+    </form>
+    {% else %}
+    <p class="alert alert-info">
+        KPI set empty.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

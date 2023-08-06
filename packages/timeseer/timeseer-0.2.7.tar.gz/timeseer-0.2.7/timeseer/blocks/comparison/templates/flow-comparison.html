@@ -1,0 +1,84 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import bootstrap_icon, menu_back, visualize_series %}
+
+{% block styles %}
+<style>
+    .score-table {
+        table-layout: fixed;
+    }
+    .score-table .score {
+        width: 20%;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(url_for('flows.display_flow', flowevaluationid=block_evaluation.flow_evaluation.db_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+{{ flows_header(block_evaluation.flow_evaluation, 'Before/after special event comparison') }}
+
+<div class="pt-3 my-3">
+    <table class="ts-table table table-borderless">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col" colspan="2">Reference period</th>
+                <th scope="col" colspan="2">Comparison period</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="border-bottom">
+                <td class="align-middle">{{ reference_time_range.start_date|datetimeformat }}</td>
+                <td class="align-middle">{{ reference_time_range.end_date|datetimeformat }}</td>
+                <td class="align-middle">{{ block_evaluation.flow_evaluation.group.time_range.start_date|datetimeformat }}</td>
+                <td class="align-middle">{{ block_evaluation.flow_evaluation.group.time_range.end_date|datetimeformat }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+
+    {% if results %}
+    <table class="ts-table table table-borderless score-table">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">Time series</th>
+                <th scope="col" class="score">Result</th>
+                <th scope="col" class="score">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results|sort(attribute='series.name,series.source') %}
+            <tr class="border-bottom">
+                <td class="align-middle text-break">
+                    <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('flow_univariate.redirect_series', seriesid=result.series.series_id, blockevaluationid=block_evaluation.db_id) }}">
+                        {{ visualize_series(result.series) }}
+                    </a>
+                </td>
+                {% if result.change == 0 %}
+                <td class="align-middle">{{ bootstrap_icon('x-circle', 'text-danger') }}</td>
+                {% else %}
+                <td class="align-middle">{{ bootstrap_icon('check-circle', 'text-success') }}</td>
+                {% endif %}
+                <td class="align-middle">
+                    <form action="{{ url_for('.show_chart') }}">
+                        {% if source_name is not none %}
+                        <input type="hidden" name="sourcename" value="{{ source_name }}">
+                        {% endif %}
+                        <input type="hidden" name="seriesid" value="{{ result.series.series_id }}">
+                        <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+                        <input type="submit" class="btn btn-primary btn-sm" value="Visualize">
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info">
+        No comparison before/after found.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

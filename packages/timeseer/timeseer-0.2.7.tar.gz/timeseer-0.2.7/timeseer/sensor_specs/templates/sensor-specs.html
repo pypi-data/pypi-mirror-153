@@ -1,0 +1,164 @@
+{% extends 'tags-layout.html' %}
+
+{% from 'macros.html' import visualize_series_name %}
+
+{% block styles %}
+<style>
+    table.sensor-specs {
+        table-layout: fixed;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ prepare_menu('Metadata') }}
+{% endblock %}
+
+{% block tags_title %}
+<h2 class="h4">Sensor specs</h2>
+{% endblock %}
+
+{% block tags_content %}
+<div class="card card-body mb-3">
+    <form action="http://www.alldatasheet.net/view.jsp" target="_blank">
+        <div class="row mb-0 align-items-center">
+            <div class="col-lg-auto">
+                <label for="sensorType" class="col-form-label">Look up sensor type:</label>
+            </div>
+            <div class="col-lg">
+                <input
+                    class="form-control"
+                    id="sensorType"
+                    name="Searchword"
+                    placeholder="Sensor type"
+                    {% if spec.sensor_model is not none %}
+                    value="{{ spec.sensor_model }}"
+                    {% elif metadata.get_field_by_name('sensor model') is not none %}
+                    value="{{ metadata.get_field_by_name('sensor model') }}"
+                    {% endif %}
+                    required>
+            </div>
+            <div class="col-lg-auto mt-lg-0 mt-2">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<form method="POST">
+    <input type="hidden" name="seriesid" value="{{ series.series_id }}">
+    <table class="ts-table table table-borderless sensor-specs">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">Sensor spec</th>
+                <th scope="col">Configured value</th>
+                {% if has_calculated_metadata %}
+                <th scope="col" colspan="2">Calculated value</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for field_name, field_value in spec %}
+            {% set field = metadata.find_field(field_name) %}
+            <tr class="border-bottom">
+                <th scope="row" class="align-middle"><label class="mb-0" for="{{ field_name|htmlid }}">{{ field_name|capitalize }}</label></th>
+                <td class="align-middle">
+                    {% if field_name == 'process type' %}
+                    <select class="form-select" id="{{ field_name|htmlid }}" name="{{ field_name }}">
+                        <optgroup label="Metadata value">
+                            {% if metadata.get_field(field) is not none %}
+                            <option {% if field_value == None %}selected{% endif %} value="">{{ metadata.get_field(field).value }}</option>
+                            {% else %}
+                            <option {% if field_value == None %}selected{% endif %} value=""></option>
+                            {% endif %}
+                        </optgroup>
+                        <optgroup label="Sensor spec value">
+                            {% for process_type in process_types %}
+                            <option {% if process_type.value == field_value %}selected{% endif %}>{{ process_type.value }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                    {% elif field_name == 'data type' %}
+                    <select class="form-select" id="{{ field_name|htmlid }}" name="{{ field_name }}">
+                        <optgroup label="Metadata value">
+                            {% if metadata.get_field(field) is not none %}
+                            <option {% if field_value == None %}selected{% endif %} value="">{{ metadata.get_field(field).value }}</option>
+                            {% else %}
+                            <option {% if field_value == None %}selected{% endif %} value=""></option>
+                            {% endif %}
+                        </optgroup>
+                        <optgroup label="Sensor spec value">
+                            {% for data_type in data_types %}
+                            <option {% if data_type.value == field_value %}selected{% endif %}>{{ data_type.value }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                    {% elif field_name == 'sensor model' %}
+                    <input
+                        class="form-control"
+                        id="{{ field_name|htmlid }}"
+                        name="{{ field_name }}"
+                        {% if metadata.get_field(field) is not none and metadata.get_field(field) != "" %}
+                        placeholder="{{ metadata.get_field(field) }}"
+                        {% endif %}
+                        value="{{ field_value|default_none('') }}">
+                    {% else %}
+                    <input
+                        class="form-control"
+                        id="{{ field_name|htmlid }}"
+                        name="{{ field_name }}"
+                        {% if metadata.get_field(field) is not none and metadata.get_field(field) != "" %}
+                        placeholder="{{ metadata.get_field(field)|numberformat }}"
+                        {% endif %}
+                        value="{{ field_value|default_none('')|numberformat }}">
+                    {% endif %}
+                </td>
+                {% if has_calculated_metadata %}
+                {% set calculated_value = calculated_metadata.get_field(field) %}
+                {% if calculated_value is not none %}
+                {% if field_name == 'process type' or field_name == 'data type' %}
+                <td class="align-middle">{{ calculated_value.value }}</td>
+                <td class="align-middle"></td>
+                {% else %}
+                <td class="align-middle">{{ calculated_value|numberformat }}</td>
+                <td class="align-middle"></td>
+                {% endif %}
+                {% endif %}
+                {% endif %}
+
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="alert alert-info">
+        The decimal separator is <code>'{{ locale.number_symbols['decimal'] }}'</code>.
+        The thousands separator is <code>'{{ locale.number_symbols['group'] }}'</code>.
+    </div>
+    <p>
+        <input type="submit" class="btn btn-primary" value="Update">
+    </p>
+</form>
+
+<script>
+(function () {
+    for (const row of document.querySelectorAll('.sensor-specs tbody tr')) {
+        const cells = row.getElementsByTagName('td');
+        if (cells.length < 3) {
+            continue;
+        }
+        const button = document.createElement('button');
+        button.classList.add('btn', 'btn-primary', 'btn-sm');
+        button.textContent = 'Use calculated value';
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
+            if(cells[0].getElementsByTagName('input').length > 0){
+                cells[0].getElementsByTagName('input')[0].value = cells[1].textContent;
+            }else{
+                cells[0].getElementsByTagName('select')[0].value = cells[1].textContent;
+            }
+        });
+        cells[2].appendChild(button);
+    }
+})();
+</script>
+{% endblock %}

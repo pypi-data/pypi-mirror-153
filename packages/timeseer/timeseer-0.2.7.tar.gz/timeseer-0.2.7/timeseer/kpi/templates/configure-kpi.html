@@ -1,0 +1,210 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('KPIs') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center gx-2">
+        <div class="col-sm">
+            <h2 class="h4">Configure KPI score weights</h2>
+            <p class="h6 text-break">{{ kpi.name }}</p>
+        </div>
+        {% if kpi.origin.value == 'ui' %}
+        <div class="col-sm-auto">
+            <div class="btn-toolbar" role="toolbar">
+                <div class="dropdown">
+                    <a class="btn btn-primary me-2 mb-2 mb-sm-0" data-bs-toggle="offcanvas" href="#scoresAddOffCanvas">
+                        Add score
+                    </a>
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="editDropdown" data-bs-toggle="dropdown">
+                        Edit
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="editDropdown">
+                        <li>
+                            <a class="dropdown-item {%if kpi.origin.value != "ui" %}disabled{% endif %}" href="{{ url_for('.rename_kpi', kpiid=kpi.db_id, sourcename=source_name) }}">
+                                Rename
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item {%if kpi.origin.value != "ui" %}disabled{% endif %}"
+                            href="{{ url_for('.remove_kpi', kpiid=kpi.db_id, sourcename=source_name) }}">
+                                Remove
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {% if kpi.short_help_text != "" %}
+    <p>
+        {{ kpi.short_help_text }}
+        <a data-bs-toggle="offcanvas"
+           href="#kpi-help-text"
+           aria-controls="kpi-help-text"
+           aria-expanded="false">
+            {{ bootstrap_icon('question-circle') }}
+        </a>
+    </p>
+    {% else %}
+    <p>
+        No description provided
+        {% if kpi.origin.value == 'ui' %}
+        <a href="{{ url_for('.edit_kpi_help_text', kpiid=kpi.db_id, sourcename=source_name) }}">
+            (add)
+        </a>.
+        {% endif %}
+    </p>
+    {% endif %}
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="kpi-help-text">
+        <div class="offcanvas-header">
+            <h3 class="offcanvas-title h5">{{ kpi.name }}</h3>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <p>{{ kpi.short_help_text }}</p>
+            <div>{{ kpi.html_help_text|safe }}</div>
+            {% if kpi.origin.value == 'ui' %}
+            <p class="mt-3">
+                <a class="btn btn-primary" href="{{ url_for('.edit_kpi_help_text', kpiid=kpi.db_id, sourcename=source_name) }}">
+                    Edit description
+                </a>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="scoresAddOffCanvas">
+    <div class="offcanvas-header">
+        <h3 class="offcanvas-title h5">Add score weights</h3>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form method="POST" action="{{ url_for('.add_scores_to_kpi', sourcename=source_name) }}">
+            <input type="hidden" name="kpiid" value="{{ kpi.db_id }}">
+
+            <div class="my-3">
+                <label for="scorenameSelect" class="form-label">Select score</label>
+                <select class="form-select" id="scorenameSelect" name="scorename">
+                    {% for score_weight in score_weights|sort(attribute='name') %}
+                    {% if score_weight.name not in weights|map(attribute='name') %}
+                    <option value="{{ score_weight.name }}">{{ score_weight.name|capitalize }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="my-3">
+                <label for="scoreweight" class="form-label">Add weight</label>
+                <input class="form-control" type="number"  id="scoreweight" step="0.1" min="0.0" value=1.0 name="scoreweight">
+            </div>
+
+            <div class="my-3">
+                <button type="submit" class="btn btn-primary">Add score</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="my-3 py-3">
+    {{ alerter() }}
+    {% if weights|count > 0 %}
+    {% if kpi.origin.value == 'ui' %}
+    <div class="row gx-2 mb-3">
+        <div class="col-sm-auto">
+            <div class="btn-group ts-dropdown-select-button">
+                <a class="btn border border-secondary dropdown-toggle"
+                    href="#"
+                    role="button"
+                    id="selectionDropdown"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                </a>
+                <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                    <button type="submit"
+                            class="dropdown-item ts-dropdown-action"
+                            form="weightselection"
+                            formmethod="POST"
+                            formaction="{{ url_for('.remove_multiple_weights_from_kpi', sourcename=source_name) }}"
+                            >
+                            Remove selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <form id="weightselection" method="POST" action="{{ url_for('.configure_kpi', kpiname=kpi.name, sourcename=source_name) }}">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        <input type="hidden" name="kpiid" value="{{ kpi.db_id }}">
+        <table class="ts-table {% if kpi.origin.value == 'ui' %}ts-table-checkbox{% endif %} table table-borderless mt-3"  data-ts-target="selectionDropdown">
+            <thead class="table-secondary">
+                <tr class="border-bottom">
+                    {% if kpi.origin.value == 'ui' %}
+                    <th scope="col" class="table-check">
+                        <input class="form-check-input" type="checkbox">
+                    </th>
+                    {% endif %}
+                    <th scope="col">Score name</th>
+                    <th scope="col" class="ts-score-column">Weight</th>
+                </tr>
+            </thead>
+            {% for weight in weights|sort(attribute='name') %}
+            <tr class="border-bottom">
+                {% if kpi.origin.value == 'ui' %}
+                <td class="align-middle">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="{{ weight.name }}">
+                    </div>
+                </td>
+                {% endif %}
+                <td class="align-middle">
+                    <input type="hidden" name="weightnames" value="{{ weight.name }}">
+                    <label class="mb-0" for="{{ weight.name|htmlid }}">
+                        {{ weight.name|capitalize }}
+                    </label>
+                </td>
+                <td>
+                    {% if kpi.origin.value == 'ui' %}
+                    <input type="number"
+                            step="0.1"
+                            min="0.0"
+                            class="form-control"
+                            id="{{ weight.name|htmlid }}"
+                            name="check-{{ weight.name }}"
+                            value="{{ weight.weight }}"
+                            placeholder="{{ weight.weight }}">
+                    {% else %}
+                    {{ weight.weight }}
+                    {% endif %}
+
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% if kpi.origin.value == 'ui' %}
+        <button type="submit" class="btn btn-primary">Update weights</button>
+        {% endif %}
+    </form>
+    {% else %}
+    <p class="alert alert-info">
+        No score weights in the KPI.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends 'series-layout.html' %}
+
+{% from 'macros.html' import info_popover, visualize_score %}
+
+{% block menu %}
+{{ series_menu('Metadata') }}
+{% endblock %}
+
+{% block series_title %}
+<h2 class="h4">Metadata</h2>
+{% endblock %}
+
+{% block series_action %}
+<a class="btn btn-primary me-2" href="{{ url_for('flow_univariate.metadata_audit_trail', seriesid=series.series_id, blockevaluationid=block_evaluation.db_id) }}">
+    Audit trail
+</a>
+{% endblock %}
+
+{% block series_content %}
+
+{% if metadata_score is not none %}
+<div class="alert alert-info">
+    <a href="{{ url_for('.show_checks', sourcename=source_name, seriesid=series.series_id, blockevaluationid=block_evaluation.db_id) }}#metadata-checks">Metadata score</a>: {{ metadata_score }}%
+</div>
+{% endif %}
+
+{% if metadata %}
+<table class="ts-table table table-borderless">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">Metadata</th>
+            <th scope="col">Configured value</th>
+            <th scope="col">Calculated value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for k, v in metadata.iter_names() if metadata.is_shown(k) %}
+        <tr class="border-bottom">
+            <th scope="row">
+                {{ k|capitalize }}
+                {% if k in spec and spec.get_field(k) is not none %}
+                {{ info_popover('Sensor spec manually updated.', 'plus-circle') }}
+                {% endif %}
+            </th>
+            {% if v is not none and v != '' %}
+            {% if k == 'dictionary' %}
+            <td>
+                <table class="table">
+                    {% for value, label in v.mapping.items() %}
+                    <tr>
+                        <td>{{ label }}</td>
+                        <td>{{ value }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </td>
+            {% elif k in ['data type', 'interpolation type', 'process type'] %}
+            <td>{{ v.value }}</td>
+            {% else %}
+            <td>{{ v|numberformat }}</td>
+            {% endif %}
+            {% else %}
+            {{ visualize_score(none) }}
+            {% endif %}
+            <td>
+                {% if analysis_state %}
+                {% if calculated_metadata.get_field_by_name(k) is not none %}
+                {% if k == 'process type' or k == 'data type' %}
+                {{ calculated_metadata.get_field_by_name(k).value }}
+                {% else %}
+                {{ calculated_metadata.get_field_by_name(k)|numberformat }}
+                {% endif %}
+                {% else %}
+                {% endif %}
+                {% else %}
+                -
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p>Manually <a href="{{ url_for('sensor_specs.update_flow_sensor_specs', seriesid=series.series_id, blockevaluationid=block_evaluation.db_id) }}">enter</a> sensor specs.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('API keys') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Manage API keys</h2>
+</div>
+
+<div class="ts-section my-3 py-3">
+    {{ alerter() }}
+
+    <form method="POST" action="{{ url_for('.create_api_key', sourcename=source_name) }}">
+        <div class="mb-3">
+            <label for="nameInput">API key name</label>
+            <input type="text"
+                    class="form-control"
+                    id="nameInput"
+                    name="name"
+                    required>
+        </div>
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+    </form>
+</div>
+
+{% if api_keys %}
+<div class="my-3 py-3">
+    <table class="ts-table table table-borderless">
+        <thead class="table-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">Name</th>
+                <th scope="col">API key</th>
+                <th scope="col">Creation date</th>
+                <th scope="col">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for key in api_keys %}
+            <tr class="border-bottom">
+                <td>{{ key.name }}</td>
+                <td>{{ key.api_key }}</td>
+                <td>{{ key.creation_date|datetimeformat }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('.revoke_api_key', sourcename=source_name) }}">
+                        <input type='hidden' name='apikeyid' value='{{ key.db_id }}'>
+                        <button type='submit' class="btn btn-secondary btn-sm">Revoke</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

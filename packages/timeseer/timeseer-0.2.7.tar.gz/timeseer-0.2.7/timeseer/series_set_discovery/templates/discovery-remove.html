@@ -1,0 +1,40 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import menu_back %}
+
+{% block menu %}
+{{ menu_back(url_for('.show_results', configurationid=discovery_configuration.db_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Remove series set discovery</h2>
+    <p class="h6 text-break">
+        {{ discovery_configuration.template.name }}
+        -
+        {% if discovery_configuration.time_range.is_relative() %}
+        during the {{ discovery_configuration.time_range.relative_date|lower }}.
+        {% else %}
+        from {{ discovery_configuration.time_range.start_date|datetimeformat}} to {{ discovery_configuration.time_range.end_date|datetimeformat}}
+        {% endif %}
+    </p>
+</div>
+
+<div class="pt-3 my-3">
+    <form method="POST">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        <input type="hidden" name="configurationid" value="{{ discovery_configuration.db_id }}">
+
+        <div class="btn-toolbar">
+            <button type="submit" class="btn btn-primary me-2">Yes</button>
+            <a class="btn btn-secondary"
+                href="{{ url_for('.show_results', configurationid=discovery_configuration.db_id, sourcename=source_name) }}"
+                role="button">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, menu_back %}
+
+{% block menu %}
+{{ menu_back(url_for('.select_configuration', templatename=template.name, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Schedule series set discovery</h2>
+    <p class="h6 text-break">{{ template.name }}</p>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    <form method="POST">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        <div class="mb-3 col-md-6">
+            <label for="configuration">Select a configuration time range to schedule:</label>
+            <select name="configurationid" class="form-select" id="configuration" required>
+                {% for configuration in discovery_configurations|sort(attribute='source,name') %}
+                    <option value="{{ configuration.db_id }}">{% if configuration.time_range.is_relative() %}
+                        During the {{ configuration.time_range.relative_date|lower }}.
+                        {% else %}
+                        From {{ configuration.time_range.start_date|datetimeformat}} to {{ configuration.time_range.end_date|datetimeformat}}
+                        {% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3 col-md-6">
+            <label for="scheduleinterval"> Schedule interval:</label>
+            <input class="form-control bg-white" id="scheduleinterval" name="scheduleinterval" required>
+            <small id="groupingPatternHelp" class="form-text text-muted">
+            Use format "1d2h3m4s" where the number preceding 'd' is the days, 'h' is the hours, 'm' the minutes and 's' the seconds
+                between two series set discovery runs.
+            </small>
+        </div>
+        <div class="btn-toolbar col-md-6">
+            <button type="submit" class="btn btn-primary me-2">Schedule</button>
+            <a class="btn btn-secondary"
+                href="{{ url_for('.select_configuration', templatename=template.name, sourcename=source_name) }}"
+                role="button">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends 'tags-layout.html' %}
+
+{% macro get_metadata_value(metadata, group) %}
+    {% if metadata.get(group) is not none %}
+        {% if metadata[group]|count > 1 %}
+        <p class="fw-normal text-muted text-break">({{ metadata[group]|join(', ') }})</p>
+        {% else %}
+            {% if group =='data types' %}
+            <p class="fw-normal text-muted text-break">
+                ({% for value, label in metadata[group][0].mapping.items() %}
+                {{ label }}: {{ value }}
+                {% endfor %})
+            </p>
+            {% else %}
+            <p class="fw-normal text-muted text-break">({{ metadata[group][0]|numberformat }})</p>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{% block menu %}
+{{ prepare_menu('Checks') }}
+{% endblock %}
+
+{% block tags_title %}
+<h2 class="h4">Checks</h2>
+{% endblock %}
+
+{% block tags_content %}
+{% if series_score is not none %}
+<div class="alert alert-info">
+    Score: {{ series_score }}%
+</div>
+{% endif %}
+
+{% if metadata_checks|count == 0 and checks_per_kpi|count == 0 %}
+<div class="alert alert-info">
+    No checks available.
+</div>
+{% endif %}
+
+{% if metadata_checks|count > 0 %}
+<table class="ts-table table table-borderless score-table" id="metadata_checks">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col" class="score-grouping">Metadata group</th>
+            <th scope="col">Metadata checks</th>
+            <th scope="col" class="score">Result</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for group, checks in metadata_checks|groupby('metadata.group') %}
+        {% for check in checks|sort(attribute='metadata.name') %}
+        <tr class="border-bottom">
+            {% set loop_changed = loop.changed(group) %}
+            {% if loop_changed %}
+            <th rowspan="{{ checks|count }}">
+                {{ group|capitalize }}
+                {{ get_metadata_value(metadata, group)}}
+
+            </th>
+            {% endif %}
+            <td>{{ check.metadata.name }} {{ info_popover(check.metadata.short_help_text) }}</td>
+            {{ visualize_check_result(check) }}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if checks_per_kpi|count > 0 %}
+<table class="ts-table table table-borderless score-table">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">KPIs</th>
+            <th scope="col">Series checks</th>
+            <th scope="col" class="score">Event frames</th>
+            <th scope="col" class="score">Result</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for kpi, checks in checks_per_kpi|dictsort %}
+        {% for check in checks|sort(attribute='result', reverse=True)|sort(attribute='metadata.data_type') %}
+        <tr class="border-bottom">
+            {% set loop_changed = loop.changed(kpi) %}
+            {% if loop_changed %}
+            <th rowspan="{{ checks|count }}">
+                {{ kpi|capitalize }}
+            </th>
+            {% endif %}
+            <td>
+                <div>
+                    {{ check.metadata.name }} {{ info_popover(check.metadata.short_help_text) }}
+                </div>
+            </td>
+            <td>
+                {% if check.metadata.event_frame_types %}
+                <div class="dropdown">
+                    <button type="button"
+                            class="btn btn-sm btn-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown"
+                            aria-haspopup="true"
+                            aria-expanded="false">
+                        List event frames
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for type in check.metadata.event_frame_types %}
+                        <a class="dropdown-item"
+                            href="{{ url_for('.event_frames', seriesid=series.series_id, type=type) }}">
+                            {{ type }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+            {{ visualize_check_result(check) }}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+        {% if no_kpi_checks|count > 0 %}
+        {% for check in no_kpi_checks|sort(attribute='result', reverse=True)|sort(attribute='metadata.data_type') %}
+        <tr class="border-bottom">
+            {% if loop.index == 1 %}
+            <th rowspan="{{ checks|count }}">
+                (No KPI)
+            </th>
+            {% endif %}
+            <td>
+                <div>
+                    {{ check.metadata.name }} {{ info_popover(check.metadata.short_help_text) }}
+                </div>
+            </td>
+            <td>
+                {% if check.metadata.event_frame_types %}
+                <div class="dropdown">
+                    <button type="button"
+                            class="btn btn-sm btn-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown"
+                            aria-haspopup="true"
+                            aria-expanded="false">
+                        List event frames
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for type in check.metadata.event_frame_types %}
+                        <a class="dropdown-item"
+                            href="{{ url_for('.event_frames', seriesid=series.series_id, type=type) }}">
+                            {{ type }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+            {{ visualize_check_result(check) }}
+        </tr>
+        {% endfor %}
+        {% endif %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if not_ran_checks|count > 0 %}
+<div class="ts-section my-3 py-3">
+  <h5>Other checks</h5>
+  <p class="text-muted">The checks in these modules did not run.</p>
+  <button class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#not-ran-checks:not(.show)">Show</button>
+  <div class="collapse mt-3" id="not-ran-checks">
+    <table class="ts-table table table-borderless score-table">
+      <thead class="thead-secondary">
+        <th scope="col">Module</th>
+        <th scope="col">Reason</th>
+      </thead>
+      <tbody>
+        {% for not_ran_check in not_ran_checks %}
+        <tr class="border-bottom">
+          <td>{{not_ran_check.check_name}}</td>
+          <td>{{not_ran_check.message}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock tags_content %}

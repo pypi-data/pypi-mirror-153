@@ -1,0 +1,129 @@
+{% set multivariate_title = frame_type %}
+{% extends 'multivariate-layout.html' %}
+
+{% from 'macros.html' import display_event_frame_checks, bootstrap_icon, pagination %}
+
+{% macro visualize_sorting(sort_field, sort_direction, field) %}
+    {% if sort_field == field %}
+        {% if sort_direction == 'asc' %}
+        {% set other_direction = 'desc' %}
+        {% else %}
+        {% set other_direction = 'asc' %}
+        {% endif %}
+        <a class="text-reset text-decoration-none" href="{{ url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=frame_type, series_x_id=series_x.series_id, series_y_id=series_y.series_id, sort=field, direction=other_direction, sourcename=source_name) }}">
+            {{ caller() }}
+            {% if sort_direction == 'desc' %}
+            {{ bootstrap_icon('caret-down-fill') }}
+            {% else %}
+            {{ bootstrap_icon('caret-up-fill') }}
+            {% endif %}
+        </a>
+    {% else %}
+        <a class="text-reset text-decoration-none" href="{{ url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=frame_type, series_x_id=series_x.series_id, series_y_id=series_y.series_id, sort=field, direction=sort_direction, sourcename=source_name) }}">
+            {{ caller() }}
+            {% if sort_direction == 'desc' %}
+            {{ bootstrap_icon('caret-down', 'text-secondary') }}
+            {% else %}
+            {{ bootstrap_icon('caret-up', 'text-secondary') }}
+            {% endif %}
+        </a>
+    {% endif %}
+{% endmacro %}
+
+{% block menu %}
+{{ multivariate_menu('Bivariate checks') }}
+{% endblock %}
+
+{% block multivariate_content %}
+{% if checks_metadata|count > 0 %}
+{{ display_event_frame_checks(checks_metadata) }}
+{% endif %}
+
+<p>
+    For
+    <a href="{{ url_for('flow_univariate.redirect_series', seriesid=series_x.series_id, blockevaluationid=block_evaluation.db_id) }}">
+        {{ visualize_series(series_x) }}
+    </a>
+    and
+    <a href="{{ url_for('flow_univariate.redirect_series', seriesid=series_y.series_id, blockevaluationid=block_evaluation.db_id) }}">
+        {{ visualize_series(series_y) }}.
+    </a>
+</p>
+
+{% if event_frames|count > 0 %}
+
+{{ pagination(
+    paging,
+    url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=frame_type, page=paging.page-1, series_x_id=series_x.series_id, series_y_id=series_y.series_id, sort=sort_field, direction=sort_direction, sourcename=source_name),
+    url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=frame_type, page=paging.page+1, series_x_id=series_x.series_id, series_y_id=series_y.series_id, sort=sort_field, direction=sort_direction, sourcename=source_name)
+) }}
+
+<table class="ts-table table table-borderless">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">
+                {% call visualize_sorting(sort_field, sort_direction, 'start_date') %}
+                    Start date
+                {% endcall %}
+            </th>
+            <th scope="col">
+                {% call visualize_sorting(sort_field, sort_direction, 'end_date') %}
+                    End date
+                {% endcall %}
+            </th>
+            <th scope="col">
+                {% call visualize_sorting(sort_field, sort_direction, 'duration') %}
+                    Duration
+                {% endcall %}
+            </th>
+            <th scope="col">
+                Action
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for frame in event_frames %}
+        <tr class="border-bottom">
+            <td>{{ frame.start_date|datetimeformat }}</td>
+            {% if frame.end_date is not none %}
+            <td>{{ frame.end_date|datetimeformat }}</td>
+            <td>{{ (frame.end_date - frame.start_date)|timedeltaformat }}</td>
+            {% else %}
+            <td>-</td>
+            <td>-</td>
+            {% endif %}
+            <td>
+                <form action="{{ url_for('.show_chart') }}">
+                    {% if source_name %}
+                    <input type="hidden" name="sourcename" value="{{ source_name }}">
+                    {% endif %}
+                    <input type="hidden" name="series_x_id" value="{{ series_x.series_id}}">
+                    <input type="hidden" name="series_y_id" value="{{ series_y.series_id }}">
+                    <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+                    <input type="hidden" name="startDate" value="{{ frame.start_date }}">
+                    {% if frame.end_date is not none %}
+                    <input type="hidden" name="endDate" value="{{ frame.end_date }}">
+                    {% endif %}
+                    <input type="hidden" name="type" value="{{ frame_type }}">
+                    <input type="hidden" name="context" value="10">
+                    <input type="submit" class="btn btn-primary btn-sm" value="Visualize">
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{{ pagination(
+    paging,
+    url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=frame_type, page=paging.page-1, series_x_id=series_x.series_id, series_y_id=series_y.series_id, sort=sort_field, direction=sort_direction, sourcename=source_name),
+    url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=frame_type, page=paging.page+1, series_x_id=series_x.series_id, series_y_id=series_y.series_id, sort=sort_field, direction=sort_direction, sourcename=source_name)
+) }}
+
+{% else %}
+<div class="alert alert-info">
+    No event frames found.
+</div>
+{% endif %}
+
+{% endblock %}

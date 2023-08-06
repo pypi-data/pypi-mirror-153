@@ -1,0 +1,46 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('Score weights') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Manage score weights</h2>
+</div>
+
+<div class="my-3 py-3">
+    {{ alerter() }}
+
+    <form method="POST" action="{{ url_for('.configure_weights', sourcename=source_name) }}">
+        <div>
+            <table class="table table-hover">
+                {% for weight in weights|sort(attribute='name') %}
+                <tr>
+                    <td>
+                        <label class="mb-0" for="{{ weight.name|htmlid }}">
+                            {{ weight.name|capitalize }}
+                            <br>
+                            <small class="text-muted">{{ weight.kpi|capitalize }}</small>
+                        </label>
+                    </td>
+                    <td>
+                        <input type="number"
+                               step="0.1"
+                               class="form-control"
+                               id="{{ weight.name|htmlid }}"
+                               name="check-{{ weight.name }}"
+                               value="{{ weight.overridden_weight }}"
+                               placeholder="{{ weight.default_weight }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

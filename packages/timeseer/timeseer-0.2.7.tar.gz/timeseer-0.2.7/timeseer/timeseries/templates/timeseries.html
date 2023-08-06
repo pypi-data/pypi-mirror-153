@@ -1,0 +1,95 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, visualize_series_name %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('Sources') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="col-sm-6 h4">Manage series for "{{ source_name }}"</h2>
+</div>
+
+<div class="my-3 py-3">
+    {{ alerter() }}
+    
+    <form class="pb-3">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+        <div class="row g-2">
+            {% if source_series %}
+            <div class="col-sm-auto">
+                <div class="btn-group ts-dropdown-select-button">
+                    <a class="btn border border-secondary dropdown-toggle"
+                    href="#"
+                    role="button"
+                    id="selectionDropdown"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                        <button type="submit"
+                                class="dropdown-item ts-dropdown-action"
+                                form="seriesselection"
+                                formmethod="POST"
+                                formaction="{{ url_for('.remove_timeseries', sourcename=source_name) }}"
+                                >
+                                Remove selected
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if source_series|count > 1 or pattern %}
+            <div class="col">
+                <label class="visually-hidden" for="setFilterInput">Filter series by name</label>
+                <input class="form-control" id="setFilterInput" name="timeseriespattern" value="{{ pattern }}" placeholder="Filter time series by name">
+            </div>
+            <div class="col-sm-auto">
+                <button class="btn btn-secondary" type="submit">Filter</button>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+    {% if source_series %}
+    <form id="seriesselection">
+        {% if source_name %}
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% endif %}
+
+        <table class="ts-table ts-table-checkbox table table-borderless mt-3" data-ts-target="selectionDropdown">
+            <thead class="thead-secondary">
+                <tr class="border-top border-bottom">
+                    <th scope="col">
+                        <input type="checkbox" class="form-check-input">
+                    </th>
+                    <th scope="col">Series name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for series in source_series|sort(attribute='name') %}
+                <tr class="border-bottom">
+                    <td>
+                        <input class="form-check-input" type="checkbox" name="{{ series.series_id }}" {% if checked %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="hidden" name="seriesids" value="{{ series.series_id }}">
+                        <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('prepare.tags', seriesid=series.series_id) }}">
+                            {{ visualize_series_name(series.name) }}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    {% else %}
+    <p class="alert alert-info">No series found.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

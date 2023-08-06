@@ -1,0 +1,31 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import info_popover %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Series set discovery</h2>
+</div>
+
+<div class="pt-3 my-3">
+    {% if templates %}
+    <p>Select a series set template:</p>
+    <ul class="list-group list-group-flush">
+        {% for template in templates|sort(attribute='name') %}
+        <li class="list-group-item">
+            <a href="{{ url_for('.select_configuration', templatename=template.name, sourcename=source_name) }}">
+                {{ template.name }}
+            </a>
+            {% if scheduled_templates[template.db_id] %}
+            {{ info_popover('This template has a scheduled configuration', 'clock') }}
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>
+        <a href="{{ url_for('series_sets.create_template', sourcename=source_name) }}">Define series set templates</a> to discover correlated time series.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

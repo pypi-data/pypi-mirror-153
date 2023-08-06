@@ -1,0 +1,100 @@
+{% from 'macros.html' import visualize_series %}
+
+{% macro series_set_template_form(submit_text, template, sources, reference_name=None, source_name=None) %}
+<form method="POST"
+      class="series-set-template-form"
+      data-template-reference-name="{{ reference_name or '' }}"
+      data-template-name="{{ template.name }}"
+      data-name-pattern="{{ template.name_pattern }}"
+      data-source-name="{{ source_name }}"
+      data-sources='{{ sources|tojson }}'
+      data-grouping-pattern="{{ template.tag_grouping_pattern['series name'] }}"
+      data-filter-field="{{ template.metadata_filters|first }}"
+      data-filter-pattern="{{ template.metadata_filters.values()|first }}"
+      data-submit-button-text="{{ submit_text }}"
+      data-has-errors="{{ (get_flashed_messages(category_filter=['error'])|count > 0)|tojson }}">
+    {% if reference_name %}
+    <input type="hidden" name="templatereferencename" value="{{ reference_name }}">
+    {% endif %}
+
+    <div class="mb-3">
+        <label for="nameInput">Series set template name:</label>
+        <input class="form-control" id="nameInput" name="templatename" value="{{ template.name }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="namePatternInput">Series set name pattern</label>
+        <input class="form-control" id="namePatternInput" aria-describedby="namePatternHelp" name="namepattern" value="{{ template.name_pattern }}" required>
+        <small id="namePatternHelp" class="form-text text-muted">
+            Include <code>%s</code> in the series set name pattern to insert the grouping pattern in that position.
+        </small>
+    </div>
+
+    <div class="mb-3">
+        <label for="sourceSelect">Source</label>
+        <select class="form-select" id="sourcenameSelect" name="sourcename" aria-describedby="sourceSelectHelp">
+            {% for source in sources %}
+            <option {% if source == template.source_name %}selected{% endif %}>{{ source }}</option>
+            {% endfor %}
+        </select>
+        <small id="sourceSelectHelp" class="form-text text-muted">
+            Only time series in the selected source matching the 'time series grouping pattern' are considered.
+        </small>
+    </div>
+
+    <div class="mb-3">
+        <label for="groupingPattern">Time series grouping pattern</label>
+        <input class="form-control" id="groupingPatternInput" aria-describedby="groupingPatternHelp" name="groupingpattern" value="{{ template.tag_grouping_pattern['series name'] }}" required>
+        <small id="groupingPatternHelp" class="form-text text-muted">
+            Use a capturing <a href="https://docs.python.org/3/library/re.html#regular-expression-syntax">regular expression</a> to group time series.
+            For example <code>{'10_([a-zA-Z]{2})'}</code> will group by the first two letters after the <code>10_</code> prefix.
+        </small>
+    </div>
+
+    <div class="mb-3">
+        <label for="metadataFilter">Metadata filter pattern</label>
+        <div class="row">
+            <div class="col-2">
+                <select class="form-select" name="metadatafilterfield">
+                    <option value="description" {% if 'description' in template.metadata_filters %} selected{% endif %}>Description</option>
+                    <option value="unit" {% if 'unit' in template.metadata_filters %} selected{% endif %}>Unit</option>
+                </select>
+            </div>
+            <div class="col-10">
+                <input class="form-control" id="metadataFilter" name="metadatafilter" value="{{ template.metadata_filters.values()|first }}">
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3" formmethod="GET">Preview</button>
+    <button type="submit" class="btn btn-primary mt-3">{{ submit_text }}</button>
+</form>
+{% endmacro %}
+
+{% macro series_sets_preview(series_sets) %}
+<ul class="list-group list-group-flush">
+    {% for pattern, series_set in series_sets|dictsort %}
+    <li class="list-group-item px-0">
+        <div class="row">
+            <div class="col">
+                <div class="input-group">
+                    <input type="text" class="form-control bg-transparent" value="{{ series_set.name }}" readonly>
+                    <span class="input-group-text">{{ pattern }}</span>
+                </div>
+            </div>
+            <div class="col">
+                <ul class="list-group">
+                    {% for series in series_set.series|sort(attribute='name') %}
+                    <li class="list-group-item py-2">
+                        <a class="ts-table-link text-decoration-none text-dark" href="{{ url_for('prepare.tags', sourcename=series.source, seriesid=series.series_id) }}">
+                            {{ visualize_series(series) }}
+                        </a>
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% endmacro %}

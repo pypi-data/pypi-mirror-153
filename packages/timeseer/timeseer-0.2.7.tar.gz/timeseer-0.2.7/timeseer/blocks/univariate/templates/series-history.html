@@ -1,0 +1,53 @@
+{% extends 'series-layout.html' %}
+
+{% block menu %}
+{{ series_menu('History') }}
+{% endblock %}
+
+{% block series_title %}
+<h2 class="h4">History</h2>
+{% endblock %}
+
+{% block series_content %}
+{% if flow_evaluation_groups|count > 1 %}
+
+<div class="alert alert-info">
+    Charted scores are calculated based on all available data, not on the data from the previous point in time.
+</div>
+
+<div class="report-evolution">
+    <table class="visually-hidden">
+        {% for group in flow_evaluation_groups|sort(attribute='date') %}
+        {% for block_evaluation_score in evolution if block_evaluation_score.block_evaluation.flow_evaluation.group.db_id == group.db_id %}
+        <tr>
+            <td class="report-date" data-date="{{ group.date.isoformat() }}">{{ group.date|datetimeformat }}</td>
+            <td class="report-score">{{ block_evaluation_score.score }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </table>
+</div>
+{% else %}
+<form class="alert alert-info" method="POST" action="{{ url_for('flows.evaluate', sourcename=source_name) }}">
+    <input type='hidden' name='flowname' value='{{ block_evaluation.flow_evaluation.group.flow.name }}'/>
+    <div class="row align-items-center gx-2">
+        <div class="col-lg">
+            Evaluate "{{ block_evaluation.flow_evaluation.group.flow.name }}" multiple times to visualize the score history.
+        </div>
+        <div class="col-lg-auto">
+            <button
+                type="submit"
+                class="btn btn-primary align-baseline">
+                Evaluate
+            </button>
+        </div>
+    </div>
+</form>
+{% endif %}
+
+<script>
+    {% if flow_evaluation_groups|count > 1 %}
+    {% include 'scripts/score-evolution.js' %}
+    {% endif %}
+</script>
+{% endblock series_content %}

@@ -1,0 +1,375 @@
+{% macro visualize_score(pct) %}
+    {% if pct is none %}
+    <td class="align-middle" style="background-image: linear-gradient(.25turn, rgba(250,105,106,1), 40%, rgba(255,0,0,0.1));"></td>
+    {% elif pct > 80 %}
+    <td class="align-middle">{{ bootstrap_icon('circle-fill', 'text-success align-baseline me-1', 12) }} {{pct|round|int}}%</td>
+    {% elif pct > 60 %}
+    <td class="align-middle">{{ bootstrap_icon('circle-fill', 'text-warning align-baseline me-1', 12) }} {{pct|round|int}}%</td>
+    {% else %}
+    <td class="align-middle">{{ bootstrap_icon('circle-fill', 'text-danger align-baseline me-1', 12) }} {{pct|round|int}}%</td>
+    {% endif %}
+{% endmacro %}
+
+{% macro visualize_check_score(check_score) %}
+    {% if check_score.data_type == 'bool' %}
+        {% if check_score.score == 0 %}
+            <td>{{ bootstrap_icon('x-circle', 'text-danger') }}</td>
+        {% else %}
+            <td>{{ bootstrap_icon('check-circle', 'text-success') }}</td>
+        {% endif %}
+    {% else %}
+        {{ visualize_score(check_score.score) }}
+    {% endif %}
+{% endmacro %}
+
+{% macro visualize_check_result(check_result) %}
+    {% if check_result.metadata.data_type == 'bool' %}
+        {% if check_result.result == 1 %}
+            <td>{{ bootstrap_icon('x-circle', 'text-danger') }}</td>
+        {% else %}
+            <td>{{ bootstrap_icon('check-circle', 'text-success') }}</td>
+        {% endif %}
+    {% else %}
+        {{ visualize_score((100 * (1 - check_result.result))|int) }}
+    {% endif %}
+{% endmacro %}
+
+{% macro bootstrap_icon(name, extra_classes='', size=16) -%}
+<svg class="bi {{ extra_classes }}" width="{{ size }}" height="{{ size }}" fill='currentColor'>
+    <use xlink:href="/static/dist/bootstrap-icons.svg#{{ name }}"/>
+</svg>
+{%- endmacro %}
+
+{% macro info_popover(popover_text, image='question-circle', extra_classes='', size=16, placement='right') %}
+<span data-bs-toggle="popover" data-bs-placement="{{ placement }}" data-bs-trigger="hover" data-bs-content="{{ popover_text }}">
+    <svg class="bi {{ extra_classes }}" width="{{ size }}" height="{{ size }}" fill="currentColor">
+        <use xlink:href="/static/dist/bootstrap-icons.svg#{{ image }}"/>
+    </svg>
+</span>
+{% endmacro %}
+
+{% macro pagination(paging, previous_link, next_link) %}
+{% if paging.number_of_pages > 1 %}
+<nav>
+    <ul class="pagination align-items-center">
+        {% if paging.is_first_page %}
+        <li class="page-item disabled">
+            <a class="page-link" tabindex="-1">
+                Previous
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item">
+            <a class="page-link"
+                href="{{ previous_link }}">
+                Previous
+            </a>
+        </li>
+        {% endif %}
+        {% if paging.is_last_page %}
+        <li class="page-item disabled">
+            <a class="page-link" tabindex="-1">
+                Next
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item">
+            <a class="page-link"
+                href="{{ next_link }}">
+                Next
+            </a>
+        </li>
+        {% endif %}
+        <li class="ms-3">
+            Displaying {{ paging.first_item_index }} - {{ paging.last_item_index }} of {{ paging.total }}.
+        </li>
+    </ul>
+</nav>
+{% else %}
+<p>Displaying {{ paging.first_item_index }} - {{ paging.last_item_index }} of {{ paging.total }}.</p>
+{% endif %}
+{% endmacro %}
+
+{% macro visualize_series(series) %}
+{{ visualize_series_name(series.name) }} ({{ series.source }})
+{% endmacro %}
+
+{% macro visualize_series_name(series_name) %}
+{% set is_abbreviated, name = series_name|format_series_name %}
+{% if is_abbreviated %}
+<abbr title="{{ series_name }}">{{ name }}</abbr>
+{% else %}
+{{ name }}
+{% endif %}
+{% endmacro %}
+
+{% macro abbreviate_series_name(series_name) -%}
+{% set _, name = series_name|format_series_name -%}
+{{ name }}
+{%- endmacro %}
+
+{% macro alerter() %}
+{% with messages = get_flashed_messages(category_filter=["error"]) %}
+{%- for message in messages %}
+<div class="alert alert-danger" role="alert">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+{% with messages = get_flashed_messages(category_filter=["message"]) %}
+{%- for message in messages %}
+<div class="alert alert-info" role="alert">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+{% with messages = get_flashed_messages(category_filter=["success"]) %}
+{%- for message in messages %}
+<div class="alert alert-success" role="alert">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+{% with messages = get_flashed_messages(category_filter=["warning"]) %}
+{%- for message in messages %}
+<div class="alert alert-primary" role="alert">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+{% endmacro %}
+
+{% macro progress_bar(analysis_state, state_url, label='checks', class_name='state-progress', empty_is_pending=False) %}
+{% if not analysis_state.is_running() and analysis_state.failed > 0 %}
+<div class="alert alert-danger">
+    {{ caller() }} failed{% if analysis_state.total > 1 %} ({{ analysis_state.failed }}/{{ analysis_state.total }}){% endif %}.
+</div>
+{% endif %}
+{% if analysis_state.pending > 0 or analysis_state.is_running() or (empty_is_pending and not analysis_state.is_defined()) %}
+<div class="{{ class_name }}"
+     data-uri="{{ state_url }}"
+     data-pending="{{ analysis_state.pending }}"
+     data-completed="{{ analysis_state.completed }}"
+     data-total="{{ analysis_state.total }}"
+     data-label="{{ label }}"">
+    <div class="card mb-3 shadow-sm">
+        <div class="card-header">
+            <div class="row align-items-center justify-content-between">
+                <div class="col">
+                    <h5 class="my-2"><span class="state-type">{{ caller() }}</span> in progress</h5>
+                </div>
+                <div class="col-sm-auto">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="progress">
+                <div class="progress-bar"
+                    role="progressbar"
+                    style="width: {{ (100 * analysis_state.completed / (analysis_state.total or 1 ))|int }}%"
+                    aria-valuenow="{{ analysis_state.completed }}"
+                    aria-valuemin="0"
+                    aria-valuemax="{{ analysis_state.total }}"></div>
+            </div>
+            <div class="mt-2">
+                Completed {{ analysis_state.completed }} of {{ analysis_state.total }} {{ label }}.
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro progress_bar_flow(analysis_state, state_url, cancel_url, flow_evaluation) %}
+    {% if analysis_state.block_state.total > 0 and analysis_state.block_state.failed == analysis_state.block_state.total %}
+    <div class="alert alert-danger">
+        Analysis failed completely.
+    </div>
+    {% elif analysis_state.block_state.is_completed() %}
+    {% if analysis_state.block_state.failed > 0 %}
+    <div class="alert alert-danger">
+        Analysis failed ({{ analysis_state.block_state.failed }}/{{ analysis_state.block_state.total }}). Showing partial results.
+    </div>
+    {% endif %}
+    {% if analysis_state.block_state.is_canceled() %}
+    <div class="alert alert-warning">
+        Analysis was canceled. Showing partial results.
+    </div>
+    {% endif %}
+    {% else %}
+    {% if analysis_state.flow_state.is_defined() and (analysis_state.flow_state.pending > 0 or analysis_state.flow_state.is_running() or (analysis_state.block_state.is_defined() and not analysis_state.block_state.is_completed())) %}
+    <div class="pt-3 my-3">
+        <div class="state-progress"
+            data-uri="{{ state_url }}"
+            data-pending="{{ analysis_state.flow_state.pending }}"
+            data-completed="{{ analysis_state.flow_state.completed }}"
+            data-total="{{ analysis_state.flow_state.total }}"
+            data-block-completed="{{ analysis_state.block_state.completed }}"
+            data-block-total="{{ analysis_state.block_state.total }}"
+            data-current-block-completed="{{ analysis_state.current_block_state.completed }}"
+            data-current-block-total="{{ analysis_state.current_block_state.total }}"
+            data-canceled="{{ analysis_state.block_state.canceled }}"
+            data-cancel-url="{{ cancel_url }}"
+            data-flow-evaluation-id = "{{ flow_evaluation.db_id }}">
+            <div class="alert alert-info" role="alert">
+                <p>
+                    Analysis running:
+                    completed {{ analysis_state.flow_state.completed }} of {{ analysis_state.flow_state.total }} blocks.
+                </p>
+
+                <div class="progress">
+                    <div class="progress-bar"
+                        role="progressbar"
+                        style="width: {{ (100 * analysis_state.flow_state.completed / analysis_state.flow_state.total)|int }}%"
+                        aria-valuenow="{{ analysis_state.flow_state.completed }}"
+                        aria-valuemin="0"
+                        aria-valuemax="{{ analysis_state.flow_state.total }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{% macro menu(title, items=[], active='') %}
+<nav class="ts-menu">
+    <div class="ts-menu-container d-flex flex-column">
+        <h2 class="d-flex align-items-center position-relative px-3 m-0 h5">
+            {% if title is string %}
+            {{ title }}
+            {% else %}
+            <a class="text-reset text-decoration-none stretched-link" href="{{ title[1] }}">{{ title[0] }}</a>
+            {% endif %}
+        </h2>
+        <ul class="list-unstyled">
+            {% for name, url in items %}
+            {% if name == active %}
+            <li class="ts-active position-relative px-3 py-3 bg-white">
+                <a class="text-reset text-decoration-none stretched-link fw-bold" href="{{ url }}">{{ name }}</a>
+            </li>
+            {% else %}
+            <li class="position-relative px-3 py-3">
+                <a class="text-reset text-decoration-none stretched-link" href="{{ url }}">{{ name }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+</nav>
+{% endmacro %}
+
+{% macro menu_back(url) %}
+<nav class="ts-menu ts-menu-back">
+    <div class="ts-menu-container d-flex flex-column">
+        <h2 class="d-flex align-items-center position-relative px-3 m-0 h5">
+            <a class="text-reset text-decoration-none stretched-link" href="{{ url}}">
+                {{ bootstrap_icon('arrow-left', 'h5 fw-bolder m-0', 24) }}
+            </a>
+        </h2>
+    </div>
+</nav>
+{% endmacro %}
+
+{% macro visualize_kpi_score(score) %}
+{% if score > 80 %}
+{% set color="var(--bs-success)" %}
+{% elif score > 60 %}
+{% set color="var(--bs-warning)" %}
+{% else %}
+{% set color="var(--bs-danger)" %}
+{% endif %}
+<div class="mx-2 py-2 ts-side-bar-section" data-e2e="context-score">
+    <svg viewBox="0 0 100 100">
+        <circle transform="rotate(-90, 50, 50)" cx="50" cy="50" r="45" fill="transparent"
+            stroke-width="5" stroke-opacity="0.2" style="stroke: {{ color }}" />
+        <circle transform="rotate(-90, 50, 50)" cx="50" cy="50" r="45" fill="transparent"
+            stroke-width="5" stroke-dasharray="{{ (3.1415 * 45 * 2) * score / 100 }} {{ (3.1415 * 45 * 2) }}" style="stroke: {{ color }}" />
+        <text style="fill: {{ color }}" x="50%" y="50%" text-anchor="middle"
+            dominant-baseline="central" font-size="1.5rem">{{ score }}%</text>
+    </svg>
+</div>
+{% endmacro %}
+
+{% macro visualize_split_kpi_score(pct) %}
+    {% if pct is none %}
+    <div class="align-middle fw-bold" >-</div>
+    {% elif pct > 80 %}
+    <div class="align-middle fw-bold">{{ bootstrap_icon('circle-fill', 'text-success align-baseline me-1', 12) }} {{pct|round|int}}%</div>
+    {% elif pct > 60 %}
+    <div class="align-middle fw-bold">{{ bootstrap_icon('circle-fill', 'text-warning align-baseline me-1', 12) }} {{pct|round|int}}%</div>
+    {% else %}
+    <div class="align-middle fw-bold">{{ bootstrap_icon('circle-fill', 'text-danger align-baseline me-1', 12) }} {{pct|round|int}}%</div>
+    {% endif %}
+{% endmacro %}
+
+{% macro visualize_metadata_value(key, value) %}
+    {% if value is not none and value != '' %}
+    {% if key == 'dictionary' %}
+    <td>
+        <table class="table">
+            {% for value_item, label in value.mapping.items() %}
+            <tr>
+                <td>{{ label }}</td>
+                <td>{{ value_item }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </td>
+    {% elif key in ['data type', 'interpolation type', 'process type'] %}
+    <td>{{ value.value }}</td>
+    {% else %}
+    <td>{{ value|numberformat }}</td>
+    {% endif %}
+    {% else %}
+    {{ visualize_score(none) }}
+    {% endif %}
+{% endmacro %}
+
+{% macro edit_multivariate_metadata(metadata, process_types) %}
+<table class="ts-table table table-borderless">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">Metadata</th>
+            <th scope="col">Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for field_name, field_value in metadata.iter_names() %}
+        <tr class="border-bottom">
+            <th scope="row" class="align-middle"><label class="mb-0" for="{{ field_name|htmlid }}">{{ field_name|capitalize }}</label></th>
+            <td class="align-middle">
+                {% if field_name == 'process type' %}
+                <select class="form-select" id="{{ field_name|htmlid }}" name="{{ field_name }}">
+                    <option {% if field_value == None %}selected{% endif %} value=""></option>
+                    {% for process_type in process_types %}
+                    <option {% if process_type == field_value %}selected{% endif %}>{{ process_type.value }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endmacro %}
+
+{% macro display_event_frame_checks(checks_metadata) %}
+<div class="mb-2">
+    <small class="text-muted">Generated by:</small>
+    {% for metadata in checks_metadata|sort(attribute="name") %}
+    <small class="text-muted">{{ metadata.name }}</small>
+    <a data-bs-toggle="offcanvas"
+        href="#score-help-text-{{loop.index}}"
+        aria-controls="score-help-text-{{loop.index}}"
+        aria-expanded="false">{{ bootstrap_icon('question-circle') }}</a>
+    {% if loop.nextitem is defined %}
+    <small>, </small>
+    {% endif %}
+    {% endfor %}
+    {% for metadata in checks_metadata|sort(attribute="name") %}
+    <div class="ts-help-sidebar offcanvas offcanvas-end" tabindex="-1" id="score-help-text-{{loop.index}}">
+        <div class="offcanvas-header">
+            <h3 class="offcanvas-title h5">{{ metadata.name }}</h3>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+        {{ metadata.html_help_text|safe }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}

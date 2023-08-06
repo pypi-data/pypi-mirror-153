@@ -1,0 +1,86 @@
+{% set multivariate_title = 'Bivariate checks' %}
+{% extends 'multivariate-layout.html' %}
+
+{% from 'macros.html' import info_popover, visualize_score %}
+
+{% block styles %}
+<style>
+    .score-table {
+        table-layout: fixed;
+    }
+    .score-table .score, .score-table .action {
+        width: 20%;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ multivariate_menu(multivariate_title) }}
+{% endblock %}
+
+{% block multivariate_content %}
+{% if bivariate_checks|count > 0 %}
+<table class="ts-table table table-borderless score-table">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">Check</th>
+            <th scope="col" colspan="2">Time series</th>
+            <th scope="col" class="action">Event frames</th>
+            <th scope="col" class="score">Result</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for check_result in bivariate_checks|sort(attribute='kpi,name') %}
+        {% for check in check_result.results|sort(attribute='series_y.name')|sort(attribute='series_x.name')|sort(attribute='result') %}
+        <tr class="border-bottom">
+            {% if loop.first %}
+            <th scope="col" rowspan="{{ check_result.results|count }}">
+                {{ check_result.name|capitalize }}
+                {% if check_result.metadata.short_help_text %}
+                {{ info_popover(check_result.metadata.short_help_text) }}
+                {% endif %}
+                <br>
+                <small class="text-muted">{{ check_result.metadata.kpi|capitalize }}</small>
+            </th>
+            {% endif %}
+            <td class="align-middle">
+                <a class="ts-table-link text-decoration-none text-dark text-break" href="{{ url_for('flow_univariate.redirect_series', seriesid=check.series_x.series_id, blockevaluationid=block_evaluation.db_id, sourcename=source_name) }}">
+                    {{ visualize_series(check.series_x) }}
+                </a>
+            </td>
+            <td class="align-middle">
+                <a class="ts-table-link text-decoration-none text-dark text-break" href="{{ url_for('flow_univariate.redirect_series', seriesid=check.series_y.series_id, blockevaluationid=block_evaluation.db_id, sourcename=source_name) }}">
+                    {{ visualize_series(check.series_y) }}
+                </a>
+            </td>
+            <td class="align-middle">
+                <div class="dropdown">
+                    <button type="button"
+                            class="btn btn-sm btn-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown"
+                            aria-haspopup="true"
+                            aria-expanded="false">
+                        List event frames
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for type in check_result.metadata.event_frame_types %}
+                        <a class="dropdown-item"
+                            href="{{ url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=type, series_x_id=check.series_x.series_id, series_y_id=check.series_y.series_id, sourcename=source_name) }}">
+                            {{ type }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </td>
+            {{ visualize_score(check.result) }}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-info">
+    No bivariate checks available.
+</div>
+{% endif %}
+{% endblock %}

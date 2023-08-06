@@ -1,0 +1,39 @@
+{% extends 'tags-layout.html' %}
+
+{% block menu %}
+{{ prepare_menu('History') }}
+{% endblock %}
+
+{% block tags_title %}
+<h2 class="h4">History</h2>
+{% endblock %}
+
+{% block tags_content %}
+{% if evolution|count > 1 %}
+
+<div class="alert alert-info">
+    Charted scores are calculated based on all available data, not on the data from the previous point in time.
+</div>
+
+<div class="report-evolution">
+    <table class="visually-hidden">
+        {% for report in evolution|sort(attribute='flow_evaluation.group.date') %}
+        <tr>
+            <td class="report-date" data-date="{{ report.flow_evaluation.group.date.isoformat() }}">{{ report.flow_evaluation.group.date|datetimeformat }}</td>
+            <td class="report-score">{{ evolution[report] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% else %}
+<p class="alert alert-info">
+    Analyze <a href="{{ url_for('sources.display_configuration', sourcename=source_name) }}">{{ source_name }}</a> multiple times to visualize the score history.
+</p>
+{% endif %}
+
+<script>
+    {% if evolution|count > 1 %}
+    {% include 'scripts/score-evolution.js' %}
+    {% endif %}
+</script>
+{% endblock tags_content %}

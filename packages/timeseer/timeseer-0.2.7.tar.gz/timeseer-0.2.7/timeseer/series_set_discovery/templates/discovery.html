@@ -1,0 +1,106 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, info_popover, menu_back %}
+
+{% block menu %}
+{{ menu_back(url_for('series_set_discovery.select_template', sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center gx-2">
+        <div class="col-md">
+            <h2 class="h4">Series set discovery</h2>
+            <p class="h6 text-break">{{ template.name }}</p>
+        </div>
+        {% if discovery_configurations|rejectattr('schedule_interval', "none")|list|count > 0%}
+        <div class="col-md-auto">
+            <form method="POST" action="{{ url_for('.remove_schedule_configuration', sourcename=source_name) }}">
+                <input type="hidden" name="templatename" value="{{ template.name }}">
+                <button type="submit" class="btn btn-secondary" >Remove schedule</button>
+            </form>
+        </div>
+        {% endif %}
+        {% if discovery_configurations and discovery_configurations|rejectattr('schedule_interval', "none")|list|count == 0 %}
+        <div class="col-md-auto">
+            <a class="btn btn-secondary" href="{{ url_for('.schedule_configuration',sourcename=source_name, templatename=template.name) }}">Schedule</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    {% if discovery_configurations %}
+    <table class="ts-table table table-borderless">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col" colspan="2">Period</th>
+                <th scope="col">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for configuration in discovery_configurations|sort(attribute='time_range.end_date', reverse=True) %}
+            <tr class="border-bottom">
+                {% if configuration.time_range.is_relative() %}
+                <td colspan="2">{{ configuration.time_range.relative_date }}
+                    {% if configuration.schedule_interval %}
+                    {{ info_popover('Scheduled to run every ' + configuration.schedule_interval, 'clock') }}
+                    {% endif %}
+                </td>
+                {% else %}
+                <td>{{ configuration.time_range.start_date|datetimeformat }}</td>
+                <td>{{ configuration.time_range.end_date|datetimeformat }}
+                    {% if configuration.schedule_interval %}
+                    {{ info_popover('Scheduled to run every ' + configuration.schedule_interval, 'clock') }}
+                    {% endif %}
+                </td>
+                {% endif %}
+                <td>
+                    <a class="btn btn-primary" href="{{ url_for('.show_results', configurationid=configuration.db_id, sourcename=source_name) }}">
+                        Show discovered series
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="alert alert-info">No series set discoveries.</p>
+    {% endif %}
+
+    <div class="card">
+        <h2 class="card-header">Discover series sets</h2>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('.create_configuration', sourcename=source_name) }}">
+                <input type="hidden" name="templatename" value="{{ template.name }}">
+
+                <div class="select-time-range mb-3" data-relative-dates='{{ relative_dates|tojson|safe }}'>
+                    <div class="form-group">
+                        <label for="relativeDateSelect">Relative time range</label>
+                        <select class="form-select" name="relativeDate" id="relativeDateSelect">
+                            {% for relative_date in relative_dates %}
+                            {% if relative_date == 'Last 7 days' %}
+                            <option selected>{{ relative_date }}</option>
+                            {% else %}
+                            <option>{{ relative_date }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" role="button">
+                    Discover
+                </button>
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_bottom %}
+<script src="{{ url_for('static', filename='dist/create-series-set-discovery.js') }}"></script>
+{% endblock %}

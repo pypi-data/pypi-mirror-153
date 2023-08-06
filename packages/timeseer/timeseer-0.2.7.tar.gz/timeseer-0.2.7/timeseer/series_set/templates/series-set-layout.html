@@ -1,0 +1,62 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import bootstrap_icon, menu %}
+
+{% macro series_set_menu(active) %}
+{{
+    menu(
+        (bootstrap_icon('arrow-left', 'h5 fw-bolder m-0', 24), url_for('series_sets.show_series_sets', sourcename=source_name)),
+        [
+            ('Time series', url_for('series_sets.manage_series_set', seriessetname=series_set.name, sourcename=source_name)),
+            ('Metadata', url_for('series_sets.manage_series_set_metadata', seriessetname=series_set.name, sourcename=source_name)),
+        ],
+        active,
+    )
+}}
+{% endmacro %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center gx-2">
+        <div class="col-sm">
+            <h2 class="h4">{% block series_set_title %}Time series{% endblock %}</h2>
+            <p class="h6 text-break">{{ series_set.name }}</p>
+        </div>
+        {% if series_set.origin.value == 'ui' %}
+        <div class="col-sm-auto">
+            <div class="btn-toolbar" role="toolbar">
+                {% block custom_actions %}
+                {% endblock %}
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="editDropdown" data-bs-toggle="dropdown">
+                        Edit
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="editDropdown">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('.rename_series_set', seriessetname=series_set.name, sourcename=source_name) }}">
+                             Rename
+                            </a>
+                        </li>
+                        {% if is_in_use %}
+                        <li data-bs-toggle="tooltip" data-bs-placement="left" title="Series set is in use">
+                            <a class="dropdown-item disabled" tabindex="-1" aria-disabled="true">Remove</a>
+                        </li>
+                        {% else %}
+                        <li>
+                            <a class="dropdown-item"
+                               href="{{ url_for('.remove_series_set', seriessetname=series_set.name, sourcename=source_name) }}">
+                                Remove
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block series_set_content %}
+{% endblock %}
+{% endblock %}

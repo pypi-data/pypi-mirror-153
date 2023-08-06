@@ -1,0 +1,143 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, progress_bar, progress_bar_flow %}
+{% from 'configure.html' import configure_menu with context %}
+
+{% block menu %}
+{{ configure_menu('Sources') }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Configure time series sources</h2>
+    {% if sources|count > 0 %}
+    <form>
+        <div class="row mb-3 gx-2 align-items-center">
+            <label for="sourcenameSelect" class="visually-hidden">Source</label>
+            <div class="col-lg mt-2">
+                <select class="form-select" id="sourcenameSelect" name="sourcename">
+                    {% for source in sources %}
+                    <option {% if source == source_name %}selected{% endif %}>{{ source }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-auto mt-2">
+                {% if source_name %}
+                <button type="submit" class="btn btn-secondary">Configure</button>
+                {% else %}
+                <button type="submit" class="btn btn-primary">Configure</button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+{% if sources|count == 0 %}
+<div class="pt-3 my-3">
+    <p class="alert alert-info">Define sources in <code>Timeseer.toml</code>.</p>
+</div>
+{% endif %}
+
+<div class="my-3">
+    {{ alerter() }}
+</div>
+
+{% if source_name %}
+<div class="ts-section my-3 py-3" data-e2e="metadata">
+    <h5>Metadata</h5>
+
+    {% call progress_bar(metadata_state, url_for('.get_source_metadata_state', sourcename=source_name), 'jobs', 'metadata-progress') %}
+    Metadata update
+    {% endcall %}
+
+    <form method="POST" action="{{ url_for('.update_metadata', sourcename=source_name) }}">
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        {% if last_update_datetime is not none %}
+        <div class="mb-3">Last update: {{ last_update_datetime|datetimeformat }}</div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary col-sm-auto">Update {{ source_name }}</button>
+        <a class="btn btn-secondary" href="{{ url_for('metadata.metadata_audit_trail', sourcename=source_name) }}">
+            Audit trail
+        </a>
+    </form>
+</div>
+
+{% if enable_timeseries_management %}
+<div class="ts-section my-3 py-3" data-e2e="timeseries">
+    <h5>Time series</h5>
+    <p>
+        {{series_count}} time series found for {{ source_name }}.
+    </p>
+    <a class="btn btn-primary col-sm-auto" href="{{ url_for('timeseries.timeseries_management', sourcename=source_name) }}">Manage time series</a>
+</div>
+{% endif %}
+
+<div class="my-3" data-e2e="analysis">
+    <h5>Analysis</h5>
+    {% if series_count == 0 %}
+    <p>
+        No time series known in "{{ source_name }}".
+    </p>
+    {% else %}
+
+    {{ progress_bar_flow(
+            analysis_state,
+            url_for('flows.get_flow_analysis_state',flowevaluationid=flow_evaluation.db_id),
+            url_for('.cancel_flow_evaluation',sourcename=source_name),
+            flow_evaluation
+        )
+    }}
+
+    {% if analysis_state.block_state.series_count == series_count %}
+    <p>Analysis completed for all known time series ({{ series_count }}).</p>
+    {% else %}
+    <p>Analysis completed for {{ analysis_state.block_state.series_count }}/{{ series_count }} time series.</p>
+    {% endif %}
+    <form method="POST" action="{{ url_for('.evaluate', flowname=source_name, sourcename=source_name) }}">
+        <input type="hidden" name="sourcename" value="{{ source_name }}">
+        <button type="submit" class="btn btn-primary col-sm-auto">Analyze {{ source_name }}</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if flow_evaluation_groups|count > 0 %}
+<table class="ts-table table table-borderless report-table">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">Evaluation date</th>
+            <th scope="col" class="action">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for group in flow_evaluation_groups|sort(attribute='date', reverse=True) %}
+        <tr class="border-bottom">
+            <td class="align-middle">
+                {{ group.date|datetimeformat }}
+            </td>
+            <td>
+                <form action="{{ url_for('.remove_evaluation_group') }}">
+                    <input type="hidden" name="sourcename" value="{{ source_name }}">
+                    <input type="hidden" name="flowevaluationgroupid" value="{{ group.db_id}}">
+                    <button class="btn btn-secondary btn-sm"
+                            type="submit"
+                            {% if analysis_state.flow_state.is_defined() and (analysis_state.flow_state.pending > 0 or analysis_state.flow_state.is_running() or not analysis_state.block_state.is_completed()) %}
+                            disabled
+                            {% endif %}>
+                        Remove
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts_bottom %}
+<script src="{{ url_for('static', filename='dist/flows.js') }}"></script>
+<script src="{{ url_for('static', filename='dist/sources.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Data quality report for {{ block_evaluation.flow_evaluation.series_set_name }} ({{ block_evaluation.flow_evaluation.group.flow.name }})</title>
+
+{% from 'macros.html' import visualize_check_score, visualize_score, visualize_series_name %}
+
+<script src="{{ 'static/dist/lib.js'|todatauri('text/javascript') }}"></script>
+<script src="{{ 'static/dist/charts.js'|todatauri('text/javascript') }}"></script>
+
+<style>
+    table {
+        table-layout: fixed;
+    }
+    .score-grouping {
+        width: 20%;
+    }
+    .score {
+        width: 20%;
+    }
+    .statistic-value {
+        width: 80%;
+    }
+    #scroll {
+        position: fixed;
+        right: 0;
+        top: 50%;
+        transform: translate(0, -50%);
+    }
+
+    @media print {
+        #scroll {
+            display: none !important;
+        }
+        main {
+            flex: 1 !important;
+            max-width: 100% !important;
+        }
+        .container {
+            max-width: 100% !important;
+        }
+        section, h3 {
+            break-before: page;
+        }
+    }
+</style>
+
+<div class="container">
+    <header class="jumbotron">
+        <div><img src="{{ 'static/timeseer.png'|todatauri('image/png') }}" class="img-fluid w-50"></div>
+        <h1>Data quality report for {{ block_evaluation.flow_evaluation.series_set_name }} ({{ block_evaluation.flow_evaluation.group.flow.name }})</h1>
+        <p>{{ now|dateformat }}</p>
+    </header>
+
+    <nav>
+        <p class="h2">Table of Contents</p>
+        <ol id="toc" class="list-unstyled"></ol>
+    </nav>
+
+    <div class="row">
+    <main class="col-md-10 col-12">
+        <section class="card mb-3">
+            <h2 id="introduction" class="card-header">Introduction</h2>
+            <div class="card-body">
+                <p>
+                    This document reports on the data quality of the time series set "{{ block_evaluation.flow_evaluation.series_set_name }}" in the flow {{ block_evaluation.flow_evaluation.group.flow.name }}.
+                </p>
+                <p>
+                    It first summarizes the quality score for the complete flow.
+                    Then it reports on the quality KPIs that determine the score.
+                    The worst scoring time series are mentioned.
+                    Finally an overview of all time series mentioned in the report is presented.
+                </p>
+            </div>
+        </section>
+        <section class="card mb-3">
+            <h2 id="summary" class="card-header">Summary</h2>
+            <div class="card-body">
+                <p>
+                    The data quality of a time series source is scored along the KPIs defined in the KPI set.
+                    The score for each quality KPI is determined by the score of all time series in the source
+                    for the checks that make up the KPI.
+                </p>
+                <p>
+                    The aggregated quality score of "{{ block_evaluation.flow_evaluation.series_set_name  }}" is <strong>{{ source_score }}%</strong>.
+                </p>
+            </div>
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">KPI</th>
+                        <th scope="col" class="score">Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for kpi in kpis %}
+                    <tr>
+                        <td><a href="#{{ kpi.name|htmlid }}">{{ kpi.name }}</a></td>
+                        {% if kpi.name in kpi_scores %}
+                        {{ visualize_score(kpi_scores[kpi.name]) }}
+                        {% else %}
+                        <td>-</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="card-body">
+                Compared to the median scores of all time series sources in Timeseer, "{{ block_evaluation.flow_evaluation.series_set_name  }}" scores
+                {% if kpi_comparison.better|count > 0 %}
+                better for
+                {% for kpi, score in kpi_comparison.better %}
+                {{ kpi }} ({{score}}%)
+                {%- if not loop.revindex0 < 2 -%}
+                ,
+                {% elif not loop.revindex0 < 1 %}
+                and
+                {%- endif -%}
+                {%- endfor -%}
+                {%- if kpi_comparison.better|count > 0 and kpi_comparison.worse|count > 0 -%}
+                ,
+                {% endif %}
+                {% endif %}
+                {% if kpi_comparison.worse|count > 0 %}
+                worse for
+                {% for kpi, score in kpi_comparison.worse %}
+                {{ kpi }} ({{score}}%)
+                {%- if not loop.revindex0 < 2 -%}
+                ,
+                {% elif not loop.revindex0 < 1 %}
+                and
+                {%- endif -%}
+                {%- endfor -%}
+                {%- endif -%}
+                {% if kpi_comparison.better|count + kpi_comparison.worse|count > 0 and kpi_comparison.equal|count > 0 %}
+                and
+                {% endif %}
+                {% if kpi_comparison.equal|count > 0 %}
+                equal for
+                {% for kpi, score in kpi_comparison.equal %}
+                {{ kpi }}
+                {%- if not loop.revindex0 < 2 -%}
+                ,
+                {%- elif not loop.revindex0 < 1 %}
+                and
+                {%- endif -%}
+                {%- endfor -%}
+                {%- endif -%}
+                .
+            </p>
+            <div id="timeseries_source_score"></div>
+        </section>
+
+        {% for kpi in kpis %}
+        <section class="my-3">
+            <header class="card">
+                <h2 id="{{ kpi.name|htmlid }}" class="card-header">{{ kpi.name }} <small class="text-muted">KPI</small></h2>
+                <div class="card-body">
+                    {% if kpi.short_help_text != "" %}
+                    <p>{{ kpi.short_help_text }}</p>
+                    {{ kpi.html_help_text|default('')|inlineimages|safe }}
+                    {% endif %}
+
+                    {% if kpi_score_scores[kpi.name]|count == 0 %}
+                    <p class="text-muted">No {{ kpi.name.lower() }} checks have been performed.</p>
+                    {% endif %}
+                </div>
+                {% if kpi_score_scores[kpi.name]|count > 0 %}
+                {% if kpi.name == 'Metadata' %}
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+
+                            <th scope="col">Metadata check</th>
+                            <th scope="col" class="score">Score (higher is better)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for score in kpi_score_scores[kpi.name]|sort(attribute='metadata.name')|sort(attribute='score') %}
+                        <tr>
+                            <td>
+                                <a href="#{{ score.metadata.name|htmlid }}">
+                                    {{ score.metadata.name|capitalize }}
+                                </a>
+                            </td>
+                            {{ visualize_score(score.score) }}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Check</th>
+                            <th scope="col" class="score">Score (higher is better)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for score in kpi_score_scores[kpi.name]|sort(attribute='metadata.name')|sort(attribute='score') %}
+                        <tr>
+                            <td>
+                                <a href="#{{ score.metadata.name|htmlid }}">
+                                    {{ score.metadata.name|capitalize }}
+                                </a>
+                            </td>
+                            {{ visualize_score(score.score) }}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+                {% endif %}
+            </header>
+            {% for score in kpi_score_scores[kpi.name]|sort(attribute='name') %}
+            <h3 id="{{ score.metadata.name|htmlid }}" class="mt-3">{{ score.metadata.name|capitalize }} <small class="text-muted">check</small></h3>
+            {% if score.metadata.short_help_text %}
+            <p>{{ score.metadata.short_help_text }}</p>
+            {{ score.metadata.html_help_text|default('')|inlineimages|safe }}
+            {% endif %}
+            {% if score_distribution[score.metadata.name]|map('last')|sum > 0 %}
+            <p>Evaluated over {{ score_distribution[score.metadata.name]|map('last')|sum }} series:</p>
+            {% if score.metadata.data_type == 'bool' %}
+            <div class="score-pie mb-3" data-height="300">
+                <table class="visually-hidden">
+                    <tbody>
+                        {% for result, count in score_distribution[score.metadata.name] %}
+                        {% if result in [0, 90] %}
+                        <tr>
+                            <td class="pie-label">{{ result }}</td>
+                            <td class="pie-value">{{ count }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="histogram" data-score-coloring="yes">
+                <table class="visually-hidden">
+                    <thead>
+                        <tr>
+                            <th class="histogram-bin-label" colspan="2">{{ score.metadata.name|capitalize }} score</th>
+                            <th>Bin start</th>
+                            <th>Bin end</th>
+                            <th class="histogram-value-label">Number of time series</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result, count in score_distribution[score.metadata.name] %}
+                        <tr>
+                            <td class="histogram-bin-text">{{ result }} - {{ result + 10 }}</td>
+                            <td class="histogram-bin-start">{{ result }}</td>
+                            <td class="histogram-bin-end">{{ result + 10 }}</td>
+                            <td class="histogram-value">{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% endif %}
+            {% if score.metadata.name in csv_exports and score.score != 100 %}
+            <p>
+                <a download="{{ score.metadata.name }}.csv" href="{{ csv_exports[score.metadata.name] }}">Export</a> the list of time series as CSV.
+                The CSV contains suggested values where available.
+            </p>
+            {% endif %}
+            {% endfor %}
+        </section>
+        {% endfor %}
+
+        <section class="card">
+            <h2 id="worst-scoring-time-series" class="card-header">Worst scoring time series</h2>
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Series name</th>
+                        <th scope="col" class="score">Score (higher is better)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for series, score in series_scores.items() %}
+                    <tr>
+                        <td>
+                            {{ visualize_series_name(series.name) }}
+                        </td>
+                        {{ visualize_score(score) }}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <div id="scroll" class="list-group col-md-2 d-none d-md-block"></div>
+    </div>
+
+    <footer>
+        <p>&copy; Timeseer.AI 2021</p>
+    </footer>
+</div>
+
+{% if kpi_scores|count > 0 %}
+<script>
+{% include "scripts/kpi-scores.js" %}
+</script>
+{% endif %}
+
+<script>
+(function () {
+{% include 'scripts/histogram.js' %}
+{% include 'scripts/pie.js' %}
+})();
+</script>
+
+<script>
+(function () {
+    function createHeaderLink(target) {
+        var a = document.createElement('a');
+        a.setAttribute('href', '#' + target.getAttribute('id'))
+        for (var child of target.childNodes) {
+            if (child.nodeType == document.TEXT_NODE) {
+                a.textContent = child.textContent.trim();
+                break;
+            }
+        }
+        return a;
+    }
+
+    function createEntry(target) {
+        var li = document.createElement('li');
+        var a = createHeaderLink(target);
+        li.appendChild(a);
+        return li;
+    }
+
+    var toc = document.getElementById('toc');
+    var main = document.getElementsByTagName('main')[0];
+
+    var headers = [], subheaders = [];
+
+    for (var node of main.getElementsByTagName('*')) {
+        var nodeName = node.nodeName.toLowerCase();
+        if (nodeName === 'h2') {
+            subheaders = [];
+            headers.push([node, subheaders]);
+        }
+        if (nodeName === 'h3') {
+            subheaders.push(node);
+        }
+    }
+
+    headers.forEach(function (pair) {
+        var header = pair[0];
+        var subheaders = pair[1];
+
+        var li = createEntry(header);
+        var ul = document.createElement('ul');
+        li.appendChild(ul);
+
+        subheaders.forEach(function (subheader) {
+            ul.appendChild(createEntry(subheader));
+        });
+
+        toc.appendChild(li);
+    });
+
+    var scroll = document.getElementById('scroll');
+    headers.forEach(function (pair) {
+        var header = pair[0];
+        var a = createHeaderLink(header);
+        a.classList.add('list-group-item', 'list-group-item-action');
+        scroll.appendChild(a);
+    });
+
+    document.addEventListener('scroll', function () {
+        window.requestAnimationFrame(function () {
+            var activeHeader = headers.reduce(function (closest, pair) {
+                var header = pair[0];
+                var y = header.getBoundingClientRect().y;
+                if (closest) {
+                    var closestY = closest.getBoundingClientRect().y;
+                } else {
+                    var closestY = Number.NEGATIVE_INFINITY;
+                }
+                if (y < 1 && y > closestY) {
+                    return header;
+                } else {
+                    return closest;
+                }
+            }, null);
+
+            for (var a of scroll.getElementsByTagName('a')) {
+                if (activeHeader && a.getAttribute('href') === '#' + activeHeader.getAttribute('id')) {
+                    a.classList.add('active');
+                } else {
+                    a.classList.remove('active');
+                }
+            }
+        });
+    });
+})();
+</script>

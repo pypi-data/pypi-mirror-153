@@ -1,0 +1,188 @@
+{% set multivariate_title = type %}
+{% extends 'multivariate-layout.html' %}
+
+{% from 'macros.html' import abbreviate_series_name, menu_back %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(url_for('.show_bivariate_event_frames', blockevaluationid=block_evaluation.db_id, type=type, series_x_id=series_x.series_id, series_y_id=series_y.series_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block multivariate_content %}
+{% if context_start_date and context_end_date %}
+<p class="alert alert-info">
+    Event frame from {{ context_start_date|datetimeformat }} to {{ context_end_date|datetimeformat }}.
+</p>
+{% endif %}
+
+<form class="mb-3">
+    <div class="row align-items-end gx-2">
+        <input type="hidden" name="series_x_id" value="{{ series_x.series_id }}">
+        <input type="hidden" name="series_y_id" value="{{ series_y.series_id }}">
+        <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+        <input type="hidden" name="type" value="{{ type }}">
+        {% if context_start_date and context_end_date %}
+        <input type="hidden" name="contextStartDate" value="{{ context_start_date }}">
+        <input type="hidden" name="contextEndDate" value="{{ context_end_date }}">
+        {% endif %}
+
+        <div class="col-lg">
+            <label for="startDateInput" class="col-form-label">Start date</label>
+            <input class="form-control bg-white" id="startDateInput" name="startDate" value="{{ start_date }}">
+        </div>
+
+        <div class="col-lg">
+            <label for="endDateInput" class="col-form-label">End date</label>
+            <input class="form-control bg-white" id="endDateInput" name="endDate" value="{{ end_date }}">
+        </div>
+
+        <div class="col-md-auto mt-lg-0 mt-2">
+            <button type="submit" class="btn btn-primary btn-block">Visualize</button>
+        </div>
+    </div>
+</form>
+
+<script>
+    flatpickr("#startDateInput", flatpickrOptions);
+    flatpickr("#endDateInput", flatpickrOptions);
+</script>
+
+<div id="advanced-chart">
+    <div class="alert alert-primary">
+        <div class="row align-items-center">
+            <div class="col">
+                Loading chart...
+            </div>
+            <div class="col-auto">
+                <div class="spinner-border text-primary" role="status"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+function plot(plotData) {
+    var metadata_1 = {{ metadata_x.to_data()|tojson }};
+    var metadata_2 = {{ metadata_y.to_data()|tojson }};
+    var plotData_1 = plotData.x;
+    var plotData_2 = plotData.y;
+
+    var startDate = '{{ start_date }}';
+    var endDate = '{{ end_date }}';
+    {% if context_start_date and context_end_date %}
+    var contextStartDate = "{{ context_start_date }}";
+    var contextEndDate = "{{ context_end_date }}";
+    {% else %}
+    var contextStartDate;
+    var contextEndDate;
+    {% endif %}
+
+    if (metadata_1.interpolationType && metadata_1.interpolationType === 'STEPPED') {
+        var shape_1 = 'hv';
+    } else {
+        var shape_1 = 'linear';
+    }
+
+    if (metadata_2.interpolationType && metadata_2.interpolationType === 'STEPPED') {
+        var shape_2 = 'hv';
+    } else {
+        var shape_2 = 'linear';
+    }
+
+    var first = {
+        x: plotData_1.map(point => {return point['t']}),
+        y: plotData_1.map(point => {return point['y']}),
+        type: 'scatter',
+        name: '{{ series_x.name }}',
+        line: {
+            color: 'blue',
+            shape: shape_1,
+        },
+        hovertemplate: '%{y} <extra>{{ abbreviate_series_name(series_x.name) }}</extra>',
+    };
+
+    var second = {
+        x: plotData_2.map(point => {return point['t']}),
+        y: plotData_2.map(point => {return point['y']}),
+        type: 'scatter',
+        name: '{{ series_y.name }}',
+        line: {
+            color: 'red',
+            shape: shape_2,
+        },
+        hovertemplate: '%{y} <extra>{{ abbreviate_series_name(series_y.name) }}</extra>',
+    };
+
+    var data = [first, second];
+
+    shapes = [];
+    if (contextStartDate && contextEndDate) {
+        shapes.push({
+            type: 'rect',
+            xref: 'x',
+            yref: 'paper',
+            x0: contextStartDate,
+            x1: contextEndDate,
+            y0: 0,
+            y1: 1,
+            fillcolor: 'grey',
+            opacity: 0.2,
+            line: {
+                width: 0,
+            },
+        });
+    }
+
+    var layout = {
+        shapes: shapes,
+        showlegend: true,
+        legend: {
+            yanchor: 'top',
+            y: -0.1,
+            xanchor: 'right',
+            x: 1,
+        },
+        margin: {
+            r: 0,
+            t: 0,
+        },
+        xaxis: {
+            range: [startDate, endDate],
+        },
+    }
+
+    Plotly.newPlot('advanced-chart', data, layout, {responsive: true});
+}
+
+fetch('{{ url_for(".get_bivariate_chart_data") }}?' + new URLSearchParams({
+    series_x_id: '{{ series_x.series_id }}',
+    series_y_id: '{{ series_y.series_id }}',
+    startDate: '{{ start_date }}',
+    endDate: '{{ end_date }}',
+}))
+    .then(function (response) {
+        if (response.status === 200) {
+            return response.json();
+        } else if (response.status === 408 || response.status === 504) {
+            throw new Error('Timeout while loading chart data.')
+        } else {
+            throw new Error('Failed to load chart data.')
+        }
+    }).then(function (data) {
+        var chartEl = document.getElementById('advanced-chart');
+        while (chartEl.firstChild) {
+            chartEl.removeChild(chartEl.lastChild);
+        }
+        plot(data);
+    }, function (exception) {
+        document.getElementById('advanced-chart').innerHTML = `
+            <div class="alert alert-danger">${exception.message}</div>
+        `;
+    });
+
+</script>
+{% endblock %}

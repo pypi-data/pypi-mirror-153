@@ -1,0 +1,87 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, bootstrap_icon, info_popover, progress_bar, visualize_check_result, visualize_score, visualize_series_name %}
+{% from 'series-menu.html' import series_menu with context %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .score-table {
+        table-layout: fixed;
+    }
+    .score-table .score-grouping {
+        width: 20%;
+    }
+    .score-table .score {
+        width: 20%;
+    }
+    .score-table .checkbox {
+        width: 5%;
+    }
+</style>
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center">
+        <div class="col">
+            {% block series_title %}
+
+            {% endblock %}
+            <p class="h6 text-break">{{ visualize_series_name(series.name) }} <small class="text-muted">{{ series.source }}</small></p>
+            <p class="text-muted">
+                In <a href="{{ url_for('flows.list_series', flowevaluationid=block_evaluation.flow_evaluation.db_id, sourcename=source_name) }}">{{ block_evaluation.flow_evaluation.series_set_name }}</a> ({{ block_evaluation.flow_evaluation.group.flow.name }})
+                from {{ block_evaluation.flow_evaluation.group.time_range.start_date|datetimeformat }} to {{ block_evaluation.flow_evaluation.group.time_range.end_date|datetimeformat }}
+            </p>
+        </div>
+        <div class="col-lg-auto">
+            <form action="{{ url_for('flow_univariate.analyze_series') }}" method="POST" id="analyzeseries">
+                <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+                <input type="hidden" name="seriesid" value="{{ series.series_id }}">
+
+            </form>
+            <div class="btn-toolbar" role="group">
+                {% block series_action %}
+
+                {% endblock %}
+                <button type="submit" class="btn btn-secondary" form="analyzeseries">Analyze</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter () }}
+
+    {% if not is_analyzed and analysis_state is none %}
+    <div class="alert alert-primary">
+        <div class="row align-items-center gx-2">
+            <div class="col-md">
+                Results are only available when the time series has been analyzed.
+            </div>
+            <div class="col-md-auto">
+                <form action="{{ url_for('flow_univariate.analyze_series') }}" method="POST">
+                    <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+                    <input type="hidden" name="seriesid" value="{{ series.series_id }}">
+                    <button type="submit" class="btn btn-primary btn-block">Analyze</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% elif not is_analyzed or analysis_state.failed > 0 %}
+        {% call progress_bar(analysis_state, url_for('flow_univariate.get_analysis_state', blockevaluationid=block_evaluation.db_id, seriesid = series.series_id), class_name='univariate-progress', empty_is_pending=True) %}
+        Analysis
+        {% endcall %}
+    {% endif %}
+
+    {% block series_content %}
+    {% endblock series_content %}
+</div>
+{% endblock main %}
+
+{% block scripts_bottom %}
+<script src="{{ url_for('static', filename='dist/flows.js') }}"></script>
+{% endblock %}

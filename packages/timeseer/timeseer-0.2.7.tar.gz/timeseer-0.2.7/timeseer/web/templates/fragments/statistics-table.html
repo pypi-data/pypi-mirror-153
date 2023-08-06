@@ -1,0 +1,121 @@
+<table class="ts-table table table-borderless score-table">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col" class="score-grouping">Statistic</th>
+            <th scope="col">Calculated value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for statistic in statistics|sort_human(attribute='name') %}
+        {% if not statistic.data_type in ['sketch', 'hidden'] %}
+        <tr class="border-bottom">
+            <th scope="col">{{ statistic.name|capitalize }}</th>
+            {% if statistic.data_type == 'datetime' %}
+            <td>{{ statistic.result|datetimeformat }}</td>
+            {% elif statistic.data_type == 'table' %}
+            <td>
+                <table class="ts-table table table-borderless score-table">
+                    <thead>
+                        <tr>
+                            {% for value in statistic.result %}
+                            <th class="bar-label">{{ statistic.result[loop.index0][0] }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                        {% for value in statistic.result %}
+                            <td class="histogram-bin-text">
+                                {{ statistic.result[loop.index0][1]|numberformat }}
+                                {% if "Interpolation" in statistic.name %}
+                                %
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+            {% elif statistic.data_type == 'histogram' %}
+            <td>
+                <div class="histogram" data-height="300">
+                    {% if metadata and statistic.name == 'Value histogram' %}
+                    <table class="d-none">
+                        <tr>
+                            <th scope="row">Lower limit</th>
+                            <td class="histogram-line">{{ metadata.limit_low }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Upper limit</th>
+                            <td class="histogram-line">{{ metadata.limit_high }}</td>
+                        </tr>
+                    </table>
+                    {% endif %}
+                    <table class="d-none">
+                        <thead>
+                            <tr>
+                                <th class="histogram-bin-label">{{ series_name }} Values</th>
+                                <th>Bin start</th>
+                                <th>Bin end</th>
+                                <th class="histogram-value-label">Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for value in statistic.result.hist|normalizevalues %}
+                            <tr>
+                                <td class="histogram-bin-text">{{ statistic.result.bin_edges[loop.index0]|numberformat }} - {{ statistic.result.bin_edges[loop.index]|numberformat }}</td>
+                                <td class="histogram-bin-start">{{ statistic.result.bin_edges[loop.index0] }}</td>
+                                <td class="histogram-bin-end">{{ statistic.result.bin_edges[loop.index] }}</td>
+                                <td class="histogram-value">{{ (100 * value)|round|int }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </td>
+            {% elif statistic.data_type == 'correlation' %}
+            <td>
+                <div class="correlation">
+                    <table class="d-none">
+                        <thead>
+                            <th></th>
+                            {% for series in statistic.result.series %}
+                            <th class="correlation-header" scope="col" data-series="{{ series.name }} ({{ series.source }})">{{ visualize_series(series) }}</th>
+                            {% endfor %}
+                        </thead>
+                        <tbody>
+                            {% for series in statistic.result.series %}
+                            {% set outer_loop = loop %}
+                            <tr>
+                                <th scope="row">{{ series.name }} ({{ series.source }})</th>
+                                {% for column in statistic.result.columns %}
+                                <td class="correlation-value">{{ column[outer_loop.index0] }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </td>
+            {% elif statistic.data_type == 'timedelta' %}
+            <td>{{ statistic.result|numberformat }}s</td>
+            {% elif statistic.data_type == 'pct' %}
+            <td>{{ statistic.result|numberformat }}%</td>
+            {% else %}
+            <td>{{ statistic.result|numberformat }}</td>
+            {% endif %}
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+( function () {
+{% include 'scripts/histogram.js' %}
+})();
+</script>
+
+<script>
+{% include 'scripts/mv-correlation-chart.js' %}
+</script>

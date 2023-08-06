@@ -1,0 +1,88 @@
+{% extends 'tags-layout.html' %}
+{% from 'macros.html' import pagination, visualize_metadata_value %}
+
+{% block menu %}
+{{ prepare_menu('Metadata') }}
+{% endblock %}
+
+{% macro visualize_sorting(sort_field, sort_direction, field) %}
+    {% if sort_field == field %}
+        {% if sort_direction == 'asc' %}
+        {% set other_direction = 'desc' %}
+        {% else %}
+        {% set other_direction = 'asc' %}
+        {% endif %}
+        <a class="text-reset text-decoration-none" href="{{ url_for('.metadata_audit_trail', seriesid=series.series_id, sort=sort_field, direction=other_direction) }}">
+            {{ caller() }}
+            {% if sort_direction == 'desc' %}
+            {{ bootstrap_icon('caret-down-fill') }}
+            {% else %}
+            {{ bootstrap_icon('caret-up-fill') }}
+            {% endif %}
+        </a>
+    {% else %}
+        <a class="text-reset text-decoration-none" href="{{ url_for('.metadata_audit_trail', seriesid=series.series_id, sort=field, direction=sort_direction) }}">
+            {{ caller() }}
+            {% if sort_direction == 'desc' %}
+            {{ bootstrap_icon('caret-down', 'text-secondary') }}
+            {% else %}
+            {{ bootstrap_icon('caret-up', 'text-secondary') }}
+            {% endif %}
+        </a>
+    {% endif %}
+{% endmacro %}
+
+{% block tags_title %}
+<h2 class="h4">Metadata audit trail</h2>
+{% endblock %}
+
+{% block tags_content %}
+{% if audit_trail|count > 0 %}
+
+{{ pagination(
+    paging,
+    url_for('.metadata_audit_trail', seriesid=series.series_id, page=paging.page-1, sort=sort_field, direction=sort_direction),
+    url_for('.metadata_audit_trail', seriesid=series.series_id, page=paging.page+1, sort=sort_field, direction=sort_direction)
+) }}
+
+<table class="ts-table table table-borderless">
+    <thead class="thead-secondary">
+        <tr class="border-top border-bottom">
+            <th scope="col">
+                {% call visualize_sorting(sort_field, sort_direction, 'field_name') %}
+                Name
+                {% endcall %}
+            </th>
+            <th scope="col">
+                Old value
+            </th>
+            <th scope="col">
+                New value
+            </th>
+            <th scope="col">
+                {% call visualize_sorting(sort_field, sort_direction, 'modified_date') %}
+                Modified date
+                {% endcall %}
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in audit_trail %}
+        <tr class="border-bottom">
+            <td>{{ event.field_name|capitalize }}</td>
+            {{ visualize_metadata_value(event.field_name, event.typed_old_value)}}
+            {{ visualize_metadata_value(event.field_name, event.typed_new_value)}}
+            <td>{{ event.modified_date|datetimeformat}}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{{ pagination(
+    paging,
+    url_for('.metadata_audit_trail', seriesid=series.series_id, page=paging.page-1, sort=sort_field, direction=sort_direction),
+    url_for('.metadata_audit_trail', seriesid=series.series_id, page=paging.page+1, sort=sort_field, direction=sort_direction)
+) }}
+{% endif %}
+
+{% endblock tags_content %}

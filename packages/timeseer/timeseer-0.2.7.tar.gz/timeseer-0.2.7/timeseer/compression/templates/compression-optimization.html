@@ -1,0 +1,74 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, menu_back, progress_bar, visualize_series_name %}
+
+{% block menu %}
+{{ menu_back(url_for('.list_optimizations', sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center gx-2">
+        <div class="col-sm">
+            <h2 class="h4">Compression optimization</h2>
+            <p class="h6 text-break">
+                <a href="{{ url_for('prepare.tags', seriesid=optimization.series.series_id) }}">
+                    {{ visualize_series_name(optimization.series.name) }}
+                </a>
+                <small class="text-muted">{{ optimization.series.source }}</small>
+            </p>
+            <p class="text-muted">
+                From {{ optimization.time_range.start_date|datetimeformat }} to {{ optimization.time_range.end_date|datetimeformat }}
+            </p>
+        </div>
+        <div class="col-sm-auto">
+            <a class="btn btn-secondary" href="{{ url_for('.remove_optimization', optimizationid=optimization.db_id, sourcename=source_name) }}">
+                Remove
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    {% call progress_bar(analysis_state, url_for('.get_analysis_state', optimizationid=optimization.db_id)) %}
+    Compression optimization
+    {% endcall %}
+
+    {% if results %}
+    <table class="ts-table table table-borderless mt-3">
+        <thead class="thead-secondary">
+            <th scope="col">Compression ratio</th>
+            <th scope="col">Mutual information</th>
+            <th scope="col">Exception deviation</th>
+            <th scope="col">Compression deviation</th>
+        </thead>
+        <tbody>
+            {% for result in results %}
+            <tr class="border-bottom">
+                <td>{{ result.compression_ratio|numberformat }}%</td>
+                <td>{{ result.mutual_information|numberformat }}%</td>
+                <td>{{ result.exception_deviation|numberformat }}</td>
+                <td>{{ result.compression_deviation|numberformat }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {% if analysis_state.completed %}
+    <div class="alert alert-info">
+        No results found.
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No results found yet.
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts_bottom %}
+<script src="{{ url_for('static', filename='dist/compression.js') }}"></script>
+{% endblock %}

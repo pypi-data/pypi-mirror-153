@@ -1,0 +1,52 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import visualize_score, visualize_series_name, pagination %}
+{% from 'flow-menu.html' import flow_menu with context %}
+
+{% block menu %}
+{{ flow_menu('Time series') }}
+{% endblock %}
+
+{% block main %}
+{% call flows_header(block_evaluation.flow_evaluation, 'Time series score') %}
+<a  href="{{ url_for('.compare_series_scores', blockevaluationid=block_evaluation.db_id, sourcename=source_name) }}"
+    class="btn btn-primary">
+    Compare scores
+</a>
+{% endcall %}
+
+{% if series_scores|count > 0 %}
+<div class="pt-3 my-3">
+    {{ pagination(
+        paging,
+        url_for('.series_score_report', flowname=flow_name, sourcename=source_name, page=paging.page-1, blockid=block_id, blockevaluationid=block_evaluation.db_id),
+        url_for('.series_score_report', flowname=flow_name, sourcename=source_name, page=paging.page+1, blockid=block_id, blockevaluationid=block_evaluation.db_id)
+    ) }}
+    <table class="ts-table table table-borderless">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col">Series name</th>
+                <th scope="col">Score (higher is better)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for series, score in series_scores.items() %}
+            <tr class="border-bottom">
+                <td>
+                    <a class="ts-table-link text-dark fw-normal text-decoration-none" href="{{ url_for('.show_checks', seriesid=series.series_id, blockevaluationid=block_evaluation.db_id) }}">
+                        {{ visualize_series_name(series.name) }}
+                    </a>
+                </td>
+                {{ visualize_score(score) }}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {{ pagination(
+        paging,
+        url_for('.series_score_report', flowname=flow_name, sourcename=source_name, page=paging.page-1, blockid=block_id, blockevaluationid=block_evaluation.db_id),
+        url_for('.series_score_report', flowname=flow_name, sourcename=source_name, page=paging.page+1, blockid=block_id, blockevaluationid=block_evaluation.db_id)
+    ) }}
+</div>
+{% endif %}
+{% endblock %}

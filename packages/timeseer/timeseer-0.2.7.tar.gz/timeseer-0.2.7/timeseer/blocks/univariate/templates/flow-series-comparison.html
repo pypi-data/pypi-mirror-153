@@ -1,0 +1,225 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import info_popover, visualize_score, visualize_series, visualize_series_name, menu_back %}
+
+{% block styles %}
+<style>
+    .comparison-table {
+        table-layout: fixed;
+    }
+{% if many_series|count > 4 %}
+    .comparison-table .series-name {
+        height: 200px;
+        white-space: nowrap;
+    }
+    .comparison-table .series-name > div {
+        transform: rotate(315deg);
+        width: 1px;
+    }
+{% endif %}
+    .comparison-table .kpi-name {
+        width: 20%;
+    }
+</style>
+{% endblock %}
+
+{% block menu %}
+{{ menu_back(url_for('.series_score_report', blockevaluationid=block_evaluation.db_id, sourcename=source_name)) }}
+{% endblock %}
+
+{% block main %}
+{% call flows_header(block_evaluation.flow_evaluation, 'Time series score comparison') %}
+<a class="btn btn-primary"
+    data-bs-toggle="offcanvas"
+    href="#series-selection"
+    aria-controls="series-selection"
+    aria-expanded="false">
+    Edit series
+</a>
+{% endcall %}
+
+<div class="offcanvas {% if many_series|count < 2 %}show{% endif %} offcanvas-end" tabindex="-1" id="series-selection">
+    <div class="offcanvas-header">
+        <h3 class="offcanvas-title h5">Select time series</h3>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="row align-items-center gx-2">
+            {% if many_series|count > 0 %}
+            <div class="col-md-auto">
+                <div class="btn-group ts-dropdown-select-button">
+                    <a class="btn border border-secondary dropdown-toggle"
+                    href="#"
+                    role="button"
+                    id="selectionDropdown"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                        <button type="submit"
+                                class="dropdown-item ts-dropdown-action"
+                                form="removeseries"
+                                >
+                                Remove selected series from comparison
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if many_series|count > 0 %}
+        <form id="removeseries" class="mt-3">
+            <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+            {% if source_name %}
+            <input type="hidden" name="sourcename" value="{{ source_name }}">
+            {% endif %}
+            {% for series in many_series %}
+            <input type="hidden" name="series" value="{{ series.series_id }}">
+            {% endfor %}
+
+            <table class="ts-table ts-table-checkbox table table-borderless" data-ts-target="selectionDropdown">
+                <thead class="thead-secondary">
+                    <tr class="border-top border-bottom">
+                        <th scope="col" class="checkbox">
+                            <input class="form-check-input" type="checkbox">
+                        </th>
+                        <th scope="col">Series name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for series in many_series %}
+                    <tr class="border-bottom">
+                        <td>
+                            <input class="form-check-input" type="checkbox" name="removeseries" value="{{ series.series_id }}">
+                        </td>
+                        <td>
+                            <a class="ts-table-link text-dark text-decoration-none"
+                                href="{{ url_for('.display_series', seriesid=series.series_id, blockevaluationid=block_evaluation.db_id) }}"
+                                data-ts-series-id="{{ series.series_id }}">
+                                {{ visualize_series(series) }}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+        {% else %}
+        <p class="alert alert-info">No series in comparison.</p>
+        {% endif %}
+
+        {% if many_series|count < 8 %}
+        <form>
+            <input type="hidden" name="blockevaluationid" value="{{ block_evaluation.db_id }}">
+            {% if source_name %}
+            <input type="hidden" name="sourcename" value="{{ source_name }}">
+            {% endif %}
+            {% for series in many_series %}
+            <input type="hidden" name="series" value="{{ series.series_id }}">
+            {% endfor %}
+            <div class="mb-3">
+                <label for="seriesInput" class="form-label">Add one time series to the comparison</label>
+                <select
+                    class="form-control"
+                    id="seriesInput"
+                    name="seriesid"
+                    placeholder="Type to search time series"
+                    autocomplete="off"
+                    required></select>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Add series</button>
+            </div>
+        </form>
+        {% else %}
+        <p class="alert alert-info">
+            Can only compare up to 8 series.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="pt-3 my-3">
+    {% if many_series|count < 2 %}
+    <div class="alert alert-info">
+        Add at least two time series to compare.
+    </div>
+    {% else %}
+
+    {% if all_results|count > 0 %}
+    {% for kpi in weights.keys()|sort(attribute='name') %}
+    <table class="ts-table table table-borderless comparison-table">
+        <thead class="thead-secondary">
+            <tr class="border-top border-bottom">
+                <th scope="col" class="kpi-name">{{ kpi.name }}</th>
+                {% for series in many_series|sort(attribute="source,name") %}
+                <th scope="col" class="series-name">
+                    <div>{{ visualize_series_name(series.name) }}</div>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for weight in weights[kpi]|sort(attribute='name') if weight.name in score_metadata %}
+            <tr class="border-bottom">
+                <th scope="row" class="fw-normal">
+                    {{ weight.name|capitalize }}
+                    {{ info_popover(score_metadata[weight.name].short_help_text) }}
+                </th>
+                {% for series in many_series|sort(attribute="source,name") %}
+                {% if series in all_results[weight.name] %}
+                {{ visualize_score(all_results[weight.name][series].score) }}
+                {% else %}
+                <td>-</td>
+                {% endif %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+    {% else %}
+    <div class="alert alert-info">
+        Analyze time series to compare results.
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<script>
+    var existingSeries = [];
+    for (const series of document.querySelectorAll('[data-ts-series-id]')) {
+        existingSeries.push(series.getAttribute('data-ts-series-id'));
+    }
+
+    var flowEvaluationId = {{ block_evaluation.flow_evaluation.db_id }};
+    $('#seriesInput').autoComplete({
+        bootstrapVersion: '4',
+        noResultsText: 'No matching series known.',
+        resolver: 'custom',
+        events: {
+            search: function (pattern, callback) {
+                var params = {
+                    'flowevaluationid': flowEvaluationId,
+                    'pattern': pattern,
+                };
+                $.ajax('{{ url_for('flows.search_series') }}', {data: params})
+                .done(function(data) {
+                    callback(
+                        data.filter(function (series) {
+                            return !existingSeries.includes(series.seriesId);
+                        }).map(function (series) {
+                            return {
+                                value: series.seriesId,
+                                text: series.name
+                            };
+                        })
+                    );
+                });
+            },
+        },
+    });
+</script>
+{% endblock %}

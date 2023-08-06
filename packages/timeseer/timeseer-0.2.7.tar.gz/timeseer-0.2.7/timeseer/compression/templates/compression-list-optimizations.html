@@ -1,0 +1,98 @@
+{% extends 'timeseer.html' %}
+
+{% from 'macros.html' import alerter, visualize_series %}
+
+{% block main %}
+<div class="ts-section py-3 my-3">
+    <h2 class="h4">Compression optimization</h2>
+</div>
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    {% if optimizations %}
+    <p>Select an optimization:</p>
+    <ul class="list-group list-group-flush">
+        {% for optimization in optimizations|sort(attribute='series.source,series.name') %}
+        <li class="list-group-item">
+            <a href="{{ url_for('.show_optimization', optimizationid=optimization.db_id, sourcename=source_name) }}">
+                {{ visualize_series(optimization.series) }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="alert alert-info">
+        No optimizations defined.
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h2 class="card-header">Create a new optimization</h2>
+        <div class="card-body">
+            <form action="{{ url_for('.create_optimization') }}" method="POST">
+                <div class="mb-3">
+                    <label for="sourceSelect" class="form-label">Select a source</label>
+                    <select name="sourcename" id="sourceSelect" class="form-select">
+                        {% for source in sources %}
+                        <option {% if source == source_name %}selected{% endif %}>{{ source }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="seriesInput" class="form-label">Select a time series</label>
+                    <input type="text"
+                        class="form-control"
+                        id="seriesInput"
+                        name="seriesname"
+                        placeholder="Type to search time series"
+                        autocomplete="off"
+                        required>
+                </div>
+
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-lg">
+                            <label for="startDateInput" class="col-form-label">Start date</label>
+                            <input class="form-control bg-white" id="startDateInput" name="startDate" value="{{ start_date.isoformat() }}">
+                        </div>
+                        <div class="col-lg">
+                            <label for="endDateInput" class="col-form-label">End date</label>
+                            <input class="form-control bg-white" id="endDateInput" name="endDate" value="{{ end_date.isoformat() }}">
+                        </div>
+                    </div>
+                    <div class="form-text">
+                        Select a short but relevant time range. Around 10 days should be sufficient.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Create optimization</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    flatpickr("#startDateInput", flatpickrOptions);
+    flatpickr("#endDateInput", flatpickrOptions);
+</script>
+
+<script>
+    $('#seriesInput').autoComplete({
+        bootstrapVersion: '4',
+        noResultsText: 'No matching series known.',
+        resolver: 'custom',
+        events: {
+            search: function (pattern, callback) {
+                var params = {
+                    'source': $('#sourceSelect').val(),
+                    'pattern': pattern,
+                };
+                $.ajax('{{ url_for('api.search_series_names') }}', {data: params}).done(callback);
+            },
+        },
+    });
+</script>
+{% endblock %}

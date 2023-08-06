@@ -1,0 +1,33 @@
+{% extends 'timeseer.html' %}
+{% from 'flows.html' import flows_header with context %}
+{% from 'macros.html' import alerter, bootstrap_icon, menu, visualize_score, visualize_series %}
+
+{% macro multivariate_menu(active) %}
+{{
+    menu(
+        (bootstrap_icon('arrow-left', 'h5 fw-bolder m-0', 24), url_for('flows.display_flow', flowevaluationid=block_evaluation.flow_evaluation.db_id, sourcename=source_name)),
+        [
+            ('Statistics',  url_for('flow_multivariate.show_statistics', blockevaluationid=block_evaluation.db_id, sourcename=source_name)),
+            ('Checks',  url_for('flow_multivariate.show_checks', blockevaluationid=block_evaluation.db_id, sourcename=source_name)),
+            ('Bivariate checks',  url_for('flow_multivariate.show_bivariate_checks', blockevaluationid=block_evaluation.db_id, sourcename=source_name)),
+            ('Event frames',  url_for('flow_multivariate.show_event_frame_occurrence', blockevaluationid=block_evaluation.db_id, sourcename=source_name)),
+        ],
+        active
+    )
+}}
+{% endmacro %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dist/charts.js') }}"></script>
+{% endblock %}
+
+{% block main %}
+{{ flows_header(block_evaluation.flow_evaluation, multivariate_title) }}
+
+<div class="pt-3 my-3">
+    {{ alerter() }}
+
+    {% block multivariate_content %}
+    {% endblock %}
+</div>
+{% endblock %}

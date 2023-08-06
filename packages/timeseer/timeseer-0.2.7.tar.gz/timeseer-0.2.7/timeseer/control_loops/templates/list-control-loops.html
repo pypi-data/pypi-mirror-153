@@ -1,0 +1,113 @@
+{% extends 'timeseer.html' %}
+{% from 'macros.html' import info_popover, bootstrap_icon %}
+
+{% block main %}
+
+<div class="ts-section py-3 my-3">
+    <div class="row justify-content-between">
+        <h2 class="col-sm-6 h4">Control loop flows</h2>
+        <div class="col-sm-auto">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createControlLoopFlowModal">
+                Create control loop
+            </button>
+        </div>
+    </div>
+</div>
+
+
+{% if flows|count == 0 %}
+    <div class="row justify-content-center mt-3">
+    {{ bootstrap_icon('arrow-repeat', 'text-secondary', size=32) }}
+    </div>
+    <h4 class="col text-center">You haven't created a control loop flow</h4>
+    <div class="row justify-content-center mt-3">
+        <div class="col-sm-6 text-center">Create a control loop flow to analyze the data.</div>
+    </div>
+    <div class="row justify-content-center mt-3">
+        <button class="btn btn-primary col-sm-auto" data-bs-toggle="modal" data-bs-target="#createControlLoopFlowModal">
+            Create control loop
+        </button>
+    </div>
+{% endif %}
+
+{% if flows|count > 0 %}
+<div class="pt-3 my-3">
+    <form >
+        <div class="row align-items-center gx-2">
+            <div class="col-md-auto">
+                <div class="btn-group ts-dropdown-select-button">
+                    <a class="btn border border-secondary dropdown-toggle"
+                    href="#"
+                    role="button"
+                    id="selectionDropdown"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="selectionDropdown">
+                        <button type="submit"
+                                class="dropdown-item ts-dropdown-action"
+                                formmethod="POST"
+                                formaction="{{ url_for('flows.remove_multiple_flows', sourcename=source_name) }}"
+                                >
+                                Remove selected
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table class="ts-table ts-table-checkbox table table-borderless mt-3" data-ts-target="selectionDropdown">
+            <thead class="thead-secondary">
+                <th scope="col">
+                    <input class="form-check-input" type="checkbox">
+                </th>
+                <th scope="col">Control loop name</th>
+                <th scope="col">Control loop type</th>
+            </thead>
+            <tbody>
+                {% for flow in flows|sort(attribute='name') %}
+                <tr class="border-bottom">
+                    <td>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="{{ flow.name }}">
+                        </div>
+                    </td>
+                    <td>
+                        <input type="hidden" name="flownames" value="{{ flow.name }}">
+                        <a class="ts-table-link text-dark text-decoration-none" href="{{ url_for('flows.display_flow', flowname=flow.name, sourcename=source_name) }}">
+                        {{ flow.name }}
+                        {% if scheduled_flows.get(flow.db_id) is not none %}
+                            {{ info_popover('Scheduled to run every ' + scheduled_flows.get(flow.db_id).schedule_interval, 'clock') }}
+                        {% endif %}
+                        </a>
+                    </td>
+                    <td class="text-muted">Custom</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</div>
+{% endif %}
+
+<div class="modal fade" id="createControlLoopFlowModal" tabindex="-1" aria-labelledby="createControlLoopFlowLabel" aria-hidden="true" data-bs-focus="false">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-md-down">
+        <div class="modal-content">
+            <div id="define-flow"
+                data-relative-dates='{{ relative_dates|tojson|safe }}'
+                data-univariate-module-types='{{ univariate_module_types|tojson|safe }}'
+                data-default-univariate-module-types='{{ univariate_module_types|tojson|safe }}'
+                data-multivariate-module-types='{{ multivariate_module_types|tojson|safe }}'
+                data-analyze-url="{{ url_for('control_loops.save_control_loop', sourcename=source_name) }}"
+                data-series-sets='{{ series_sets|sort(attribute="name")|tojson|safe }}'
+                data-series-set-templates='{{ series_set_templates|sort(attribute="name")|tojson|safe}}'>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block scripts_bottom %}
+<script src="{{ url_for('static', filename='dist/define-flow.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,357 @@
+{% extends 'timeseer.html' %}
+{% from 'macros.html' import alerter, bootstrap_icon, info_popover, menu_back, progress_bar_flow, visualize_series %}
+
+{% macro block_card_header(block, title) %}
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col">
+                {% if missing_dependencies[block.db_id]|count > 0 %}
+                    {{ info_popover('Missing a dependency on a block with type: ' + missing_dependencies[block.db_id]|join(', '), 'exclamation-triangle', 'text-warning', placement='top') }}
+                {% endif %}
+                {{ title }}
+            </div>
+            <div class="col-auto btn-toolbar" role='group'>
+                <form method="POST" action="{{ url_for('.delete_block', sourcename=source_name) }}">
+                    <input type='hidden' name='blockid' value='{{ block.db_id }}'>
+                    <button class="btn btn-secondary" type='submit'>
+                        Remove block
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro block_card(block, title) %}
+<div class="my-3 shadow-sm card {% if missing_dependencies[block.db_id]|count > 0 %} border-danger {% endif %}">
+    {{ block_card_header(block, title) }}
+    <div class="card-body">
+        {{ caller() }}
+    </div>
+</div>
+{% endmacro %}
+
+{% block styles %}
+<style>
+.ts-score-card {
+    width: 25rem;
+}
+.ts-score-column {
+    width: 5.5rem;
+}
+
+#timeseries_source_score {
+    max-width: 30rem;
+    max-height: 20rem;
+}
+
+</style>
+{% endblock %}
+
+{% block menu %}
+{% if flow_evaluation_groups|count == 0 %}
+{{ menu_back(url_for('.list_flows', sourcename=source_name)) }}
+{% else %}
+{{ menu_back(url_for('.display_flow', flowname=flow.name, sourcename=source_name)) }}
+{% endif %}
+{% endblock %}
+
+{% block main %}
+
+<div class="ts-section py-3 my-3">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="col-sm-6 h4">
+                {{ flow.name }}
+                {% if flow.schedule_interval is not none %}
+                <span class="align-top">
+                    {{ info_popover('Scheduled to run every ' + flow.schedule_interval, 'clock') }}
+                </span>
+                {% endif %}
+            </h2>
+            {% if flow.origin.value == 'ui' %}
+            <p>
+                <a class="ts-table-link text-decoration-none text-muted" href="{{ url_for('.edit_flow_time_range', flowname=flow.name, sourcename=source_name) }}">
+                    {% if flow.time_range.relative_date %}
+                    {{ flow.time_range.relative_date }}
+                    {% elif flow.time_range.has_no_time_range() is true %}
+                    -
+                    {% else %}
+                    From {{ flow.time_range.start_date|datetimeformat }} to {{ flow.time_range.end_date|datetimeformat }}
+                    {% endif %}
+                </a>
+            </p>
+            {% else %}
+            <p class="text-muted">
+                {% if flow.time_range.relative_date %}
+                {{ flow.time_range.relative_date }}
+                {% elif flow.time_range.has_no_time_range() is true %}
+                -
+                {% else %}
+                From {{ flow.time_range.start_date|datetimeformat }} to {{ flow.time_range.end_date|datetimeformat }}
+                {% endif %}
+            </p>
+            {% endif %}
+        </div>
+        <div class="col-lg-auto">
+                <div class="btn-toolbar" role="group">
+                    <form>
+                        <input type="hidden" name="flowname" value="{{ flow.name }}">
+                        <button type="submit"
+                            class="btn btn-primary me-2"
+                            formmethod="POST"
+                            formaction="{{ url_for('.evaluate', sourcename=source_name) }}"
+                            {% if missing_dependencies.values()|sum(start=[])|count > 0 %}
+                            disabled
+                            {% endif %}>
+                            Evaluate
+                        </button>
+                    </form>
+                    {% if flow.origin.value in ['ui', 'control loop'] %}
+                    <div class="btn-group">
+                        <a class="btn btn-secondary dropdown-toggle"
+                            href="#"
+                            role="button"
+                           id="editDropdownLink"
+                           data-bs-toggle="dropdown"
+                           aria-haspopup="true"
+                           aria-expanded="false">
+                            Edit
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="editDropdownLink">
+                            <button class="dropdown-item"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addBlockModal">
+                                Add block
+                            </button>
+                            <a class="dropdown-item"
+                               href="{{ url_for('.edit_flow_time_range', flowname=flow.name, sourcename=source_name) }}"
+                               >
+                                Edit time range
+                            </a>
+                            <form>
+                                <input type="hidden" name="flowname" value="{{ flow.name }}">
+                                {% if source_name %}
+                                <input type="hidden" name="sourcename" value="{{ source_name }}">
+                                {% endif %}
+                                <button type="submit"
+                                        class="dropdown-item"
+                                        formmethod="GET"
+                                        formaction="{{ url_for('.rename_flow') }}">
+                                    Rename flow
+                                </button>
+                            </form>
+                            {% if flow.schedule_interval is none %}
+                            <a class="dropdown-item" href="{{ url_for('.schedule_flow', flowname=flow.name, sourcename=source_name) }}">Schedule flow</a>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('.remove_schedule_flow', sourcename=source_name) }}">
+                                <input type="hidden" name="flowname" value="{{ flow.name }}">
+                                <button type="submit" class="dropdown-item" >Remove schedule</button>
+                            </form>
+                            {% endif %}
+                            <div class="dropdown-divider"></div>
+                            <form method="GET" action="{{ url_for('.delete_flow', flowname=flow.name, sourcename=source_name) }}">
+                                <input type='hidden' name='flowname' value='{{ flow.name }}'>
+                                <button class="dropdown-item" type='submit'>
+                                    Remove flow
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+        </div>
+    </div>
+</div>
+
+{% if flow.origin.value in ['ui', 'control loop'] %}
+<div class="modal fade" id="addBlockModal" tabindex="-1" aria-labelledby="addBlockLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-md-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addBlockLabel">Add block</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div data-ts-form="add-block"
+                    data-save-url="{{ url_for('.add_block', flowname=flow.name) }}"
+                    data-blocks='{{ block_definitions|tojson|safe }}'
+                    data-block-types='{{ block_types|sort|tojson|safe }}'>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="pt-1">
+    {{ alerter() }}
+
+    {% if flow.origin.value in ['default', 'ui', 'control loop'] %}
+    <div class="row my-3">
+        {% if flow.origin.value in ['ui', 'control loop'] %}
+        <div class="col-md">
+            <form class="shadow-sm card h-100" action="{{ url_for('.edit_series_set', flowname=flow.name, sourcename=source_name) }}" method="POST">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            Time series
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div data-ts-form="series-set"
+                         {% if series_set is not none %}
+                         data-selector-type="series-set"
+                         data-selector-name="{{ series_set.name }}"
+                         {% else %}
+                         data-selector-type="series-set-template"
+                         data-selector-name="{{ series_set_template.name }}"
+                         {% endif %}
+                         data-series-sets='{{ series_sets|sort(attribute="name")|tojson|safe }}'
+                         data-series-set-templates='{{ series_set_templates|sort(attribute="name")|tojson|safe }}'>
+                    </div>
+                </div>
+                <div class="card-footer border-top-0">
+                    <button type="submit" class="btn btn-primary me-1">Save</button>
+                    <a href="{{ url_for('.edit_flow', flowname=flow.name, sourcename=source_name) }}"
+                        class="btn btn-secondary">
+                        Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+        <div class="col-md">
+            <form class="shadow-sm card h-100" action="{{ url_for('.edit_flow_kpi_set', flowname=flow.name, sourcename=source_name) }}" method="POST">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            KPI set
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="hidden" name="flowname" value="{{ flow.name }}">
+                        <label class="form-label" for="KPISetSelect">KPI set name</label>
+                        <select class="form-select" name="kpisetname" id="KPISetSelect">
+                            {% for kpi_set in kpi_sets|sort(attribute='name') %}
+                            <option {% if kpi_set.db_id == flow.kpi_set.db_id %}selected{% endif %}>{{ kpi_set.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">
+                            Select the KPI set to use when displaying analysis results.
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer border-top-0">
+                    <button type="submit" class="btn btn-primary me-1">Save</button>
+                    <a href="{{ url_for('.edit_flow', flowname=flow.name, sourcename=source_name) }}"
+                        class="btn btn-secondary">
+                        Reset
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+{% if flow.origin.value in ['ui', 'control loop'] %}
+{% for block in blocks %}
+{% if block.type.name == 'UNIVARIATE_ANALYSIS' %}
+{% if "control_loop_univariate_checks" in block.configuration.moduleTypes %}
+    {% set module_types = control_loop_univariate_module_types %}
+{% else %}
+    {% set module_types = univariate_module_types %}
+{% endif %}
+{% call block_card(block, "Univariate analysis") %}
+<div data-ts-form="univariate-analysis-types"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'
+    data-available-types='{{ module_types|sort|tojson|safe }}'>
+</div>
+{% endcall %}
+{% elif block.type.name == 'COMPARISON' %}
+{% call block_card(block, "Comparison") %}
+<div data-ts-form="comparison"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'>
+</div>
+{% endcall %}
+{% elif block.type.name == 'MULTIVARIATE_ANALYSIS' %}
+{% if "control_loop_multivariate_checks" in block.configuration.moduleTypes %}
+    {% set module_types = control_loop_multivariate_module_types %}
+{% else %}
+    {% set module_types = multivariate_module_types %}
+{% endif %}
+
+{% call block_card(block, "Multivariate analysis") %}
+<div data-ts-form="multivariate-analysis-types"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'
+    data-available-types='{{ module_types|sort|tojson|safe }}'>
+</div>
+{% endcall %}
+{% elif block.type.name == 'FILTER' %}
+{% call block_card(block, "Filter") %}
+<div data-ts-form="filters"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'
+    data-series-set-url="{{ url_for('.get_series_from_series_set', flowname=flow.name) }}"
+    data-augmentation-strategies='{{ augmentation_strategies|tojson|safe }}'
+    data-univariate-event-frame-types='{{ univariate_event_frame_types|sort|tojson|safe }}'
+    data-multivariate-event-frame-types='{{ multivariate_event_frame_types|sort|tojson|safe }}'>
+</div>
+{% endcall %}
+{% elif block.type.name == 'EXPORT' %}
+{% call block_card(block, "Export") %}
+<div data-ts-form="exports"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'
+    data-available-exports='{{ exports|sort|tojson|safe }}'>
+</div>
+{% endcall %}
+{% elif block.type.name == 'FLIGHT_EXPOSE' %}
+{% call block_card(block, "Expose using Apache Arrow Flight") %}
+<div data-ts-form="flight-expose"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'>
+</div>
+{% endcall %}
+{% elif block.type.name == 'DATA_SERVICE_EXPOSE' %}
+{% call block_card(block, "Expose as a data service") %}
+<div data-ts-form="data-service-expose"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'>
+</div>
+{% endcall %}
+{% elif block.type.name == 'INTERPOLATE' %}
+{% call block_card(block, "Interpolate") %}
+<div data-ts-form="interpolate"
+    data-update-block-url="{{ url_for('.edit_block', blockid=block.db_id) }}"
+    data-current-block = '{{ block.to_data()|tojson|safe }}'
+    data-blocks='{{ block_definitions|tojson|safe }}'
+    data-interpolation-types='{{ interpolation_types|tojson|safe }}'>
+</div>
+{% endcall %}
+{% endif %}
+{% endfor %}
+</div>
+{% elif flow.origin.value == 'resource' %}
+<div class="alert alert-info">
+    Evaluate the flow to display results.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts_bottom %}
+<script src="{{ url_for('static', filename='dist/edit-flow.js') }}"></script>
+{% endblock %}
