@@ -1,0 +1,290 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    strategy:
+      fail-fast: ${{ !contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast') }}
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.10.0"
+      - name: Install cffi and virtualenv
+        run: pip install cffi virtualenv ziglang~=0.9.0 twine
+      - uses: actions-rs/toolchain@v1
+        id: rustup
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Install aarch64-apple-darwin Rust target
+        if: matrix.os == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin
+      - name: Install musl tools
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y musl-tools
+      - name: Setup Xcode env
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app
+          bindir="$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+          echo "CC=${bindir}/clang" >> "${GITHUB_ENV}"
+          echo "CXX=${bindir}/clang++" >> "${GITHUB_ENV}"
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
+
+      # Caching
+      # Install gnu-tar because BSD tar is buggy
+      # https://github.com/actions/cache/issues/403
+      - name: Install GNU tar (Macos)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install gnu-tar
+          echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: maturin-${{ runner.os }}
+      - name: Cache test crates cargo build
+        uses: actions/cache@v2
+        with:
+          path: test-crates/targets
+          key: test-crates-${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-${{ hashFiles('test-crates/*/Cargo.lock') }}
+
+      - name: cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features password-storage
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "pypy-3.7"
+      - name: test build pypy wheel
+        run: |
+          cargo run -- build --no-sdist -i pypy3 -m test-crates/pyo3-mixed-submodule/Cargo.toml
+          pypy3 -m pip install --force-reinstall --no-index --find-links test-crates/pyo3-mixed-submodule/target/wheels pyo3-mixed-submodule
+          pypy3 -m pip install pytest
+          pypy3 -m pytest test-crates/pyo3-mixed-submodule/tests/
+      - name: test build pypy wheel with abi3
+        run: |
+          cargo run -- build --no-sdist -i pypy3 -m test-crates/pyo3-pure/Cargo.toml --cargo-extra-args="-vv"
+          pypy3 -m pip install --force-reinstall --no-index --find-links test-crates/pyo3-pure/target/wheels pyo3-pure
+          pypy3 -m pip install pytest
+          pypy3 -m pytest test-crates/pyo3-pure/test_pyo3_pure.py
+
+          cargo run -- pep517 build-wheel -i pypy3 -m test-crates/pyo3-pure/Cargo.toml --cargo-extra-args="-vv"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.10.0"
+      - name: test cross compiling with zig
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+          rustup target add aarch64-unknown-linux-musl
+          rustup target add aarch64-apple-darwin
+
+          # abi3
+          cargo run -- build --no-sdist -i python -m test-crates/pyo3-pure/Cargo.toml --target aarch64-unknown-linux-gnu --zig
+          cargo run -- build --no-sdist -i python -m test-crates/pyo3-pure/Cargo.toml --target aarch64-unknown-linux-musl --zig
+          cargo run -- build --no-sdist -i python -m test-crates/pyo3-pure/Cargo.toml --target aarch64-apple-darwin --zig
+          # Check wheels with twine
+          twine check --strict test-crates/pyo3-pure/target/wheels/*.whl
+
+          # non-abi3
+          cargo run -- build --no-sdist -i python3.9 -m test-crates/pyo3-mixed/Cargo.toml --target aarch64-unknown-linux-gnu --zig
+          cargo run -- build --no-sdist -i python3.9 -m test-crates/pyo3-mixed/Cargo.toml --target aarch64-apple-darwin --zig
+          # Check wheels with twine
+          twine check --strict test-crates/pyo3-mixed/target/wheels/*.whl
+      - name: test cross compiling windows wheel
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y mingw-w64
+          rustup component add llvm-tools-preview
+          rustup target add x86_64-pc-windows-gnu
+          rustup target add x86_64-pc-windows-msvc
+
+          # abi3
+          cargo run -- build --no-sdist -m test-crates/pyo3-pure/Cargo.toml --target x86_64-pc-windows-gnu
+          cargo run -- build --no-sdist -m test-crates/pyo3-pure/Cargo.toml --target x86_64-pc-windows-msvc
+
+          # no-abi3
+          cargo run -- build --no-sdist -i python3.9 -m test-crates/pyo3-mixed/Cargo.toml --target x86_64-pc-windows-msvc
+      - name: test compiling with PYO3_CONFIG_FILE
+        shell: bash
+        run: |
+          rustup target add x86_64-unknown-linux-gnu
+          export PYO3_CONFIG_FILE=$(pwd)/test-crates/pyo3-mixed/pyo3-config.txt
+          cargo run -- build --no-sdist -m test-crates/pyo3-mixed/Cargo.toml --target x86_64-unknown-linux-gnu --zig
+
+  test-alpine:
+    name: Test Alpine Linux
+    runs-on: ubuntu-latest
+    container: alpine:edge
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install build requirements
+        run: |
+          apk add cargo python3-dev libffi-dev py3-pip
+          pip3 install cffi virtualenv
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: maturin-${{ runner.os }}-alpine
+      - name: Cache test crates cargo build
+        uses: actions/cache@v2
+        with:
+          path: test-crates/targets
+          key: test-crates-${{ runner.os }}-alpine-${{ hashFiles('test-crates/*/Cargo.lock') }}
+      - name: cargo test
+        run: |
+          # unset GITHUB_ACTIONS env var to disable zig related tests
+          env -u GITHUB_ACTIONS cargo test
+
+  test-auditwheel:
+    name: Test Auditwheel
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: ${{ !contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast') }}
+      matrix:
+        # manylinux2014 fails with `/lib64/libc.so.6: version `GLIBC_2.18'` not found recently
+        # could be a upstream Rust issue, disable it for now
+        #
+        # manylinux: [ 'manylinux2014', 'manylinux_2_24' ]
+        manylinux: [ 'manylinux_2_24' ]
+    container: quay.io/pypa/${{ matrix.manylinux }}_x86_64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        id: rustup
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      # Caching
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: maturin-${{ runner.os }}
+      - name: Cache test crates cargo build
+        uses: actions/cache@v2
+        with:
+          path: test-crates/*/target
+          key: auditwheel-test-crates-${{ runner.os }}-${{ steps.rustup.outputs.rustc_hash }}-${{ hashFiles('test-crates/*/Cargo.lock') }}
+      - name: Compliant Build
+        run: tests/manylinux_compliant.sh ${{ matrix.manylinux }}
+      - name: Incompliant Build
+        if: matrix.manylinux == 'manylinux_2_24'
+        run: tests/manylinux_incompliant.sh ${{ matrix.manylinux }}
+
+  test-docker:
+    name: Test Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: "3.8"
+      - uses: docker/setup-buildx-action@v1
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: maturin-test-docker-${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            maturin-test-docker-${{ runner.os }}-buildx-
+      - name: Build
+        uses: docker/build-push-action@v2
+        with:
+          push: false
+          tags: maturin
+          load: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      - name: Move cache
+        run: |
+          # Temp fix
+          # https://github.com/docker/build-push-action/issues/252
+          # https://github.com/moby/buildkit/issues/1896
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      - name: Cache test crates cargo build
+        uses: actions/cache@v2
+        with:
+          path: test-crates/*/target
+          # Dockerfile contains the rustc version
+          key: docker-test-crates-${{ hashFiles('Dockerfile', 'test-crates/*/Cargo.lock') }}
+      - name: Test the Docker container
+        run: ./test-dockerfile.sh
+      # Fix permissions from docker for caching
+      - run: sudo chown $(id -u):$(id -g) -R test-crates/*/target
+
+
+  test-cross-compile:
+    name: Test Cross Compile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: ${{ !contains(github.event.pull_request.labels.*.name, 'CI-no-fail-fast') }}
+      matrix:
+        platform:
+          # CPython
+          - target: aarch64-unknown-linux-gnu
+            arch: aarch64
+            abi: cp37-cp37m
+            python: python3.7
+          - target: armv7-unknown-linux-gnueabihf
+            arch: armv7
+            abi: cp39-cp39
+            python: python3.9
+          - target: s390x-unknown-linux-gnu
+            arch: s390x
+            abi: cp310-cp310
+            python: python3.10
+          # PyPy
+          - target: aarch64-unknown-linux-gnu
+            arch: aarch64
+            abi: pp37-pypy37_pp73
+            python: pypy3.7
+          - target: aarch64-unknown-linux-gnu
+            arch: aarch64
+            abi: pp38-pypy38_pp73
+            python: pypy3.8
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Wheels
+        run: |
+          echo 'curl -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+          source ~/.cargo/env
+          rustup target add ${{ matrix.platform.target }}
+
+          # Use bundled sysconfig
+          cargo run --target x86_64-unknown-linux-gnu -- build -i ${{ matrix.platform.python }} --release --out dist --no-sdist --target ${{ matrix.platform.target }} -m test-crates/pyo3-mixed/Cargo.toml
+
+          # Use PYO3_CROSS_LIB_DIR
+          export PYO3_CROSS_LIB_DIR=/opt/python/${{ matrix.platform.abi }}
+          cargo run --target x86_64-unknown-linux-gnu -- build -i python3.9 --release --out dist --no-sdist --target ${{ matrix.platform.target }} -m test-crates/pyo3-mixed/Cargo.toml
+          ' > build-wheel.sh
+          docker run --rm -v "$PWD":/io -w /io messense/manylinux2014-cross:${{ matrix.platform.arch }} bash build-wheel.sh
