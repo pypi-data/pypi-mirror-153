@@ -1,0 +1,47 @@
+---
+variables:
+  TWINE_USERNAME: __token__
+  TWINE_PASSWORD: secret
+
+default:
+  image: python:3.9
+
+stages:
+  - build
+  - test
+  - release
+
+build-pypi-package:
+  stage: build
+  script:
+    - pip install --upgrade pip
+    - pip install --upgrade build
+    - python -m build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - dist/
+
+test-python3:
+  stage: test
+  image: condaforge/miniforge3
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+  before_script:
+    - source /opt/conda/etc/profile.d/conda.sh
+    - conda create -y -n tango python=$PYTHON_VERSION pip wheel ipython pytango packaging
+    - conda activate tango
+  script:
+    - pip install dist/itango-*.whl
+    - itango3 --help
+
+release-pypi-package:
+  stage: release
+  before_script:
+    - pip install twine
+  script:
+    - twine upload dist/*
+  only:
+    - tags
+  when: manual
