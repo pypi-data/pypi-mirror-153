@@ -1,0 +1,213 @@
+class CancelledError(Error):
+    pass
+
+@trait
+class Fiber:
+
+    func run(self):
+        """The fiber entry point.
+
+        """
+
+    func start(self):
+        """Start the fiber.
+
+        """
+
+        c"mys::start(mys::shared_ptr<Fiber>(this));"
+
+    func join(self):
+        """Wait for the fiber to stop.
+
+        """
+
+        c"""
+        if (mys::join(mys::shared_ptr<Fiber>(this))) {
+            mys::make_shared<fiber::lib::CancelledError>()->__throw();
+        }
+        """
+
+    func cancel(self):
+        """Cancel the fiber. Raises ``CancelledError`` is the cancelled fiber.
+
+        """
+
+        c"mys::cancel(mys::shared_ptr<Fiber>(this));"
+
+func suspend():
+    """Suspend current fiber.
+
+    It's not recommended to use this function, but instead use queues,
+    events and locks.
+
+    """
+
+    cancelled: bool = False
+
+    c"cancelled = mys::suspend();"
+
+    if cancelled:
+        raise CancelledError()
+
+func resume(fiber: Fiber):
+    """Resume given suspended fiber.
+
+    It's not recommended to use this function, but instead use queues,
+    events and locks.
+
+    """
+
+    c"mys::resume(fiber);"
+
+func sleep(seconds: f64):
+    """Sleep for given number of seconds.
+
+    """
+
+    cancelled: bool = False
+
+    c"cancelled = mys::sleep(seconds);"
+
+    if cancelled:
+        raise CancelledError()
+
+func current() -> Fiber:
+    """Returns current fiber.
+
+    """
+
+    fiber: Fiber = None
+
+    c"fiber = mys::current();"
+
+    return fiber
+
+class QueueError(Error):
+    message: string
+
+@generic(T)
+class Queue:
+    """Message passing from one fiber to another.
+
+    """
+
+    _values: [T]
+    _reader: Fiber
+
+    func __init__(self):
+        self._values = []
+        self._reader = None
+
+    func __len__(self) -> u64:
+        return len(self._values)
+
+    func put(self, value: T):
+        """Put given value at the end of the queue.
+
+        """
+
+        self._values.append(value)
+
+        if self._reader is not None:
+            resume(self._reader)
+            self._reader = None
+
+    func get(self) -> T:
+        """Get the first value from the queue. Suspends current fiber if the
+        queue is empty.
+
+        """
+
+        if len(self._values) == 0:
+            if self._reader is not None:
+                raise QueueError("only one fiber can get for a queue")
+
+            self._reader = current()
+
+            try:
+                suspend()
+            except CancelledError:
+                self._reader = None
+                raise
+
+        return self._values.pop(0)
+
+class Lock:
+    _is_acquired: bool
+    _waiters: [Fiber]
+
+    func __init__(self):
+        self._is_acquired = False
+        self._waiters = []
+
+    func acquire(self):
+        """Acquire the lock. Suspends current fiber is the lock is aleady
+        acquired.
+
+        """
+
+        if self._is_acquired:
+            self._waiters.append(current())
+
+            try:
+                suspend()
+            except CancelledError:
+                self._waiters.remove(current())
+                raise
+        else:
+            self._is_acquired = True
+
+    func release(self):
+        """Release the lock. Resumes the next fiber that is trying to acquire
+        the lock, if any.
+
+        """
+
+        if len(self._waiters) > 0:
+            resume(self._waiters.pop())
+        else:
+            self._is_acquired = False
+
+class EventError(Error):
+    message: string
+
+class Event:
+    _is_set: bool
+    _waiter: Fiber
+
+    func set(self):
+        """Set the event. Resumes any waiting fiber.
+
+        """
+
+        self._is_set = True
+
+        if self._waiter is not None:
+            resume(self._waiter)
+            self._waiter = None
+
+    func clear(self):
+        """Clear the event.
+
+        """
+
+        self._is_set = False
+
+    func wait(self):
+        """Wait for the event to be set.
+
+        """
+
+        if self._is_set:
+            return
+
+        if self._waiter is not None:
+            raise EventError("only one fiber can wait for an event")
+
+        self._waiter = current()
+
+        try:
+            suspend()
+        except CancelledError:
+            self._waiter = None
+            raise
