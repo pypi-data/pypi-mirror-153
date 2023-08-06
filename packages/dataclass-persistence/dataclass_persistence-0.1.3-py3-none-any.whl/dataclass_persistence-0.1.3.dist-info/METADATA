@@ -1,0 +1,73 @@
+Metadata-Version: 2.1
+Name: dataclass-persistence
+Version: 0.1.3
+Summary: This package enables to persist information stored in dataclasses.
+Home-page: https://github.com/piveloper/dataclass-persistence
+Author: piveloper
+Author-email: piveloper@gmail.com
+License: MIT
+Platform: UNKNOWN
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Requires-Python: >=3.10.0
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: numpy
+Requires-Dist: StrEnum
+Provides-Extra: dev
+Requires-Dist: pytest ; extra == 'dev'
+Requires-Dist: check-manifest ; extra == 'dev'
+Requires-Dist: twine ; extra == 'dev'
+Requires-Dist: wheel ; extra == 'dev'
+
+
+dataclass-persistence
+==========================
+
+This program can be used to make dataclasses persistent by adding store and load functionality.
+The dataclass is stored in .json format which is by default compressed inside of a .zip file.
+
+What makes dataclass-persistence special?
+   * Support for numpy arrays
+   * Support for nested dataclasses
+   * Human readable storage format with small file size
+
+
+Usage
+-----
+Let your dataclass inherit from :code:`Persistent`.
+Then the dataclass can be stored on disk using :code:`.store()` and loaded from disk using
+:code:`.load()`.
+
+In the example below, we create an instance of dataclass, which is stored to and loaded from disk.
+
+.. code-block:: python
+
+    from dataclass_persistence import Persistent
+    from dataclasses import dataclass
+    import numpy as np
+
+
+    @dataclass
+    class SomeData(Persistent):
+        parameter_a: str
+        array: np.ndarray
+
+
+    data = SomeData('my_string', np.array([0, 0]))
+    file = 'my_file'
+    data.store(file)
+    data_reconstructed = SomeData.load(file)
+
+On disk the code above produces `my_file.zip` which contains `my_file.json`:
+
+.. code-block:: json
+
+    {
+      "parameter_a": "my_string",
+      "array": {"data": [0, 0], "dtype": "int32"}
+    }
+
