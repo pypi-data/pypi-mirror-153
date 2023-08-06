@@ -1,0 +1,124 @@
+{# -*- coding: utf-8 -*-
+
+  Copyright (C) 2021-2022 Graz University of Technology.
+
+  invenio-records-lom is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- extends "invenio_app_rdm/records/detail.html" %}
+
+{%- from "invenio_records_lom/records/macros/tree.html" import make_dep_tree %}
+
+{% block head_title %}
+<title>{{ record.ui.title }}</title>
+{% endblock head_title %}
+
+{% block record_header %}
+{% block record_header_button %}
+
+{{ super() }}
+
+{% endblock record_header_button %}
+<div class="ui grid middle aligned">
+  <div class="two column row">
+    <div class="right floated right aligned column">
+      {% if record.ui.resource_type %}
+      <span class="ui label small grey"> {{ record.ui.resource_type | capitalize }}</span>
+      {% endif %}
+      <span class="ui label small access-status {{ record.ui.access_status.id }}"
+            data-tooltip="{{ record.ui.access_status.description_l10n }}">
+        {% if record.ui.access_status.icon %}
+        <i class="icon {{ record.ui.access_status.icon }}"></i>
+        {% endif %}
+        {{ record.ui.access_status.title_l10n }}
+      </span>
+    </div>
+  </div>
+</div>
+{% endblock record_header %}
+
+{% block record_title %}
+<h1>{{ record.ui.title }}</h1>
+{% endblock record_title %}
+
+{% block record_content %}
+
+<p>
+  {%- for o in record.ui.contributors %}
+  <span class="ui tooltip-popup text-muted">
+    {{o.fullname}} ({{o.role}})
+  </span>
+  {{"; " if not loop.last}}
+  {%- endfor %}
+</p>
+
+<h1>{{_('General Informations')}}</h1>
+<p>
+  {%- for d in record.ui.generalDescriptions %}
+  <span>
+    {{d}}
+  </span>
+  {%- endfor %}
+</p>
+
+<h1>{{_('Educational Informations')}}</h1>
+<p>
+  {%- for d in record.ui.educationalDescriptions %}
+  <span>
+    {{d}}
+  </span>
+  {%- endfor %}
+</p>
+
+<ul class="ui list">
+{{ make_dep_tree(metadata.relation, "ispartof", "Part of the") }}
+</ul>
+
+<ul class="ui list">
+{{ make_dep_tree(metadata.relation, "haspart", "Contains") }}
+</ul>
+
+{% endblock record_content %}
+
+{% block record_files %}
+{%- include "invenio_records_lom/records/files.html" %}
+{% endblock record_files %}
+
+{% block record_details %}
+{% endblock record_details %}
+
+{% block record_sidebar %}
+{% include "invenio_app_rdm/records/details/side_bar/licenses.html" %}
+
+{% if record.ui.location %}
+<section id="original-content" aria-label="" class="ui segment rdm-sidebar">
+  <h2 class="ui small header">{{_("Original Content")}}</h2>
+  <p>
+    <a href="{{record.ui.location}}">{{record.ui.title}}</a>
+  </p>
+</section>
+{% endif %}
+
+{%- if config.get("LOM_RECORD_EXPORTERS") -%}
+{# if no export formats are specified, don't bother showing the box #}
+<div class="ui segment rdm-sidebar exports">
+  <dt><b>{{ _('Export')}}</b></dt>
+  <hr class="thin-line">
+  <dd class="top-bottom-padded">
+    <div class="ui celled horizontal list separated-list">
+      {# dynamically create the list of export formats #}
+      {%- for fmt, val in config.get("LOM_RECORD_EXPORTERS", {}).items() -%}
+        {%- set name = val.get("name", fmt) -%}
+        {% if is_preview %}
+          {%- set export_url = url_for('invenio_records_lom.record_export', pid_value=record.id, export_format=fmt, preview=1) -%}
+        {% else %}
+          {%- set export_url = url_for('invenio_records_lom.record_export', pid_value=record.id, export_format=fmt) -%}
+        {% endif %}
+         <div class="item"><a href="{{ export_url }}">{{ name }}</a></div>
+      {%- endfor -%}
+    </div>
+  </dd>
+</div>
+{%- endif -%}
+{% endblock record_sidebar %}
