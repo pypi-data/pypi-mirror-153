@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+{% load i18n %}
+{% load tz %}
+<schedule>
+  <generator name="wafer" version="{{ wafer_version }}" />
+  <version>{{ schedule_version }}</version>
+  <conference>
+    <title>{{ WAFER_CONFERENCE_NAME }}</title>
+      {% if schedule_pages %}
+        {% with page=schedule_pages|first %}
+          <start>{{ page.block.start_time|date:"Y-m-d" }}</start>
+        {% endwith %}
+        {% with page=schedule_pages|last %}
+          <end>{{ page.block.end_time|date:"Y-m-d" }}</end>
+        {% endwith %}
+        <days>{{ schedule_pages|length }}</days>
+      {% endif %}
+    <timeslot_duration>00:15</timeslot_duration>
+    <base_url>https://{{ WAFER_CONFERENCE_DOMAIN }}</base_url>
+    <time_zone_name>{{ TIME_ZONE }}</time_zone_name>
+    <acronym>{{ WAFER_CONFERENCE_ACRONYM }}</acronym>
+  </conference>
+  {% for page in schedule_pages %}
+    <day date="{{ page.block.start_time|localtime|date:"Y-m-d" }}" start="{{ page.block.start_time|localtime|date:"c" }}" end="{{ page.block.end_time|localtime|date:"c" }}" index="{{ forloop.counter }}">
+      {% for venue in page.venues %}
+        <room name="{{ venue.name }}">
+          {% for row in page.rows %}
+            {% if venue in row.items %}
+              {# this is more than a little horrible, but will do for testing #}
+              {% for row_venue, items in row.items.items %}
+                {% if row_venue == venue and items.item %}
+                  {# The event id is the ScheduleItem pk, which should be unique #}
+                  {# enough, but changes if the event is rescheduled. #}
+                  {# Talks' guid will be stable across re-scheduling. #}
+                  <event id="{{ items.item.pk }}" guid="{{ items.item.guid }}">
+                    <date>{{ row.start_time|localtime|date:"c" }}</date>
+                    <start>{{ row.start_time|time:"H:i" }}</start>
+                    {% with dur=items.item.get_duration %}
+                      <duration>{{ dur.hours|stringformat:"02d" }}:{{ dur.minutes|stringformat:"02d" }}</duration>
+                    {% endwith %}
+                    <room>{{ venue.name }}</room>
+                    <track>{{ items.item.talk.track.name|default:"No Track" }}</track>
+                    {# Abstract is defined to be a 1-paragraph summary, displayed before description. #}
+                    {# That doesn't match our data model, so we leave it blank. #}
+                    <abstract/>
+                    <subtitle/>
+                    <slug>{{ WAFER_CONFERENCE_ACRONYM|lower }}-{{ items.item.pk }}-{{ items.item.get_slug }}</slug>
+                    {% if items.item.talk %}
+                      {% with talk=items.item.talk %}
+                        <title>{{ items.item.get_title }}</title>
+                        {# description is allowed to be HTML or Markdown #}
+                        {# We let the requester select their desired format #}
+                        {% if talk.abstract and render_description %}
+                          <description>{{ talk.abstract.rendered }}</description>
+                        {% elif talk.abstract %}
+                          <description>{{ talk.abstract.raw }}</description>
+                        {% else %}
+                          <description/>
+                        {% endif %}
+                        <type>{{ talk.talk_type }}</type>
+                        <persons>
+                          {% for author in talk.authors.all %}
+                            {# person id is the author pk, which should be the right thing #}
+                            {% if user.is_staff %}
+                              {# We will want finer grained control off this eventually, but staff will do for now #}
+                              <person id="{{ author.pk }}"
+                                {% if author.userprofile.twitter_handle %}
+                                      twitter="https://twitter.com/{{ author.userprofile.twitter_handle }}"
+                                {% endif %}
+                                      contact="{{ author.email }}">{{ author.userprofile.display_name }}</person>
+                            {% else %}
+                              <person id="{{ author.pk }}">{{ author.userprofile.display_name }}</person>
+                            {% endif %}
+                          {% endfor %}
+                        </persons>
+                        <recording>
+                          {% if talk.video %}
+                            <optout>false</optout>
+                            <license>{{ WAFER_VIDEO_LICENSE }}</license>
+                          {% else %}
+                            <optout>true</optout>
+                          {% endif %}
+                        </recording>
+                      {% endwith %}
+                    {% else %}
+                      <title>{{ items.item.get_details|escape }}</title>
+                      <type/>
+                      {% if items.item.page.people.exists %}
+                        {# If there are people, we care about the description #}
+                        {# For now, we drop the raw markdown content from pages here. We probably want to sanatize this in the future #}
+                        {# Also honour render_description #}
+                        {% if render_description %}
+                          <description>{{ items.item.page.content.rendered }}</description>
+                        {% else %}
+                          <description>{{ items.item.page.content.raw }}</description>
+                        {% endif %}
+                        <persons>
+                          {# TODO: This should be refactored, so we don't have all this duplication #}
+                          {% for person in items.item.page.people.all %}
+                            {% if user.is_staff %}
+                              {# We will want finer grained control off this eventually, but staff will do for now #}
+                              <person id="{{ person.pk }}"
+                                {% if author.userprofile.twitter_handle %}
+                                      twitter="https://twitter.com/{{ person.userprofile.twitter_handle }}"
+                                {% endif %}
+                                      contact="{{ person.email }}">{{ person.userprofile.display_name }}</person>
+                            {% else %}
+                              <person id="{{ person.pk }}">{{ person.userprofile.display_name }}</person>
+                            {% endif %}
+                          {% endfor %}
+                        </persons>
+                      {% else %}
+                        <description/>
+                      {% endif %}
+                      <recording>
+                        <optout>false</optout>
+                        <license>{{ WAFER_VIDEO_LICENSE }}</license>
+                      </recording>
+                    {% endif %}
+                    <url>https://{{ WAFER_CONFERENCE_DOMAIN }}{{ items.item.get_url }}</url>
+                  </event>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </room>
+      {% endfor %}
+    </day>
+  {% endfor %}
+</schedule>

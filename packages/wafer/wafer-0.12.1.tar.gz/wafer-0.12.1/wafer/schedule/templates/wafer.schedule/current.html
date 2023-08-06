@@ -1,0 +1,110 @@
+{% extends "wafer/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Happening now" %} - {{ WAFER_CONFERENCE_NAME }}{% endblock %}
+{% block content %}
+<section class="wafer wafer-schedule">
+  <h1>{% trans "Happening now" %}</h1>
+  <div class="wafer_schedule">
+    {% if not active %}
+      {# Schedule is incomplete / invalid, so show nothing #}
+      {% blocktrans trimmed %}
+        <p>The final schedule has not been published yet.</p>
+      {% endblocktrans %}
+    {% elif not slots %}
+      {% blocktrans trimmed %}
+        <p>Nothing happening right now.</p>
+      {% endblocktrans %}
+    {% else %}
+      <table cellspacing=1 cellpadding=0>
+        <tr>
+          <td colspan="{{ schedule_page.venues|length|add:1 }}" class="title">{{ schedule_page.day.date|date:"l (d b)" }}</td>
+        </tr>
+        <tr>
+          <th>{% trans "Time" %}</th>
+          {% for venue in schedule_page.venues %}
+            <th
+              {% if venue.pk == highlight_venue_pk %}
+                class="schedule-highlight-venue"
+              {% endif %}
+            ><a href="{{ venue.get_absolute_url }}">{{ venue.name }}</a></th>
+          {% endfor %}
+        </tr>
+        {% for row in slots %}
+          <tr>
+            {% if row.slot == cur_slot %}
+              <td>{{ row.slot.get_start_time|time:"H:i" }} - {{ row.slot.end_time|time:"H:i" }} (Now On)</td>
+            {% else %}
+              <td>{{ row.slot.get_start_time|time:"H:i" }} - {{ row.slot.end_time|time:"H:i" }}</td>
+            {% endif %}
+            {% for item in row.get_sorted_items %}
+              {% if item.item == "unavailable" %}
+                <td colspan="{{ item.colspan }}" rowspan="{{ item.rowspan }}" class="unavailable"></td>
+              {% else %}
+                <td colspan="{{ item.colspan }}" rowspan="{{ item.rowspan }}"
+                  {% if item.item.venue.pk == highlight_venue_pk %}
+                    {% if item.note == "complete" %}
+                      class="completed schedule-highlight-venue"
+                    {% elif item.note == "current" %}
+                      class="current_active schedule-highlight-venue"
+                    {% else %}
+                      class="future schedule-highlight-venue"
+                    {% endif %}
+                  {% else %}
+                    {% if item.note == "complete" %}
+                      class="completed"
+                    {% elif item.note == "current" %}
+                      class="current_active"
+                    {% else %}
+                      class="future"
+                    {% endif %}
+                  {% endif %}
+                  >
+                  {% include "wafer.schedule/schedule_item.html" with item=item.item %}
+                </td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+    <div class="timestamp">
+      {% trans 'Last updated' %}: {% now "H:i:s" %}
+      <div class="errors"></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block extra_foot %}
+{% if refresh %}
+  <script type="text/javascript">
+    "use strict";
+    function registerRefresh(delay) {
+      setTimeout(attemptRefresh, delay*1000, delay);
+    }
+    function attemptRefresh(delay) {
+      registerRefresh(delay);
+
+      $.ajax({
+        'dataType': 'html',
+        'timeout': 10000,
+        'success': function(data, textStatus, jqXHR) {
+          var html = $.parseHTML(data, null);
+          var schedule = $('div.wafer_schedule', html).children();
+          $('div.wafer_schedule').empty();
+          $('div.wafer_schedule').append(schedule);
+        },
+        'error': function(jqXHR, textStatus, errorThrown) {
+          var errors = $('div.wafer_schedule .timestamp .errors');
+          var count = errors.attr('data-count') || 0;
+          count++;
+          errors.text('Failed updates: ' + count);
+          errors.attr('data-count', count);
+        },
+      });
+    }
+    $(function() {
+      registerRefresh({{ refresh }});
+    });
+  </script>
+{% endif %}
+{% endblock %}
