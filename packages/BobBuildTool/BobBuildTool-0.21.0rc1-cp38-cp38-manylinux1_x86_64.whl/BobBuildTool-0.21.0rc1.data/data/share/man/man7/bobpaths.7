@@ -1,0 +1,532 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "BOBPATHS" "7" "Jun 06, 2022" "0.21.0rc1" "Bob"
+.SH NAME
+bobpaths \- Specifying paths to Bob packages
+.SH DESCRIPTION
+.sp
+Most Bob commands are working on sets of packages. They can be specified by a
+query language that loosely resembles Unix paths for the common case and XPath
+for more advanced features. In contrast to these, Bob path queries are working
+on general directed acyclic graphs instead of trees. Additionally
+\fI\%alias substitution\fP is supported to abbreviate
+often used paths.
+.sp
+Examples:
+.INDENT 0.0
+.IP \(bu 2
+\fB/foo/bar\fP selects the \fBbar\fP package under the \fBfoo\fP top level package
+.IP \(bu 2
+\fB//*\-unittests\fP selects all packages that end with \fB\-unittests\fP
+.IP \(bu 2
+\fB/image//*[ \(dq${LICENSE}\(dq == \(dqGPL\(dq ]\fP selects all GPL licensed packages that
+are descendants of the \fBimage\fP top level package
+.UNINDENT
+.sp
+When Bob parses the recipes he builds an internal package graph. The general
+dependency structure is derived from the recipes. Depending on the actual
+content one or more packages are generated from a recipe. The Bob queries are
+working on the package graph.
+.sp
+The primary constructs of Bob paths are the location path and predicate
+expressions. Both are evaluated with respect to a context which consists of:
+.INDENT 0.0
+.IP \(bu 2
+a package,
+.IP \(bu 2
+a set of environment variables from the context package,
+.IP \(bu 2
+and a string function library.
+.UNINDENT
+.sp
+The environment variables in the context are derived from the context package.
+Only variables that are explicitly consumed by the recipe (via
+\fI\%{checkout,build,package}Vars\fP) and
+\fI\%metaEnvironment\fP variables are available.
+References to unset variables will result in an empty string.
+.sp
+The string function library is populated by all built\-in string functions
+and additional ones defined by \fI\%plugins\fP\&. The string
+functions, if evaluated during the query, will get an additional \fBpackage\fP
+parameter which holds the current context package. The string function library
+stays constant throughout the whole evaluation.
+.sp
+A path is parsed by first dividing the character string into tokens and then
+parsing the resulting sequence of tokens. Whitespaces are ignored between
+tokens and may be freely injected. Some tokes (e.g. \fB*\fP,  \fB[\fP or \fB]\fP)
+collide with special characters of the shell. Care should be taken to correctly
+quote or escape these characters when invoking Bob from the command line.
+.SH LOCATION PATH
+.sp
+Just like in Unix, location paths can be expressed using a straightforward
+syntax. Similar to XPath this is actually a syntactic abbreviation of the more
+verbose syntax which will be explained later. A location path selects a set of
+packages relative to the context package. The result of evaluating a location
+step is a set of contexts with packages that matched the axis, name test and
+predicate of the location step. Following steps in the location path are then
+recursively applied to the generated contexts.
+.sp
+Before diving into a formal definition here are some simple location path
+examples:
+.INDENT 0.0
+.IP \(bu 2
+\fBfoo\fP selects the \fBfoo\fP child package of the context package
+.IP \(bu 2
+\fBf*\fP selects all children of the context package starting with \fBf\fP
+.IP \(bu 2
+\fB/\fP selects the virtual root package that is parent to all top level
+packages (i.e. packages of recipes where \fBroot\fP is true)
+.IP \(bu 2
+\fB/foo\fP selects the \fBfoo\fP top level package
+.IP \(bu 2
+\fB/foo/bar\fP selects the \fBbar\fP child of the \fBfoo\fP top level package
+.UNINDENT
+.sp
+All examples above are abbreviations of the verbose syntax. See the following
+examples for the full syntax:
+.INDENT 0.0
+.IP \(bu 2
+\fBchild@foo\fP selects the \fBfoo\fP child package of the context package
+.IP \(bu 2
+\fBchils@f*\fP selects all children of the context package starting with \fBf\fP
+.IP \(bu 2
+\fB/child@foo/child@bar\fP selects the \fBbar\fP child of the \fBfoo\fP top level
+package
+.IP \(bu 2
+\fBdescendant@foo\fP selects the \fBfoo\fP descendants of the context package
+.IP \(bu 2
+\fBdescendant\-or\-self@foo\fP selects the \fBfoo\fP descendants of the context
+package and, if the context package is named \fBfoo\fP, the context package as
+well
+.IP \(bu 2
+\fBself@foo\fP selects the context package if it is named \fBfoo\fP, and
+otherwise selects nothing
+.IP \(bu 2
+\fBchild@foo/descendant@bar\fP selects the \fBbar\fP descendants of the \fBfoo\fP
+child of the context package
+.IP \(bu 2
+\fBchild@*/child@foo\fP selects all \fBfoo\fP grandchildren of the context
+package
+.IP \(bu 2
+\fBchild@*[\(dq${LICENSE}\(dq == \(dqGPLv2\(dq]\fP selects all children of the context package
+that are licensed as GPLv2
+.IP \(bu 2
+\fBchild@lib*[child@libc]\fP selects the children starting with \fBlib\fP of the
+context package that have a \fBlibc\fP child (i.e. that have a dependency to
+\fBlibc\fP)
+.IP \(bu 2
+\fBdescendant\-or\-self@lib*[\(dq${LICENSE}\(dq == \(dqGPLv2\(dq && child@libc]\fP selects
+the context package or any of it descendants that start with \fBlib\fP which
+are licensed as GPLv2 and have a direct dependency to \fBlibc\fP
+.UNINDENT
+.sp
+There are two kinds of location path: relative location paths and absolute
+location paths.
+.sp
+A relative location path consists of a sequence of one or more location steps
+separated by /. The steps in a relative location path are composed together
+from left to right. Each step in turn selects a set of packages relative to a
+context package. An initial sequence of steps is composed together with a
+following step as follows. The initial sequence of steps selects a set of
+packages relative to a context package. Each package in that set is used as a
+context package for the following step. The sets of packages identified by that
+step are unioned together. The set of packages identified by the composition of
+the steps is this union.
+.sp
+An absolute location path consists of / optionally followed by a relative
+location path. A / by itself selects the virtual root package as context
+package. If it is followed by a relative location path, then the location path
+resolution starts with the virtual root package as input for the initial step.
+.INDENT 0.0
+.TP
+.B Location steps
+A location step has three parts:
+.INDENT 7.0
+.IP \(bu 2
+an axis, which specifies the graph relationship between the context
+package and the packages selected by the location step
+.IP \(bu 2
+a package name test, which filters the packages selected by the axis
+by their name
+.IP \(bu 2
+an optional predicate, which uses an arbitrary expression to further
+refine the set of packages that passed the package name test
+.UNINDENT
+.sp
+The syntax for a location step is \fBaxis@name[predicate]\fP\&.
+.TP
+.B Axis specifier
+The following axis are available:
+.INDENT 7.0
+.IP \(bu 2
+the \fBself\fP axis contains just the context package itself,
+.IP \(bu 2
+the \fBchild\fP axis contains all children of the context package,
+.IP \(bu 2
+the \fBdirect\-child\fP axis contains the direct children of the context
+package (i.e. without provided dependencies),
+.IP \(bu 2
+the \fBdescendant\fP axis contains all descendants of the context package;
+a descendant is a child or a child of a child and so on,
+.IP \(bu 2
+the \fBdirect\-descendant\fP axis contains the direct descendants of the
+context package; a direct descendant is a direct child or a direct child
+of a direct child and so on,
+.IP \(bu 2
+the \fBdescendant\-or\-self\fP axis contains the context package and the
+descendants of the context package
+.IP \(bu 2
+the \fBdirect\-descendant\-or\-self\fP axis contains the context package and
+the direct descendants of the context package.
+.UNINDENT
+.TP
+.B Package name test
+For every package that is reachable by the axis the package name is matched
+with the package name test. Names must match exactly as given in the test.
+The special \fB*\fP wildcard character matches zero or more characters.
+.TP
+.B Predicates
+The predicate expression further filters the package set that was generated
+by the axis and passed the package name test. For each package in the
+package\-set to be filtered, the expression is evaluated with that package
+as the context package. If the expression evaluates to true for that
+package, the package is included in the new package\-set; otherwise, it is
+not included.
+.sp
+If the result of the expression is string, the result will be converted to
+a boolean. The empty string, \fB0\fP and \fBfalse\fP (case insensitive) are
+treated as false. Any other string is converted to true.
+.TP
+.B Abbreviated Syntax
+The following abbreviations are available:
+.INDENT 7.0
+.IP \(bu 2
+the \fBchild\fP axis is implicitly assumed if no axis is specified. I.e.
+\fBfoo\fP is equivalent to \fBchild@foo\fP\&.
+.IP \(bu 2
+\fB\&.\fP is a short\-hand for \fBself@*\fP
+.IP \(bu 2
+\fB//\fP is short for \fB/descendant\-or\-self@*/\fP\&. For example, \fB//foo\fP is
+short for \fB/descendant\-or\-self@*/child@foo\fP and so will select any
+\fBfoo\fP package in the package graph; \fBfoo//bar\fP is short for
+\fBchild@foo/descendant\-or\-self@*/child@bar\fP and so will select all
+\fBbar\fP descendants of \fBfoo\fP children.
+.IP \(bu 2
+the above two short\-cuts can be combined as \fB\&.//foo\fP which is
+equivalent to \fBdescendant@foo\fP
+.UNINDENT
+.UNINDENT
+.SH PREDICATE EXPRESSIONS
+.sp
+Predicate expressions are evaluated as boolean functions that yield either true
+or false. The expression is executed for a context package. If the expressions
+yields true the package is kept as result of the associated location path,
+otherwise the package is filtered.
+.sp
+An expression may combine the following primitives to arbitrarily complex
+expressions. Several operators are available. Their associativity may be
+overruled by using parenthesis. Each primitive may be of only one of the
+following two types: string or boolean.  Depending on the context a (partial)
+expression of string type may be implicitly converted to a boolean value. The
+empty string, \fB0\fP and \fBfalse\fP (case insensitive) are treated as false. Any
+other string is converted to true.
+.SS Location paths
+.INDENT 0.0
+.INDENT 3.5
+Relative location paths are evaluated with respect to the context package
+of the predicate expression. Absolute location paths are evaluated
+independent of that. If the location path yields an empty set of packages
+the boolean result is false. If one or more packages are matched by the
+location path the result is treated as true.
+.sp
+Semantically this represents an \fIexists\fP predicate. As the location path is
+evaluated with respect to the current context of the expression the
+location path means \(dqthere exists a path from the current context package
+matched by the location path\(dq. By this primitive arbitrary graph
+reachability relations may be expressed.
+.UNINDENT
+.UNINDENT
+.SS String literals
+.INDENT 0.0
+.INDENT 3.5
+Strings consist of a sequence of zero or more characters enclosed in double
+quotes (\fB\(dq\fP). Strings are subject to the same
+\fI\%string substitution\fP as in the
+recipes. Unset variables are expanded to empty strings and are not treated
+as errors. The available variables are defined by the context of the whole
+expression.
+.sp
+To include double quotes as character into the string it has to be preceded
+by a backslash (\fB\e\fP). To include a backslash itself use \fB\e\e\fP\&. The
+backslash escaping is done during parsing of the expression. Any string
+substitution is then performed for each context independently. As such,
+escape backslashes intended to preserve literal meanings of other
+characters during variable substitution must be written as \fB\e\e\fP\&.
+.sp
+Alternatively strings may be enclosed by single quotes (\fB\(aq\fP). Such
+strings span from the first single quote until the next. Any character in
+between is taken verbatim and is not subject to any string substitution.
+.sp
+Examples:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+\(dqfoo\(dq
+\(dq${ENABLED}\(dq
+\(dq$(match,${LICENSE},GPL)\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS String function calls
+.INDENT 0.0
+.INDENT 3.5
+String functions may be called directly without relying on string
+substitution.  The general syntax is the funcion name, an opening
+parenthesis, zero or more arguments separated by comma and a closing
+parenthesis.
+.sp
+The following two lines are semantically equivalent:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+\(dq$(match,${LICENSE},GPL)\(dq
+match(\(dq${LICENSE}\(dq, \(dqGPL\(dq)
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+The primitives can be combined with a number of operators. The following table
+lists all operators sorted by decreasing precedence. Operator precedence may be
+overruled by using parenthesis. The result of all operators is always a
+boolean. String comparison is done character by character, based on the Unicode
+code point. If the end of string is reached the string lengths are compared.
+.TS
+center;
+|l|l|l|l|.
+_
+T{
+Operator
+T}	T{
+Associativity
+T}	T{
+Operand type
+T}	T{
+Meaning
+T}
+_
+T{
+\fB!\fP
+T}	T{
+Right
+T}	T{
+String or boolean
+T}	T{
+Logical NOT.
+T}
+_
+T{
+\fB<\fP
+T}	T{
+Left
+T}	T{
+String
+T}	T{
+Strictly less than.
+T}
+_
+T{
+\fB<=\fP
+T}	T{
+Left
+T}	T{
+String
+T}	T{
+Less than or equal.
+T}
+_
+T{
+\fB>\fP
+T}	T{
+Left
+T}	T{
+String
+T}	T{
+Strictly greater than.
+T}
+_
+T{
+\fB>=\fP
+T}	T{
+Left
+T}	T{
+String
+T}	T{
+Greater than or equal.
+T}
+_
+T{
+\fB==\fP
+T}	T{
+Left
+T}	T{
+String
+T}	T{
+Equal.
+T}
+_
+T{
+\fB!=\fP
+T}	T{
+Left
+T}	T{
+String
+T}	T{
+Not equal.
+T}
+_
+T{
+\fB&&\fP
+T}	T{
+Left
+T}	T{
+String or boolean
+T}	T{
+Logic AND.
+T}
+_
+T{
+\fB||\fP
+T}	T{
+Left
+T}	T{
+String or boolean
+T}	T{
+Logic OR.
+T}
+_
+.TE
+.sp
+See the following examples for some complex expressions:
+.INDENT 0.0
+.IP \(bu 2
+\fB\(dq${FOO}\(dq == \(dqbar\(dq\fP selects packages which use variable \fBFOO\fP an where
+the value is \fBbar\fP
+.IP \(bu 2
+\fB!match(\(dq${LICENSE}\(dq, \(dqGPL\(dq) && *[ match(\(dq${LICENSE}\(dq, \(dqGPL\(dq) ]\fP selects
+packages that are \fInot\fP GPL\-licensed and depend on a GPL\-licensed package
+.UNINDENT
+.SH ALIAS SUBSTITUTION
+.sp
+Aliases allow a string to be substituted for the first step of a
+\fI\%relative location path\fP\&. Absolute
+location paths (e.g.  \fB/foo\fP) and relative location paths in predicates (e.g.
+\fB*[ foo ]\fP) are not not subject to alias substitution. Aliases are only
+substituted once. It is therefore not possible to reference an alias from
+another alias definition.
+.sp
+Example definitions:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+alias:
+   myApp: \(dqhost/files/group/app42\(dq
+   allTests: \(dq//*\-unittest\(dq
+   myAppDeps: \(dqmyApp/*\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Given the definitions above the following substations will be performed:
+.TS
+center;
+|l|l|.
+_
+T{
+Query
+T}	T{
+Substituted query
+T}
+_
+T{
+myApp
+T}	T{
+host/files/group/app42
+T}
+_
+T{
+/myApp
+T}	T{
+/myApp
+T}
+_
+T{
+myAppDeps
+T}	T{
+myApp/*
+T}
+_
+T{
+foo/myApp
+T}	T{
+foo/myApp
+T}
+_
+T{
+myApp/lib
+T}	T{
+host/files/group/app42/lib
+T}
+_
+T{
+allTests/*[myAppDeps]
+T}	T{
+//*\-unittest/*[myAppDeps]
+T}
+_
+.TE
+.SH AUTHOR
+Jan Klötzke
+.SH COPYRIGHT
+2016-2020, The BobBuildTool Contributors
+.\" Generated by docutils manpage writer.
+.

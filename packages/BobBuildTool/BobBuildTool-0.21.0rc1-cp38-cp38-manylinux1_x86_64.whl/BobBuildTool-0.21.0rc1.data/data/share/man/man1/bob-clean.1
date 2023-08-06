@@ -1,0 +1,157 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "BOB-CLEAN" "1" "Jun 06, 2022" "0.21.0rc1" "Bob"
+.SH NAME
+bob-clean \- Delete unused src/build/dist paths of release builds
+.SH SYNOPSIS
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+bob clean [\-h] [\-\-develop | \-\-release | \-\-attic | \-\-shared]
+          [\-c CONFIGFILE] [\-D DEFINES] [\-\-dry\-run] [\-f] [\-s]
+          [\-\-all\-unused] [\-\-used] [\-\-sandbox | \-\-no\-sandbox] [\-v]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH DESCRIPTION
+.sp
+The \fIbob clean\fP command removes workspace directories from previous
+\fI\%bob\-dev\fP and \fI\%bob\-build\fP invocations that are not referenced anymore
+by the current recipes. It can also remove attic directories that are wasting
+precious disk space.
+.sp
+The command has several modes of operation. By default develop mode related
+workspaces are garbage collected. In release mode (\fB\-\-release\fP) workspaces
+that were created by \fIbob build\fP are cleaned. Giving the \fB\-\-attic\fP option
+removes attic directories that were created by \fIbob dev\fP\&. Lastly the
+\fB\-\-shared\fP option will cleanup the optionally configured \fI\%shared package
+location\fP\&.
+.sp
+The identification of the unreferenced workspace directories is based on the
+current recipes, user configuration files and environment definitions. You
+should therefore pass the same options to \fIbob clean\fP (\fB\-c\fP, \fB\-D\fP) that you
+would also pass to \fIbob build\fP resp. \fIbob dev\fP\&. If in doubt use \fB\-\-dry\-run\fP
+to see what would be deleted.
+.sp
+Workspaces that hold source code are never deleted by default. Add the \fB\-s\fP
+option to consider these workspace directories too. Bob will still check each
+SCM in an unreferenced workspace for modifications.  If the SCM checkout has
+been modified in any way (e.g. changed or untracked files, unpushed commits)
+then the workspace is kept. Use \fB\-f\fP to also delete such workspaces too.
+.sp
+In contrast to the other modes the \fB\-\-shared\fP option does not work on the
+project directory itself but the shared packages location. If no quota was
+configured the command will do nothing by default. Otherwise all \fIunused\fP
+packages will be removed (from oldest usage to newest) until the quota is met.
+If no unused packages are remaining (i.e. all other packages are still
+referenced by a project workspace) the quota could still be exceeded. To remove
+older packages too in such a case, add the \fB\-\-used\fP option. To remove \fIall\fP
+unused packages, regardless of the quota, use the \fB\-\-all\-unused\fP option.
+.SH OPTIONS
+.INDENT 0.0
+.TP
+.B \fB\-\-develop\fP
+Clean develop mode (\fIbob dev\fP) directories. This is the default.
+.TP
+.B \fB\-\-release\fP
+Clean release mode (\fIbob build\fP) directories.
+.TP
+.B \fB\-\-attic\fP
+Remove attic directories.
+.TP
+.B \fB\-\-shared\fP
+Delete packages from shared location.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \fB\-c CONFIGFILE\fP
+Use additional user configuration file. May be given more than once.
+.sp
+The configuration files have the same syntax as \fBdefault.yaml\fP\&. Their
+settings have higher precedence than \fBdefault.yaml\fP, with the last given
+configuration file being the highest.
+.TP
+.B \fB\-D VAR[=VALUE]\fP
+Override default environment variable. May be given more than once. If the
+optional \fBVALUE\fP is not supplied the variable will be defined to an empty
+string.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \fB\-\-all\-unused\fP
+Normally unused packages from a shared location are only deleted if the
+quota is exceeded. Use this option to delete all unused packages to free
+even more disk space.
+.TP
+.B \fB\-\-dry\-run\fP
+Don\(aqt delete, just print what would be deleted.
+.TP
+.B \fB\-f, \-\-force\fP
+Remove source workspaces that have unsaved changes in their SCM(s).
+.sp
+\fBWARNING:\fP
+.INDENT 7.0
+.INDENT 3.5
+Using this option \fIwill\fP result in data loss if there are unsaved
+changes in checkout workspace directories. Use with great care.
+.UNINDENT
+.UNINDENT
+.TP
+.B \fB\-s, \-\-src\fP
+Clean source workspaces too. By default only build and package workspaces
+are considered.
+.sp
+\fBATTENTION:\fP
+.INDENT 7.0
+.INDENT 3.5
+You should double check with \fB\-\-dry\-run\fP that no unintended workspaces
+are actually deleted. While Bob can check SCMs that it knows it cannot
+detect all modifications, e.g. changes to extracted tar files.
+.UNINDENT
+.UNINDENT
+.TP
+.B \fB\-\-used\fP
+If a package is still used by a project on the machine it is not deleted by
+default even if the quota is still exceeded. By giving this option such
+packages are considered too. Note that this will most likely lead to
+rebuilds/downloads of packages in the affected projects.
+.TP
+.B \fB\-v, \-\-verbose\fP
+Print what is done.
+.UNINDENT
+.SH AUTHOR
+Jan Klötzke
+.SH COPYRIGHT
+2016-2020, The BobBuildTool Contributors
+.\" Generated by docutils manpage writer.
+.
