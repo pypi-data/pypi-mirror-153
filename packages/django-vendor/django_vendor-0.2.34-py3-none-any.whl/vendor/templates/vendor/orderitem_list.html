@@ -1,0 +1,55 @@
+{% extends "vendor/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans 'Cart' %}{% endblock %}
+
+{% block vendor_content %}
+<div class="container-fluid">
+    <nav aria-label="breadcrumb">
+        <!-- <ol class="breadcrumb"> -->
+    </nav>
+
+    {% if invoice %}
+    <h1>{% trans 'Your Cart' %}</h1>
+        {% if object_list %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">{% trans 'Product' %}</th>
+                    <th scope="col">{% trans 'Quantity' %}</th>
+                    <th scope="col">{% trans 'Per Item Cost' %}</th>
+                    <th scope="col">{% trans 'Cost' %}</th>
+                    <th scope="col">{% trans 'Delete' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for items in object_list %}
+                <tr>
+                    <td>{{ items.offer.product.name }}</td>
+                    <td>
+                        <form action="{% url 'vendor-cart-item-quantity-edit' items.id %}" method=POST>{% csrf_token %}
+                                <div class="col-2">
+                                <input class="form-control" type="number" value={{items.quantity}} id="quantity", name="quantity" onChange="this.form.submit()">
+                                </div>
+                          </form></td>
+                    <td>{{ items.price|localize }}</td>
+                    <td>{{ items.total|localize }}</td>
+                    <td><a class="text-danger" href="{% url 'vendor_api:remove-from-cart' items.offer.sku %}">{% trans 'Remove Item' %}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>{% blocktrans with item_count=item_count %}Total number of items: {{ item_count }} {% endblocktrans %}</h2>
+        
+        <h2><a class="btn btn-success" href="{% url 'vendor-order-summary-retrieve' %}">{% trans 'Checkout' %}</a></h2>
+        {% else %}
+        <h2>{% trans 'No items in the cart' %}</h2>
+        {% endif %}
+
+    {% else %}
+    <h1>{% trans 'No active Cart' %}</h1>
+    {% endif %}
+    <a class="btn btn-warning" href="{% url 'vendor_index' %}">{% trans 'Add item' %}</a>
+</div>
+{% endblock %}
