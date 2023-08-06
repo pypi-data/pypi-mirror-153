@@ -1,0 +1,281 @@
+#!python
+""" gpu-chk  -  Checks OS/Python compatibility.
+
+    Part of the rickslab-gpu-utils package which includes gpu-ls, gpu-mon,
+    gpu-pac, and gpu-plot.
+
+    This utility verifies if the environment is compatible with
+    *rickslab-gpu-utils*.
+
+    Copyright (C) 2019  RicksLab
+
+    This program is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your option)
+    any later version.
+
+    This program is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+    more details.
+
+    You should have received a copy of the GNU General Public License along with
+    this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+__author__ = 'RicksLab'
+__copyright__ = 'Copyright (C) 2019 RicksLab'
+__credits__ = ''
+__license__ = 'GNU General Public License'
+__program_name__ = 'gpu-chk'
+__maintainer__ = 'RicksLab'
+__docformat__ = 'reStructuredText'
+# pylint: disable=multiple-statements
+# pylint: disable=line-too-long
+# pylint: disable=consider-using-f-string
+
+import argparse
+import re
+import subprocess
+import os
+from shlex import split as shlex_split
+import platform
+import sys
+import shutil
+import warnings
+from GPUmodules import __version__, __status__, __required_pversion__, __required_kversion__
+
+warnings.filterwarnings('ignore')
+ENV_DIR = 'rickslab-gpu-utils-env'
+COLORS: dict = {'none':  '',
+                'error': '\033[1;37;41m',
+                'ok':    '\033[1;37;42m',
+                'warn':  '\033[1;30;43m',
+                'label': '\033[1;37;46m',
+                'other': '\033[1;37;44m',
+                'reset': '\033[0;0;0m'}
+
+
+class GutConst:
+    """
+    Base object for chk util.  These are simplified versions of what are in env module designed to run in python2
+    in order to detect setup issues even if wrong version of python.
+    """
+    _verified_distros = {'Debian', 'Ubuntu', 'Gentoo', 'Arch'}
+    _dpkg_tool = {'Debian': 'dpkg', 'Ubuntu': 'dpkg', 'Arch': 'pacman', 'Gentoo': 'portage'}
+
+    def __init__(self):
+        self.DEBUG = False
+
+    def check_env(self) -> dict:
+        """
+        Checks python version, kernel version, distro, and amd gpu driver version.
+
+        :return:  A list of 4 integers representing status of 3 check items.
+        """
+        ret_val = {'python': 0, 'kernel': 0, 'system': 0, 'distribution': 0, 'driver': 0}
+        print('Using rickslab-gpu-utils {} {} {}'.format(COLORS['other'], __version__, COLORS['reset']))
+
+        # Check python version
+        current_pversion = sys.version_info
+        print('Using python {}.{}.{}'.format(current_pversion[0],
+                                             current_pversion[1],
+                                             current_pversion[2]))
+        if current_pversion[:2] < __required_pversion__:
+            print('          {} but rickslab-gpu-utils requires python {}.{} or newer {}'.format(
+                  COLORS['error'], __required_pversion__[0], __required_pversion__[1], COLORS['reset']))
+            ret_val['python'] = False
+        else:
+            print('          {} Python version OK. {}'.format(COLORS['ok'], COLORS['reset']))
+            ret_val['python'] = True
+
+        # Check Linux Kernel version
+        current_kversion_str = platform.release()
+        current_kversion = tuple([int(x) for x in re.sub('-.*', '', current_kversion_str).split('.')])
+        print('Using Linux Kernel: {}'.format(current_kversion_str))
+        if current_kversion < __required_kversion__:
+            print('          {} but rickslab-gpu-utils requires {}.{} or newer {}'.format(
+                  COLORS['error'], __required_kversion__[0], __required_kversion__[1], COLORS['reset']))
+            ret_val['kernel'] = False
+        else:
+            print('          {} OS kernel OK. {}'.format(COLORS['ok'], COLORS['reset']))
+            ret_val['kernel'] = True
+
+        # Check Linux System Type
+        init_type = 'Unknown'
+        cmd_init = '/sbin/init' if os.path.isfile('/sbin/init') else shutil.which('init')
+        if cmd_init:
+            if os.path.islink(cmd_init):
+                sys_path = os.readlink(cmd_init)
+                init_type = 'systemd' if 'systemd' in sys_path else sys_path
+            print('Using system type: {}'.format(init_type))
+        if init_type == 'systemd':
+            print('          {} System type has been Validated. {}'.format(COLORS['ok'], COLORS['reset']))
+            ret_val['system'] = True
+        else:
+            print('          {} System type has not been verified. {}'.format(COLORS['warn'], COLORS['reset']))
+            ret_val['system'] = False
+
+        # Check Linux Distribution
+        cmd_lsb_release = shutil.which('lsb_release')
+        print('Using Linux distribution: ', end='')
+        if cmd_lsb_release:
+            distributor = description = None
+            lsbr_out = subprocess.check_output(shlex_split('{} -a'.format(cmd_lsb_release)),
+                                               shell=False, stderr=subprocess.DEVNULL).decode().split('\n')
+            for lsbr_line in lsbr_out:
+                if re.search('Distributor ID', lsbr_line):
+                    lsbr_item = re.sub(r'Distributor ID:\s*', '', lsbr_line)
+                    distributor = lsbr_item.strip()
+                if re.search('Description', lsbr_line):
+                    lsbr_item = re.sub(r'Description:\s*', '', lsbr_line)
+                    if self.DEBUG: print('Distro Description: {}'.format(lsbr_item))
+                    description = lsbr_item.strip()
+
+            if distributor:
+                print(description)
+                if distributor in GutConst._verified_distros:
+                    print('          {} Distro has been Validated. {}'.format(COLORS['ok'], COLORS['reset']))
+                    ret_val['distribution'] = True
+                else:
+                    print('          {} Distro has not been verified. {}'.format(COLORS['warn'], COLORS['reset']))
+                    ret_val['distribution'] = True
+        else:
+            print('unknown')
+            print('          {} [lsb_release] executable not found. {}'.format(COLORS['warn'], COLORS['reset']))
+            ret_val['distribution'] = True
+
+        # Check for amdgpu driver
+        ret_val['driver'] = True if self.read_amd_driver_version() else True  # Ignore False
+        return ret_val
+
+    def read_amd_driver_version(self) -> bool:
+        """
+        Read the AMD driver version and store in GutConst object.
+
+        :return: True if successful
+        """
+        cmd_dpkg = shutil.which('dpkg')
+        if not cmd_dpkg:
+            print('Command dpkg not found. Can not determine amdgpu version.')
+            print('          {} rickslab-gpu-utils can still be used. {}'.format(COLORS['warn'], COLORS['reset']))
+            return True
+        for pkgname in ('amdgpu', 'amdgpu-core', 'amdgpu-pro', 'rocm-utils'):
+            try:
+                dpkg_out = subprocess.check_output(shlex_split(cmd_dpkg + ' -l ' + pkgname),
+                                                   shell=False, stderr=subprocess.DEVNULL).decode().split('\n')
+            except (subprocess.CalledProcessError, OSError):
+                continue
+            for dpkg_line in dpkg_out:
+                for driverpkg in ('amdgpu', 'rocm'):
+                    if re.search(driverpkg, dpkg_line):
+                        if self.DEBUG: print('Debug: ' + dpkg_line)
+                        dpkg_items = dpkg_line.split()
+                        if len(dpkg_items) > 2:
+                            if re.fullmatch(r'.*none.*', dpkg_items[2]): continue
+                            print('AMD: {} version: {}'.format(driverpkg, dpkg_items[2]))
+                            print('          {} AMD driver OK. {}'.format(COLORS['ok'], COLORS['reset']))
+                            return True
+        print('amdgpu/rocm version: UNKNOWN')
+        print('          {} rickslab-gpu-utils can still be used. {}'.format(COLORS['warn'], COLORS['reset']))
+        return False
+
+
+GUT_CONST = GutConst()
+
+
+def is_venv_installed() -> bool:
+    """
+    Check if a venv is being used.
+
+    :return: True if using venv
+    """
+    cmdstr = 'python3 -m venv -h > /dev/null'
+    try:
+        with subprocess.Popen(shlex_split(cmdstr), shell=False, stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+            output, _error = p.communicate()
+    except (subprocess.CalledProcessError, OSError):
+        pass
+    else:
+        if not re.fullmatch(r'.*No module named.*', output.decode()):
+            print('python3 venv is installed')
+            print('          {} python3-venv OK. {}'.format(COLORS['ok'], COLORS['reset']))
+            return True
+    print('python3 venv is NOT installed')
+    print('          {} Python3 venv package \'python3-venv\' is recommended for developers {}'.format(
+          COLORS['warn'], COLORS['reset']))
+    return False
+
+
+def does_gpu_utils_env_exist() -> bool:
+    """
+    Check if venv exists.
+
+    :return:  Return True if venv exists.
+    """
+    env_name = os.path.join('.', ENV_DIR, 'bin/activate')
+
+    if os.path.isfile(env_name):
+        print('{} available'.format(ENV_DIR))
+        print('          {} {} OK. {}'.format(COLORS['ok'], ENV_DIR, COLORS['reset']))
+        return True
+    print('{} is NOT available'.format(ENV_DIR))
+    print('          {} {} can be configured per User Guide. {}'.format(COLORS['warn'], ENV_DIR, COLORS['reset']))
+    return False
+
+
+def is_in_venv() -> bool:
+    """
+    Check if execution is from within a venv.
+
+    :return: True if in venv
+    """
+    python_path = shutil.which('python3')
+    if not python_path:
+        print('Maybe python version compatibility issue.')
+    else:
+        if re.search(ENV_DIR, python_path):
+            print('In {}'.format(ENV_DIR))
+            print('          {} {} is activated. {}'.format(COLORS['ok'], ENV_DIR, COLORS['reset']))
+            return True
+        print('Not in {}, (Only needed if you want to duplicate development env)'.format(ENV_DIR))
+        print('          {} {} can be activated per User Guide. {}'.format(COLORS['warn'], ENV_DIR, COLORS['reset']))
+    return False
+
+
+def main() -> None:
+    """
+    Main flow for chk utility.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--about', help='README', action='store_true', default=False)
+    args = parser.parse_args()
+
+    # About me
+    if args.about:
+        print(__doc__)
+        print('Author: ', __author__)
+        print('Copyright: ', __copyright__)
+        print('Credits: ', *['\n      {}'.format(item) for item in __credits__])
+        print('License: ', __license__)
+        print('Version: ', __version__)
+        print('Maintainer: ', __maintainer__)
+        print('Status: ', __status__)
+        sys.exit(0)
+
+    system_status = GUT_CONST.check_env()
+    if False in system_status.values():
+        print(system_status)
+        print('Error in environment. Exiting...')
+        sys.exit(-1)
+
+    if not is_venv_installed() or not does_gpu_utils_env_exist():
+        print('Virtual Environment not configured. Only required by developers.')
+
+    if not is_in_venv():
+        pass
+    print('')
+
+
+if __name__ == '__main__':
+    main()

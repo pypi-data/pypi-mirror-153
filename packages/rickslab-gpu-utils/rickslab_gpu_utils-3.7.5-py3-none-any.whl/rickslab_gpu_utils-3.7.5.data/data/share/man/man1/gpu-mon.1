@@ -1,0 +1,129 @@
+.TH GPU\-MON 1 "May 2022" "rickslab-gpu-utils" "Ricks-Lab GPU Utilities"
+.nh
+.SH NAME
+gpu-mon \- continuously update a table with the state of all compatible GPUs
+
+.SH SYNOPSIS
+.B gpu-mon
+.RB [ \-\-help " | " \-\-about "]"
+.br
+.B gpu-mon
+.RB [ \-\-gui "] [" \-\-no_fan "] [" \-\-plot "] [" \-\-ltz "] [" \-\-sleep " \fIN\fP] [" \-\-debug "] [" \-\-pdebug "] [" \-\-verbose"]"
+
+.SH DESCRIPTION
+.B gpu-mon
+displays the current state of all compatible GPUs. The default behavior
+is to continuously update a text based table in the current window until Ctrl-C is
+pressed.  With the \fB--gui\fR option, a table of relevant parameters will be updated
+in a Gtk window.  You can specify the delay between updates with the \fB--sleep N\fR
+option where N is an integer > zero that specifies the number of seconds to sleep
+between updates.  The \fB--no_fan\fR option can be used to disable the reading and display
+of fan information.  The \fB--log\fR option is used to write all monitor data to a psv log
+file.  When writing to a log file, the utility will indicate this in red at the top of
+the window with a message that includes the log file name. The \fB--plot\fR will display a
+plot of critical GPU parameters which updates at the specified \fB--sleep N\fR interval. If
+you need both the plot and monitor displays, then using the \fB--plot\fR option is preferred
+over running both tools as a single read of the GPUs is used to update both displays.
+The \fB--ltz\fR option results in the use of local time instead of UTC.  Finally, the
+\fB--verbose\fR option will result in informational messages to be displayed.
+
+.SH OPTIONS
+.TP
+.BR " \-\-about"
+Will display details about 
+.B gpu-mon\fP.
+.TP
+.BR " \-\-gui"
+The table of relevant parameters will be updated in a Gtk window instead of a text table in the terminal window.
+.TP
+.BR " \-\-log"
+Write all mon data to a logfile.  The real-time display will indicate that logging
+is enabled and will show the filename used.
+.TP
+.BR " \-\-ltz"
+Use local time zone instead of UTC for displays and logging.
+.TP
+.BR " \-\-no_fan"
+Will exclude fan information from the display.  Useful with water cooled GPUs.
+.TP
+.BR " \-\-pdebug"
+Will enable debug output for the \fBgpu-plot\fR plotting utility.
+.TP
+.BR " \-\-plot"
+Open and write to, \fBgpu-plot\fR, the gpu-util plotting utility.
+.TP
+.BR " \-\-sleep " \fIN\fR
+Specifies N, the number of seconds to sleep between updates.
+.TP
+.BR " \-\-verbose"
+Display informational messages generated during execution.
+.TP
+.BR " \-\-debug"
+Will output additional useful debug/troubleshooting details to a log file.
+.TP
+.BR \-h , " \-\-help"
+Display help text and exit.
+
+.SH "EXAMPLES"
+.nf
+.B gpu-mon \-\-sleep 5 \-\-log
+
+.fi
+Will display a continuously updating table of GPU operating parameters updating with an interval of 5 sec. All
+parameters will be written to a logfile which will be indicated in the table.
+The displayed parameters include GPU model, GPU and memory load percentage, power, power cap, energy consumption,
+temperature, voltage (not available for NV), fan speed, Sclk frequency/p-state, Mclk frequency/pstate, and
+performance mode. Updating of the table will continue until ctrl-c is pressed.
+.P
+.B gpu-mon \-\-gui
+
+.fi
+Will open a new Gtk window and display basic parameters updated with the default interval.
+.P
+.B gpu-mon \-\-plot
+
+.fi
+Will open 2 new Gtk windows. One will display the basic parameters and the second will display a continuously
+updating plot of these parameters.  It is suggested that this method be used if both displays are desired, instead
+of executing both \fBgpu-mon\fR and \fBgpu-plot\fR as the later will result in twice the reads of
+GPU data.
+.P
+
+.SH CONFIGURATION
+In order to get maximum capability of these utilities, you should be running with a kernel that
+provides support of the GPUs you have installed.  If using AMD GPUs, installing the latest amdgpu
+driver package or the latest ROCm release, may provide additional capabilities. If you have Nvidia
+GPUs installed, nvidia-smi must also be installed in order for the utility reading of the cards
+to be possible.  Writing to GPUs is currently only possible for AMD GPUs, and only with compatible
+cards and with the AMD ppfeaturemask set to 0xfffd7fff. This can be accomplished by adding
+amdgpu.ppfeaturemask=0xfffd7fff to the GRUB_CMDLINE_LINUX_DEFAULT value in
+/etc/default/grub and executing sudo update-grub.
+
+.SH "FILES"
+.PP
+.TP
+\fB/usr/share/misc/pci.ids\fR
+The system list of all known PCI ID's (vendors, devices, classes and subclasses).
+It can be updated with the \fBupdate-pciids\fR command.
+.TP
+\fB/sys/class/drm/card*/device/pp_od_clk_voltage\fR
+Special driver file for each AMD GPU required by some \fBrickslab-gpu-utils\fR.
+.TP
+\fB/etc/default/grub\fR
+The grub defaults file where amdgpu.ppfeaturemask needs to be set.
+
+.SH BUGS
+Known to not work well with Fiji ProDuo cards and will issue warning messages for Fiji Nano cards.
+Please report any additional bugs/issues at https://github.com/Ricks-Lab/gpu-utils
+
+.SH "SEE ALSO"
+.BR gpu-plot (1),
+.BR amdgpu (4),
+.BR nvidia-smi (1),
+.BR update-grub (8),
+.BR update-pciids (8),
+.BR lspci (8)
+
+.SH AVAILABILITY
+The gpu-mon command is part of the rickslab-gpu-utils package and is available from
+https://github.com/Ricks-Lab/gpu-utils
