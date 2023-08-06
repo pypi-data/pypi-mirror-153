@@ -1,0 +1,29 @@
+name: Codestyle
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  codestyle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.9
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install black mypy flake8 types-pyyaml types-toml
+      - name: Check code formatting with black
+        run: black -l 120 . --diff --check
+      - name: Check code with flake8
+        run: flake8 fastapi_framework tests
+      - name: Check Typing with MyPy
+        run: mypy fastapi_framework
