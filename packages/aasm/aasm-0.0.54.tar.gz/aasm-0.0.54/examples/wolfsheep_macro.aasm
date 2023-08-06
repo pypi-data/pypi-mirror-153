@@ -1,0 +1,421 @@
+%const field_size, 10000
+%const field_width, 99
+%const field_height, 99
+%const field_id, 0
+%const sheep_id, 1
+%const wolf_id, 2
+
+%const grass_energy, 1
+%const grass_regrow, 0.1
+%const grass_max, 10
+
+%const graph_size, 101
+%const field_conns, 100
+%const sheep_amt, 95
+%const wolf_amt, 5
+
+%makro move_to dst, src, item
+    REME src, item
+    ADDE dst, item
+%emakro
+
+%makro wiggle dead, invert, heading
+IEQ dead, NO
+    DECL wiglR, float, 0
+    DECL wiglL, float, 0
+    RAND wiglR, float, uniform, 0, 90
+    RAND wiglL, float, uniform, 0, 90
+    DECL change_flag, float, 0
+    IEQ invert, YES
+        SET change_flag, 1
+        ADD heading, wiglL
+        SUBT heading, wiglR
+        ILT heading, 0
+            SET invert, NO
+            ADD heading, 180
+        EBLOCK
+        IGT heading, 180
+            SET invert, NO
+            SUBT heading, 180
+        EBLOCK
+    EBLOCK
+    IEQ invert, NO
+        IEQ change_flag, 0
+            ADD heading, wiglL
+            SUBT heading, wiglR
+            ILT heading, 0
+                SET invert, YES
+                ADD heading, 180
+            EBLOCK
+            IGT heading, 180
+                SET invert, YES
+                SUBT heading, 180
+            EBLOCK
+        EBLOCK
+    EBLOCK
+EBLOCK
+%emakro
+
+%makro move heading, dead, invert, energy, x, y, field_width, field_height
+IEQ dead, NO
+    DECL a, float, 0
+    DECL b, float, 0
+    SIN a, heading
+    SIN b, heading
+    DECL newx, float, x
+    DECL newy, float, y
+    IGT heading, 90
+        SUBT newx, a
+    EBLOCK
+    ILTEQ heading, 90
+        ADD newx, a
+    EBLOCK
+    IEQ invert, YES
+        SUBT newy, b
+    EBLOCK
+    IEQ invert, NO
+        ADD newy, b
+    EBLOCK
+    DECL bump, float, 0
+    ILT newx, 0
+        SET bump, 1
+    EBLOCK
+    ILT newy, 0
+        SET bump, 1
+    EBLOCK
+    IGT newx, field_width
+        SET bump, 1
+    EBLOCK
+    IGT newy, field_height
+        SET bump, 1
+    EBLOCK
+    IEQ bump,0
+        SET x, newx
+        SET y, newy
+        SUBT energy, 1
+    EBLOCK
+    IEQ bump,1
+        ADD heading, 90
+        IGT heading, 180
+            SUBT heading, 180
+            DECL flag, float, 0
+            IEQ invert, YES
+                SET flag, 1
+                SET invert, NO
+            EBLOCK
+            IEQ invert, NO
+                IEQ flag, 0
+                    SET invert, YES
+                EBLOCK
+            EBLOCK
+        EBLOCK
+    EBLOCK
+EBLOCK
+%emakro
+
+MESSAGE eat, Request
+    PRM x, float
+    PRM y, float
+EMESSAGE
+
+MESSAGE eat, Inform
+    PRM energy, float
+EMESSAGE
+
+MESSAGE broadcast, Inform
+    PRM typ, float # 0 - field, 1 - sheep, 2 - wolf
+    PRM state, float
+EMESSAGE
+
+MESSAGE spawn, Inform
+    PRM typ, float
+EMESSAGE
+
+MESSAGE kill, Inform
+EMESSAGE
+
+AGENT grass
+    PRM field, list, float
+    PRM dead_sheep, list, conn
+    PRM alive_sheep, list, conn
+    PRM dead_wolf, list, conn
+    PRM alive_wolf, list, conn
+    PRM spawn_candidate, list, conn
+    BEHAV setup, setup
+        ACTION setup_field, modify_self
+            DECL it, float, 0
+            DECL amt, float, 0
+            WLT it, field_size
+                RAND amt, float, uniform, 0, 10
+                ADDE field, amt
+                ADD it, 1
+            EBLOCK
+        EACTION
+        ACTION broadcast, send_msg, broadcast, Inform
+            SET SEND.typ, field_id
+            SEND connections
+        EACTION
+    EBEHAV
+    BEHAV recv_spawn, msg_rcv, spawn, Inform
+        ACTION choose_spawn, modify_self
+            CLR spawn_candidate
+            IEQ RCV.typ, sheep_id
+                SUBS spawn_candidate, dead_sheep, 1
+                move_to alive_sheep, dead_sheep, spawn_candidate
+            EBLOCK
+            IEQ RCV.typ, wolf_id
+                SUBS spawn_candidate, dead_wolf, 1
+                move_to alive_wolf, dead_wolf, spawn_candidate
+            EBLOCK
+        EACTION
+        ACTION spawn, send_msg, spawn, Inform
+            SEND spawn_candidate
+        EACTION
+    EBEHAV
+    BEHAV recv_broadcast, msg_rcv, broadcast, Inform
+        ACTION add_agent, modify_self
+            IEQ RCV.typ, sheep_id
+                IEQ RCV.state, 0
+                    move_to dead_sheep, alive_sheep, RCV.jid
+                EBLOCK
+                IEQ RCV.state, 1
+                    move_to alive_sheep, dead_sheep, RCV.jid
+                EBLOCK
+            EBLOCK
+            IEQ RCV.typ, 2
+                IEQ RCV.state, 0
+                    move_to dead_wolf, alive_wolf, RCV.jid
+                EBLOCK
+                IEQ RCV.state, 1
+                    move_to alive_wolf, dead_wolf, RCV.jid
+                EBLOCK
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV eat_grass, msg_rcv, eat, Request
+        ACTION parse_eat, send_msg, eat, Inform
+            DECL index, float, RCV.x
+            MULT index, field_width
+            ADD index, RCV.y
+            DECL grass_val, float, 0
+            LR grass_val, field, index
+            DECL send_flag, float, 0
+            IGT grass_val, 1
+                SET send_flag, 1
+                SET SEND.energy, grass_energy
+                SUBT grass_val, 1
+                LW field, index, grass_val
+            EBLOCK
+            IEQ send_flag, 0
+                SET SEND.energy, 0
+            EBLOCK
+            SEND RCV.jid
+        EACTION
+    EBEHAV
+    BEHAV regrow_grass, cyclic, 10
+        ACTION regrow, modify_self
+            DECL it, float, 0
+            DECL amt, float, 0
+            WLT it, field_size
+                LR amt, field, it
+                ADD amt, grass_regrow
+                IGT amt, grass_max
+                    SET amt, 10
+                EBLOCK
+                LW field, it, amt
+                ADD it, 1
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV recv_kill, msg_rcv, kill, Inform
+        ACTION kill_creature, modify_self
+            IN alive_sheep, RCV.jid
+                move_to dead_sheep, alive_sheep, RCV.jid
+            EBLOCK
+            IN alive_wolf, RCV.jid
+                move_to dead_wolf, alive_wolf, RCV.jid
+            EBLOCK
+        EACTION
+    EBEHAV
+EAGENT
+
+AGENT sheep
+    PRM x, float, dist, uniform, 0, field_width
+    PRM y, float, dist, uniform, 0, field_height
+    PRM heading, float, dist uniform, 0, 180
+    PRM invert, enum, YES, 0, NO, 100
+    PRM energy, float, init, 100
+    PRM dead, enum, YES, 0, NO, 100
+    PRM field, list, conn
+
+    BEHAV recv_spawn, msg_rcv, spawn, Inform
+        ACTION spawn, modify_self
+            SET dead, NO
+        EACTION
+    EBEHAV
+
+    BEHAV recv_kill, msg_rcv, kill, Inform
+        ACTION die, send_msg, kill, Inform
+            SET dead, YES
+            SEND field
+        EACTION
+    EBEHAV
+
+    BEHAV setup, setup
+        ACTION broadcast, send_msg, broadcast, Inform
+            SET SEND.typ, 1
+            IEQ dead, YES
+                SET SEND.state, 0
+            EBLOCK
+            IEQ dead, NO
+                SET SEND.state, 1
+            EBLOCK
+            SEND connections
+        EACTION
+    EBEHAV
+
+    BEHAV move_around, cyclic, 10
+        ACTION wiggle, modify_self
+            wiggle dead, invert, heading
+        EACTION # wiggle
+        ACTION move, modify_self
+            move heading, dead, invert, energy, x, y, field_width, field_height
+        EACTION
+        ACTION check_if_dead, modify_self
+            ILTEQ energy, 0
+                SET dead, YES
+            EBLOCK
+        EACTION
+        ACTION eat, send_msg, eat, Request
+            IEQ dead, NO
+                SET SEND.x, x
+                SET SEND.y, y
+                SEND field
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV reproduce, cyclic, 20
+        ACTION hatch, send_msg, spawn, Inform
+            IEQ dead, NO
+                IEQ energy, 100
+                    SET SEND.typ, 1
+                    SEND field
+                EBLOCK
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV grass_eat, msg_rcv, eat, Inform
+        ACTION change_energy, modify_self
+            ADD energy, RCV.energy
+        EACTION
+    EBEHAV
+    BEHAV recv_broadcast, msg_rcv, broadcast, Inform
+        ACTION xd, modify_self
+        IEQ RCV.typ, 0
+            ADDE field, RCV.jid
+        EBLOCK
+        EACTION
+    EBEHAV
+
+    BEHAV get_eaten_request, msg_rcv, eat, Request
+        ACTION kappa, send_msg, eat, Inform
+            IEQ dead, NO
+                DECL lowx, float, x
+                DECL lowy, float, y
+                DECL highx, float, x
+                DECL highy, float, y
+
+                SUBT lowx, 1
+                SUBT lowy, 1
+                ADD  highx, 1
+                ADD  highy, 1
+
+                ILT highx, RCV.x
+                    ILT highy, RCV.y
+                        IGT lowx, RCV.x
+                            IGT lowy, RCV.y
+                                SET SEND.energy, 1
+                                SEND RCV.jid
+                            EBLOCK
+                        EBLOCK
+                    EBLOCK
+                EBLOCK
+            EBLOCK
+        EACTION
+    EBEHAV
+EAGENT
+
+AGENT wolf
+    PRM x, float, dist, uniform, 0, field_width
+    PRM y, float, dist, uniform, 0, field_height
+    PRM heading, float, dist uniform, 0, 180
+    PRM invert, enum, YES, 0, NO, 100
+    PRM energy, float, init, 100
+    PRM dead, enum, YES, 0, NO, 100
+    PRM field, list, conn
+    PRM sheep, list, conn
+    PRM is_eating, enum, YES, 0, NO, 100
+
+    BEHAV recv_spawn, msg_rcv, spawn, Inform
+        ACTION spawn, modify_self
+            SET dead, NO
+        EACTION
+    EBEHAV
+
+    BEHAV setup, setup
+        ACTION broadcast, send_msg, broadcast, Inform
+            SET SEND.typ, 2
+            IEQ dead, YES
+                SET SEND.state, 0
+            EBLOCK
+            IEQ dead, NO
+                SET SEND.state, 1
+            EBLOCK
+            SEND connections
+        EACTION
+    EBEHAV
+    BEHAV move_around, cyclic, 10
+        ACTION wiggle, modify_self
+            wiggle dead, invert, heading
+        EACTION # wiggle
+        ACTION move, modify_self
+            move heading, dead, invert, energy, x, y, field_width, field_height
+        EACTION
+        ACTION check_if_dead, modify_self
+            ILTEQ energy, 0
+                SET dead, YES
+            EBLOCK
+        EACTION
+        ACTION eat_sheep, send_msg, eat, Request
+            SET SEND.x, x
+            SET SEND.y, y
+            SEND sheep
+            SET is_eating, YES
+        EACTION
+    EBEHAV
+    BEHAV rcv_eat, msg_rcv, eat, Inform
+        ACTION eat_sheep, send_msg, kill, Inform
+            IEQ is_eating, YES
+                SET is_eating, NO
+                SEND RCV.jid
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV recv_broadcast, msg_rcv, broadcast, Inform
+        ACTION save_data, modify_self
+        IEQ RCV.typ, 0
+            ADDE field, RCV.jid
+        EBLOCK
+        IEQ RCV.typ, 1
+            ADDE sheep, RCV.jid
+        EBLOCK
+        EACTION
+    EBEHAV
+EAGENT
+
+GRAPH statistical
+    SIZE graph_size
+    DEFG grass, 1, field_conns
+    DEFG sheep, sheep_amt, field_conns
+    DEFG wolf, wolf_amt, field_conns
+EGRAPH
