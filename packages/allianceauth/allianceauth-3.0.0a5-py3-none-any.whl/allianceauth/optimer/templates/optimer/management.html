@@ -1,0 +1,118 @@
+{% extends "allianceauth/base.html" %}
+{% load static %}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block page_title %}{% translate "Fleet Operation Management" %}{% endblock page_title %}
+{% block extra_css %}{% endblock extra_css %}
+
+{% block content %}
+    <div class="col-lg-12">
+        <h1 class="page-header text-center">{% translate "Fleet Operation Timers" %}
+            <div class="text-right">
+                {% if perms.auth.optimer_management %}
+                    <a href="{% url 'optimer:add' %}" class="btn btn-success">{% translate "Create Operation" %}</a>
+                {% endif %}
+            </div>
+        </h1>
+
+        <div class="col-lg-12 text-center row">
+            <div class="label label-info text-left">
+                <b>{% translate "Current Eve Time:" %} </b>
+            </div>
+            <strong class="label label-info text-left" id="current-time"></strong>
+            <br>
+        </div>
+
+        <h4><b>{% translate "Next Fleet Operations" %}</b></h4>
+        {% if future_timers %}
+            {% include "optimer/fleetoptable.html" with timers=future_timers %}
+        {% else %}
+            <div class="alert alert-warning text-center">{% translate "No upcoming timers." %}</div>
+        {% endif %}
+
+        <h4><b>{% translate "Past Fleet Operations" %}</b></h4>
+        {% if past_timers %}
+            {% include "optimer/fleetoptable.html" with timers=past_timers %}
+        {% else %}
+            <div class="alert alert-warning text-center">{% translate "No past timers." %}</div>
+        {% endif %}
+    </div>
+
+    {% include 'bundles/moment-js.html' with locale=True %}
+    <script src="{% static 'js/timers.js' %}"></script>
+
+    <script type="application/javascript">
+        // Data
+        let timers = [
+        {% for op in optimer %}
+            {
+                'id': {{ op.id }},
+                'start': moment("{{ op.start | date:"c" }}"),
+                'expired': false
+            },
+        {% endfor %}
+        ];
+
+        /**
+         * Update a timer
+         * @param timer Timer information
+         */
+        let updateTimer = function (timer) {
+            if (timer.start.isAfter(Date.now())) {
+                let duration = moment.duration(timer.start - moment(), 'milliseconds');
+
+                document.getElementById("countdown" + timer.id).innerHTML = getDurationString(duration);
+            } else {
+                timer.expired = true;
+
+                document.getElementById("countdown" + timer.id).innerHTML = "";
+            }
+        };
+
+        let updateAllTimers = function () {
+            let l = timers.length;
+
+            for (var i=0; i < l; ++i) {
+                if (timers[i].expired) continue;
+
+                updateTimer(timers[i]);
+            }
+        };
+
+        /**
+         * Set the local time info for the timer
+         * @param timer Timer information
+         */
+        let setLocalTime = function (timer) {
+            document.getElementById("localtime" + timer.id).innerHTML = timer.start.format("ddd @ LT");
+        };
+
+        /**
+         * Set all local time fields
+         */
+        let setAllLocalTimes = function () {
+            let l = timers.length;
+
+            for (var i=0; i < l; ++i) {
+                setLocalTime(timers[i]);
+            }
+        };
+
+        let updateClock = function () {
+            document.getElementById("current-time").innerHTML = getCurrentEveTimeString();
+        };
+
+        let timedUpdate = function () {
+            updateClock();
+            updateAllTimers();
+        };
+
+        // Set initial values
+        setAllLocalTimes();
+        timedUpdate();
+
+        // Start timed updates
+        setInterval(timedUpdate, 1000);
+    </script>
+{% endblock content %}

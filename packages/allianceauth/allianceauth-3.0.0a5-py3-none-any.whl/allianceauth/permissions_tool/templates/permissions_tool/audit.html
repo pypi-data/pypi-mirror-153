@@ -1,0 +1,95 @@
+{% extends "allianceauth/base.html" %}
+{% load bootstrap %}
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{{ permission.permission.codename }} - {% translate "Permissions Audit" %}{% endblock page_title %}
+
+{% block content %}
+    <div>
+        <h1 class="page-header">{% translate "Permissions Audit" %}: {{ permission.permission.codename }}</h1>
+        <p>
+            <a href="{% url 'permissions_tool:overview' %}" class="btn btn-default">
+                <i class="glyphicon glyphicon-chevron-left"></i> {% translate "Back" %}
+            </a>
+        </p>
+        <div class="table-responsive">
+            <table class="table table-striped" id="tab_permissions_audit">
+                <thead>
+                    <tr>
+                        <th>{% translate "Group" %}</th>
+                        <th></th>
+                        <th>{% translate "User / Character" %}</th>
+                        <th>{% translate "Organization" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for user in permission.users %}
+                    {% include 'permissions_tool/audit_row.html' with type="User" name="Permission granted directlty" %}
+                {% endfor %}
+                {% for group in permission.groups %}
+                    {% for user in group.user_set.all %}
+                        {% include 'permissions_tool/audit_row.html' with type="Group" name=group%}
+                    {% endfor %}
+                {% endfor %}
+                {% for state in permission.states %}
+                    {% for profile in state.userprofile_set.all %}
+                        {% with profile.user as user %}
+                            {% include 'permissions_tool/audit_row.html' with type="State" name=state%}
+                        {% endwith %}
+                    {% endfor %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+    {% include 'bundles/datatables-js.html' %}
+    <script type="application/javascript" src="{% static 'js/filterDropDown/filterDropDown.min.js' %}"></script>
+{% endblock %}
+
+{% block extra_css %}
+    {% include 'bundles/datatables-css.html' %}
+{% endblock %}
+
+{% block extra_script %}
+    $(document).ready(function() {
+        let groupColumn = 0;
+
+        $('#tab_permissions_audit').DataTable({
+            columnDefs: [
+                { "visible": false, "targets": groupColumn }
+            ],
+            order: [[ groupColumn, 'asc' ], [ 2, 'asc' ] ],
+            filterDropDown:
+            {
+                columns: [
+                    {
+                        idx: 0,
+                        title: 'Source'
+                    }
+                ],
+                bootstrap: true
+            },
+            "stateSave": true,
+            "stateDuration": 0,
+            drawCallback: function ( settings ) {
+                let api = this.api();
+                let rows = api.rows( {page:'current'} ).nodes();
+                let last = null;
+
+                api.column(groupColumn, {page:'current'} ).data().each( function ( group, i ) {
+                    if ( last !== group ) {
+                        $(rows).eq( i ).before(
+                            '<tr class="tr-group"><td colspan="3">' + group + '</td></tr>'
+                        );
+
+                        last = group;
+                    }
+                } );
+            }
+        } );
+    } );
+{% endblock %}

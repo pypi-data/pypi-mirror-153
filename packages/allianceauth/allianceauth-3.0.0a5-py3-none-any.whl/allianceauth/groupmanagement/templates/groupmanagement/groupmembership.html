@@ -1,0 +1,89 @@
+{% extends "allianceauth/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% translate "Groups Membership" %}{% endblock page_title %}
+{% block extra_css %}{% endblock extra_css %}
+
+{% block content %}
+    <div class="col-lg-12">
+        <br>
+        {% include 'groupmanagement/menu.html' %}
+
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                {% translate "Groups" %}
+            </div>
+
+            <div class="panel-body">
+                {% if groups %}
+                    <div class="table-responsive">
+                        <table class="table table-aa">
+                            <thead>
+                                <tr>
+                                    <th>{% translate "Name" %}</th>
+                                    <th>{% translate "Description" %}</th>
+                                    <th>{% translate "Status" %}</th>
+                                    <th style="white-space: nowrap;">{% translate "Member Count" %}</th>
+                                    <th style="min-width: 170px;"></th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for group in groups %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'groupmanagement:membership' group.id %}">{{ group.name }}</a>
+                                        </td>
+
+                                        <td>{{ group.authgroup.description|linebreaks|urlize }}</td>
+
+                                        <td>
+                                            {% if group.authgroup.hidden %}
+                                                <span class="label label-info">{% translate "Hidden" %}</span>
+                                            {% elif group.authgroup.open %}
+                                                <span class="label label-success">{% translate "Open" %}</span>
+                                            {% else %}
+                                                <span class="label label-default">{% translate "Requestable" %}</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="text-right">
+                                            {{ group.num_members }}
+                                        </td>
+
+                                        <td class="text-right">
+                                            <a href="{% url 'groupmanagement:membership' group.id %}" class="btn btn-primary" title="{% translate "View Members" %}">
+                                                <i class="glyphicon glyphicon-eye-open"></i>
+                                            </a>
+
+                                            <a href="{% url "groupmanagement:audit_log" group.id %}" class="btn btn-info" title="{% translate "Audit Members" %}">
+                                                <i class="glyphicon glyphicon-list-alt"></i>
+                                            </a>
+
+                                            <a id="clipboard-copy" data-clipboard-text="{{ request.scheme }}://{{request.get_host}}{% url 'groupmanagement:request_add' group.id %}" class="btn btn-warning" title="{% translate "Copy Direct Join Link" %}">
+                                                <i class="glyphicon glyphicon-copy"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning text-center">
+                        {% translate "No groups to list." %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+    {% include 'bundles/clipboard-js.html' %}
+
+    <script>
+        new ClipboardJS('#clipboard-copy');
+    </script>
+{% endblock %}

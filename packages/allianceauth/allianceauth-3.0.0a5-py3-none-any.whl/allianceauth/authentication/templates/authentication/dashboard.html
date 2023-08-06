@@ -1,0 +1,186 @@
+{% extends "allianceauth/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% translate "Dashboard" %}{% endblock %}
+
+{% block content %}
+    <h1 class="page-header text-center">{% translate "Dashboard" %}</h1>
+    {% if user.is_staff %}
+        {% include 'allianceauth/admin-status/include.html' %}
+    {% endif %}
+    <div class="col-sm-12">
+        <div class="row vertical-flexbox-row2">
+            <div class="col-sm-6 text-center">
+                <div class="panel panel-primary" style="height:100%">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            {% blocktrans with state=request.user.profile.state %}
+                                Main Character (State: {{ state }})
+                            {% endblocktrans %}
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        {% if request.user.profile.main_character %}
+                            {% with request.user.profile.main_character as main %}
+                                <div class="hidden-xs">
+                                    <div class="col-lg-4 col-sm-2">
+                                        <table class="table">
+                                            <tr>
+                                                <td class="text-center">
+                                                    <img class="ra-avatar"src="{{ main.portrait_url_128 }}">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-center">{{ main.character_name }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-lg-4 col-sm-2">
+                                        <table class="table">
+                                            <tr>
+                                                <td class="text-center">
+                                                    <img class="ra-avatar"src="{{ main.corporation_logo_url_128 }}">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-center">{{ main.corporation_name }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-lg-4 col-sm-2">
+                                        {% if main.alliance_id %}
+                                            <table class="table">
+                                                <tr>
+                                                    <td class="text-center">
+                                                        <img class="ra-avatar"src="{{ main.alliance_logo_url_128 }}">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-center">{{ main.alliance_name }}</td>
+                                                <tr>
+                                            </table>
+                                        {% elif main.faction_id %}
+                                            <table class="table">
+                                                <tr>
+                                                    <td class="text-center">
+                                                        <img class="ra-avatar"src="{{ main.faction_logo_url_128 }}">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-center">{{ main.faction_name }}</td>
+                                                <tr>
+                                            </table>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="table visible-xs-block">
+                                    <p>
+                                        <img class="ra-avatar" src="{{ main.portrait_url_64 }}">
+                                        <img class="ra-avatar" src="{{ main.corporation_logo_url_64 }}">
+                                        {% if main.alliance_id %}
+                                            <img class="ra-avatar" src="{{ main.alliance_logo_url_64 }}">
+                                        {% endif %}
+                                        {% if main.faction_id %}
+                                            <img class="ra-avatar" src="{{ main.faction_logo_url_64 }}">
+                                        {% endif %}
+                                    </p>
+                                    <p>
+                                        <strong>{{ main.character_name }}</strong><br>
+                                        {{ main.corporation_name }}<br>
+                                        {% if main.alliance_id %}
+                                            {{ main.alliance_name }}<br>
+                                        {% endif %}
+                                        {% if main.faction_id %}
+                                            {{ main.faction_name }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            {% endwith %}
+                        {% else %}
+                            <div class="alert alert-danger" role="alert">
+                                {% translate "No main character set." %}
+                            </div>
+                        {% endif %}
+                        <div class="clearfix"></div>
+                        <div class="row">
+                            <div class="col-sm-6 button-wrapper">
+                                <a href="{% url 'authentication:add_character' %}" class="btn btn-block btn-info"
+                                title="Add Character">{% translate 'Add Character' %}</a>
+                            </div>
+                            <div class="col-sm-6 button-wrapper">
+                                <a href="{% url 'authentication:change_main_character' %}" class="btn btn-block btn-info"
+                                title="Change Main Character">{% translate "Change Main" %}</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 text-center">
+                <div class="panel panel-success" style="height:100%">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">{% translate "Group Memberships" %}</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div style="height: 240px;overflow:-moz-scrollbars-vertical;overflow-y:auto;">
+                            <table class="table table-aa">
+                                {% for group in groups %}
+                                    <tr>
+                                        <td>{{ group.name }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="clearfix"></div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title text-center" style="text-align: center">
+                    {% translate 'Characters' %}
+                </h3>
+            </div>
+            <div class="panel-body">
+                <table class="table table-aa hidden-xs">
+                    <thead>
+                        <tr>
+                            <th class="text-center"></th>
+                            <th class="text-center">{% translate 'Name' %}</th>
+                            <th class="text-center">{% translate 'Corp' %}</th>
+                            <th class="text-center">{% translate 'Alliance' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for char in characters %}
+                            <tr>
+                                <td class="text-center"><img class="ra-avatar img-circle" src="{{ char.portrait_url_32 }}">
+                                </td>
+                                <td class="text-center">{{ char.character_name }}</td>
+                                <td class="text-center">{{ char.corporation_name }}</td>
+                                <td class="text-center">{{ char.alliance_name }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <table class="table table-aa visible-xs-block" style="width: 100%">
+                    <tbody>
+                        {% for char in characters %}
+                            <tr>
+                                <td class="text-center" style="vertical-align: middle">
+                                    <img class="ra-avatar img-circle" src="{{ char.portrait_url_32 }}">
+                                </td>
+                                <td class="text-center" style="vertical-align: middle; width: 100%">
+                                    <strong>{{ char.character_name }}</strong><br>
+                                    {{ char.corporation_name }}<br>
+                                    {{ char.alliance_name|default:"" }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

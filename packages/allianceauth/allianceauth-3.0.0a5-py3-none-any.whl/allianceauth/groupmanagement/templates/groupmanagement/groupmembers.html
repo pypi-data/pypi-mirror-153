@@ -1,0 +1,112 @@
+{% extends "allianceauth/base.html" %}
+{% load static %}
+{% load i18n %}
+{% load evelinks %}
+
+{% block page_title %}{% translate "Group Members" %}{% endblock page_title %}
+
+{% block content %}
+    <div class="col-lg-12">
+        <br>
+        {% include 'groupmanagement/menu.html' %}
+
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                {{ group.name }} - {% translate 'Members' %}
+            </div>
+
+            <div class="panel-body">
+                <p>
+                    <a class="btn btn-default" href="{% url 'groupmanagement:membership' %}" role="button">
+                        {% translate "Back" %}
+                    </a>
+                </p>
+
+                {% if group.user_set %}
+                    <div class="table-responsive">
+                        <table class="table table-aa" id="tab_group_members">
+                            <thead>
+                                <tr>
+                                    <th>{% translate "Character" %}</th>
+                                    <th>{% translate "Organization" %}</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for member in members %}
+                                    <tr>
+                                        <td>
+                                            <img src="{{ member.main_char|character_portrait_url:32 }}" class="img-circle" style="margin-right: 1rem;">
+                                            {% if member.main_char %}
+                                                <a href="{{ member.main_char|evewho_character_url }}" target="_blank">
+                                                    {{ member.main_char.character_name }}
+                                                </a>
+                                            {% else %}
+                                                {{ member.user.username }}
+                                            {% endif %}
+
+                                            {% if member.is_leader %}
+                                                <i class="fas fa-star" title="{% translate "Group leader" %}" style="margin-left: 1rem;"></i>&nbsp;
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if member.main_char %}
+                                                <a href="{{ member.main_char|dotlan_corporation_url }}" target="_blank">
+                                                    {{ member.main_char.corporation_name }}
+                                                </a><br>
+                                                {{ member.main_char.alliance_name|default_if_none:"" }}
+                                            {% else %}
+                                                {% translate "(unknown)" %}
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="text-right">
+                                            <a href="{% url 'groupmanagement:membership_remove' group.id member.user.id %}" class="btn btn-danger" title="{% translate "Remove from group" %}">
+                                                <i class="glyphicon glyphicon-remove"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                        <p class="text-muted">
+                            <i class="fas fa-star"></i>: {% translate "Group leader" %}
+                        </p>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning text-center">
+                        {% translate "No group members to list." %}
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+    {% include 'bundles/datatables-js.html' %}
+{% endblock %}
+
+{% block extra_css %}
+    {% include 'bundles/datatables-css.html' %}
+{% endblock %}
+
+{% block extra_script %}
+    $(document).ready(function(){
+        $('#tab_group_members').DataTable({
+            order: [[0, "asc"]],
+            columnDefs: [
+                {
+                    "sortable": false,
+                    "targets": [2]
+                },
+            ],
+            "stateSave": true,
+            "stateDuration": 0
+        });
+    });
+{% endblock %}
