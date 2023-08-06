@@ -1,0 +1,162 @@
+Metadata-Version: 2.1
+Name: mosaik.EId
+Version: 0.1.0rc20220603000413
+Summary: A utility for managing mosaik's entity identifiers.
+Home-page: https://gitlab.com/offis.energy/mosaik/mosaik-eid
+Author: Bengt Lüers
+Author-email: bengt.lueers@gmail.com
+Maintainer: Bengt Lüers
+Maintainer-email: bengt.lueers@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Description-Content-Type: text/markdown
+
+# Mosaik EID
+
+Mosaik EID supports creating Mosaik scenarios by managing the identifiers of the
+entities.
+
+## Status
+
+[![pipeline status](https://gitlab.com/offis.energy/mosaik/mosaik.eid/badges/master/pipeline.svg)](https://gitlab.com/offis.energy/mosaik/mosaik.eid/pipelines/)
+[![coverage report](https://gitlab.com/offis.energy/mosaik/mosaik.eid/badges/master/coverage.svg)](https://gitlab.com/offis.energy/mosaik/mosaik.eid/-/jobs)
+[![libraries status](https://img.shields.io/librariesio/release/pypi/mosaik.eid)](https://libraries.io/pypi/mosaik.eid)
+[![license badge](https://img.shields.io/pypi/l/mosaik.EId)](#)
+[![PyPI version](https://img.shields.io/pypi/v/mosaik.EId)](https://pypi.org/project/mosaik.EId/#history)
+[![Python Versions](https://img.shields.io/pypi/pyversions/mosaik.EId)](https://pypi.org/project/mosaik.EId)
+
+## Motivation
+
+Traditionally, mosaik entities are created with hard coded names.
+Mosaik EID intends to be easier to use and less error-prone than to hard coding values.
+The clean and pythonic API encourages creating scenarios in a DRY fashion.
+
+## Design
+
+The package contains a parser, generator, data model and exceptions around creating such names.
+The data model is based upon an
+    [`Enum`](https://docs.python.org/3/library/enum.html).
+Building upon that is a manager which issues entity identifiers
+    based on the entity type and a serial number.
+The entity manager implements the borg pattern and
+    can thus be instantiated at will without losing state.
+There are some basic entity types predefined,
+    but they can be extended by registering additional types.
+
+## Compatibility
+
+It is allowed to register entity names with arbitrary capitalization,
+    for example `CHP`, `BioGas` or `wind` or `lv_bat_liion_3_5_10`.
+All components are tested with 100 % test coverage and hopefully many corner cases
+caught.
+There are extensive unit, integration and functional tests.
+Tests are integrated into tox to ensure compatibility across some python
+    implementations.
+These are: CPython 2.7, Python 3.6, CPython 3.7, PyPy2v6 and PyPy3v6
+
+## Limitations
+
+-   Thread safety is not yet implemented because it seems to have little value.
+-   Entity types need to be valid [Python identifiers](https://docs.python.org/2/reference/lexical_analysis.html#identifiers).
+
+-   PyPy3 does not currently work under Windows 10 because of an unresolved [a bug in pypy](https://bitbucket.org/pypy/pypy/issues/2816/cannot-install-cppyy-on-windows).
+
+## Tests
+
+This package uses
+    [`unittest`](https://docs.python.org/3.4/library/unittest.html)
+        for writing tests,
+    [`nose`](https://nose.readthedocs.org/en/latest/)
+        for test discovery and
+    [`tox`](https://tox.readthedocs.org/en/latest/)
+        for running them on multiple python versions.
+
+## Cloning the Source
+
+    git clone https://eprojects.offis.de/mosaik-eid/git/mosaik-eid.git
+
+## Creating the Virtual Environment
+
+Under Linux:
+
+    virtualenv -p python3.8 venv
+
+Under Windows:
+
+    virtualenv -p "C:\Program Files\Python38\python.exe" venv
+
+# Installing the Requirements
+
+    python -m pip install --upgrade -r requirements.d/venv.txt
+
+# Running the Tests
+
+    tox --parallel all
+
+## Testing the Coverage
+
+    python -m coverage html mosaik_eid/*.py
+
+Under Linux
+
+    xdg-open htmlcov/index.html
+
+Under Windows
+
+    start htmlcov/index.html
+
+## Using the Library
+
+    >>> from mosaik_eid.eid_registry import EidRegistry
+    >>> e_type = EntityTypeRegistry.register(e_type='biogas')
+    >>> for _ in range(3):
+    ...     next(EidManager(e_type=e_type))
+    ...
+    'biogas-0'
+    'biogas-1'
+    'biogas-2'
+
+See `tests/functional` for more practical examples of intended use.
+
+## Developing the Library
+
+For development purposes,
+  use one of the virtual environment under .tox your choice.
+
+## Freezing the Virtual Environment Requirements
+
+Under Linux
+
+     venv/bin/python -m pip freeze --all --exclude-editable > requirements.d/venv.txt
+     # And remove line beginning with package name
+
+Under Windows
+
+     venv\Scripts\python.exe -m pip freeze --all --exclude-editable > requirements.d/venv.txt
+    # And remove line beginning with package name
+
+## Freezing the Tox Requirements
+
+Under Linux
+
+    .tox/py38/bin/python -m pip freeze --all --exclude-editable > requirements.d/base.txt
+    # And remove line beginning with package name
+
+Under Windows
+
+    .tox\py37\Scripts\python -m pip freeze --all --exclude-editable > requirements.d/base.txt
+    # And remove line beginning with package name
+
+
