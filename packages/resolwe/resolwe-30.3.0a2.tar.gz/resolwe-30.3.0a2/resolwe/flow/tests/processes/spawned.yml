@@ -1,0 +1,51 @@
+- slug: test-spawn-missing-file
+  name: Spawn new process
+  requirements:
+    expression-engine: jinja
+  data_name: Spawned data
+  version: 1.0.0
+  type: "data:test:spawn:bad"
+  run:
+    language: bash
+    program: |
+      touch foo.bar
+      re-run test-save-file '{"input_file":"foo.bar"}'
+
+
+- slug: test-spawn-new
+  name: Spawn new process
+  requirements:
+    expression-engine: jinja
+  data_name: Spawned data
+  version: 1.0.0
+  type: "data:test:spawn"
+  run:
+    language: bash
+    program: |
+      touch foo.bar
+      echo "foo.bar" > foo.bar
+      re-export foo.bar
+      re-run test-save-file '{"input_file": "foo.bar"}'
+
+
+- slug: test-save-file
+  name: Save file
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: "data:test:save"
+  input:
+    - name: input_file
+      label: Input file
+      type: basic:file
+  output:
+    - name: saved_file
+      label: Saved file
+      type: basic:file
+  run:
+    language: bash
+    program: |
+      # TODO: use re-import when added to resolwe-runtime-utils
+      # re-import {{ input_file.file_temp }} {{ input_file.file }} "bar" "bar" 0.9
+      mv {{ input_file.file_temp }} {{ input_file.file }}
+      re-save-file saved_file {{ input_file.file }}

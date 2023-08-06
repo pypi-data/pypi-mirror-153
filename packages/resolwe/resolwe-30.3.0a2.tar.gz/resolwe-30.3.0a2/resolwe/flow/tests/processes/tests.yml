@@ -1,0 +1,659 @@
+- slug: test-min
+  name: Minimalistic Processor
+  version: 1.0.0
+  type: "data:test:min"
+  run:
+    # Process registration should set 'language' to 'bash' if not set.
+    program: |
+      echo 'Test Minimalistic Processor'
+
+- slug: test-min
+  name: Minimalistic Processor
+  version: 1.0.1
+  type: "data:test:min"
+  run:
+    # Process registration should set 'language' to 'bash' if not set.
+    program: |
+      echo 'Test Minimalistic Processor'
+
+- slug: test-min
+  name: Minimalistic Processor
+  version: 0.0.9
+  type: "data:test:min"
+  run:
+    # Process registration should set 'language' to 'bash' if not set.
+    program: |
+      echo 'Test Minimalistic Processor'
+
+- slug: test-min-python34
+  name: Minimalistic Processor
+  version: 1.0.1
+  type: "data:test:min"
+  requirements:
+    executor:
+      docker:
+        image: broadinstitute/genomes-in-the-cloud:2.3.1-1504795437
+  output:
+    - name: out
+      label: Result
+      type: basic:string
+  run:
+    program: |
+      pip3 install --user resolwe-runtime-utils
+      export PATH=~/.local/bin:$PATH
+      re-save out OK
+
+- slug: test-annotate
+  name: Basic annotation test
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: data:test:annotate
+  flow_collection: sample
+  run:
+    language: bash
+    program: |
+      re-annotate-entity general.species "Valid"
+
+- slug: test-annotate-wrong-option
+  name: Annotation sets invalid option
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: data:test:annotate
+  flow_collection: sample
+  run:
+    language: bash
+    program: |
+      re-annotate-entity general.species "Invalid"
+
+- slug: test-annotate-wrong-type
+  name: Annotation sets invalid type
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: data:test:annotate
+  flow_collection: sample
+  run:
+    language: bash
+    program: |
+      re-annotate-entity general.description 15
+
+- slug: test-annotate-no-entity
+  name: Annotation without entity
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: data:test:annotate
+  run:
+    language: bash
+    program: |
+      re-annotate-entity general.description "description"
+
+- slug: test-annotate-missing-field
+  name: Annotation missing field
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: data:test:annotate
+  flow_collection: sample
+  run:
+    language: bash
+    program: |
+      re-annotate-entity general.invalid "Some value"
+
+- slug: test-missing-file
+  name: Save not existing file
+  requirements:
+    expression-engine: jinja
+  version: 0.0.1
+  type: "data:test:crash"
+  output:
+    - name: output
+      label: Output
+      type: basic:file
+  run:
+    language: bash
+    program: |
+      re-save-file output i-dont-exist.zip
+
+- slug: test-process-notifications
+  name: Test process notifications
+  requirements:
+    expression-engine: jinja
+  version: 0.0.1
+  type: "data:test:processnotifications"
+  run:
+    language: bash
+    program: |
+      re-info "abc"
+      # Report info with 3000 x-s.
+      re-info "$(yes x | head -n 3000 | tr -d '\n')"
+      # Report warning with 3000 y-s.
+      re-warning "$(yes y | head -n 3000 | tr -d '\n')"
+      # Report error with 3000 z-s.
+      re-error "$(yes z | head -n 3000 | tr -d '\n')"
+
+- slug: test-bloated
+  name: Bloated Processor
+  requirements:
+    expression-engine: jinja
+  version: 0.0.0
+  type: "data:test:bloated:"
+  category: tests
+  persistence: CACHED
+  description: >
+    A very bloated processor. All fields types are defined to make sure
+    that they can be registered.
+  input:
+    - name: boolean
+      label: Boolean
+      type: basic:boolean
+      default: true
+    - name: date
+      label: Date
+      type: basic:date
+      default: "2013-12-31"
+    - name: datetime
+      label: Date and time
+      type: basic:datetime
+      default: "2013-12-31 23:59:59"
+    - name: decimal
+      label: Decimal
+      type: basic:decimal
+      default: -123.456
+    - name: integer
+      label: Integer
+      type: basic:integer
+      default: -123
+    - name: integer2
+      label: Integer 2
+      type: basic:integer
+      range: [0, 5]
+    - name: string
+      label: String
+      type: basic:string
+      default: "Foo b-a-r.gz 1.23"
+    - name: string_list
+      label: String List
+      type: list:basic:string
+    - name: text
+      label: Text
+      type: basic:text
+      default: |
+        Foo bar
+        in 3
+        lines.
+    - name: url_download
+      label: URL download
+      type: basic:url:download
+      default:
+        url: "http://www.w3.org/TR/1998/REC-html40-19980424/html40.pdf"
+    - name: url_view
+      label: URL view
+      type: basic:url:view
+      default:
+        name: Google
+        url: "http://www.google.com/"
+    - name: url_link
+      label: URL view
+      type: basic:url:link
+      default:
+        url: "http://www.google.com/"
+    - name: single_data
+      label: Single data
+      type: data:test
+    - name: single_data_relations
+      label: Single data with relations
+      type: data:test
+      relation:
+        type: group
+        npartitions: 1
+    - name: list_data
+      label: Data list
+      type: list:data:test
+    - name: list_data_relations
+      label: Data list with relations
+      type: list:data:test
+      relation:
+        type: group
+    - name: group
+      label: Group
+      group:
+        - name: string2
+          label: String 2 required
+          type: basic:string
+          description: "String 2 description."
+          required: true
+          placeholder: "Enter string"
+        - name: string3
+          label: String 3 disabled
+          type: basic:string
+          description: "String 3 description."
+          disabled: true
+          default: "disabled"
+        - name: string4
+          label: String 4 hidden
+          type: basic:string
+          description: "String 4 description."
+          hidden: true
+          default: "hidden"
+        - name: string5
+          label: String 5 choices
+          type: basic:string
+          description: "String 5 description."
+          default: "choice_2"
+          choices:
+            - label: Choice 1
+              value: choice_1
+            - label: Choice 2
+              value: choice_2
+            - label: Choice 3
+              value: choice_3
+        - name: string6
+          label: String 6 regex only "Aa"
+          type: basic:string
+          default: "AAaAaaa"
+          validate_regex: /^[aA]*$/
+    - name: tricky
+      label: Tricky
+      group:
+        - name: tricky1
+          label: Tricky 1
+          group:
+            - name: tricky2
+              label: Tricky 2
+              type: basic:string
+              default: "true"
+  output:
+    - name: output
+      label: Result
+      type: basic:url:view
+    - name: out_boolean
+      label: Boolean
+      type: basic:boolean
+    - name: out_date
+      label: Date
+      type: basic:date
+    - name: out_datetime
+      label: Date and time
+      type: basic:datetime
+    - name: out_decimal
+      label: Decimal
+      type: basic:decimal
+    - name: out_integer
+      label: Integer
+      type: basic:integer
+    - name: out_string
+      label: String
+      type: basic:string
+    - name: out_text
+      label: Text
+      type: basic:text
+    - name: out_url_download
+      label: URL download
+      type: basic:url:download
+    - name: out_url_view
+      label: URL view
+      type: basic:url:view
+    - name: out_group
+      label: Group
+      group:
+        - name: string2
+          label: String 2 required
+          type: basic:string
+          description: "String 2 description."
+        - name: string3
+          label: String 3 disabled
+          type: basic:string
+          description: "String 3 description."
+        - name: string4
+          label: String 4 hidden
+          type: basic:string
+          description: "String 4 description."
+        - name: string5
+          label: String 5 choices
+          type: basic:string
+          description: "String 5 description."
+        - name: string6
+          label: String 6 regex only "Aa"
+          type: basic:string
+    - name: out_tricky
+      label: Tricky
+      group:
+        - name: tricky1
+          label: Tricky 1
+          group:
+            - name: tricky2
+              label: Tricky 2
+              type: basic:string
+  run:
+    language: bash
+    program: |
+      echo 'Test Bloated Processor'
+
+- slug: test-broken
+  name: Minimalistic Processor
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: "data:test:broken"
+  run:
+    language: bash
+    program: |
+      echo "This process has a broken template"
+      {% if
+
+- slug: test-broken-invalid-expression-engine
+  name: Minimalistic Processor
+  requirements:
+    expression-engine: invalid
+  version: 1.0.0
+  type: "data:test:broken"
+  run:
+    language: bash
+    program: |
+      echo "This process has an invalid expression engine"
+
+- slug: test-broken-invalid-execution-engine
+  name: Minimalistic Processor
+  requirements:
+    expression-engine: jinja
+  version: 1.0.0
+  type: "data:test:broken"
+  run:
+    language: invalid
+    program: |
+      echo "This process has an invalid execution engine"
+
+- slug: test-broken-data-name
+  name: Minimalistic Processor
+  requirements:
+    expression-engine: jinja
+  data_name: "{% if"
+  version: 1.0.0
+  type: "data:test:broken"
+  run:
+    language: bash
+    program: |
+      echo "This process has a broken data name template"
+
+- slug: test-docker
+  name: Minimalistic Processor
+  version: 1.0.0
+  type: "data:test:min"
+  output:
+    - name: result
+      label: Result
+      type: basic:string
+  run:
+    program: |
+      if [ "${RUNNING_IN_DOCKER}" == "1" ]; then
+        re-save result OK
+      else
+        re-save result "ERROR: Not running in Docker."
+      fi
+
+- slug: test-terminate
+  name: Looooong running process
+  version: 1.0.0
+  type: "data:test:min"
+  output:
+    - name: result
+      label: Result
+      type: basic:string
+  run:
+    program: |
+      sleep 100000
+
+
+- slug: test-requirements-docker
+  name: Minimalistic Processor
+  version: 1.0.0
+  type: "data:test:min"
+  requirements:
+    executor:
+      docker:
+        image: public.ecr.aws/s4q6j6e8/resolwe/test:requirements-docker
+  output:
+    - name: result
+      label: Result
+      type: basic:string
+  run:
+    program: |
+      if [ -f /test-requirements-docker ]; then
+        re-save result OK
+      else
+        re-save result "ERROR: Incorrect Docker image used."
+      fi
+
+- slug: test-save-number
+  name: Save number
+  version: 1.0.0
+  type: "data:test:save"
+  requirements:
+    expression-engine: jinja
+  input:
+    - name: number
+      label: Number
+      type: basic:integer
+  output:
+    - name: number
+      label: Number
+      required: false
+      type: basic:integer
+  run:
+    program: |
+      re-save number {{ number }}
+
+- slug: test-dependency-parent
+  name: Test dependency - parent
+  version: 1.0.0
+  type: "data:test:dependency:parent"
+  run:
+    program: "true"
+
+- slug: test-dependency-child
+  name: Test dependency - child
+  version: 1.0.0
+  type: "data:test:dependency:child"
+  input:
+    - name: parent
+      label: Parent
+      type: "data:test:dependency:parent"
+      required: false
+  run:
+    program: "true"
+
+- slug: test-memory-resource-alloc
+  name: Test memory resource (allocation)
+  version: 1.0.0
+  type: "data:test:memory"
+  requirements:
+    resources:
+      # Limit memory to 10 MB.
+      memory: 10
+  run:
+    program: |
+      # Prevent everything from being output to stdout as in this case it
+      # will be a lot of data.
+      set +x
+
+      # Allocate around 200 MB.
+      yes | tr \\n x | head -c $((1024*1024*200)) | grep n
+      #for index in $(seq 310); do
+      #  value=$(seq -w -s '' $index $(($index + 100000)))
+      #  eval array$index=$value
+      #done
+
+- slug: test-memory-resource-noalloc
+  name: Test memory resource (no allocation)
+  version: 1.0.0
+  type: "data:test:memory"
+  requirements:
+    resources:
+      # Limit memory to 10 MB.
+      memory: 10
+  run:
+    program: "true"
+
+- slug: test-cpu-resource-1core
+  name: Test CPU resource (1 core)
+  version: 1.0.0
+  type: "data:test:cpu"
+  requirements:
+    resources:
+      # Limit CPU to one core.
+      cores: 1
+  run:
+    program: "true"
+
+- slug: test-cpu-resource-2core
+  name: Test CPU resource (2 cores)
+  version: 1.0.0
+  type: "data:test:cpu"
+  requirements:
+    resources:
+      # Limit CPU to two cores.
+      cores: 2
+  run:
+    program: "true"
+
+- slug: test-network-resource-enabled
+  name: Test network resource (enabled)
+  version: 1.0.0
+  type: "data:test:network"
+  requirements:
+    resources:
+      network: true
+  run:
+    program: |
+      curl --connect-timeout 5 https://google.com
+
+- slug: test-network-resource-disabled
+  name: Test network resource (disabled)
+  version: 1.0.0
+  type: "data:test:network"
+  run:
+    program: |
+      curl --connect-timeout 5 https://google.com
+
+- slug: test-network-resource-policy
+  name: Test network resource (policy test)
+  version: 1.0.0
+  type: "data:test:network"
+  requirements:
+    executor:
+      docker:
+        image: resolwe/test:base
+    resources:
+      network: true
+  run:
+    program: |
+      # Should fail as raw sockets are not allowed.
+      ping -c 1 8.8.8.8
+
+- slug: test-scheduling-class-interactive-ok
+  name: Test scheduling class interactive (ok)
+  version: 1.0.0
+  type: "data:test:schedulingclass"
+  scheduling_class: interactive
+  run:
+    program: "true"
+
+- slug: test-scheduling-class-interactive-fail
+  name: Test scheduling class interactive (fail)
+  version: 1.0.0
+  type: "data:test:schedulingclass"
+  scheduling_class: interactive
+  run:
+    program: |
+      set +x
+
+      # This program should be killed as it will use too much CPU time. We use
+      # a counter to prevent it blocking the test in case it is not killed.
+      i=0
+      while (($i < 1000000000)); do
+        let i++;
+      done
+
+- slug: test-scheduling-class-batch
+  name: Test scheduling class batch
+  version: 1.0.0
+  type: "data:test:schedulingclass"
+  scheduling_class: batch
+  run:
+    program: "true"
+
+- slug: test-broken-invalide-storage
+  name: Test invalide storage file
+  version: 1.0.0
+  type: "data:test:brokenstorage"
+  output:
+    - name: storage
+      label: Storage
+      type: basic:json
+  run:
+    program: |
+      echo "1a" >> storage.json
+      re-save storage storage.json
+
+- slug: test-save-storage
+  name: Save json to storage
+  version: 1.0.0
+  type: "data:test:brokenstorage"
+  input:
+    - name: json
+      label: Json to save to storage
+      type: basic:json
+  output:
+    - name: storage
+      label: Storage
+      type: basic:json
+  run:
+    program: |
+      echo {{ jnos }}" >> storage.json
+      re-save storage storage.json
+
+- slug: test-docker-image-versioning
+  name: Test process Docker image versioning
+  version: 1.0.1
+  type: "data:test:dockerversioning"
+  requirements:
+    executor:
+      docker:
+        image: resolwe/test:versioning-1
+  run:
+    program: "true"
+
+- slug: test-docker-image-versioning
+  name: Test process Docker image versioning
+  version: 1.0.2
+  type: "data:test:dockerversioning"
+  requirements:
+    executor:
+      docker:
+        image: resolwe/test:versioning-2
+  run:
+    program: "true"
+
+- slug: test-docker-uid-gid
+  name: Minimalistic Processor
+  version: 1.0.0
+  type: "data:test:min"
+  output:
+    - name: result
+      label: Result
+      type: basic:string
+  run:
+    program: |
+      # Check if we are running as non-root.
+      if [[ $UID == 0 || $GID == 0 ]]; then
+        re-save result "ERROR: Running as root."
+      else
+        re-save result OK
+      fi
+
+      # Ensure that we can resolve both our user and group names.
+      getent passwd $UID || exit 1
+      getent group $GID || exit 1
