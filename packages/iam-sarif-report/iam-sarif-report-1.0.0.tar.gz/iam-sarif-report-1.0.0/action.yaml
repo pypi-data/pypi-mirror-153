@@ -1,0 +1,34 @@
+name: IAM SARIF Report
+author: George Alton
+description: Generate SARIF from AWS IAM Access Analyzer findings
+branding:
+  icon: check-square
+  color: green
+inputs:
+  policies:
+    description: |-
+      Path to a Policy file or directory containing Policy files.
+    required: true
+  policy_type:
+    default: IDENTITY_POLICY
+  locale:
+    default: EN
+  resource_type:
+    required: false
+  results:
+    description: |-
+      Directory (created if required) where SARIF results are created.
+
+      SARIF Results are created with the `.sarif` extension appended to the policy filename.
+
+      By default results will be written to stdout.
+    default: "-"
+runs:
+  using: docker
+  image: Dockerfile
+  args:
+    - "--policy-type ${{ inputs.policy_type }}"
+    - "--locale ${{ inputs.locale }}"
+    - "${{ inputs.policies }}"
+    - "${{ inputs.results }}"
+    - "${{ inputs.resource_type }}"

@@ -1,0 +1,130 @@
+[build-system]
+requires = [
+  "setuptools >= 62.1.0",
+  "setuptools_scm[toml]>=6.2",
+  "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iam-sarif-report"
+authors = [{name = "George Alton", email = "georgealton@gmail.com"}]
+dynamic = ["version"]
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+readme = "README.md"
+
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+dependencies = [
+    "attrs",
+    "click",
+    "punq",
+    "boto3",
+    "sarif_om",
+    "jschema_to_python",
+    "typing_extensions; python_version<'3.8'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "mypy",
+    "pytest",
+    "tox",
+    "jsonschema",
+    "isort",
+    "mypy_boto3_accessanalyzer",
+    "types-setuptools",
+    "pre-commit",
+]
+
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-datadir",
+    "jsonschema",
+]
+
+scraper = [
+    "beautifulsoup4",
+    "requests",
+    "html2text",
+]
+
+[project.urls]
+homepage = "https://github.com/georgealton/iam-sarif-report"
+repository = "https://github.com/georgealton/iam-sarif-report"
+
+[project.scripts]
+iam-sarif-report = "iam_sarif_report.entrypoints.cli:generate_findings_and_report_sarif"
+
+[tool.setuptools.package-data]
+"*" = ["checks.json"]
+
+[tool.setuptools_scm]
+git_describe_command = "git describe --dirty --tags --long --match *[0-9].*"
+
+[tool.mypy]
+# The mypy configurations: http://bit.ly/2zEl9WI
+allow_redefinition = false
+check_untyped_defs = true
+disallow_untyped_decorators = true
+disallow_any_explicit = true
+disallow_any_generics = true
+disallow_untyped_calls = true
+ignore_errors = false
+ignore_missing_imports = true
+implicit_reexport = false
+local_partial_types = true
+strict_optional = true
+strict_equality = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unreachable = true
+warn_no_return = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+
+envlist = py37, py38, py39, py310, pre-commit
+isolated_build = True
+
+[gh-actions]
+python =
+    3.7: py37
+    3.8: py38
+    3.9: py39
+    3.10: py310, pre-commit
+
+[testenv]
+extras = test
+commands = pytest -v
+
+[testenv:pre-commit]
+basepython = python3.10
+skip_install = true
+deps =
+    pre-commit
+commands =
+    pre-commit run --all-files
+"""
+
+[tool.isort]
+profile = "black"
+
+[tool.coverage.run]
+branch = true

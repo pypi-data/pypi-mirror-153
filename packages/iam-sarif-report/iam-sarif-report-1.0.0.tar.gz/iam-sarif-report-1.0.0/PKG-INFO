@@ -1,0 +1,99 @@
+Metadata-Version: 2.1
+Name: iam-sarif-report
+Version: 1.0.0
+Author-email: George Alton <georgealton@gmail.com>
+License: MIT License
+        
+        Copyright (c) 2021 George Alton
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: homepage, https://github.com/georgealton/iam-sarif-report
+Project-URL: repository, https://github.com/georgealton/iam-sarif-report
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Provides-Extra: test
+Provides-Extra: scraper
+License-File: LICENSE
+
+# IAM SARIF Report
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+Validate your IAM Policies and SCPs with AWS Policy Validator, and convert those results into SARIF documents for reporting.
+
+## Use Me
+
+To generate findings, iam-sarif-report makes AWS API requests. The AWS Principal you use must be allowed to use the `access-analyzer:ValidatePolicy` command.
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "access-analyzer:ValidatePolicy",
+  "Resource": "*"
+}
+```
+
+### GitHub Action
+
+See the [action.yaml](action.yaml) for detailed usage information.
+
+```yaml
+on: [push]
+jobs:
+  example:
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      # setup aws access
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/my-github-actions-role-test
+          aws-region: eu-west-1
+      # validate some policies, and get some SARIF back
+      # the action creates .sarif file for each policy in the policies directory
+      - uses: georgealton/iam-sarif-report@v1
+        with:
+          policies: policies/
+          results: results
+      # upload sarif files
+      - uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results
+```
+
+### Locally
+
+```sh
+pipx run iam-sarif-report tests/data/policy_checks/policies/arn-region-not-allowed.json
+```
