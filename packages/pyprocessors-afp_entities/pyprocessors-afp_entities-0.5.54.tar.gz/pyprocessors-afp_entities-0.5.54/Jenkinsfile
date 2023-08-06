@@ -1,0 +1,319 @@
+pipeline {
+
+  environment {
+    PATH_HOME = "/home/jenkins"
+    PYTHONDONTWRITEBYTECODE = "1"
+    PYTHONPYCACHEPREFIX = "/tmp/.pytest_cache"
+    TEST_REPORT_DIR="/root/test-reports"
+    MAJOR_VERSION = "0"
+    MINOR_VERSION = "5"
+    GIT_AUTH = credentials('bitbucket-user')
+  }
+
+  agent none
+
+  triggers {
+    upstream(upstreamProjects: "pymultirole_plugins/" + env.BRANCH_NAME.replaceAll("/", "%2F"),\
+                                threshold: hudson.model.Result.SUCCESS)
+  }
+
+  parameters {
+      booleanParam(defaultValue: false, description: 'if set to true (ticked), it will not skip on CI commit', name: 'forcePublishing')
+  }
+
+  stages {
+
+    stage('Catch build termination') {
+      agent {
+        node {
+          label 'built-in'
+          customWorkspace "/home/jenkins/${env.JOB_NAME}"
+        }
+      }
+      stages {
+        stage('Abort if upstream or CI_commit') {
+          steps {
+            script {
+              abortBuild()
+            }
+          }
+        }
+      }
+    }
+
+    stage('Generate new version') {
+      agent {
+        node {
+          label 'built-in'
+          customWorkspace "/home/jenkins/${env.JOB_NAME}"
+        }
+      }
+
+      stages {
+
+        stage('Add credentials') {
+          steps {
+            script {
+              // Add password file for flit publishing
+              sh "cp ${env.PATH_HOME}/.passwd-pypi .env"
+            }
+          }
+        }
+
+        stage('Skip on CI commit') {
+          steps {
+            script {
+              // returnStatus = 1 when string not found -> Team commit
+              // returnStatus = 0 when string is found  -> CI commit
+              env.LAST_COMMIT_IS_TEAM = sh(
+                      script: 'git log -1 | grep "\\[Jenkins CI\\]"',
+                      returnStatus: true
+              )
+              if (LAST_COMMIT_IS_TEAM == '0') {
+                println "Last commit has been done by CI, skipping next steps"
+              } else {
+                println "Last commit has been done by Team, processing"
+              }
+              if (params.forcePublishing) {
+                println "Try to publish, considering last commit has been done by Team"
+                env.LAST_COMMIT_IS_TEAM = "1"
+              }
+            }
+          }
+        }
+
+        stage('Commit new version') {
+          when {
+            environment name: "LAST_COMMIT_IS_TEAM", value: "1"
+          }
+          steps {
+            script {
+              println("attempt to publish ${env.JOB_NAME} with version: ${MAJOR_VERSION}.${MINOR_VERSION}.${env.BUILD_ID}")
+
+              // push updates of file __init__.py
+              withCredentials([gitUsernamePassword(credentialsId: 'bitbucket-user', gitToolName: 'git-tool')]) {
+                sh "echo '\"\"\"Sherpa Consolidation processor\"\"\"' > src/pyprocessors_afp_entities/__init__.py"
+                sh "echo '__version__ = \"${MAJOR_VERSION}.${MINOR_VERSION}.${env.BUILD_ID}\"' >> src/pyprocessors_afp_entities/__init__.py"
+                sh 'git commit src/pyprocessors_afp_entities/__init__.py -m "[Jenkins CI] Commit on version files" || echo "No changes to commit"'
+                sh 'git push'
+              }
+            }
+          }
+        }
+
+      }
+    }
+
+    stage('Build, test and publish') {
+      when {
+        environment name: "LAST_COMMIT_IS_TEAM", value: "1"
+      }
+
+      agent {
+        // dockerfile agent
+        // Mounted volume for Junit reports
+        //   - docker: /root/test-reports
+        //   - host  : /tmp/_${env.JOB_NAME}/test-reports
+        dockerfile {
+          label 'built-in'
+          customWorkspace "/home/jenkins/${env.JOB_NAME}"
+          filename 'Dockerfile'
+          args "-u root --privileged -v /tmp/_${env.JOB_NAME}/test-reports:${TEST_REPORT_DIR}"
+        }
+      }
+
+      stages {
+
+        stage('Install flit & flake8') {
+          steps {
+            // remove any previous tox env
+            sh 'rm -rf .tox'
+            sh 'python -m pip install pip==22.0.3'
+            sh 'pip install --no-cache-dir flit==3.2.0 flake8==3.9.2 flakehell tox'
+            sh 'flit install'
+          }
+        }
+
+        stage('Test & lint python code') {
+          steps {
+            sh 'tox'
+          }
+        }
+
+        stage('Publish on PyPI') {
+          environment {
+            FLIT_USERNAME = getUserName ".env"
+            FLIT_PASSWORD = getUserPass ".env"
+          }
+          steps {
+            // remove any previous folder dist
+            sh 'rm -rf dist'
+            // create (as root) folder dist
+            sh 'mkdir dist'
+            // pull recent updates of file __init__.py
+            withCredentials([gitUsernamePassword(credentialsId: 'bitbucket-user', gitToolName: 'git-tool')]) {
+              sh 'git config --global pull.rebase false'
+              sh 'git pull'
+            }
+            // put back owner of pulled file
+            sh 'chown 1000:1000 src/pyprocessors_afp_entities/__init__.py'
+            // get git status
+            sh 'git status'
+            // publish on PyPI
+            sh 'flit publish'
+            // remove current folder dist
+            sh 'rm -rf dist'
+            // remove current folder .hypothesis
+            sh 'rm -rf .hypothesis'
+            // remove current folder .tox
+            sh 'rm -rf .tox'
+          }
+        }
+
+      }
+
+    }
+
+  }
+
+  post {
+    // only triggered when blue or green sign
+    success {
+      // node is specified here to get an agent
+      node('built-in') {
+        // keep using customWorkspace to store Junit report
+        ws("/home/jenkins/${env.JOB_NAME}") {
+          script {
+            try {
+              sh "rm -f results.xml"
+              sh "cp /tmp/_${env.JOB_NAME}/test-reports/results.xml results.xml"
+            } catch (Exception e) {
+              echo 'Exception occurred: ' + e.toString()
+            }
+            try {
+              junit 'results.xml'
+            } catch (Exception e) {
+              echo 'Exception occurred: ' + e.toString()
+            }
+            println "sending Systematic Build notification"
+            emailext(body: '${DEFAULT_CONTENT}', mimeType: 'text/html',
+                    replyTo: '${DEFAULT_REPLYTO}', subject: '${DEFAULT_SUBJECT}',
+                    to: '${DEFAULT_RECIPIENTS}')
+          }
+        }
+      }
+    }
+    // triggered when red sign
+    failure {
+      // node is specified here to get an agent
+      node('built-in') {
+        // keep using customWorkspace to store Junit report
+        ws("/home/jenkins/${env.JOB_NAME}") {
+          script {
+            try {
+              sh "rm -f results.xml"
+              sh "cp /tmp/_${env.JOB_NAME}/test-reports/results.xml results.xml"
+            } catch (Exception e) {
+              echo 'Exception occurred: ' + e.toString()
+            }
+            try {
+              junit 'results.xml'
+            } catch (Exception e) {
+              echo 'Exception occurred: ' + e.toString()
+            }
+            println "sending Systematic Build notification"
+            emailext(body: '${DEFAULT_CONTENT}', mimeType: 'text/html',
+                    replyTo: '${DEFAULT_REPLYTO}', subject: '${DEFAULT_SUBJECT}',
+                    to: '${DEFAULT_RECIPIENTS}')
+          }
+        }
+      }
+    }
+    // trigger every-works
+    //always {
+    //}
+  }
+
+}
+
+// return FLIT_USERNAME from given file
+def getUserName(path) {
+  USERNAME = sh(
+                 script: "grep FLIT_USERNAME ${path}|cut -d '=' -f2",
+                 returnStdout: true
+               ).trim()
+  return USERNAME
+}
+
+// return FLIT_PASSWORD from given file
+def getUserPass(path) {
+  USERPASS = sh(
+                 script: "grep FLIT_PASSWORD ${path}|cut -d '=' -f2",
+                 returnStdout: true
+               ).trim()
+  return USERPASS
+}
+
+def abortBuild() {
+  def upstream_projects = ["pymultirole_plugins"]
+  def upstream_running = null
+  def jobName
+  // iterate over upstream_projects
+  for (upstream_project in upstream_projects) {
+    Jenkins.instance.getItemByFullName(upstream_project).getItems().each { repository ->
+      def isRunning = false
+      //repository.parent.name: project
+      //repository.name: branch
+      if ( repository.name == env.BRANCH_NAME ) {
+        // iterate over all jobs of current repository
+        repository.getAllJobs().each { job ->
+          // iterate over all builds of current job
+          job.builds.each { build ->
+            // determine if a build is running or not
+            if ( build.getResult().equals(null) ) {
+              jobName = build.parent.parent.name
+              isRunning = true
+            }
+          }
+          if ( isRunning ) {
+            upstream_running = true
+          }
+        }
+      }
+    }
+  }
+  // Abort build when upstream detected
+  if (upstream_running != null) {
+    println 'Aborting build because upstream job detected (' + jobName + ')'
+    currentBuild.result = 'ABORTED'
+    currentBuild.getRawBuild().getExecutor().interrupt(Result.ABORTED)
+    sleep(1)   // Interrupt is not blocking and does not take effect immediately.
+  }
+  // Abort build when last commit is CI commit
+  // returnStatus = 1 when string not found -> Team commit
+  // returnStatus = 0 when string is found  -> CI commit
+  def last_commit_is_team = sh(
+    script: 'git log -1 | grep "\\[Jenkins CI\\]"',
+    returnStatus: true
+  )
+  if (params.forcePublishing) {
+    println "Try to publish, proceeding"
+    last_commit_is_team = 1
+  }
+  def isStartedByUser = currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause) != null
+  if (isStartedByUser) {
+    println "Job started by User, proceeding"
+    last_commit_is_team = 1
+  }
+  def isStartedByUpstream = currentBuild.rawBuild.getCause(hudson.model.Cause$UpstreamCause) != null
+  if (isStartedByUpstream) {
+    println "Job started by Upstream, proceeding"
+    last_commit_is_team = 1
+  }
+  if (last_commit_is_team == 0) {
+    println 'Aborting build because last commit has been done by CI'
+    currentBuild.result = 'ABORTED'
+    currentBuild.getRawBuild().getExecutor().interrupt(Result.ABORTED)
+    sleep(1)   // Interrupt is not blocking and does not take effect immediately.
+  }
+}
