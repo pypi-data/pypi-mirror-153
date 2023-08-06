@@ -1,0 +1,63 @@
+Metadata-Version: 2.1
+Name: dry-pipe
+Version: 0.0.11
+Summary: A Python DSL for bioinformatics pipelines
+Home-page: https://github.com/calculs-ca/DryPipe
+Author: Maxime Lévesque
+Author-email: maxime.levesque@gmail.com
+Project-URL: Bug Tracker, https://github.com/calculs-ca/DryPipe/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: click (==8.1.3)
+Requires-Dist: uvicorn (==0.17.6)
+Requires-Dist: python-socketio (==5.6.0)
+Requires-Dist: psutil (==5.9.1)
+Requires-Dist: rich (==12.4.4)
+Requires-Dist: requests (==2.27.1)
+Requires-Dist: sshkeyboard (==2.3.1)
+Provides-Extra: full
+Requires-Dist: PyYAML (==5.4.1) ; extra == 'full'
+Requires-Dist: paramiko (==2.11.0) ; extra == 'full'
+
+# DryPipe
+
+## A Python DSL for bioinformatics pipelines
+
+
+## Getting Started
+
+#### 1 Install dry-pipe in your virtualenv
+
+```shell
+    pyton3.8 -m venv your_venv 
+    source your_venv/bin/activate
+    pip install dry-pipe
+```
+
+#### 2 Write your  pipeline
+
+```python
+
+    from dry_pipe import DryPipe
+    
+    def my_pipeline_task_generator(dsl):
+        yield dsl.task(key="task1") 
+            .consumes(x=dsl.val(123)) 
+            .produces(result=dsl.file("f.txt"))
+            .calls("""
+                #!/usr/bin/env bash                
+                echo $x > $result
+            """)
+        
+    def my_pipeline():
+        return DryPipe.create_pipeline(my_pipeline_task_generator)
+```
+
+#### 3 Run it
+(assuming the above code is in module my_module.py)
+```shell
+    drypipe run --pipeline='my_module:my_pipeline'
+```
