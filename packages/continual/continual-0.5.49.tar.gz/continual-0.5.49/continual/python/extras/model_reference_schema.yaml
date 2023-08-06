@@ -1,0 +1,58 @@
+type: regex('^Model$', ignore_case=True)
+name: regex('^[A-z,0-9,_]+$', required=True)
+entity: regex('^[A-z,0-9,_]+$',required=False)
+index: regex('^[A-z,0-9,_]+$',required=True)
+time_index: regex('^[A-z,0-9,_]+$',required=False)
+documentation: str(required=False)
+description: str(required=False)
+url: str(required=False)
+owners: list(include('email'),required=False)
+target: str(requird=True)
+split: str(required=False)
+columns: list(include('column'),required=False)
+exclude_columns: list(str(), required=False)
+train: include('training', required=False)
+predict: include('prediction', required=False)
+promote: include('promotion', required=False)
+profile: include('profiling', required=False)
+query: str(required=False)
+table: str(required=False)
+---
+email: str()
+column:
+  name: str()
+  description: str(required=False)
+  type: regex('INDEX|TIME_INDEX|TEXT|NUMBER|CATEGORICAL|BOOLEAN|TIMESTAMP|DATE|NUMBERLIST|TEXTLIST',ignore_case=True)
+  entity: str()
+training:
+  schedule: include('cron', required=False)
+  metric:
+    regex('accuracy|balanced_accuracy|f1|f1_macro|f1_micro|f1_weighted|roc_auc|average_precision|precision|precision_macro|precision_micro|precision_weighted|recall|recall_macro|recall_micro|recall_weighted|log_loss|pac_score|root_mean_squared_error|mean_squared_error|mean_absolute_error|mean_absolute_error|r2',ignore_case=True,
+    required=False)
+  included_model_types: list(str(), required=False)
+  excluded_model_types: list(str(), required=False)
+  size: str(required=False)
+  plots: list(str, required=False)
+  exclude_ensemble: bool(required=False)
+  optimization:
+    regex('auto_stack|hyperparameter_tune', ignore_case=True, required=False)
+  advanced: str(required=False)
+  disable_data_checks: bool(required=False)
+  disable_data_profiling: bool(required=False)
+  disable_automl_feature_generation: bool(required=False)
+  disable_metrics: bool(required=False)
+  disable_plots: bool(required=False)
+  disable_feature_importance: bool(required=False)
+  disable_feature_timestamp_generation: bool(required=False)
+  time_limit: int(required=False)
+  size_limit: int(required=False)
+prediction:
+  schedule: include('cron', required=False)
+  incremental: bool()
+promotion:
+  policy: regex('LATEST|BEST|MANUAL',ignore_case=True,required=False)
+profiling:
+  schedule: include('cron', required=False)
+cron:
+  regex('^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every(\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*)
+  ?){5,7})$')
