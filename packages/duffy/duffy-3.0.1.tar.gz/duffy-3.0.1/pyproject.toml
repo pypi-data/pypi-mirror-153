@@ -1,0 +1,121 @@
+[tool.poetry]
+name = "duffy"
+version = "3.0.1"
+description = "CentOS CI provisioner"
+authors = ["Nils Philippsen <nils@redhat.com>", "Vipul Siddharth <siddharthvipul1@gmail.com>", "Akashdeep Dhar <akashdeep@redhat.com>", "Ben Capper <bcapper@redhat.com>"]
+license = "MIT"
+maintainers = ["Nils Philippsen <nils@redhat.com>", "Vipul Siddharth <siddharthvipul1@gmail.com>", "Akashdeep Dhar <akashdeep@redhat.com>", "Ben Capper <bcapper@redhat.com>"]
+readme = "README.md"
+homepage = "https://github.com/CentOS/duffy"
+repository = "https://github.com/CentOS/duffy"
+documentation = "https://github.com/CentOS/duffy/wiki"
+keywords = ["baremetal", "ci", "vm", "opennebula", "centos"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: Ansible",
+    "Framework :: AsyncIO",
+    "Framework :: Celery",
+    "Framework :: FastAPI",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Operating System",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+PyYAML = "^6"
+SQLAlchemy = {version = "^1.4.25", extras=["asyncio"], optional = true}
+alembic = {version = "^1.7.5", optional = true}
+bcrypt = {version = "^3.2", optional = true}
+click = "^8.0.3"
+fastapi = {version = ">=0.70", optional = true}
+uvicorn = {version = ">=0.15", optional = true}
+Jinja2 = {version = "^3.0.3", optional = true}
+ansible-runner = {version = "^2.1.1", optional = true}
+asyncpg = {version = "^0.25", optional = true}
+celery = {version = "^5.2.1", extras = ["redis"]}
+httpx = {version = ">=0.18.2", optional = true}
+ipython = {version = ">=7.29", optional = true}
+jmespath = {version = ">=0.10", optional = true}
+pottery = {version = "^3", optional = true}
+psycopg2 = {version = "^2.9.2", optional = true}
+aiodns = {version = "^3.0.0", optional = true}
+
+[tool.poetry.dev-dependencies]
+Jinja2 = "^3.0.3"
+ansible = "^5.2"
+ansible-core = "^2.12.1"
+ansible-runner = "^2.1.1"
+black = ">=21.9b0"
+fastapi = {version = ">=0.70", extras = ["test"]}
+flake8 = ">=3.9.2"
+httpx = ">=0.18.2"
+isort = "^5.9.3"
+jmespath = ">=0.10"
+poetry = "^1.1.13"
+pottery = "^3"
+pytest = ">=6.2.5"
+pytest-asyncio = ">=0.17"
+pytest-black = "^0.3.12"
+pytest-cov = "^3"
+pytest-flake8 = "^1.0.7"
+pytest-isort = ">=2"
+tox = "^3.24.4"
+
+[tool.poetry.extras]
+# keep this in sync with the real extras
+all = [
+    "SQLAlchemy", "alembic", "bcrypt", "fastapi", "uvicorn",
+    "aiodns", "ansible-runner", "Jinja2", "jmespath", "pottery",
+    "ipython",
+    "psycopg2", "asyncpg",
+    "httpx",
+]
+
+# the `serve` command
+app = [
+    "SQLAlchemy", "alembic", "bcrypt", "fastapi", "uvicorn",
+    "aiodns", "ansible-runner", "Jinja2", "jmespath", "pottery",
+]
+# the `dev-shell` command
+devshell = ["ipython"]
+# the `serve`, `worker` and `dev-shell` commands if you use PostgreSQL
+postgresql = ["psycopg2", "asyncpg"]
+# the `worker` command
+tasks = ["aiodns", "ansible-runner", "Jinja2", "jmespath", "pottery"]
+# the `serve-legacy` command
+legacy = ["httpx", "Jinja2"]
+# the `client ...` commands
+client = ["httpx"]
+
+[tool.pytest.ini_options]
+addopts = "--black --cov-config .coveragerc --cov=duffy --cov-report term --cov-report xml --cov-report html --flake8 --isort"
+flake8-max-line-length = 100
+asyncio_mode = "auto"
+
+[tool.isort]
+line_length = 100
+profile = "black"
+
+[tool.black]
+line-length = 100
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+duffy = "duffy.cli:cli"

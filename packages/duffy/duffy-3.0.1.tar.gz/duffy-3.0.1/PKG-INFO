@@ -1,0 +1,151 @@
+Metadata-Version: 2.1
+Name: duffy
+Version: 3.0.1
+Summary: CentOS CI provisioner
+Home-page: https://github.com/CentOS/duffy
+License: MIT
+Keywords: baremetal,ci,vm,opennebula,centos
+Author: Nils Philippsen
+Author-email: nils@redhat.com
+Maintainer: Nils Philippsen
+Maintainer-email: nils@redhat.com
+Requires-Python: >=3.8,<4.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Ansible
+Classifier: Framework :: AsyncIO
+Classifier: Framework :: Celery
+Classifier: Framework :: FastAPI
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Internet :: WWW/HTTP :: WSGI :: Application
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: Software Development :: Quality Assurance
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: System :: Monitoring
+Classifier: Topic :: System :: Operating System
+Provides-Extra: all
+Provides-Extra: app
+Provides-Extra: client
+Provides-Extra: devshell
+Provides-Extra: legacy
+Provides-Extra: postgresql
+Provides-Extra: tasks
+Requires-Dist: Jinja2 (>=3.0.3,<4.0.0); extra == "all" or extra == "app" or extra == "tasks" or extra == "legacy"
+Requires-Dist: PyYAML (>=6,<7)
+Requires-Dist: SQLAlchemy[asyncio] (>=1.4.25,<2.0.0); extra == "all" or extra == "app"
+Requires-Dist: aiodns (>=3.0.0,<4.0.0); extra == "all" or extra == "app" or extra == "tasks"
+Requires-Dist: alembic (>=1.7.5,<2.0.0); extra == "all" or extra == "app"
+Requires-Dist: ansible-runner (>=2.1.1,<3.0.0); extra == "all" or extra == "app" or extra == "tasks"
+Requires-Dist: asyncpg (>=0.25,<0.26); extra == "all" or extra == "postgresql"
+Requires-Dist: bcrypt (>=3.2,<4.0); extra == "all" or extra == "app"
+Requires-Dist: celery[redis] (>=5.2.1,<6.0.0)
+Requires-Dist: click (>=8.0.3,<9.0.0)
+Requires-Dist: fastapi (>=0.70); extra == "all" or extra == "app"
+Requires-Dist: httpx (>=0.18.2); extra == "all" or extra == "legacy" or extra == "client"
+Requires-Dist: ipython (>=7.29); extra == "all" or extra == "devshell"
+Requires-Dist: jmespath (>=0.10); extra == "all" or extra == "app" or extra == "tasks"
+Requires-Dist: pottery (>=3,<4); extra == "all" or extra == "app" or extra == "tasks"
+Requires-Dist: psycopg2 (>=2.9.2,<3.0.0); extra == "all" or extra == "postgresql"
+Requires-Dist: uvicorn (>=0.15); extra == "all" or extra == "app"
+Project-URL: Documentation, https://github.com/CentOS/duffy/wiki
+Project-URL: Repository, https://github.com/CentOS/duffy
+Description-Content-Type: text/markdown
+
+## Info
+Community Platform Engineering team (of Red Hat) is working on revamping this project and thus, have cleaned this repository by
+* marking other branches stale
+* Clean branch created for development
+
+to see the current deployed version of Duffy in CentOS CI Infra, check stale/master branch.
+
+
+## Duffy
+Duffy is the middle layer running ci.centos.org that manages the provisioning, maintenance and teardown / rebuild of the Nodes (physical hardware for now, VMs coming soon) that are used to run the tests in the CI Cluster.
+
+## Development
+
+### Installation
+To install Duffy:
+1. Clone the repository and navigate into the project directory.
+   ```
+   git clone https://github.com/CentOS/duffy.git
+   cd duffy
+   ```
+2. Set up and activate a virtual environment.
+   * Using native virtual environment
+     ```
+     python3 -m venv duffyenv
+     source duffyenv/bin/activate
+     ```
+   Or
+   * Using virtualenv wrapper
+     ```
+     virtualenv duffyenv
+     source duffyenv/bin/activate
+     ```
+   Or
+   * Using Poetry virtual environment shell
+     ```
+     poetry shell
+     ```
+3. Install using Poetry
+   ```
+   poetry install
+   ```
+
+### Running Duffy server
+
+#### Viewing CLI usage
+
+```
+duffy --help
+```
+
+```
+Usage: duffy [OPTIONS]
+
+  Duffy is the middle layer running ci.centos.org that manages the
+  provisioning, maintenance and teardown / rebuild of the Nodes (physical
+  hardware for now, VMs coming soon) that are used to run the tests in the CI
+  Cluster.
+
+Options:
+  -p, --portnumb INTEGER          Set the port value [0-65536]
+  -6, --ipv6                      Start the server on an IPv6 address
+  -4, --ipv4                      Start the server on an IPv4 address
+  -l, --loglevel [critical|error|warning|info|debug|trace]
+                                  Set the log level
+  --version                       Show the version and exit.
+  --help                          Show this message and exit.
+```
+
+#### Starting the server at port 8080 using IP version 4 and setting the log level to `trace`
+
+```
+duffy -p 8000 -4 -l trace
+```
+
+```
+ * Starting Duffy...
+ * Port number : 8000
+ * IP version  : 4
+ * Log level   : trace
+INFO:     Started server process [104283]
+INFO:     Waiting for application startup.
+TRACE:    ASGI [1] Started scope={'type': 'lifespan', 'asgi': {'version': '3.0', 'spec_version': '2.0'}}
+TRACE:    ASGI [1] Receive {'type': 'lifespan.startup'}
+TRACE:    ASGI [1] Send {'type': 'lifespan.startup.complete'}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+
+Exit out of the server using `Ctrl` + `C`
+
