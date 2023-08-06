@@ -1,0 +1,2778 @@
+openapi: 3.0.2
+info:
+  title: assets_query
+  version: "1.0"
+  contact:
+    email: support@alertlogic.com
+    name: Alert Logic Support
+    url: https://support.alertlogic.com
+  x-alertlogic-iws-service:
+    type: public
+  description: |-
+    ## Introduction
+    The Assets service manages customer asset models. More specifically, Assets stores a customer's
+    assets (hosts, subnets, vpcs, load balancers, IAM users, etc.) and the relationships between
+    them. Assets provides a general query mechanism to retrieve the stored data: assets query
+    service.
+
+    All of the examples in this document use curl and jq. curl can be installed via
+    [Cygwin](https://www.cygwin.com/) on Windows, or via [Homebrew](http://brew.sh/) or
+    [MacPorts](https://www.macports.org/) on OS X. curl should already be installed on any Linux or
+    Unix system. jq can be downloaded from
+    [https://stedolan.github.io/jq/](https://stedolan.github.io/jq/).
+
+    ### Principles
+    Assets works in objects and relationships. With a few restrictions, assets will store what you
+    ask it to store. It will not modify object values or relationships unless requested. It does
+    add some fields to objects and relationships.
+
+    Properties of objects are stored as `scope_$SCOPE_$PROPERTYNAME`. If you declared property `bar`
+    with scope `foo`, then the property would be named `scope_foo_bar`. Some scope and property name
+    combinations are automatically "promoted" so that both `scope_foo_bar` and `bar` are declared as
+    properties with the same value. Modifying one, though, will not modify the other.
+
+    The relationships between objects have many different uses. Some relationships are topological
+    and represent the relationships between regions, VPCs, subnets, hosts, etc. Some relationships
+    are declarative and represent information such as the AMI a hosts was started from, or which
+    Auto Scaling Groups are associated with an Elastic Load Balancer. If a relationship is declared
+    to an asset that doesn't exist, this asset will not be returned by assets_query until it is
+    declared.
+
+    All URLs for the assets query service are under `/assets_query/v1/$ACCOUNT_ID`. Most are under
+    `/assets_query/v1/$ACCOUNT_ID/deployments/$DEPLOYMENT_ID`.
+
+    All assets read requests are in the form of `GET` requests.
+
+    *Note*: some assets use a `threatiness` property which is an internal measurement used for
+    relative comparison and is not considered useful to customers.
+
+    ### Data Types
+    Asset properties may be boolean, numeric (integer or float), string, or one dimensional arrays
+    of those types.
+
+    ## Usage
+    This section contains advice and tips of how to interact with the assets query service.
+
+    All calls to assets query service must be authenticated. Authentication is done via a token
+    obtained from the AIMS service. The following will get a token and store it in `$AL_TOKEN`
+    given a valid email address and password:
+
+    ```
+    export AL_TOKEN=`curl -X POST -H "Accept: application/json" --user "$EMAIL_ADDRESS:$PASSWORD"
+    https://api.cloudinsight.alertlogic.com/aims/v1/authenticate | jq -r .authentication.token`
+    ```
+    *Note: you must use https://api.cloudinsight.alertlogic.co.uk if your console is at
+    https://console.cloudinsight.alertlogic.co.uk.*
+
+    This token will be passed as the value of the `x-aims-auth-token` header.
+
+    ### Querying Assets
+
+    #### Simple query
+    The most basic request for assets is to get all assets, and this may be a lot of data.
+    [Here is an example returning relatively small number of assets](#operation/query_assets). A
+    realistic response would have many more assets.
+
+    ### Deployment-specific query
+    You can reduce results of your request by providing particular deployment ID as part of the
+    request. [Here is an example for a deployment](#operation/query_deployment_assets).
+
+    #### Typed queries
+
+    If you want to get only a certain type of asset, you can limit the asset types using
+    `?asset_types=region` or `?asset_types=name:region`. However, although `?asset_types=region`
+    is equivalent to `?asset_types=region:region`, the latter is preferred since it allows more
+    flexibility when querying relationships. An example can be found under
+    [get just region assets](#operation/query_assets).
+
+    Once you've declared an asset type in your query, you can refer to it in subsequent query
+    parameters using its name: `?asset_types=r:region&r.created_on=1447260845785`.
+
+    The `asset_types` parameter can be used to query for long chains of related assets.
+
+    #### Filtering assets
+
+    Assets that are requested via the `asset_types` parameter can be filtered by the URL query
+    string. If `assets?asset_types=r:region,v:vpc,s:subnet` is requested, any of `r`, `v`, or `s`
+    could be filtered by their property values.
+
+    If you want to find only VPCs and subnets within the us-east-1 region, you can limit the query
+    by specifying `r.name=us-east-1`:
+
+    Like in the [VPCs and Subnets in us-east-1 General Query example](#operation/query_assets).
+
+    Assets supports queries with filters more complex than equality. The operator (special
+    character(s)) is placed immediately after the equals sign in the query string parameter.
+
+    | Operation             | Character(s)   | Format               | Example                          |
+    |-----------------------|----------------|----------------------|----------------------------------|
+    | Greater than          | `>`            | String or number     | `x.y=>5`, `x.y=>Gryffindor`      |
+    | Less than             | `<`            | String or number     | `x.y=<5`, `x.y=<Slytherin`       |
+    | Not equal             | `!`            | Scalar               | `x.name=!Draco`                  |
+    | Is not                | `!!`           | Scalar               | `x.name=!!Draco`                 |
+    | Is null               | `$null`        | None                 | `x.name=$null`                   |
+    | Is one of             | `@` or `<<`    | Comma separated list | `x.name=@Harry,Ron,Hermione`     |
+    | Is not one of         | `!@` or `!<<`  | Comma separated list | `x.name=!@Harry,Ron,Hermione`    |
+    | List contains         | `>>`           | Scalar               | `x.parents=>>Lilly`              |
+    | List does not contain | `!>>`          | Scalar               | `x.parents=!>>Lilly`             |
+    | String contains       | `%`            | String               | `x.name=%Percival`               |
+    | Regex Match           | `~`            | String               | `x.name=~neighbou?r`             |
+    | CIDR IP matching      | `:cidr_match:` | String               | `x.ip=:cidr_match:192.168.0.0/16`|
+
+    There is no way to escape these special characters.
+
+    Using "not equal" vs. "is not": the "not equal" operator `!` will never match an asset on which
+    the property being queried is not defined; the "is not" operator `!!` will always match assets
+    on which the property being queried is not defined. Use "is not" to mean "anything other than,
+    including null/undefined" and use "not equal" to mean "is defined but not equal to".
+
+    The value to filter is automatically cast to boolean, integer, or string. To override the type
+    cast and perform a string comparison, the filter value can be prefixed with `:$str:`, such as
+    `tag.tag_value=:$str:1234`. Floats are treated as strings. Arrays are treated as strings. The
+    following table describes the query string value and the value used in the query (as the
+    JSON-equivalent value) (unless override is specified).
+
+    | Query string value | Type   | JSON-equivalent value |
+    |--------------------|--------|-----------------------|
+    | `true`             | bool   | `true`                |
+    | `false`            | bool   | `false`               |
+    | `:$str:true`       | string | `"true"`              |
+    | `:$str:false`      | string | `"false"`             |
+    | `1234`             | int    | `1234`                |
+    | `-1234`            | int    | `-1234`               |
+    | `:$str:1234`       | string | `"1234"`              |
+    | `1.234`            | string | `"1.234"`             |
+    | `[1,2,3]`          | string | `"[1,2,3]"`           |
+    | `abc`              | string | `"abc"`               |
+
+    #### Filtering assets by relationship
+
+    Assets that are requested via the `asset_types` parameter can be filtered by relationships to
+    assets not requested by using the relationship operator, `..` to express relationship queries
+    to other asset types. Look at [the General Query examples](#operation/query_assets) that find
+    subnets tagged Foo, as well as without the tag Foo and without any tags.
+
+    #### Using the `any` asset type
+    There is a fake asset type called `any`. The `any` asset type can be used in the `asset_types`
+    parameter to allow any type. When combined with filters, a relationship to a set of asset types
+    can be matched. Check out the [General Query examples](#operation/query_assets) for a demo.
+
+    ### Exposures and Remediations
+
+    **Note** that `remediations/v1` endpoint documentation is located in the Remediations service documentation.
+
+    The Assets Query service provides a set of endpoints for handling exposures in the Alert Logic product.
+    A remediation is a conceptual set of work to do to fix a vulnerability. Many asset types may be
+    vulnerable, such as `host`, `vpc`, `db-instance`, `user`, etc.
+
+    When an asset is vulnerable, it has a `vulnerability` asset related to it. The vulnerability is
+    related to a `remediation` asset.
+
+    *Note*: remediations uses a `threatiness` property which is an internal measurement used for
+    relative comparison and is not considered useful to customers.
+
+    A `remediation-item` is an indication of intent to do (or not do) work for a subset of
+    vulnerabilities on vulnerable assets. A `remediation-item` may have a set of filters which limit
+    which vulnerable assets the `remediation-item` applies to.
+
+    A `remediation-item` may be in one of the following states:
+
+    ### "planned"
+    This is the initial state. A user has committed to performing the work necessary to fix a
+    vulnerability. The `remediation-item` has a `user_id` and `filters` fields. The `user_id` is the
+    user who added the remediations to their plan. The `filters` field is a list of
+    [filter](#section/Remediation-filters) strings.
+
+    ### "disposed"
+    A remediation-item may be "disposed," indicating that the vulnerabilities identified by the
+    `remediation-item` are not important enough to work on. A remediation may be disposed for one
+    of three different reasons: `"acceptable_risk"`, `"compensating_control"`, `"false_positive"`.
+    A comment and expiration date are also required to dispose a remediation-item.
+
+    ### "complete"
+    A `remediation-item` may be moved to the `complete` state. This is used to indicate that the
+    user that owns the `remediation-item` has completed the work and believes the vulnerabilities
+    attached to the `remediation-item` have been resolved.
+
+    If the vulnerable assets are scanned again and found to have the vulnerabilities, the
+    `remediation-item` state will revert to `planned`.
+
+    ### Remediation filters
+    When talking about remediations and `remediation-items`, it's important to consider any filters
+    that limit the scope of a set of vulnerabilities or a `remediation-item`. Remediation items also
+    have a (possibly empty) list of `filters`. The filter limits the scope of the remediations
+    requested (for GET requests) or limits the scope of a `remediation-item`.
+
+    The filter is composed of two parts: the filter type and the limiting property of the filter.
+    The limiting property is a field that must match vulnerable assets. E.g. the filter
+    `"image:/aws/us-east-1/image/ami-12345678"` means that a `remediation-item` only applies to
+    vulnerabilities declared on the image with key `"/aws/us-east-1/image/ami-12345678"`. Different
+    filters use a different limiting property: most use the `key` property of an asset, but not all.
+
+    #### Identity and relational filters
+    There are a number of classes of filters. The two main classes are relational filters and
+    identity filters. Relational filters yield assets (and their vulnerabilities) that have
+    relationships to the filtered asset. A filter type can be both a relational filter and an
+    identity filter. For example, `"sg:/aws/us-east-1/sg/sg-12345678"` will filter relationships
+    on the security group with that key and assets within that security group. These classes are
+    identified with `I` and `R` in the table below.
+
+    #### Using CSVs in filters
+    Some filters allow passing a comma-separated list (CSV) of limiting property values, indicating
+    that only remediations/exposures that contain **at least one** of the given values will be
+    returned. This is identified with `C` in the table below.
+
+    #### Using negation in filters
+    Some filters allow prefixing a value (or a comma-separated list (CSV)) with `!`, indicating
+    that only remediations/exposures that **do not** meet the filter criteria will be returned. This
+    is identified with `!` in the table below.
+
+    #### The `any` limiting property value
+    Some filters allow the limiting property value to be `any`, indicating that only
+    remediations/exposures that apply to the specific filter type will be returned. These are part of
+    the `any` class of filters. E.g. the filter `"s3-bucket:any"` yields only vulnerabilities on
+    s3-buckets. This is identified with `A` in the table below.
+
+    #### The `none` limiting property value
+    Some filters allow the limiting property value to be `none`, indicating that only
+    remediations/exposures that do not apply to the specific filter type will be returned. These are
+    part of the `none` class of filters. E.g. the filter `"cve:none"` yields only exposures whose
+    vulnerabilities `cve` field isn't set. This is identified with `N` in the table below.
+
+    #### Allowable Filters
+
+    The following table is a list of supported asset filters:
+
+    | Type                | Limiting Property | Class<sup>1</sup> | Example | Notes |
+    |---------------------|-------------------|-------------------|----------|------|
+    | `acl`               | `key`             | I             | `"acl:/aws/us-east-1/acl/acl-7ada4a1c"` | |
+    | `application`       | `type`            | A, R          | `"application:any"`, `"application:Apache"` | |
+    | `asset_type`        | `type`            | I             | `"asset_type:host"` | Applies to the `"type"` of the vulnerable asset. Only one `asset_type` filter of a single asset type is supported in a request. This filter must be present in the exposures query request to be included in the response. |
+    | `cloud-trail`       | `key`             | I             | `"cloud-trail:/aws/us-west-2/cloud-trail/trail/Rackspace"` | |
+    | `category`          | `categories`      | !, C, R       | `"category:security"`| Applies to the `"categories"` property of the related vulnerability. |
+    | `cve`               | `cve`             | !, A, C, N, R | `"cve:CVE-2013-1937"` | Applies to the `"cve"` property of the related vulnerability.|
+    | `cwe`               | `cwe`             | !, A, C, N, R | `"cwe:CWE-121"` | Applies to the `"cwe"` property of the related vulnerability. |
+    | `db-instance`       | `key`             | I             | `"db-instance:/aws/us-east-1/db-instance/db-12345678"` | |
+    | `deployment_id`     | `deployment_id`   | I             | `"deployment_id:825283AC-8244-412C-8674-4DBF931E6C16"` | Only one deployment_id filter may be passed per request. |
+    | `dns-zone`          | `key`             | A, I          | `"dns-zone:/a/dns-zone/key"` | |
+    | `deployment`        | `key`             | A, I          | `"deployment:/al/12345678/deployment/aws/00001111-2222-3333-4444-555566667777"` | |
+    | `host`              | `key`             | I             | `"host:/aws/us-east-1/host/i-1234567890abcdef0"` | |
+    | `image`             | `key`             | I, R          | `"image:/aws/us-east-1/ami/ami-12345678"` | |
+    | `instance-profile`  | `key`             | A, I          | `"instance-profile:/an/instance-profile/key"` | |
+    | `kms-key`           | `key`             | I             | `"kms-key:/aws/us-east-1/kms-key/1"` | |
+    | `load-balancer`     | `key`             | I, R          | `"load-balancer:/aws/us-east-1/load-balancer/s-12345678"` ||
+    | `redshift-cluster`  | `key`             | I             | `"redshift-cluster:/aws/us-east-1/redshift-cluster/rc-12345678"` | |
+    | `remediation`       | `remediation_id`  | !, C, R       | `"remediation:00001111-2222-3333-4444-555566667777"` | |
+    | `region`            | `key`             | I             | `"region:/aws/us-east-1"` | <sup>2</sup> |
+    | `role`              | `key`             | A, I          | `"role:/a/role/key"` | |
+    | `route`             | `key`             | I             | `"route:/aws/eu-west-2/route/rtb-0e738966"` | |
+    | `s3-bucket`         | `key`             | A, I          | `"s3-bucket:any"`, `"s3-bucket:/an/s3-bucket/key"` | |
+    | `severity`          | `severity`        | !, C, R       | `"severity:high"` | Applies to the `"severity"` property of the related vulnerability. |
+    | `sg`                | `key`             | I, R          | `"sg:/aws/us-east-1/sg/s-12345678"` | |
+    | `user`              | `key`             | A, I          | `"user:any"`, `"user:/aws/123456789012/user/jdoe"` | |
+    | `volume`            | `key`             | I             | `"volume:/aws/us-east-1/volume/vol-12345678"` | |
+    | `vulnerability`     | `vulnerability_id`| !, C, R       | `"vulnerability:09876543210fedcba0987654321fedcba"` | |
+    | `vulnerability:id`  | `vulnerability_id`| !, C, R       | `"vulnerability:id:09876543210fedcba0987654321fedcba"` | |
+    | `vulnerability:key` | `key`             | !, C, R       | `"vulnerability:key:/aws/us-east-1/host/i-1234567890abcdef0/vulnerability/09876543210fedcba0987654321fedcba/tcp/22"` | <sup>3</sup> |
+    | `vpc`               | `key`             | R             | `"vpc:/aws/us-east-1/vpc/vpc-12345678"` | |
+
+    Notes:
+    1. ! = negation allowed, A = `any` allowed, C = CSV allowed, I = identity, R = relational, N = `none` allowed.
+    2. The region filter will also be relational in the near future.
+    3. This selects only assets that have the vulnerability specified by the vulnerability key.
+       This will only ever return a single remediation on a single asset.
+paths:
+  /assets_query/v1/{account_id}/assets:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/ParamAssetTypes'
+      - $ref: 'parameters.yaml#/ParamReturnTypes'
+      - $ref: 'parameters.yaml#/ParamQueryFormat'
+      - $ref: 'parameters.yaml#/ParamReturnCount'
+      - $ref: 'parameters.yaml#/ParamReduce'
+      - $ref: 'parameters.yaml#/ParamQFields'
+      - $ref: 'parameters.yaml#/ParamFilter'
+      - $ref: 'parameters.yaml#/ParamFilterRelationship'
+      - $ref: 'parameters.yaml#/ParamTopoChain'
+      - $ref: 'parameters.yaml#/ParamScopeBoolean'
+      - $ref: 'parameters.yaml#/ParamIncludeAlertlogicSecurity'
+    get:
+      operationId: query_assets
+      summary: Query Assets for Account
+      description: Return a list of related assets.
+      tags:
+        - Queries
+      x-codeSamples:
+        - lang: Shell
+          label: Get all assets for an account ID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/assets" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get all assets for an account ID (topo_chain=false)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/assets&topo_chain=false" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get just region assets
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/assets?asset_types=r:region" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get all regions with the same created_on property
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/assets?asset_types=r:region&r.created_on=1447260845785" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Use the any type to get regions with related vpcs, hosts, etc.
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/assets?asset_types=r:region,x:any" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Use the relationship operator to get regions with no relationship to a vpc
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/assets?asset_types=r:region&r..vpc=false" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get account hosts that private IP address match given CIDR block
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/assets?asset_types=h:host&h.private_ip_addresses=:cidr_match:192.168.0.0/16" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/QueryAssetsResponse'
+              examples:
+                asset_types=any:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesAnyExample'
+                asset_types=region:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionExample'
+                asset_types=region,any:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionAnyExample'
+                asset_types=region & created_on:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionSameCreatedOnExample'
+                asset_types=vpc,subnet in us-east-1:
+                  $ref: 'examples.yaml#/QueryAssetsAssetVPCsAndSubnetsInRegionExample'
+                asset_types=host,subnet,vpc in us-west-1:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesVPCSubnetHostInRegionExample'
+                asset_types=region & not related to a vpc:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionNotRelatedToAVpcExample'
+                asset_types=host & ip_addresses match CIDR 192.168.0.0/16:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesHostCIDRMatchExample'
+                topo_chain=false:
+                  $ref: 'examples.yaml#/QueryAssetsTopoChainFalseExample'
+        "400":
+          $ref: 'responses.yaml#/QueryAssetsBadRequestError'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+  /assets_query/v1/{account_id}/asset_groups:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/ParamReturnAllProperties'
+    get:
+      operationId: list_asset_groups
+      summary: List Asset Groups (Preview)
+      description: |-
+        **Disclaimer: This endpoint is currently under development. The request parameters, response format
+        or the endpoint itself may be changed or removed at any time without notice.**
+        
+        List asset groups for given account.
+      tags:
+        - Queries
+      x-codeSamples:
+        - lang: Shell
+          label: List Asset Groups
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/asset_groups" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/ListAssetGroupsResponse'
+              examples:
+                Topology Preview Example:
+                  $ref: 'examples.yaml#/ListAssetGroupsExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      security:
+        - x-aims-auth-token: []
+    put:
+      operationId: asset_group
+      summary: Create/Rename/Update/Delete Asset Group
+      description: |-
+        ### Create/Rename/Update/Delete Asset Group
+        Creates, renames, updates, or deletes an `asset-group` asset. On deletion, deletes any references in linked groups.
+        If a linked group has only a single reference in it, and would be emptied as a result
+        it will also be deleted. On rename, linked groups (that reference the renamed group) also have their reference updated.
+      tags:
+        - Asset Groups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: 'schemas.yaml#/CreateAssetGroupRequestBody'
+                - $ref: 'schemas.yaml#/RenameAssetGroupRequestBody'
+                - $ref: 'schemas.yaml#/UpdateAssetGroupRequestBody'
+                - $ref: 'schemas.yaml#/DeleteAssetGroupRequestBody'
+            examples:
+              Create Asset Group Request Body Example:
+                $ref: 'examples.yaml#/CreateAssetGroupRequestBodyExample'
+              Delete Asset Group Request Body Example:
+                $ref: 'examples.yaml#/DeleteAssetGroupRequestBodyExample'
+              Rename Asset Group Request Body Example:
+                $ref: 'examples.yaml#/RenameAssetGroupRequestBodyExample'
+              Update Asset Group Request Body Example:
+                $ref: 'examples.yaml#/UpdateAssetGroupRequestBodyExample'
+      responses:
+        "200":
+          description: Delete Asset Group OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/AssetGroupDeleteResponse'
+              examples:
+                dry_run=true:
+                  $ref: 'examples.yaml#/DeleteAssetGroupsDryRunResponse'
+                dry_run=false:
+                  $ref: 'examples.yaml#/DeleteAssetGroupsResponse'
+        "201":
+          description: Create/Rename/Update Asset Group OK
+        "304":
+          description: Rename/Update Asset Group OK (Not Modified)
+        "400":
+          $ref: 'responses.yaml#/AssetGroupsBadRequest'
+        "404":
+          $ref: 'responses.yaml#/AssetGroupNotFound'
+        "409":
+          $ref: 'responses.yaml#/AssetGroupConflict'
+  /assets_query/v1/{account_id}/deployments/{deployment_id}/assets:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/UrlParamDeploymentId'
+      - $ref: 'parameters.yaml#/ParamAssetTypes'
+      - $ref: 'parameters.yaml#/ParamReturnTypes'
+      - $ref: 'parameters.yaml#/ParamQueryFormat'
+      - $ref: 'parameters.yaml#/ParamReturnCount'
+      - $ref: 'parameters.yaml#/ParamReduce'
+      - $ref: 'parameters.yaml#/ParamQFields'
+      - $ref: 'parameters.yaml#/ParamFilter'
+      - $ref: 'parameters.yaml#/ParamFilterRelationship'
+      - $ref: 'parameters.yaml#/ParamTopoChain'
+      - $ref: 'parameters.yaml#/ParamScopeBoolean'
+      - $ref: 'parameters.yaml#/ParamIncludeAlertlogicSecurity'
+    get:
+      operationId: query_deployment_assets
+      summary: Query Assets in Deployment
+      description: Return a list of related assets in a single deployment.
+      tags:
+        - Queries
+      x-codeSamples:
+        - lang: Shell
+          label: Get all assets in deployment
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/1C0EFEC8-7DBE-480D-A025-ECC13DE30AD5/assets" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get all assets in deployment (topo_chain=false)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/1C0EFEC8-7DBE-480D-A025-ECC13DE30AD5/assets&topo_chain=false" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Find regions related to a specific subnet
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327/assets?asset_types=r:region,s:subnet&s.key=/aws/us-west-2/subnet/subnet-11223344" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: VPCs and Subnets in us-east-1
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327/assets?asset_types=r:region,v:vpc,s:subnet&r.name=us-east-1" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get every host in every subnet (No subnets without hosts)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/844581E6-4018-4DA8-8CF9-0D7C49EF171B/assets?asset_types=s:subnet,h:host" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Host, subnet, vpc, and region
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/844581E6-4018-4DA8-8CF9-0D7C49EF171B/assets?asset_types=h:host,s:subnet,v:vpc,r:region" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Host, subnet, vpc, in region us-west-1
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/844581E6-4018-4DA8-8CF9-0D7C49EF171B/assets?asset_types=h:host,s:subnet,v:vpc,r:region&r.key=/aws/us-west-1" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Use the relationship operator to get regions with no relationship to a vpc
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/844581E6-4018-4DA8-8CF9-0D7C49EF171B/assets?asset_types=r:region&r..vpc=false" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get account hosts that private IP address match given CIDR block
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/844581E6-4018-4DA8-8CF9-0D7C49EF171B/assets?asset_types=h:host&h.private_ip_addresses=:cidr_match:192.168.0.0/16" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/QueryAssetsResponse'
+              examples:
+                asset_types=any:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesAnyExample'
+                asset_types=region:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionExample'
+                asset_types=region,any:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionAnyExample'
+                asset_types=region & created_on:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionSameCreatedOnExample'
+                asset_types=vpc,subnet in us-east-1:
+                  $ref: 'examples.yaml#/QueryAssetsAssetVPCsAndSubnetsInRegionExample'
+                asset_types=host,subnet,vpc in us-west-1:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesVPCSubnetHostInRegionExample'
+                asset_types=region & not related to a vpc:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesRegionNotRelatedToAVpcExample'
+                asset_types=host & ip_addresses match CIDR 192.168.0.0/16:
+                  $ref: 'examples.yaml#/QueryAssetsAssetTypesHostCIDRMatchExample'
+                topo_chain=false:
+                  $ref: 'examples.yaml#/QueryAssetsTopoChainFalseExample'
+        "400":
+          $ref: 'responses.yaml#/QueryAssetsBadRequestError'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+  /assets_query/v1/{account_id}/find:
+    get:
+      operationId: find_asset
+      summary: Find Asset
+      description: |-
+        Finds an asset quickly using known identifiers. The query string parameters for different
+        find operations are grouped together:
+
+        To find a collector by type and UUID, specify the following query parameters:
+
+        * `collector_type` (default: `any`)
+        * `return_type` (default: `collector`)
+        * `uuid`
+
+        To find a host by its associated appliance UUID and host parameters, specify the following
+        query parameters:
+
+        * `collector_type` (must be set to `appliance`)
+        * `ip_address`
+        * `uuid`
+
+        To get the metadata for a host, specify the following query parameters:
+
+        * `collector_type` (default: `any`)
+        * `return_type` (must be set to `host_metadata`)
+        * `uuid`
+
+        To find a host by network UUID and host parameters, specify the following query parameters:
+
+        * `ip_address`
+        * `network_uuid`
+        * `return_type` (must be set to `host`)
+      tags:
+        - Queries
+      x-codeSamples:
+        - lang: Shell
+          label: Find agent by UUID (collector_type=agent)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/find?collector_type=agent&uuid=CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Find collector by UUID (collector_type=collector)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/find?collector_type=collector&uuid=BE2910F7-66DF-4FAD-8B61-6E046594E06E" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Find agent by UUID (collector_type=any)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/find?collector_type=any&uuid=CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Find host by appliance UUID and host parameters
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/find?collector_type=appliance&uuid=17A7CDD7-9A98-4538-A81C-48FA588715F5&ip_address=10.0.44.188&return_type=host"
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Find host by network UUID and host parameters
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/find?network_uuid=15C0CCBD-7E16-44B0-8406-B4C75BFE2374&ip_address=10.0.44.188&return_type=host"
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Find host metadata by agent UUID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/find?collector_type=agent&uuid=CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327&return_type=host_metadata"
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      parameters:
+        - $ref: 'parameters.yaml#/UrlParamAccountId'
+        - schema:
+            type: string
+          in: query
+          name: collector_type
+          description: |-
+            Type of collector to find by UUID. A comma-separated list of values can be provided and
+            each type will be checked. `any` will only be expanded if it is the only type provided.
+            Allowed values:
+
+            * any
+            * agent
+            * appliance
+            * collector
+            * remote-source
+        - schema:
+            type: string
+          in: query
+          name: uuid
+          description: The UUID of the collector asset
+        - schema:
+            type: string
+            enum:
+              - collector
+              - host_metadata
+              - host
+          in: query
+          name: return_type
+          description: |-
+            The return for this find operation. The default is `collector`, and note that
+            `host` and `host_metadata` are not compatible with the `collector_type=collector`,
+            because it has no associated host.
+        - schema:
+            type: string
+          in: query
+          name: ip_address
+          description: |-
+            The IP address of the host to find, in text representation. Must be used in
+            conjunction with the `collector_type=appliance` parameter.
+        - schema:
+            type: string
+          in: query
+          name: network_uuid
+          description: |-
+            The value of the `network_uuid` property on the network/vpc/vnet asset that contains
+            the host to find.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/FindAssetResponse'
+              examples:
+                Find agent by UUID:
+                  $ref: 'examples.yaml#/FindAssetAgentByUuidExample'
+                Find collector by UUID:
+                  $ref: 'examples.yaml#/FindAssetCollectorByUuidExample'
+                Find host by appliance UUID and host parameters:
+                  $ref: 'examples.yaml#/FindAssetHostByApplianceParamsExample'
+                Find host by network UUID and host parameters:
+                  $ref: 'examples.yaml#/FindAssetHostByNetworkParamsExample'
+                Find host metadata by agent/appliance UUID:
+                  $ref: 'examples.yaml#/FindAssetHostMetadataExample'
+        "400":
+          $ref: 'responses.yaml#/FindAssetBadRequest'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "409":
+          $ref: 'responses.yaml#/FindAssetConflict'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+    post:
+      operationId: find_assets
+      summary: Find Assets
+      description: |-
+        Finds a list of assets quickly using known identifiers. This endpoint is limited to specific
+        asset types, currently: agents, appliances, hosts and remote sources.  If the asset is
+        found, the response will contain the asset details, keyed by the identifiers in the request
+        parameters. If the asset is not found, the response will contain a `null` value, keyed by
+        the identifiers in the request parameters.
+
+        Collector results are keyed by the `uuid` property in the request parameters.
+
+        When a host is found by appliance, results are keyed by the `uuid` and `ip_address` request
+        parameters, separated by `,`.
+
+        When a host is found by network, results are keyed by the `network_uuid` and `ip_address`
+        request parameters, separated by `,`.
+      tags:
+        - Queries
+      x-codeSamples:
+        - lang: Shell
+          label: Sample request
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/find"
+                 -XPOST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "parameters": [
+                {
+                  "uuid": "CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327"
+                },
+                {
+                  "uuid": "85ED437D-6489-43EB-821E-E880B47223D6",
+                  "collector_type": "appliance"
+                },
+                {
+                  "uuid": "85ED437D-6489-43EB-821E-E880B47223D6",
+                  "collector_type": "appliance",
+                  "ip_address": "10.0.0.123",
+                  "return_type": "host"
+                },
+                {
+                  "uuid": "C9E21E91-0487-4D2E-A5F0-DF318FF21E87",
+                  "collector_type": ["agent", "appliance"]
+                },
+                {
+                  "network_uuid": "15C0CCBD-7E16-44B0-8406-B4C75BFE2374",
+                  "ip_address": "10.0.0.124",
+                  "return_type": "host"
+                }
+              ]
+            }
+            EOF
+      parameters:
+        - $ref: 'parameters.yaml#/UrlParamAccountId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parameters:
+                  type: array
+                  description: |-
+                    The list of request objects, each containing parameters of a
+                    [find asset](#operation/find_asset) operation (see description for full
+                    details).
+                  items:
+                    type: object
+                    description: |-
+                      A complete set of [find asset](#operation/find_asset) parameters (see
+                      description for full details).
+                    properties:
+                      collector_type:
+                        type: string
+                        description: |-
+                          Type of collector to find by UUID. A comma-separated list of values can
+                          be provided and each type will be checked. `any` will only be expanded
+                          if it is the only type provided. Allowed values:
+
+                          * any
+                          * agent
+                          * appliance
+                          * collector
+                          * remote-source
+                      uuid:
+                        type: string
+                        description: The UUID of the collector asset
+                      return_type:
+                        type: string
+                        enum:
+                          - collector
+                          - host_metadata
+                          - host
+                        description: |-
+                          The return for this find operation. The default is `collector`, and note
+                          that `host` and `host_metadata` are not compatible with the
+                          `collector_type=collector`, because it has no associated host.
+                      ip_address:
+                        type: string
+                        description: |-
+                          The IP address of the host to find, in text representation. Must be used
+                          in conjunction with the `collector_type=appliance` parameter.
+                      network_uuid:
+                        type: string
+                        description: |-
+                          The value of the `network_uuid` property on the network/vpc/vnet asset
+                          that contains the host to find.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/FindAssetsResponse'
+              examples:
+                Successful response:
+                  $ref: 'examples.yaml#/FindAssetsExample'
+        "400":
+          $ref: 'responses.yaml#/FindAssetBadRequest'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+  /assets_query/v1/{account_id}/details:
+    get:
+      operationId: get_asset_details
+      summary: Get Asset Details
+      description: |-
+        Fetches details and elaborations about individual assets and their surroundings, such as
+        complete asset details or an asset's network neighborhood or connectivity. The query string
+        parameters for different details operations are grouped together:
+
+        To get details of an asset by `type`, `key`, `deployment`, and `region`, specify the
+        following query parameters:
+
+        * `type` (must be `host`)
+        * `key`
+        * `deployment`
+        * `region`
+
+        To get details of an asset by `type` and `deployment`, specify the following query
+        parameters:
+
+        * `type` (must be `deployment`)
+        * `deployment`
+
+        To get details of an asset by `appliance_uuid` and `ip_address`, specify the following
+        query parameters:
+
+        * `appliance_uuid`
+        * `ip_address`
+        * `port` (optional, always provide if available)
+
+        To get details of an asset by `type` and `uuid`, specify the following query parameters:
+
+        * `type` (default: `any`)
+        * `uuid`
+
+        To get details of an asset by `deployment`, `ip addresses` and `network`, specify the following query parameters:
+
+        * `deployment`
+        * `ip_address`
+        * `network`
+
+        To get details of an asset by `user_id`, specify the following query parameters:
+
+        * `user_id` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        To get details of an asset by `deployment` and `user_id`, specify the following query parameters:
+
+        * `deployment`
+        * `user_id` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        To get details of an asset by `user_name`, specify the following query parameters:
+
+        * `user_name` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        To get details of an asset by `deployment` and `user_id`, specify the following query parameters:
+
+        * `deployment`
+        * `user_name` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        Note that when calling this endpoint with query options `deployment`, `network` and `ip_address` set, if a host is found,
+        any subnet that the host isn't related to but it could be (the IP address matches the subnet mask) the additional unrelated
+        subnet(s) will be returned under the `subnet` key in the response.
+      tags:
+        - Queries
+      x-codeSamples:
+        - lang: Shell
+          label: Type, Key, Deployment, Region
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?type=host&key=id:i-0fa67ce21528409bc&deployment=aws:1234567890&region=id:us-east-2" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Type, Deployment
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?type=deployment&deployment=aws:1234567890" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Collector UUID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?type=collector&uuid=35DCF858-A0EE-4C95-B992-E268DB22FDE8" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Host UUID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?type=host&uuid=CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Appliance UUID, IP address
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?appliance_uuid=CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327&ip_address=10.2.3.17" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Appliance UUID, IP address, Port
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?appliance_uuid=CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327&ip_address=10.2.3.17&port=80" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Deployment, IP addresses, Network
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?deployment=aws:1234567890&ip_address=10.2.3.17&network=/aws/us-east-1/vpc/vpc-12345678" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Remote Source
+          source: |-
+            curl "ttps://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?uuid=8EB3C34C-4889-4BA1-B615-BAC3FD5138FC&type=remote-source" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: User ID
+          source: |-
+            curl "ttps://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?user_id=AIDAI2INU2Y52FB2B7JOM" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: User Name
+          source: |-
+            curl "ttps://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?user_name=username-5cf2df986ad9411d" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Deployment, User ID
+          source: |-
+            curl "ttps://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?deployment=id:33CB4E47-8FBA-4502-A8F2-F9EE1B566454&user_id=AIDAI2INU2Y52FB2B7JOM" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Deployment, User Name
+          source: |-
+            curl "ttps://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details?deployment=id:33CB4E47-8FBA-4502-A8F2-F9EE1B566454&user_name=username-5cf2df986ad9411d" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      parameters:
+        - $ref: 'parameters.yaml#/UrlParamAccountId'
+        - schema:
+            type: string
+          in: query
+          name: type
+          description: |-
+            The asset type(s) to look up, separated by commas. Note that multiple values are only
+            supported by some flavors (see description) — sometimes only `host` or `deployment` are
+            acceptable.
+
+            When passing the `uuid` parameter, the order provided is the order that the types will
+            be looked up; if you set `agent`/`appliance` prior to `host`, the host will be detailed
+            as a `related` asset to the associated `agent`/`appliance` asset.
+
+            Allowed values:
+
+            * any
+            * deployment
+            * agent
+            * appliance
+            * collector
+            * host
+            * remote-source
+        - schema:
+            type: string
+          in: query
+          name: key
+          description: |-
+            The native AWS ID (prefixed by kind) or the full asset key of the target asset. Key is
+            either a full asset key, or must be prefixed by `id:`, followed by the asset's native
+            ID (e.g. instance ID of a host in AWS). Initially, the expected value is
+            `id:AWSInstanceId`, e.g. `id:i-0fa67ce21528409bc`. *Note: If you use `id:AWSInstanceId`
+            then `region` must be defined as region ID `id:AWSRegionId`*
+        - schema:
+            type: string
+          in: query
+          name: deployment
+          description: |-
+            The native AWS account ID or Azure subscription ID (prefixed by kind), or the internal
+            deployment UUID. Deployment is either the deployment's Alert Logic UUID,
+            or the native deployment ID prefixed by kind (either `aws:` or `azure:`). The expected
+            value is either `aws:{AWSAccountId}` or `azure:{AzureSubscriptionId}` (e.g.,
+            `aws:1234567890` or `azure:713CEFBB-E37E-4119-A1AA-458840BFD878`).
+        - schema:
+            type: string
+          in: query
+          name: region
+          description: |-
+            The AWS region ID (prefixed by kind) or the full asset key. Region is either a full
+            asset key, or must be prefixed by `id:`, followed by the asset's native `ID` (e.g.,
+            region ID in AWS). Initially, the expected value is id:AWSRegionId, e.g.,
+            `id:us-east-2`.
+        - schema:
+            type: string
+          in: query
+          name: appliance_uuid
+          description: |-
+            The UUID of the appliance protecting the host to elaborate, which will be the source
+            of any IDS events generated for the host. The appliance UUID is the UUID issued to the
+            appliance agent and contained in its agent certificate.
+        - schema:
+            type: string
+          in: query
+          name: ip_address
+          description: |-
+            A CSV of the IP address(es) of the target protected host. The IP address is the target
+            IP, i.e. the IP of a protected asset (being defined as any IP address in the set of
+            protected subnets, itself known as "home net"). If more than one IP address is given,
+            all of them must be target IPs of the protected asset.
+        - schema:
+            type: string
+          in: query
+          name: port
+          description: The TCP or UDP port on the target protected host
+        - schema:
+            type: string
+          in: query
+          name: network
+          description: |-
+            The network asset key, e.g. a vpc key: `/aws/us-east-1/vpc/vpc-12345678`.
+        - schema:
+            type: string
+          in: query
+          name: uuid
+          description: |-
+            The UUID of the asset `type` being elaborated. The host UUID for a `host` is the UUID
+            issued to its associated agent or appliance, and contained in its agent certificate.
+        - schema:
+            type: string
+          in: query
+          name: user_id
+          description: |-
+            The user ID of the user asset being elaborated.
+        - schema:
+            type: string
+          in: query
+          name: user_name
+          description: |-
+            The user name of the user asset being elaborated.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/AssetDetailsResponse'
+              examples:
+                Collector UUID Success Response:
+                  $ref: 'examples.yaml#/AssetDetailsCollectorExample'
+                Host UUID Success Response:
+                  $ref: 'examples.yaml#/AssetDetailsHostExample'
+                Deployment Success Response:
+                  $ref: 'examples.yaml#/AssetDetailsDeploymentExample'
+                Host by Deployment, IP, Network Success Response:
+                  $ref: 'examples.yaml#/AssetDetailsHostByDeploymentIPNetworkExample'
+                Remote Source Details Success Response:
+                  $ref: 'examples.yaml#/AssetDetailsRemoteSource'
+                User by ID/name Details Success Response:
+                  $ref: 'examples.yaml#/AssetDetailsUser'
+        "400":
+          $ref: 'responses.yaml#/AssetDetailsBadRequest'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "409":
+          $ref: 'responses.yaml#/AssetDetailsConflict'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+    post:
+      operationId: get_asset_details_post
+      summary: Get Asset Details
+      description: |-
+        Fetches details and elaborations about individual assets and their surroundings, such as
+        complete asset details or an asset's network neighborhood or connectivity. The request body json
+        for different details operations are grouped together:
+
+        To get details of an asset by `type`, `key`, `deployment`, and `region`, specify the
+        following request body fields:
+
+        * `type` (must be `host`)
+        * `key`
+        * `deployment`
+        * `region`
+
+        To get details of an asset by `type` and `deployment`, specify the following request body fields:
+
+        * `type` (must be `deployment`)
+        * `deployment`
+
+        To get details of an asset by `appliance_uuid` and `ip_address`, specify the following
+        request body fields:
+
+        * `appliance_uuid`
+        * `ip_address`
+        * `port` (optional, always provide if available)
+
+        To get details of an asset by `type` and `uuid`, specify the following request body fields:
+
+        * `type` (default: `any`)
+        * `uuid`
+
+        To get details of an asset by `deployment`, `ip address` and `network`, specify the following request body fields:
+
+        * `deployment`
+        * `ip_address`
+        * `network`
+
+        To get details of an asset by `user_id`, specify the following request body fields:
+
+        * `user_id` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        To get details of an asset by `deployment` and `user_id`, specify the following request body fields:
+
+        * `deployment`
+        * `user_id` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        To get details of an asset by `user_name`, specify the following request body fields:
+
+        * `user_name` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        To get details of an asset by `deployment` and `user_id`, specify the following request body fields:
+
+        * `deployment`
+        * `user_name` (note that this query will execute an exact match and will not normalize the input while searching)
+
+        Note that when calling this endpoint with query options `deployment`, `network` and `ip_address` set, if a host is found,
+        any subnet that the host isn't related to but it could be (the IP address matches the subnet mask) the additional unrelated
+        subnet(s) will be returned under the `subnet` key in the response.
+      tags:
+        - Queries
+      x-codeSamples:
+        - lang: Shell
+          label: 'Type, Key, Deployment, Region'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "type": "host",
+              "key": "id:i-0fa67ce21528409bc",
+              "deployment": "aws:1234567890",
+              "region": "id:us-east-2"
+            }
+            EOF
+        - lang: Shell
+          label: 'Type, Deployment'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "type": "deployment",
+              "deployment": "aws:1234567890"
+            }
+            EOF
+        - lang: Shell
+          label: Collector UUID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "type": "collector",
+              "uuid": "35DCF858-A0EE-4C95-B992-E268DB22FDE8"
+            }
+            EOF
+        - lang: Shell
+          label: Host UUID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "type": "host",
+              "uuid": "CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327"
+            }
+            EOF
+        - lang: Shell
+          label: 'Appliance UUID, IP address'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "appliance_uuid": "CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327",
+              "ip_address": "10.2.3.17"
+            }
+            EOF
+        - lang: Shell
+          label: 'Appliance UUID, IP address, Port'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "appliance_uuid": "CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327",
+              "ip_address": "10.2.3.17",
+              "port": "80"
+            }
+            EOF
+        - lang: Shell
+          label: 'Deployment, IP address, Network'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "deployment": "aws:1234567890",
+              "ip_address": "10.2.3.17",
+              "network": "/aws/us-east-1/vpc/vpc-12345678"
+            }
+            EOF
+        - lang: Shell
+          label: 'Deployment, Multiple IP addresses, Network'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "deployment": "aws:1234567890",
+              "ip_address": ["10.2.3.17", "10.2.4.18"],
+              "network": "/aws/us-east-1/vpc/vpc-12345678"
+            }
+            EOF
+        - lang: Shell
+          label: 'Remote Source'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "uuid": "8EB3C34C-4889-4BA1-B615-BAC3FD5138FC",
+              "type": "remote-source"
+            }
+            EOF
+        - lang: Shell
+          label: 'User ID'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "user_id": "AIDAI2INU2Y52FB2B7JOM"
+            }
+            EOF     
+        - lang: Shell
+          label: 'User Name'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "user_name": "username-5cf2df986ad941"
+            }
+            EOF
+        - lang: Shell
+          label: 'Deployment, User ID'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "deployment": "id:33CB4E47-8FBA-4502-A8F2-F9EE1B566454"
+              "user_id": "AIDAI2INU2Y52FB2B7JOM"
+            }
+            EOF
+        - lang: Shell
+          label: 'Deployment, User Name'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/details" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "deployment": "id:33CB4E47-8FBA-4502-A8F2-F9EE1B566454"
+              "user_naem": "username-5cf2df986ad9411"
+            }
+            EOF
+
+      parameters:
+        - $ref: parameters.yaml#/UrlParamAccountId
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: schemas.yaml#/AssetDetailsResponse
+              examples:
+                Collector UUID Success Response:
+                  $ref: examples.yaml#/AssetDetailsCollectorExample
+                Host UUID Success Response:
+                  $ref: examples.yaml#/AssetDetailsHostExample
+                Deployment Success Response:
+                  $ref: examples.yaml#/AssetDetailsDeploymentExample
+                'Host by Deployment, IP, Network Success Response':
+                  $ref: examples.yaml#/AssetDetailsHostByDeploymentIPNetworkExample
+                Remote Source Details Success Response:
+                  $ref: examples.yaml#/AssetDetailsRemoteSource
+                User by ID/name Details Success Response:
+                  $ref: 'examples.yaml#/AssetDetailsUser'
+        '400':
+          $ref: responses.yaml#/AssetDetailsBadRequest
+        '401':
+          $ref: responses.yaml#/Unauthorized
+        '403':
+          $ref: responses.yaml#/Forbidden
+        '404':
+          $ref: responses.yaml#/NotFound
+        '409':
+          $ref: responses.yaml#/AssetDetailsConflict
+        '503':
+          $ref: responses.yaml#/UnavailableError
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - description: 'Get details of an asset by `type`, `key`, `deployment`, and `region`.'
+                  title: 'Type, Key, Deployment, and Region'
+                  properties:
+                    type:
+                      type: string
+                      description: The asset type to look up. Only `host` is supported for this flavor of get details.
+                      default: host
+                    key:
+                      type: string
+                      description: |-
+                        The native AWS ID (prefixed by kind) or the full asset key of the target asset. Key is
+                        either a full asset key, or must be prefixed by `id:`, followed by the asset's native
+                        ID (e.g. instance ID of a host in AWS). Initially, the expected value is
+                        `id:AWSInstanceId`. *Note: If you use `id:AWSInstanceId`
+                        then `region` must be defined as region ID `id:AWSRegionId`*
+                      example: 'id:i-0fa67ce21528409bc'
+                    deployment:
+                      type: string
+                      description: |-
+                        The native AWS account ID or Azure subscription ID (prefixed by kind), or the internal
+                        deployment UUID. Deployment is either the deployment's Alert Logic UUID,
+                        or the native deployment ID prefixed by kind (either `aws:` or `azure:`). The expected
+                        value is either `aws:{AWSAccountId}` or `azure:{AzureSubscriptionId}` (e.g.,
+                        `aws:1234567890` or `azure:713CEFBB-E37E-4119-A1AA-458840BFD878`).
+                      example: 'aws:1234567890 or azure:713CEFBB-E37E-4119-A1AA-458840BFD878'
+                    region:
+                      type: string
+                      description: |-
+                        The AWS region ID (prefixed by kind) or the full asset key. Region is either a full
+                        asset key, or must be prefixed by `id:`, followed by the asset's native `ID` (e.g.,
+                        region ID in AWS). Initially, the expected value is id:AWSRegionId, e.g.,
+                        `id:us-east-2`.
+                      example: 'id:us-east-2'
+                  required:
+                    - type
+                    - key
+                    - deployment
+                    - region
+                - description: Get details of an asset by `type` and `deployment`
+                  title: 'Type and Deployment'
+                  properties:
+                    type:
+                      type: string
+                      default: deployment
+                      description: must be `deployment`
+                    deployment:
+                      type: string
+                      description: |-
+                        The native AWS account ID or Azure subscription ID (prefixed by kind), or the internal
+                        deployment UUID. Deployment is either the deployment's Alert Logic UUID,
+                        or the native deployment ID prefixed by kind (either `aws:` or `azure:`). The expected
+                        value is either `aws:{AWSAccountId}` or `azure:{AzureSubscriptionId}` (e.g.,
+                        `aws:1234567890` or `azure:713CEFBB-E37E-4119-A1AA-458840BFD878`).
+                  required:
+                    - type
+                    - deployment
+                - description: To get details of an asset by `appliance_uuid` and `ip_address`.  Port is optional bu t should be provided if available.
+                  title: 'Appliance UUID, IP Address, and Port (Optional)'
+                  properties:
+                    appliance_uuid:
+                      type: string
+                      description: |-
+                        The UUID of the appliance protecting the host to elaborate, which will be the source
+                        of any IDS events generated for the host. The appliance UUID is the UUID issued to the
+                        appliance agent and contained in its agent certificate.
+                    ip_address:
+                      description: |-
+                        A CSV or array of the IP address(es) of the target protected host. The IP address is the target
+                        IP, i.e. the IP of a protected asset (being defined as any IP address in the set of
+                        protected subnets, itself known as "home net"). If more than one IP address is given,
+                        all of them must be target IPs of the protected asset.
+                      oneOf:
+                        - type: array
+                          items:
+                            type: string
+                        - type: string
+                    port:
+                      type: string
+                      description: The TCP or UDP port on the target protected host
+                  required:
+                    - appliance_uuid
+                    - ip_address
+                - description: Get details of an asset by `type` and `uuid`
+                  title: 'Type and UUID'
+                  properties:
+                    type:
+                      type: string
+                      default: any
+                      enum:
+                        - any
+                        - deployment
+                        - agent
+                        - appliance
+                        - collector
+                        - host
+                        - remote-source
+                      description: |-
+                        The asset type(s) to look up, separated by commas. Note that multiple values are only
+                        supported by some flavors (see description) — sometimes only `host` or `deployment` are
+                        acceptable.
+
+                        When passing the `uuid` parameter, the order provided is the order that the types will
+                        be looked up; if you set `agent`/`appliance` prior to `host`, the host will be detailed
+                        as a `related` asset to the associated `agent`/`appliance` asset.
+                    uuid:
+                      type: string
+                      description: |-
+                        The UUID of the asset `type` being elaborated. The host UUID for a `host` is the UUID
+                        issued to its associated agent or appliance, and contained in its agent certificate.
+                  required:
+                    - type
+                    - uuid
+                - description: |-
+                    Get details of an asset by `deployment`, `ip address` and `network`.
+
+                    Note - that when calling this endpoint with query options `deployment`, `network` and `ip_address` set, if a host is found,
+                    any subnet that the host isn't related to but it could be (the IP address matches the subnet mask) the additional unrelated
+                    subnet(s) will be returned under the `subnet` key in the response.
+                  title: 'Deployment, IP Address, and Network'
+                  properties:
+                    deployment:
+                      type: string
+                      description: |-
+                        The native AWS account ID or Azure subscription ID (prefixed by kind), or the internal
+                        deployment UUID. Deployment is either the deployment's Alert Logic UUID,
+                        or the native deployment ID prefixed by kind (either `aws:` or `azure:`). The expected
+                        value is either `aws:{AWSAccountId}` or `azure:{AzureSubscriptionId}` (e.g.,
+                        `aws:1234567890` or `azure:713CEFBB-E37E-4119-A1AA-458840BFD878`).
+                    ip_address:
+                      oneOf:
+                        - type: array
+                          items:
+                            type: string
+                        - type: string
+                          properties: { }
+                      description: |-
+                        A CSV of the IP address(es) of the target protected host. The IP address is the target
+                        IP, i.e. the IP of a protected asset (being defined as any IP address in the set of
+                        protected subnets, itself known as "home net"). If more than one IP address is given,
+                        all of them must be target IPs of the protected asset.
+                    network:
+                      type: string
+                      description: 'The network asset key, e.g. a vpc key: `/aws/us-east-1/vpc/vpc-12345678`.'
+                  required:
+                    - deployment
+                    - ip_address
+                    - network
+              type: object
+  /assets_query/v2/{account_id}/exposures:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+    get:
+      operationId: query_exposures
+      summary: Query Exposures
+      description: |-
+        Groups vulnerabilities for an account by exposure (by default), remediation, or vulnerable asset.
+        In combination with filtering, it's easy to view vulnerabilities across your account in the manner
+        most appropriate.
+
+        *Note*: exposures uses a `threatiness` property which is an internal measurement used for
+        relative comparison and is not considered useful to customers.
+
+        Vulnerabilities can be filtered using the `filter` parameter in the query string. The `filter` param
+        can be used multiple times. The [remediation filters](#section/Remediation-filters) documented above
+        are allowed.
+      tags:
+        - Exposures and Remediations
+      parameters:
+        - $ref: 'parameters.yaml#/ParamConcluded'
+        - $ref: 'parameters.yaml#/ParamQueryExposuresDetails'
+        - $ref: 'parameters.yaml#/ParamDisposed'
+        - $ref: 'parameters.yaml#/ParamQueryExposuresFilter'
+        - $ref: 'parameters.yaml#/ParamQueryExposuresGroup'
+        - $ref: 'parameters.yaml#/ParamIncludeExposures'
+        - $ref: 'parameters.yaml#/ParamIncludeFilters'
+        - $ref: 'parameters.yaml#/ParamIncludeRemediations'
+        - $ref: 'parameters.yaml#/ParamIncludeRemediationItems'
+        - $ref: 'parameters.yaml#/ParamLimit'
+        - $ref: 'parameters.yaml#/ParamScopeTrue'
+        - $ref: 'parameters.yaml#/ParamSort'
+      x-codeSamples:
+        - lang: Shell
+          label: Basic exposures query
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Exposures with filter by deployment ID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?filter=deployment_id:814C2911-09BB-1005-9916-7831C1BAC182" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Exposures with filter on deployment ID, subnet, image, and application
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?filter=deployment_id:814C2911-09BB-1005-9916-7831C1BAC182&filter=subnet:/aws/us-east-1/subnet/subnet-1a-web\&filter=image:/aws/us-east-1/image/ami-1\&filter=application:Apache" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Basic remediations query
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?group=remediation" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Remediations with filter by deployment ID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?group=remediation&filter=deployment_id:814C2911-09BB-1005-9916-7831C1BAC182" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Remediations with filter on deployment ID, subnet, image, and application
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?group=remediation&filter=deployment_id:814C2911-09BB-1005-9916-7831C1BAC182&filter=subnet:/aws/us-east-1/subnet/subnet-1a-web\&filter=image:/aws/us-east-1/image/ami-1\&filter=application:Apache" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Basic vulnerable assets query
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?group=asset" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Vulnerable assets with filter by deployment ID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?group=asset&filter=deployment_id:814C2911-09BB-1005-9916-7831C1BAC182" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Vulnerable assets with filter on deployment ID, subnet, image, and application
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?group=asset&filter=deployment_id:814C2911-09BB-1005-9916-7831C1BAC182&filter=subnet:/aws/us-east-1/subnet/subnet-1a-web\&filter=image:/aws/us-east-1/image/ami-1\&filter=application:Apache" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Most vulnerable assets by type (host)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures?group=asset&filter=asset_type:host" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/QueryExposuresResponse'
+              examples:
+                Exposures (include_filters=false, include_exposures=false):
+                  $ref: 'examples.yaml#/QueryExposuresExample'
+                Exposures for whole account (details=true, include_filters=true):
+                  $ref: 'examples.yaml#/QueryExposuresWholeAccountExample'
+                Exposures for specific deployment ID (details=false, include_filters=true):
+                  $ref: 'examples.yaml#/QueryExposuresSpecificDeploymentExample'
+                Remediations (include_filters=false, include_remediations=false):
+                  $ref: 'examples.yaml#/QueryExposuresRemediationsExample'
+                Remediations for whole account (details=true, include_filters=true, include_remediation_items=true):
+                  $ref: 'examples.yaml#/QueryExposuresRemediationsWholeAccountExample'
+                Remediations for specific deployment ID (details=false, include_filters=true):
+                  $ref: 'examples.yaml#/QueryExposuresRemediationsSpecificDeploymentExample'
+                Vulnerable assets (include_filters=false, include_exposures=false):
+                  $ref: 'examples.yaml#/QueryExposuresVulnerableAssetsExample'
+                Vulnerable assets for whole account (details=true, include_filters=true):
+                  $ref: 'examples.yaml#/QueryExposuresVulnerableAssetsWholeAccountExample'
+                Vulnerable assets for specific deployment ID (details=false, include_filters=true):
+                  $ref: 'examples.yaml#/QueryExposuresVulnerableAssetsSpecificDeploymentExample'
+                Most vulnerable assets by type (group=asset, filter=asset_type:host, limit=2):
+                  $ref: 'examples.yaml#/QueryExposuresMostVulnerableAssetsExample'
+        "400":
+          $ref: 'responses.yaml#/InvalidValueError'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      security:
+        - x-aims-auth-token: []
+    post:
+      summary: Query Exposures
+      operationId: query_exposures_post
+      description: |-
+        Groups vulnerabilities for an account by exposure (by default), remediation, or vulnerable asset.
+        In combination with filtering, it's easy to view vulnerabilities across your account in the manner
+        most appropriate.
+
+        *Note*: exposures uses a `threatiness` property which is an internal measurement used for
+        relative comparison and is not considered useful for external purposes.
+
+        Vulnerabilities can be filtered using the `filter` parameter in the query string. The `filter` param
+        can be used multiple times. The [remediation filters](#section/Remediation-filters) documented above
+        are allowed.
+      tags:
+        - Exposures and Remediations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                concluded:
+                  $ref: parameters.yaml#/ExposuresConcluded
+                details:
+                  $ref: parameters.yaml#/ExposuresDetails
+                disposed:
+                  $ref: parameters.yaml#/ExposuresDisposed
+                filters:
+                  $ref: parameters.yaml#/ExposuresFilters
+                group:
+                  $ref: parameters.yaml#/ExposuresGroup
+                include_exposures:
+                  $ref: parameters.yaml#/IncludeExposures
+                included_filters:
+                  $ref: parameters.yaml#/IncludeFilters
+                included_remediations:
+                  $ref: parameters.yaml#/IncludeRemediations
+                include_remediation_items:
+                  $ref: parameters.yaml#/IncludeRemediationItems
+                limit:
+                  $ref: parameters.yaml#/ExposuresLimit
+                scope:
+                  $ref: parameters.yaml#/ScopeTrue
+                sort:
+                  $ref: parameters.yaml#/ExposuresSort
+      security:
+        - x-aims-auth-token: []
+      x-codeSamples:
+        - lang: Shell
+          label: Basic exposures query
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {}
+                 EOF
+        - lang: Shell
+          label: Exposures with filter by deployment ID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "filters": ["deployment_id:814C2911-09BB-1005-9916-7831C1BAC182"]
+                 }
+                 EOF
+        - lang: Shell
+          label: 'Exposures with filter on deployment ID, subnet, image, and application'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "filters": [
+                     "deployment_id:814C2911-09BB-1005-9916-7831C1BAC182",
+                     "subnet:/aws/us-east-1/subnet/subnet-1a-web",
+                     "image:/aws/us-east-1/image/ami-1",
+                     "application:Apache"
+                   ],
+                 }
+                 EOF
+        - lang: Shell
+          label: Basic remediations query
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "group": "remediation"
+                 }
+                 EOF
+        - lang: Shell
+          label: Remediations with filter by deployment ID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "filters": ["deployment_id:814C2911-09BB-1005-9916-7831C1BAC182"],
+                   "group": "remediation"
+                 }
+                 EOF
+        - lang: Shell
+          label: 'Remediations with filter on deployment ID, subnet, image, and application'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "filters": [
+                     "deployment_id:814C2911-09BB-1005-9916-7831C1BAC182",
+                     "subnet:/aws/us-east-1/subnet/subnet-1a-web",
+                     "image:/aws/us-east-1/image/ami-1",
+                     "application:Apache"
+                   ],
+                   "group": "remediation"
+                 }
+                 EOF
+        - lang: Shell
+          label: Basic vulnerable assets query
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "group": "asset"
+                 }
+                 EOF
+        - lang: Shell
+          label: Vulnerable assets with filter by deployment ID
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "filters": [
+                     "deployment_id:814C2911-09BB-1005-9916-7831C1BAC182"
+                   ],
+                   "group": "asset"
+                 }
+                 EOF
+        - lang: Shell
+          label: 'Vulnerable assets with filter on deployment ID, subnet, image, and application'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "filters": [
+                     "deployment_id:814C2911-09BB-1005-9916-7831C1BAC182",
+                     "subnet:/aws/us-east-1/subnet/subnet-1a-web",
+                     "image:/aws/us-east-1/image/ami-1",
+                     "application:Apache"
+                   ],
+                   "group": "asset"
+                 }
+                 EOF
+        - lang: Shell
+          label: Most vulnerable assets by type (host)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+                 {
+                   "filters": [
+                     "asset_type:host"
+                   ],
+                   "group": "asset"
+                 }
+                 EOF
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: schemas.yaml#/QueryExposuresResponse
+              examples:
+                'Exposures (include_filters=false, include_exposures=false)':
+                  $ref: examples.yaml#/QueryExposuresExample
+                'Exposures for whole account (details=true, include_filters=true)':
+                  $ref: examples.yaml#/QueryExposuresWholeAccountExample
+                'Exposures for specific deployment ID (details=false, include_filters=true)':
+                  $ref: examples.yaml#/QueryExposuresSpecificDeploymentExample
+                'Remediations (include_filters=false, include_remediations=false)':
+                  $ref: examples.yaml#/QueryExposuresRemediationsExample
+                'Remediations for whole account (details=true, include_filters=true, include_remediation_items=true)':
+                  $ref: examples.yaml#/QueryExposuresRemediationsWholeAccountExample
+                'Remediations for specific deployment ID (details=false, include_filters=true)':
+                  $ref: examples.yaml#/QueryExposuresRemediationsSpecificDeploymentExample
+                'Vulnerable assets (include_filters=false, include_exposures=false)':
+                  $ref: examples.yaml#/QueryExposuresVulnerableAssetsExample
+                'Vulnerable assets for whole account (details=true, include_filters=true)':
+                  $ref: examples.yaml#/QueryExposuresVulnerableAssetsWholeAccountExample
+                'Vulnerable assets for specific deployment ID (details=false, include_filters=true)':
+                  $ref: examples.yaml#/QueryExposuresVulnerableAssetsSpecificDeploymentExample
+                'Most vulnerable assets by type (group=asset, filter=asset_type:host, limit=2)':
+                  $ref: examples.yaml#/QueryExposuresMostVulnerableAssetsExample
+        '400':
+          $ref: responses.yaml#/InvalidValueError
+        '401':
+          $ref: responses.yaml#/Unauthorized
+        '403':
+          $ref: responses.yaml#/Forbidden
+        '404':
+          $ref: responses.yaml#/NotFound
+        '503':
+          $ref: responses.yaml#/UnavailableError
+  /assets_query/v2/{account_id}/remediation-items:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+    get:
+      operationId: query_remediation_items
+      summary: Query Remediation Items
+      description: |-
+        Gets a list of remediation-items and an aggregation of filters associated with
+        those remediation items. Filters similar to those in the Query Assets endpoint can be used with
+        an item named `remediation-item`. The `filters` field in the output is the union of all `filters`
+        fields in all the returned remediation items.
+
+        Note that the returned `remediation-item` can also be filtered by various direct properties:
+
+        * `audit_id`: If the `audit_ids` param is passed, return only `remediation-items` that match
+          one of the given `audit_id`s.
+        * `deployment_id`: If the `deployment_ids` param is passed, return only `remediation-items`
+          that match one of the given `deployment_id`s.
+        * `remediation_id`: If the `remediation_ids` param is passed, return only `remediation-items`
+          that match one of the given `remediation_id`s.
+        * `item_id`: If the `remediation_item_ids` param is passed, return only `remediation-items`
+          that match one of the given `item_id`s.
+        * `vulnerability_id`: If the `vulnerability_ids` param is passed, return only `remediation-items`
+          that match one of the given `vulnerability_id`s.
+        * The associated `remediation_item_id` is rendered on vinstances. Note: `details=true`
+          is required to see vinstances on exposures.
+      tags:
+        - Exposures and Remediations
+      parameters:
+        - $ref: 'parameters.yaml#/ParamAuditIds'
+        - $ref: 'parameters.yaml#/ParamDeploymentIds'
+        - $ref: 'parameters.yaml#/ParamRemediationIds'
+        - $ref: 'parameters.yaml#/ParamRemediationItemIds'
+        - $ref: 'parameters.yaml#/ParamVulnerabilityIds'
+        - $ref: 'parameters.yaml#/ParamState'
+        - $ref: 'parameters.yaml#/ParamQueryRemediationItemsFilter'
+        - $ref: 'parameters.yaml#/ParamIncludeExposuresQRI'
+        - $ref: 'parameters.yaml#/ParamIncludeFilters'
+        - $ref: 'parameters.yaml#/ParamQueryRemediationItemsDetails'
+        - $ref: 'parameters.yaml#/ParamQueryRemediationItemsGroupByAuditId'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/QueryRemediationItemsResponse'
+              examples:
+                Default Response (single deployment):
+                  $ref: 'examples.yaml#/QueryRemediationItemsSingleDeploymentExample'
+                Default Response (single deployment, details=true):
+                  $ref: 'examples.yaml#/QueryRemediationItemsSingleDeploymentDetailsExample'
+                Default Response (multiple deployments):
+                  $ref: 'examples.yaml#/QueryRemediationItemsMultipleDeploymentsExample'
+                Default Response (multiple deployments, details=true):
+                  $ref: 'examples.yaml#/QueryRemediationItemsMultipleDeploymentsDetailsExample'
+                Default Response (single deployment, detailed_filters=true):
+                  $ref: 'examples.yaml#/QueryRemediationItemsSingleDeploymentsDetailedFiltersExample'
+                Default Response (multiple deployments, group_by_audit_id=true):
+                    $ref: 'examples.yaml#/QueryRemediationItemsMultipleDeploymentsGroupByAuditIdExample'
+                Default Response (multiple deployments, group_by_audit_id=true, details=true):
+                  $ref: 'examples.yaml#/QueryRemediationItemsMultipleDeploymentsGroupByAuditIdDetailsExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      x-codeSamples:
+        - lang: Shell
+          label: Get all remediation items (all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediation-items" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get all remediation items (single deployment)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediation-items?deployment_ids=AF044FD4-5A6E-4EAE-B7A1-0B304034CC34" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get all disposed remediation items (single deployment)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediation-items?deployment_ids=AF044FD4-5A6E-4EAE-B7A1-0B304034CC34&filter=state:disposed" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get all disposed & concluded remediation items for a single deployment
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediation-items?deployment_ids=AF044FD4-5A6E-4EAE-B7A1-0B304034CC34&filter=state:disposed,concluded" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get all remediation items with a single remediation_item_id (details=true, all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediation-items?details=true&remediation_item_ids=6A74878A5BBC9DCE29289258D11D0937" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      security:
+        - x-aims-auth-token: []
+  /assets_query/v1/{account_id}/deployments/{deployment_id}/topology:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/UrlParamDeploymentId'
+    get:
+      operationId: query_topology
+      summary: Query Topology
+      description: Query given deployment assets topology.
+      tags:
+        - Topology
+      parameters:
+        - $ref: 'parameters.yaml#/ParamIncludeFilters'
+        - $ref: 'parameters.yaml#/ParamIncludeRemediations'
+        - $ref: 'parameters.yaml#/ParamDisposed'
+        - $ref: 'parameters.yaml#/ParamExtras'
+      x-codeSamples:
+        - lang: Shell
+          label: Query Topology
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/deployments/814C2911-09BB-1005-9916-7831C1BAC182/topology" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Query Topology Extras
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/deployments/814C2911-09BB-1005-9916-7831C1BAC182/topology?extras=load-balancer,image" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/QueryTopologyResponse'
+              examples:
+                Query Topology Example:
+                  $ref: 'examples.yaml#/QueryTopologyExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+  /assets_query/v1/{account_id}/deployments/{deployment_id}/topology/config:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/UrlParamDeploymentId'
+    get:
+      operationId: config_topology
+      summary: Config Topology
+      description: |-
+        Retrieve the given deployment's configuration topology. Each row in the `assets` response is a set of
+        related `region`, `vpc`, and `subnet` asset strings that can be cross-referenced as JSON keys in the `data` map.
+      tags:
+        - Topology
+      x-codeSamples:
+        - lang: Shell
+          label: Config Topology
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/deployments/814C2911-09BB-1005-9916-7831C1BAC182/topology/config" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/ConfigTopologyResponse'
+              examples:
+                Config Topology Example:
+                  $ref: 'examples.yaml#/ConfigTopologyExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+  /assets_query/v1/{account_id}/deployments/{deployment_id}/topology/overview:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/UrlParamDeploymentId'
+    get:
+      operationId: overview_topology
+      summary: Overview Topology
+      description: Render overview topology data for the given account and deployment.
+      tags:
+        - Topology
+      parameters:
+        - $ref: 'parameters.yaml#/ParamCategory'
+        - $ref: 'parameters.yaml#/ParamDisposed'
+        - $ref: 'parameters.yaml#/ParamScopeTrue'
+        - $ref: 'parameters.yaml#/ParamExtras'
+      x-codeSamples:
+        - lang: Shell
+          label: Overview Topology
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/deployments/814C2911-09BB-1005-9916-7831C1BAC182/topology/overview" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Overview Topology Extras
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/deployments/814C2911-09BB-1005-9916-7831C1BAC182/topology/overview?extras=load-balancer,image" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/QueryTopologyOverviewResponse'
+              examples:
+                Query Topology Example:
+                  $ref: 'examples.yaml#/QueryTopologyOverviewExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+  /assets_query/v1/{account_id}/topology/asset_group:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+    post:
+      operationId: preview_topology
+      summary: Asset Group Topology (Preview)
+      description: |-
+        **Disclaimer: This endpoint is currently under development. The request parameters, response format
+        or the endpoint itself may be changed or removed at any time without notice.**
+        
+        Render asset group topology data for the given account. The asset group can be defined by either a list of scopes
+        that include/exclude assets, or a union or intersection of the set of assets in a list of existing nested groups.
+        The response body shares the same format for both types of asset groups.
+
+        In either case, a `return_asset_types` property can be provided that limits the previewed asset group results to the
+        types in the list and all topological ancestor types of the listed types. Although the preview can be limited using
+        the `return_asset_types` property, the actual asset group that is created using the other parameters will not have be
+        limited to that list of types.
+
+        Note that some assets in the `topology.data` object contain references to non-topologically related assets in the
+        asset model that may be filtered on. For example, a `host` asset
+        `814C2911-09BB-1005-9916-7831C1BAC182:host:/aws/us-east-1/host/web-1a-1` might contain an `image` property with
+        an array of keys, like `/aws/us-east-1/image/ami-1`. These properties indicate that the assets can be filtered (via
+        `include`/`exclude` in `scopes`), for example, placing the filter `host.image:/aws/us-east-1/image/ami-1` in the
+        `include` of an asset-group scope would result in all hosts related to that image being included in the
+        asset-group. These related assets are also included in the `topology.data` object, and can be found by constructing
+        their data key, e.g., `814C2911-09BB-1005-9916-7831C1BAC182:image:/aws/us-east-1/image/ami-1`. Here are the
+        non-topological filters by asset type:
+
+        | Asset Type        | Filter Label       | Note                                    |
+        |-------------------|--------------------|-----------------------------------------|
+        | cloud-trail       | s3-bucket          |                                         |
+        | external-dns-name | deployment         |                                         |
+        | external-dns-name | region             |                                         |
+        | external-dns-name | vpc                |                                         |
+        | external-dns-name | host               |                                         |
+        | external-dns-name | load-balancer      |                                         |
+        | external-ip       | deployment         |                                         |
+        | external-ip       | region             |                                         |
+        | external-ip       | vpc                |                                         |
+        | external-ip       | host               |                                         |
+        | external-ip       | load-balancer      |                                         |
+        | host              | application        | applications are not in the data object |
+        | host              | auto-scaling-group |                                         |
+        | host              | image              |                                         |
+        | host              | instance-profile   |                                         |
+        | host              | launch-config      |                                         |
+        | host              | load-balancer      |                                         |
+        | host              | sg                 |                                         |
+        | instance-profile  | role               |                                         |
+        | load-balancer     | subnet             |                                         |
+        | load-balancer     | sg                 |                                         |
+        | role              | s3-bucket          |                                         |
+        | user              | group              |                                         |
+        | volume            | host               |                                         |
+      tags:
+        - Topology
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                groups:
+                  type: array
+                  description: |-
+                    A list of nested groups that make up the group. These groups can have disjoint or intersecting sets of
+                    assets. The groups can also include other groups with nested groups.
+                groups_match:
+                  enum:
+                    - all
+                    - any
+                  type: string
+                  description: |-
+                    The criteria for inclusion of nested group assets in the previewed group. If the value is `any`, any asset
+                    in ANY of the nested groups will be included in the previewed group. If the value is `all`, any asset in
+                    common to ALL of the nested groups will be included in the previewed group.
+                scopes:
+                  type: array
+                  description: The list of request scopes, each containing a scope definition that will be `OR`ed together.
+                  items:
+                    type: object
+                    properties:
+                      include:
+                        type: array
+                        description: |-
+                          A list of scope filters, `AND`ed together, that determine if an asset should be included in the resulting asset group.
+                      exclude:
+                        type: array
+                        description: |-
+                          A list of scope filters, `AND`ed together, that determine if an asset should NOT be included in the resulting asset group.
+                      asset_types:
+                        type: array
+                        description: |-
+                          A list of asset types that determines the assets included in the individual scope. If an asset would be included in
+                          multiple scopes, the scopes' allowed asset types are unioned together.
+                return_asset_types:
+                  type: array
+                  description: |-
+                    A list of groupable asset types that limits the exploration of the asset model. The types specified in
+                    this list, as well as their topological ancestor types, are the only ones that will be returned in the
+                    resulting topology.assets rows.
+                  items:
+                    type: string
+                    minLength: 1
+      x-codeSamples:
+        - lang: Shell
+          label: 'scoped: Include only'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/topology/asset_group" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "scopes": [
+                {
+                  "include": [
+                    "deployment:any",
+                    "region.name:!eu-west-1"
+                  ]
+                }
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: 'scoped: Include and exclude'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/topology/asset_group" \
+            -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "scopes": [
+                {
+                  "include": [
+                      "deployment:any",
+                      "region.name:!eu-west-1"
+                  ],
+                  "exclude": [
+                      "tag:/tag/key/compliance_scope/value/PCI"
+                  ]
+                }
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: 'scoped: return_asset_types=host'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/topology/asset_group" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "scopes": [
+                {
+                  "include": [
+                    "deployment:any",
+                    "region.name:!eu-west-1"
+                  ]
+                }
+              ],
+              "return_asset_types": [
+                "host"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: 'nested: groups_match "all"'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/topology/asset_group" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "groups": [
+                "PCI Assets"
+                "US Assets"
+              ],
+              "groups_match": "all"
+            }
+            EOF
+        - lang: Shell
+          label: 'nested: groups_match "any"'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/topology/asset_group" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "groups": [
+                "PCI Assets"
+                "US Assets"
+              ],
+              "groups_match": "any"
+            }
+            EOF
+        - lang: Shell
+          label: 'nested: return_asset_types=host'
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/19000001/topology/asset_group" \
+                 -X POST -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "groups": [
+                "PCI Assets"
+                "US Assets"
+              ],
+              "groups_match": "all",
+              "return_asset_types": [
+                "host"
+              ]
+            }
+            EOF
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/TopologyPreviewResponse'
+              examples:
+                Topology Preview Example:
+                  $ref: 'examples.yaml#/FullAssetGroupTopologyPreviewExample'
+                'Topology Preview Example (return_asset_types=host)':
+                  $ref: 'examples.yaml#/HostAssetGroupTopologyPreviewExample'
+        "400":
+          $ref: 'responses.yaml#/TopologyPreviewBadRequest'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      security:
+        - x-aims-auth-token: []
+  /assets_query/v1/{account_id}/tags/summary:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/ParamIncludeTaggedAssets'
+    get:
+      operationId: get_tags_summary
+      summary: Get Tags Summary
+      description: |-
+        Get a summary of all tags, with normalized keys, across all deployments. This endpoint should be
+        preferred for use-cases that span deployments, like asset groups.
+      tags:
+        - Summaries
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/TagsSummaryResponse'
+              examples:
+                "Get tag summary (tags only)":
+                  $ref: 'examples.yaml#/TagsSummaryTagsOnlyExample'
+                "Get tag summary (with tagged assets)":
+                  $ref: 'examples.yaml#/TagsSummaryAssetsIncludedExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      x-codeSamples:
+        - lang: Shell
+          label: Get tag summary (tags only)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/tags/summary" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Get tag summary (with tagged assets)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/tags/summary?include_tagged_assets=true" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      security:
+        - x-aims-auth-token: [ ]
+  /assets_query/v1/{account_id}/deployments/{deployment_id}/tags/summary:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/UrlParamDeploymentId'
+    get:
+      operationId: get_tags_summary_deprecated
+      summary: Get Tags Summary (Deprecated)
+      description: |-
+        Get a summary of all tags in a deployment. Returns a list of (minimal) assets with their
+        tags.
+      tags:
+        - Summaries
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/TagsSummaryDeprecatedResponse'
+              examples:
+                Get Tags Summary Example:
+                  $ref: 'examples.yaml#/TagsSummaryDeprecatedExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      x-codeSamples:
+        - lang: Shell
+          label: Get tag summary
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/CD7C26C3-FAA1-4AD1-86CB-9628ED1B3327/tags/summary" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      security:
+        - x-aims-auth-token: []
+  /assets_query/v2/{account_id}/exposures/{asset_type}/summary:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/UrlParamAssetType'
+    get:
+      operationId: get_exposures_summary
+      summary: Get Exposures Summary
+      description: Get a summary of exposures by asset type for the given account, across all deployments.
+      tags:
+        - Summaries
+      parameters:
+        - $ref: 'parameters.yaml#/ParamScopeTrue'
+        - $ref: 'parameters.yaml#/ParamExposuresSummaryFilter'
+        - $ref: 'parameters.yaml#/ParamDisposed'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/ExposuresSummaryResponse'
+              examples:
+                Exposures Summary for Account Example:
+                  $ref: 'examples.yaml#/ExposuresSummaryForAccountExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      x-codeSamples:
+        - lang: Shell
+          label: Get exposures summary for account
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/exposures/deployment/summary" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      security:
+        - x-aims-auth-token: []
+  /assets_query/v2/{account_id}/deployments/{deployment_id}/exposures/{asset_type}/summary:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+      - $ref: 'parameters.yaml#/UrlParamDeploymentId'
+      - $ref: 'parameters.yaml#/UrlParamAssetType'
+    get:
+      operationId: get_deployment_exposures_summary
+      summary: Get Exposures Summary for Deployment
+      description: Get a summary of exposures by asset type for the given account and deployment ID.
+      tags:
+        - Summaries
+      parameters:
+        - $ref: 'parameters.yaml#/ParamScopeTrue'
+        - $ref: 'parameters.yaml#/ParamExposuresSummaryFilter'
+        - $ref: 'parameters.yaml#/ParamDisposed'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/ExposuresSummaryResponse'
+              examples:
+                Exposures Summary for Deployment Example:
+                  $ref: 'examples.yaml#/ExposuresSummaryForDeploymentExample'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      x-codeSamples:
+        - lang: Shell
+          label: Get exposures summary for deployment
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v1/12345678/deployments/B8CB762A-7675-42FC-9C47-4A7ADF27D3D1/exposures/region/summary" \
+                 -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      security:
+        - x-aims-auth-token: []
+  /assets_query/v2/{account_id}/remediations:
+    parameters:
+      - $ref: 'parameters.yaml#/UrlParamAccountId'
+    put:
+      operationId: dispose_conclude_remediations
+      summary: Dispose/Conclude Remediations
+      description: |-
+        `dispose_remediations` disposes the vulnerability instances (`"vinstances"`) associated with a
+        set of `remediations` or `vulnerabilities` (by ID). A set of `remediation-item`s is created, 1
+        per deployment/remediation_id/vulnerability_id, with the state set to `"disposed"` and all
+        vulnerability instances associated to that `"remediation_id"` or `"vulnerability_id"` on
+        assets described by the given `"filters"` have their `"disposed"` property set to `true`.
+
+        Note that, if the `"expires"` property is set on a `"disposed"` remediation-item, that item will
+        be undisposed when the `"expires"` timestamp is in the past, and all associated vulnerability
+        instances will have their `"disposed"` property set back to `false`.
+
+        `conclude_remediations` concludes the vulnerability instances (`"vinstances"`) associated with a
+        set of `remediations` or `vulnerabilities` (by ID). A set of `remediation-item`s is created, 1
+        per deployment/remediation_id/vulnerability_id, with the state set to `"concluded"` and all
+        vulnerability instances associated to that `"remediation_id"` or `"vulnerability_id"` on
+        assets described by the given `"filters"` have their `"concluded"` property set to `true`.
+
+        Note that once all associated vulnerabilities are resolved, `"concluded"` `remediation-item`s
+        will be cleared from the system (resolved). Any matching vulnerability instance that is
+        created or modified *after* the `"concluded"` `remediation-item`'s `modified_on` timestamp
+        *will be* unconcluded (their `"concluded"` property will be set to `false`). If *all*
+        existing vulnerability instances are newer than the `remediation-item`, then the
+        `remediation-item` will be cleared (deleted).
+      tags:
+        - Exposures and Remediations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: 'schemas.yaml#/DisposeRemediationsRequestBody'
+                - $ref: 'schemas.yaml#/ConcludeRemediationsRequestBody'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: 'schemas.yaml#/DisposeRemediationsResponse'
+                  - $ref: 'schemas.yaml#/ConcludeRemediationsResponse'
+              examples:
+                Dispose a single remediation:
+                  $ref: 'examples.yaml#/DisposeSingleRemediationExample'
+                Dispose a single remediation for 2 hosts with a filters set:
+                  $ref: 'examples.yaml#/DisposeSingleRemediationFiltersSetExample'
+                Dispose a single vulnerability:
+                  $ref: 'examples.yaml#/DisposeSingleVulnerabilityExample'
+                Conclude a single remediation:
+                  $ref: 'examples.yaml#/ConcludeSingleRemediationExample'
+                Conclude a single remediation for 2 hosts with a filters set:
+                  $ref: 'examples.yaml#/ConcludeSingleRemediationFiltersSetExample'
+                Conclude a single vulnerability:
+                  $ref: 'examples.yaml#/ConcludeSingleVulnerabilityExample'  
+        "400":
+          $ref: 'responses.yaml#/InvalidValueError'
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      x-codeSamples:
+        - lang: Shell
+          label: Dispose a single remediation (all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "dispose_remediations",
+              "comment": "Vulnerable database contains automated test data, not customer records.",
+              "filters": [
+                "application:Apache",
+                "image:/aws/us-east-1/image/ami-1"
+              ],
+              "reason": "acceptable_risk",
+              "remediation_ids": [
+                "45af6dc636774a4d822b9eff57b99ae8"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: Dispose a single remediation (2 deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "dispose_remediations",
+              "comment": "Vulnerable database contains automated test data, not customer records.",
+              "deployment_ids": [
+                "AF044FD4-5A6E-4EAE-B7A1-0B304034CC34",
+                "FCCA4E48-598A-4946-B2A7-64DBF9E4CCAC"
+              ],
+              "expires": 0,
+              "filters": [
+                "application:Apache",
+                "image:/aws/us-east-1/image/ami-1"
+              ],
+              "reason": "acceptable_risk",
+              "remediation_ids": [
+                "45af6dc636774a4d822b9eff57b99ae8"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: Dispose a single remediation for 2 hosts with a filters set (all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "dispose_remediations",
+              "comment": "Vulnerable database contains automated test data, not customer records.",
+              "filters": [
+                [
+                  "host:host:/aws/us-west-2/host/i-1e272a96c803bf6e1"
+                ],
+                [
+                  "host:host:/aws/us-west-2/host/i-03bf219df1d75f14a"
+                ]
+              ],
+              "reason": "acceptable_risk",
+              "remediation_ids": [
+                "45af6dc636774a4d822b9eff57b99ae8"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: Dispose a single vulnerability (all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "dispose_remediations",
+              "applies_to_specific_assets": true,
+              "comment": "Vulnerable database contains automated test data, not customer records.",
+              "filters": [
+                "application:Apache",
+                "image:/aws/us-east-1/image/ami-1"
+              ],
+              "reason": "acceptable_risk",
+              "vulnerability_ids": [
+                "b9890b5c62d542c4830b43b53dabcc15"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: Conclude a single remediation (all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "conclude_remediations",
+              "applies_to_specific_assets": true,
+              "filters": [
+                "application:Apache",
+                "image:/aws/us-east-1/image/ami-1"
+              ],
+              "remediation_ids": [
+                "45af6dc636774a4d822b9eff57b99ae8"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: Conclude a single remediation (2 deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "conclude_remediations",
+              "deployment_ids": [
+                "AF044FD4-5A6E-4EAE-B7A1-0B304034CC34",
+                "FCCA4E48-598A-4946-B2A7-64DBF9E4CCAC"
+              ],
+              "filters": [
+                "application:Apache",
+                "image:/aws/us-east-1/image/ami-1"
+              ],
+              "remediation_ids": [
+                "45af6dc636774a4d822b9eff57b99ae8"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: Conclude a single remediation for 2 hosts with a filters set (all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "conclude_remediations",
+              "deployment_ids": [
+                "AF044FD4-5A6E-4EAE-B7A1-0B304034CC34"
+              ],
+              "filters": [
+                [
+                  "host:host:/aws/us-west-2/host/i-1e272a96c803bf6e1"
+                ],
+                [
+                  "host:host:/aws/us-west-2/host/i-03bf219df1d75f14a"
+                ]
+              ],
+              "remediation_ids": [
+                "45af6dc636774a4d822b9eff57b99ae8"
+              ]
+            }
+            EOF
+        - lang: Shell
+          label: Conclude a single vulnerability (all deployments)
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations" \
+                 -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json" -d@- << EOF
+            {
+              "operation": "conclude_remediations",
+              "filters": [
+                "application:Apache",
+                "image:/aws/us-east-1/image/ami-1"
+              ],
+              "vulnerability_ids": [
+                "b9890b5c62d542c4830b43b53dabcc15"
+              ]
+            }
+            EOF
+      security:
+        - x-aims-auth-token: []
+    delete:
+      operationId: undispose_remediations
+      summary: Undispose Remediations
+      tags:
+        - Exposures and Remediations
+      description: |-
+        Undispose (or unconclude) the given `remediation-item`(s) in the given deployment(s). The
+        `remediation-items`, if they exist, are deleted immediately. Any vulnerability instances that were
+        concluded or disposed by the remediation-item will be accordingly unconcluded and undisposed
+        (that is, their `concluded` and `disposed` properties will be set to `false`).
+        *Note* that if `deployment_ids` query parameter is not set, the remediation item(s) will be removed
+        from all deployments where they exist.
+
+        Note that exactly one of `remediation_item_ids` or `audit_ids` may be provided. If `audit_ids` is passed,
+        all `remediation-item`s with any of the given `audit_id`s will be undisposed/unconcluded. Additionally, if
+        `audit_ids` is passed, either `remediation_ids` or `vulnerability_ids` may be passed. If one of those is also
+        given, `remediation-item`s with one of the given `audit_id`s and one of the given `remediation_id`s or
+        `vulnerability_id`s will be undisposed/unconcluded.
+      parameters:
+        - $ref: 'parameters.yaml#/ParamAuditIds'
+        - $ref: 'parameters.yaml#/ParamDeploymentIds'
+        - $ref: 'parameters.yaml#/ParamRemediationIds'
+        - $ref: 'parameters.yaml#/ParamRemediationItemIds'
+        - $ref: 'parameters.yaml#/ParamVulnerabilityIds'
+      x-codeSamples:
+        - lang: Shell
+          label: Undispose a single remediation-item
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations?remediation_item_ids=0536575B914C32C8A5D28415D02E4545" \
+                -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Undispose a single remediation-item in 2 deployments
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations?remediation_item_ids=0536575B914C32C8A5D28415D02E4545&deployment_ids=AF044FD4-5A6E-4EAE-B7A1-0B304034CC34,FCCA4E48-598A-4946-B2A7-64DBF9E4CCAC" \
+                -X PUT -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+        - lang: Shell
+          label: Undispose a remediation-item by audit_id/vulnerability_id
+          source: |-
+            curl "https://api.cloudinsight.alertlogic.com/assets_query/v2/12345678/remediations?audit_ids=37CA08E6-9CC7-4575-BA9B-B6F961976E8D&vulnerability_ids=b9890b5c62d542c4830b43b53dabcc15" \
+                -X DELETE -H "x-aims-auth-token: $TOKEN" -H "accept: application/json"
+      responses:
+        "204":
+          description: No Content
+        "401":
+          $ref: 'responses.yaml#/Unauthorized'
+        "403":
+          $ref: 'responses.yaml#/Forbidden'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+        "503":
+          $ref: 'responses.yaml#/UnavailableError'
+      security:
+        - x-aims-auth-token: []
+  /assets_query/v1/asset_types:
+    get:
+      summary: Get Asset Types Schema
+      tags:
+        - Queries
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: schemas.yaml#/AssetTypesSchemaResponse
+              examples:
+                Exposures Summary for Deployment Example:
+                  $ref: examples.yaml#/AssetTypesSchemaResponseExample
+      operationId: asset_types_schemas
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: filter
+          description: 'Filters that asset types must match to be included eg. `groupable`, `taggable`, `vulnerable`, etc...'
+        - schema:
+            type: string
+          in: query
+          name: fields
+          description: 'A csv string of the fields that should be returned for an asset type. Note: if the asset type does not contain that field it will not be in the return value.'
+        - schema:
+            type: string
+            enum:
+              - list
+              - topology
+          in: query
+          name: format
+          description: 'Returns the asset types as a list of schema objects (list) or as a list of topological schemas'
+      description: Fetches the `"schema"` for asset types. The schema describes the structure for asset types.
+    parameters: [ ]
+  '/assets_query/v1/asset_types/{asset_type}':
+    get:
+      summary: Get Asset Type Schema
+      tags:
+        - Queries
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: schemas.yaml#/AssetTypeSchemaResponse
+              examples:
+                Exposures Summary for Deployment Example:
+                  $ref: examples.yaml#/AssetTypeSchemaResponseExample
+      operationId: asset_type_schema
+      description: 'fetch the schema of an asset type'
+    parameters:
+      - schema:
+          type: string
+        name: asset_type
+        in: path
+        required: true
+components:
+  securitySchemes:
+    x-aims-auth-token:
+      name: x-aims-auth-token
+      type: apiKey
+      in: header
+      description: AIMS Authentication Token
+servers:
+  - url: https://api.cloudinsight.alertlogic.com
+    x-alertlogic-session-endpoint: true
+    description: production (US)
+  - url: https://api.cloudinsight.alertlogic.co.uk
+    description: production (UK)
+    x-alertlogic-session-endpoint: true
+  - url: https://api.product.dev.alertlogic.com
+    description: integration
+tags:
+  - name: Queries
+    description: General assets query endpoints
+  - name: Exposures and Remediations
+    description: Exposures and Remediations endpoints
+  - name: Summaries
+    description: Summary endpoints
+  - name: Topology
+    description: Assets topology endpoints
