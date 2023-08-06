@@ -1,0 +1,115 @@
+name: tox
+
+on:
+  create: # is used for publishing to PyPI and TestPyPI
+    tags: # any tag regardless of its name, no branches
+  push: # only publishes pushes to the main branch to TestPyPI
+    branches: # any integration branch but not tag
+      - "main"
+    tags-ignore:
+      - "**"
+  pull_request:
+  schedule:
+    - cron: 1 0 * * * # Run daily at 0:01 UTC
+
+jobs:
+  build:
+    name: ${{ matrix.tox_env }}
+    runs-on: ubuntu-latest
+    # limit potential endless looks like we had with build-containers
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tox_env: lint
+            python-version: 3.8
+          - tox_env: docs
+            python-version: 3.9
+          - tox_env: py38
+            PREFIX: PYTEST_REQPASS=456
+            python-version: 3.8
+            cover: true
+          - tox_env: py39
+            PREFIX: PYTEST_REQPASS=456
+            python-version: 3.9
+            cover: true
+          - tox_env: py310
+            PREFIX: PYTEST_REQPASS=456
+            python-version: "3.10"
+            cover: true
+          - tox_env: py38-devel
+            PREFIX: PYTEST_REQPASS=456
+            python-version: 3.8
+            cover: true
+          - tox_env: py310-devel
+            PREFIX: PYTEST_REQPASS=456
+            python-version: "3.10"
+            # see https://github.com/ansible-community/molecule/issues/3291
+            experimental: true
+            cover: true
+          - tox_env: packaging
+            python-version: 3.9
+          - tox_env: eco
+            python-version: 3.9
+          - tox_env: dockerfile
+            python-version: 3.9
+
+    steps:
+      - name: Check out src from Git
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # needed by setuptools-scm
+      - name: Install system dependencies
+        # remove broken .deb ansible and replace with pip version:
+        # https://github.com/actions/virtual-environments/issues/3001
+        run: |
+          sudo apt-get remove -y ansible \
+          && sudo apt-get update \
+          && sudo apt-get install -y libvirt-dev python3-cryptography python3-jinja2 python3-yaml virtualenv \
+          && pip3 install --user ansible-core \
+          && echo "$HOME/.local/bin" >> $GITHUB_PATH
+        # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+      - name: Validate that ansible works
+        run: |
+          ansible --version \
+          && virtualenv foo \
+          && source foo/bin/activate \
+          && ansible --version
+      - name: Install a default Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip 'coverage[toml]'
+          pip install tox
+      - name: Run tox -e ${{ matrix.tox_env }}
+        run: |
+          echo "${{ matrix.PREFIX }} tox -e ${{ matrix.tox_env }}"
+          ${{ matrix.PREFIX }} tox -e ${{ matrix.tox_env }}
+        continue-on-error: ${{ matrix.experimental || false }}
+      - name: Combine coverage data
+        # produce a single .coverage file at repo root
+        run: coverage combine .tox/.coverage.*
+        if: ${{ matrix.cover == true }}
+      - name: Upload coverage data
+        if: ${{ matrix.cover == true }}
+        uses: codecov/codecov-action@v3
+        with:
+          name: ${{ matrix.tox_env }}
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
+  check:
+    if: always()
+
+    needs:
+      - build
+
+    runs-on: Ubuntu-latest
+
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
