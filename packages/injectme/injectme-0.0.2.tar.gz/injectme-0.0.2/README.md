@@ -1,0 +1,2 @@
+# injectme
+Simple DI lib
