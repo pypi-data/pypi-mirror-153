@@ -1,0 +1,1 @@
+This is a color palette for Thompson Rivers University
