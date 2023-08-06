@@ -1,0 +1,232 @@
+{% load custom_tags %}
+<b>Complemento de Carta porte</b>
+
+<table border="1" style="margin-top:5px; font-size:9pt;border-style:solid;border-collapse:collapse;position:relative;padding:0; width:100%; border-color:black;" >
+    <tr class="blue-tr">
+        {% if CLAVE == "flecosa" %}
+            <td>Material peligroso</td>
+        {% endif %}
+        <td>Total distancia recorrida</td>
+        <td>Traspaso internacional</td>
+        <td>Cve Transporte</td>
+    </tr>
+    <tr>
+        {% if CLAVE == "flecosa" %}
+            <td>No</td>
+        {% endif %}
+        <td class="righttext">{{ carta_porte.TotalDistRec|cur }}</td>
+        <td>{{ carta_porte.TranspInternac }}</td>
+        <td>{% if CLAVE == "flecosa" %}01{% else %}{{ carta_porte.figura_transporte.CveTransporte }}{% endif %}</td>
+    </tr>
+</table>
+
+<b>Ubicaciones </b>
+<table border="1" style="margin-top:5px; font-size:9pt;border-style:solid;border-collapse:collapse;position:relative;padding:0; width:100%; border-color:black;" >
+    <tr class="blue-tr">
+        <th>Tipo</th>
+        <td>Ciudad</td>
+        <td>Distancia recorrida</td>
+        <td>Fecha Hora Salida llegada</td>
+        <td>Domicilio</td>
+    </tr>
+    {% for u in carta_porte.ubicaciones %}
+
+        <tr>
+            <td>{{ u.TipoUbicacion }}</td>
+            <td>
+                
+
+                {% if  u.domicilio_text %}    
+                    
+                    {{ u.domicilio.Localidad }}     
+                    {{ u.domicilio_text.Localidad }} 
+
+                    {{ u.domicilio.Municipo }}
+                    {{ u.domicilio_text.Municipo }},
+
+                    {{ u.domicilio_text.Estado }},
+                
+                {% else %}
+                    {% if u.domicilio.Localidad or u.domicilio.Municipio %}
+                        {{ u.domicilio.Localidad }}     
+                        {{ u.domicilio.Municipo }},
+                    {% endif %}
+
+                    {{ u.domicilio_text.Estado }},
+
+                {% endif %}
+
+                
+                {{ u.domicilio.Pais }}
+        </td>
+            <td class="righttext">{{ u.DistanciaRecorrida|default:"0" }}</td>
+            <td>{{ u.FechaHoraSalidaLlegada|default:"" }}</td>
+            <td>
+                {{ u.domicilio.Calle }} #{{ u.domicilio.NumeroExterior }}
+                CP: {{ u.domicilio.CodigoPostal }}
+            </td>
+        </tr>
+
+
+    {% endfor %}
+</table>
+
+<b>Figuras transporte </b>
+<table border="1" style="margin-top:5px; font-size:9pt;border-style:solid;border-collapse:collapse;position:relative;padding:0; width:100%; border-color:black;" >
+    <tr class="blue-tr">
+        <td>Tipo figura</td>
+        <th>Nombre</th>
+        <td>RFC</td>
+        <td>Licencia</td>
+        <!-- <td>Residencia fiscal</td>-->
+        <td>Domicilio</td>
+    </tr>
+    {% for op in carta_porte.figura_transporte.tipos_figura %}
+        <tr>
+            <td>{{ op.TipoFigura }}</td>
+            <td>{{ op.NombreFigura }}</td>
+            <td>{{ op.RFCFigura }}</td>
+            <td>{{ op.NumLicencia }}</td>
+            <!-- <td>{{ op.ResidenciaFiscalOperador|default:"" }}</td>-->
+            <td>
+                
+                {{ op.domicilio.Calle }} #{{ op.domicilio.NumeroExterior }}
+                CP: {{ op.domicilio.CodigoPostal }}
+                
+                {{ op.domicilio.Localidad }}
+                {{ op.domicilio_text.Localidad }}
+                
+                {{ op.domicilio.Municipio }}
+                {{ op.domicilio_text.Municipio }},
+                
+                {{ op.domicilio_text.Estado }},
+                {{ op.domicilio.Pais }}
+            </td>
+        </tr>
+    {% endfor %}
+</table>
+
+
+<b>Vehículo </b>
+<table border="1" style="margin-top:5px; font-size:9pt;border-style:solid;border-collapse:collapse;position:relative;padding:0; width:100%; border-color:black;" >
+    <tr class="blue-tr">
+        <th>Nombre aseguradora</th>
+        <td>Num Permiso SCT</td>
+        <td>Num Poliza Seguro</td>
+        <td>Permiso SCT</td>
+        <td>Año</td>
+        <td>Configuración Vehicular </td>
+        <td>PLacaVM </td>
+    </tr>
+    <tr>
+        <td>{{ carta_porte.autotransporte_federal.seguros.AseguraRespCivil }}</td>
+        <td>{{ carta_porte.autotransporte_federal.NumPermisoSCT }}</td>
+        <td>{{ carta_porte.autotransporte_federal.seguros.PolizaRespCivil|default:"" }}</td>
+        <td>{{ carta_porte.autotransporte_federal.PermSCT|default:"" }}</td>
+        <td>{{ carta_porte.autotransporte_federal.identificacion_vehicular.AnioModeloVM|default:"" }}</td>
+        <td>{{ carta_porte.autotransporte_federal.identificacion_vehicular.ConfigVehicular|default:"" }}</td>
+        <td>{{ carta_porte.autotransporte_federal.identificacion_vehicular.PlacaVM|default:"" }}</td>                       
+    </tr>
+</table>
+
+{% if carta_porte.autotransporte_federal.remolques %}
+    <b>Remolques </b>
+    <table style="margin-top:5px; margin-bottom:15px; width:100%;" class="tabla_detalles">
+        <tr class="blue-tr center">
+            <td>Placa</td>
+            <td>Sub Tipo</td>
+        </tr>
+        {% for re in carta_porte.autotransporte_federal.remolques %}
+
+            <tr style="text-align:left; page-break-inside:avoid;">
+                <td style="text-align:left; padding:5px 3px 0 3px !important;">{{ re.Placa }}</td>
+                <td style="text-align:left; padding:5px 3px 0 3px !important;">{{ re.SubTipoRem }}</td>
+            </tr>         
+        {% endfor %}
+    </table>
+{% endif %}
+
+
+{% if CLAVE == "flecosa" %}
+<table style="margin-top:5px; margin-bottom:15px; width:100%;" class="tabla_detalles">
+    <tr>
+        <td colspan="1"><b>Mercancías</b></td>
+    </tr>
+    <tr class="blue-tr center">
+        <td>Cantidad</td>
+        <td>Guía</td>
+        <td>Folio fiscal</td>
+        <td>ClaveProdServ</td>
+        <td>Descripción</td>
+        <td>Peso</td>
+        <td>Unidad de medida</td>
+    </tr>
+    {% for mer in carta_porte.mercancias %}
+
+        {% with gi=mer.guias_identificacion.0 %}
+        <tr style="text-align:left; page-break-inside:avoid;">   
+            <td style="text-align:right; padding:5px 3px 0 3px !important;">1</td>
+            <td style="text-align:left; padding:5px 3px 0 3px !important;">{{ gi.NumeroGuiaIdentificacion }}</td>
+            <td style="text-align:left; padding:5px 3px 0 3px !important;">{{ gi.DescripGuiaIdentificacion }}</td>
+            <td style=" padding:5px 3px 0 3px !important;">{{ mer.BienesTransp }}</td>
+            <td style="text-align:left; padding:5px 3px 0 3px !important;">{{ mer.Descripcion }}</td>
+            <td style="text-align:right; padding:5px 3px 0 3px !important;">{{ mer.PesoEnKg|curn:6 }}</td>
+            <td style="text-align:right; padding:5px 3px 0 3px !important;">KGM</td>
+        </tr>                                 
+        {% endwith %}
+    {% endfor %}
+
+
+    <tr>
+        <td colspan="1"></td>
+        <td colspan="1">
+            <b>
+                Total de guías
+                {{ carta_porte.mercancias|length  }}
+            </b>
+        </td>
+        <td colspan="2"></td>
+        <td><b>Peso total </b></td>
+        <td class="righttext">
+            <b>
+                {{ carta_porte.nodo_mercancias.PesoBrutoTotal|cur  }}
+            </b>
+        </td>
+    </tr>
+    
+</table>
+
+{% else %}
+
+<table style="margin-top:5px; margin-bottom:15px; width:100%;" class="tabla_detalles">
+    <tr class="blue-tr center">
+        <td style="width:40px">Bienes</td>
+        <td>Cantidad</td>
+        <td>Clave Unidad</td>
+        <td>Descripción</td>
+        <td>Peso en KG</td>
+        <td>Material peligroso</td>
+    </tr>
+    {% for mer in carta_porte.mercancias %}
+
+        <tr style="text-align:left; page-break-inside:avoid;">
+            <td style=" padding:5px 3px 0 3px !important;">{{ mer.BienesTransp }}&nbsp;&nbsp;&nbsp;</td>
+            <td style="text-align:right; padding:5px 3px 0 3px !important;">{{ mer.Cantidad|curn:6 }}</td>
+            <td style="text-align:left; padding:5px 3px 0 3px !important;">{{ mer.ClaveUnidad }}</td>
+            <td style="text-align:left; padding:5px 3px 0 3px !important;">{{ mer.Descripcion }}</td>
+            <td style="text-align:right; padding:5px 3px 0 3px !important;">{{ mer.PesoEnKg|curn:6 }}</td>
+            <td style="text-align:right; padding:5px 3px 0 3px !important;">{{ mer.MaterialPeligroso|sino }} {{ mer.CveMaterialPeligroso|default:"" }}</td>
+        </tr>         
+        {% for gi in mer.guias_identificacion %}
+            <tr style="text-align:left; page-break-inside:avoid;">
+                <td style="text-align:right; padding:5px 3px 0 3px !important;" colspan="4">
+                    Número de guía: {{ gi.NumeroGuiaIdentificacion }}
+                        {{ gi.DescripGuiaIdentificacion }}
+                    {{ gi.PesoGuiaIdentificacion }} Kg.
+                </td>
+            </tr>
+        {% endfor %}
+    {% endfor %}
+</table>
+
+{% endif %}
