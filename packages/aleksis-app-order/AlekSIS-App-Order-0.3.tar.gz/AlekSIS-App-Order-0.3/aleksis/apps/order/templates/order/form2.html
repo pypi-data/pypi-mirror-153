@@ -1,0 +1,73 @@
+{% extends 'core/base.html' %}
+{% load i18n material_form %}
+
+{% block page_title %}
+  {{ object.title }}
+{% endblock %}
+{% block browser_title %}
+  {{ object.title }}
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+      {% include "order/breadcrumbs.html" with step=2 %}
+
+    <form action="" method="post">
+      {% csrf_token %}
+
+      <h5>
+        <i class="material-icons left iconify small" data-icon="mdi:comment-arrow-right-outline"></i>
+        {% trans "Processing option" %}
+      </h5>
+      {% for processing_option in processing_options %}
+        <p>
+          <label>
+            <input class="with-gap processing-select" name="{{ processing_form.processing_option.name }}" type="radio"
+                   {% if processing_form.processing_option.value|add:"0" == processing_option.pk %}checked{% endif %}
+                   value="{{ processing_option.pk }}" data-price="{{ processing_option.price }}"
+                   data-name="{{ processing_option.name }}"
+                   data-address="{% if processing_option.address_necessary %}yes{% endif %}"/>
+            <span class="black-text"><strong>{{ processing_option.name }}</strong> </span>
+            <span class="right" style="font-size: 16pt">+ {{ processing_option.price|floatformat:"2" }} €</span>
+          </label>
+        </p>
+        {{ processing_option.notice|safe }}
+
+      {% endfor %}
+
+      <div class="shipping-address-container" style="display: none;">
+        <h5>{% trans "Shipping address" %}</h5>
+        {% form form=shipping_address_form %}
+          {% part form.full_name prefix %}<i class="material-icons prefix iconify" data-icon="mdi:account-outline"></i>{% endpart %}
+          {% part form.second_address_row prefix %}<i class="material-icons prefix iconify" data-icon="mdi:account-arrow-right-outline"></i>{% endpart %}
+          {% part form.street prefix %}<i class="material-icons prefix iconify" data-icon="mdi:home-outline"></i>{% endpart %}
+          {% part form.plz prefix %}<i class="material-icons prefix iconify" data-icon="mdi:city"></i>{% endpart %}
+        {% endform %}
+      </div>
+      <p>
+        <a class="btn waves-effect waves-light" href="{% url "order_form" order.form.pk %}">
+          <i class="material-icons left iconify" data-icon="mdi:chevron-left"></i>
+          {% trans "Back" %}
+        </a>
+        <button type="submit" class="btn waves-effect waves-light green">
+          {% trans "Next step" %}
+          <i class="material-icons right iconify" data-icon="mdi:chevron-right"></i>
+        </button>
+      </p>
+    </form>
+
+    {{ object.help_text|safe }}
+
+    <script>
+        $(".processing-select").click(function () {
+            let address = $(this).attr("data-address") == "yes";
+            if (address) {
+                $(".shipping-address-container").show();
+            } else {
+                $(".shipping-address-container").hide();
+            }
+        })
+        $(".processing-select:checked").click();
+    </script>
+  </div>
+{% endblock %}

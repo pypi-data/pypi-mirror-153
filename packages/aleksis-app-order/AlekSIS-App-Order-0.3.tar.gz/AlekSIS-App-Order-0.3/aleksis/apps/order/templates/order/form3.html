@@ -1,0 +1,122 @@
+{% extends 'core/base.html' %}
+{% load i18n material_form %}
+
+{% block page_title %}
+  {{ object.title }}
+{% endblock %}
+{% block browser_title %}
+  {{ object.title }}
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    {% include "order/breadcrumbs.html" with step=3 %}
+
+    <form action="" method="post">
+      {% csrf_token %}
+
+      <h5>
+        <i class="material-icons left iconify small" data-icon="mdi:account-outline"></i>
+        {% trans "Personal data" %}
+      </h5>
+      <table>
+        <tr>
+          <th>{% trans "Full name" %}</th>
+          <td>{{ order.full_name }}</td>
+        </tr>
+        <tr>
+          <th>{% trans "Email" %}</th>
+          <td>{{ order.email }}</td>
+        </tr>
+        {% if order.processing_option.address_necessary %}
+          <tr>
+            <th>{% trans "Shipping address" %}</th>
+            <td>
+              {{ order.shipping_full_name }} <br/>
+              {{ order.second_address_row }} <br/>
+              {{ order.street }} {{ order.housenumber }} <br/>
+              {{ order.plz }} {{ order.place }}
+            </td>
+          </tr>
+        {% endif %}
+      </table>
+
+
+      <h5>
+        <i class="material-icons left iconify small" data-icon="mdi:cart-outline"></i>
+        {% trans "Items" %}
+      </h5>
+      <table class="highlight">
+        <tr>
+          <th>{% trans "Count" %}</th>
+          <th>{% trans "Item" %}</th>
+          <th>{% trans "Price" %}</th>
+          <th>{% trans "Sum" %}</th>
+        </tr>
+        {% for item in order.items.all %}
+          <tr>
+            <td style="width: 200px;">
+              {{ item.count }}
+            </td>
+            <td>
+              <strong>{{ item.item.name }}</strong>
+            </td>
+            <td class="right-align">
+              <span class="price">{{ item.item.price|floatformat:"2" }}</span> €
+            </td>
+            <td class="right-align">
+              <span class="sum">{{ item.total|floatformat:"2" }}</span> €
+            </td>
+          </tr>
+        {% endfor %}
+        <tr>
+          <td></td>
+          <td>
+            + <strong>{{ order.processing_option.name }}</strong>
+          </td>
+          <td>
+
+          </td>
+          <td class="right-align">
+            {{ order.processing_price|floatformat:"2" }} €
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+          <th class="flow-text">
+            {% trans "Total" %}
+          </th>
+          <th colspan="2" class="right-align flow-text">
+            <span class="total" data-total="{{ order.total }}">{{ order.total|floatformat:"2" }}</span> €
+          </th>
+        </tr>
+      </table>
+
+      <h5>
+        <i class="material-icons left iconify small" data-icon="mdi:note-text-outline"></i>
+        {% trans "Notes to your order" %}
+      </h5>
+      {% form form=notes_form %}{% endform %}
+      <div class="alert primary">
+        <div>
+          <i class="material-icons left iconify" data-icon="mdi:information-outline"></i>
+          {% blocktrans %}
+            Please check the details of your order and send it by clicking "Confirm order".
+          {% endblocktrans %}
+        </div>
+      </div>
+      <p>
+        <a class="btn waves-effect waves-light" href="{% url "order_form_2" order.form.pk %}">
+          <i class="material-icons left iconify" data-icon="mdi:chevron-left"></i>
+          {% trans "Back" %}
+        </a>
+        <button class="btn waves-effect waves-light green" type="submit">
+          <i class="material-icons left iconify" data-icon="mdi:send-outline"></i>
+          {% trans "Confirm order" %}
+        </button>
+      </p>
+    </form>
+
+    {{ object.help_text|safe }}
+  </div>
+{% endblock %}
