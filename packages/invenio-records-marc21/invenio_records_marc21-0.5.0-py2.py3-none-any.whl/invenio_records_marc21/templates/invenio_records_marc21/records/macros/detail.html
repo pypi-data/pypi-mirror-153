@@ -1,0 +1,85 @@
+{# -*- coding: utf-8 -*-
+
+  Copyright (C) 2021 Graz University of Technology.
+
+  Invenio-Records-Marc21 is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{% macro show_sanitized_detail(title, value) %}
+<div class="ui relaxed grid">
+  <div class="two column row">
+    <div class="four wide column">
+      <p><b>{{ title | sanitize_html()| safe}}</b></p>
+    </div>
+    <div class="twelve wide column">
+      {{ value | sanitize_html()| safe }}
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro show_detail(title, value, type="str") %}
+<div class="ui relaxed grid">
+  <div class="two column row">
+    <div class="four wide column">
+      <p><b>{{ _(title) if title }}</b></p>
+    </div>
+    <div class="twelve wide column">
+      {% if value is iterable and (value is not string and value is not mapping) %}
+        {%- set value = value|join(', ') %}
+      {% elif type == "link" %}
+        <a href={{value}}>{{ value }}</a>
+      {%else %}
+        {{ value }}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro show_personal_name(details) %}
+  {% set key = _("Name") %}
+  {% set value = details.main_entry_personal_name | personal_name %}
+  {{ show_detail(key, value) }}
+{%- endmacro %}
+
+{% macro show_description(details) %}
+  {% set key = _("Description") %}
+  {% set value = details.general_note.general_note %}
+  {{ show_detail(key, value) }}
+{%- endmacro %}
+
+{% macro show_creation_date(details) %}
+  {% set key = _("Creation Date") %}
+  {% set value = details.production_publication_distribution_manufacture_and_copyright_notice.date_of_production_publication_distribution_manufacture_or_copyright_notice %}
+  {{ show_detail(key, value) }}
+{%- endmacro %}
+
+{% macro show_language(details) %}
+  {% set key = _("Language") %}
+  {% set value = details.language_code.language_code_of_text_sound_track_or_separate_title %}
+  {{ show_detail(key, value) }}
+{%- endmacro %}
+
+{% macro show_thesis_information(details) %}
+  {% set key = _("Thesis Information") %}
+  {% set value = details.dissertation_note.dissertation_note %}
+  {{ show_detail(key, value) }}
+{%- endmacro %}
+
+{% macro show_title(details) %}
+  {% set key = _("Title") %}
+  {% set value = details.title_statement.title %}
+  {{ show_detail(key, value) }}
+
+  {% set key = _("Stmt. of Responsibility") %}
+  {% set value = details.title_statement.statement_of_responsibility %}
+  {{ show_detail(key, value) }}
+{% endmacro %}
+
+{% macro show_physical_description(details) %}
+  {% set key = _("Type/Extent/Format") %}
+  {% set value = details.physical_description | physical_description %}
+  {{ show_detail(key, value) }}
+{% endmacro %}
