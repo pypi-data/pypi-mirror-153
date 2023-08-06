@@ -1,0 +1,132 @@
+{{header}}
+{% if used_workspace %}
+from azureml.core import Workspace
+{% endif %}
+{% if used_datastore %}
+from azureml.core import Datastore
+{% endif %}
+{% if used_dataset %}
+from azureml.core import Dataset
+{% endif %}
+from azure.ml.component import Pipeline, dsl
+{% if used_dsl_types %}
+from azure.ml.component.dsl.types import {{ ", ".join(used_dsl_types) }}
+{% endif %}
+{% if used_early_termination_policies %}
+from azureml.train.hyperdrive import PrimaryMetricGoal, {{ ", ".join(used_early_termination_policies) }}
+{% endif %}
+{% if generated_component_func_2_module %}
+
+
+{% for func_name, module_name in generated_component_func_2_module.items() %}
+from {{module_name}} import {{func_name}}
+{% endfor %}
+{% endif %}
+{% if sub_pipelines %}
+
+
+{% for func_name, module_name in sub_pipelines.items() %}
+from {{module_name}} import {{func_name}}
+{% endfor %}
+{% endif %}
+{% if used_workspace %}
+
+
+# configure aml workspace
+{{workspace_name}} = Workspace.from_config()
+{% endif %}
+{% if global_components or custom_components or anonymous_components %}
+
+
+# get components
+    {% if batch_load %}
+        {% if batch_component_funcs %}
+{{ ", ".join(batch_component_funcs) }} = Component.batch_load({{workspace_name}}, selectors=[{{ ", ".join(batch_component_ids) }}])
+        {% endif %}
+        {% if batch_anon_component_funcs %}
+{{ ", ".join(batch_anon_component_funcs) }} = Component.batch_load({{workspace_name}}, ids=[{{ ", ".join(batch_anon_component_ids) }}])
+        {% endif %}
+    {% else %}
+        {% for func, def in global_components.items() %}
+{{func}} = Component.load({{workspace_name}}, name='{{def.module_name}}')
+        {% endfor %}
+        {% for func, def in custom_components.items() %}
+{{func}} = Component.load({{workspace_name}}, name='{{def.module_name}}', version='{{def.module_version}}')
+        {% endfor %}
+        {% for func, def in anonymous_components.items() %}
+{{func}} = Component.load({{workspace_name}}, id='{{def.module_version_id}}')
+        {% endfor %}
+    {% endif %}
+{% endif %}
+{% if global_datasets or user_datasets %}
+
+
+# get dataset
+
+{% for name, def in global_datasets.items() %}
+if '{{name}}' not in {{workspace_name}}.datasets:
+    datastore = Datastore.get({{workspace_name}}, 'azureml_globaldatasets')
+    dataset = Dataset.File.from_files((datastore, '{{def.relative_path}}'))
+    dataset.register(workspace={{workspace_name}}, name='{{name}}', description='{{def.description}}')
+{{name}} = {{workspace_name}}.datasets['{{name}}']
+{% endfor %}
+{% for name, def in user_datasets.items() %}
+    {% if def.id %}
+        {% if def.dataset_version_id %}
+{{name}} = Dataset.get_by_name({{workspace_name}}, name='{{def.name}}', version='{{def.dataset_version_id}}')
+        {% else %}
+{{name}} = Dataset.get_by_name({{workspace_name}}, name='{{def.name}}')
+        {% endif %}
+    {% else %}
+{{name}} = Dataset.get_by_id({{workspace_name}}, '{{def.saved_dataset_id}}')
+    {% endif %}
+{% endfor %}
+{% endif %}
+
+
+# define pipeline
+{% if dsl_pipeline_param_assignments %}
+@dsl.pipeline(
+{% for name, val in dsl_pipeline_param_assignments.items() %}
+    {{name}}={{val}},
+{% endfor %}
+)
+{% else %}
+@dsl.pipeline()
+{% endif %}
+{% if pipeline_param_defines %}
+def {{pipeline_func_name}}(
+{% for name, val in pipeline_param_defines.items() %}
+    {% if val[0] %}
+    {{name}}: {{val[0]}}={{val[1]}},
+    {% else %}
+    {{name}}={{val[1]}},
+    {% endif %}
+{% endfor %}
+) -> Pipeline:
+{% else %}
+def {{pipeline_func_name}}() -> Pipeline:
+{% endif %}
+    {% for component_str in component_node_strs %}
+    {{ component_str|indent(4) }}
+    {% endfor %}
+    {% if pipeline_outputs %}
+    return {
+        {% for name, val in pipeline_outputs.items() %}
+        '{{name}}': {{val}},
+        {% endfor %}
+    }
+    {% endif %}
+{% if is_root %}
+
+# create a pipeline
+{% if pipeline_param_assignments %}
+pipeline = {{pipeline_func_name}}(
+{% for name, val in pipeline_param_assignments.items() %}
+    {{name}}={{val}},
+{% endfor %}
+)
+{% else %}
+pipeline = {{pipeline_func_name}}()
+{% endif %}
+{% endif %}

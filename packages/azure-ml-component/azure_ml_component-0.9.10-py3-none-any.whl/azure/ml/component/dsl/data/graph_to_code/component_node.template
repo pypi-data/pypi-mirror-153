@@ -1,0 +1,78 @@
+{{node_name}} = {{component_func_name}}(
+{% for name, val in params.items() %}
+    {{name}}={{val}},
+{% endfor %}
+)
+{# node.sweep() #}
+{% if enable_node_sweep %}
+{{node_name}}.sweep(
+    {% for name, setting in sweep_runsettings.items() %}
+    {% if name == "early_termination" %}
+    early_termination={{setting["policy_type"]}}(
+    {% for key, val in setting.items() %}
+    {% if key != "policy_type"%}
+        {{key}}={{val}},
+    {% endif %}
+    {% endfor %}
+    ),
+    {% else %}
+    {{name}}={{setting}},
+    {% endif %}
+    {% endfor %}
+)
+{% endif %}
+{% for name, setting in run_settings.items() %}
+    {% if name == "root" %}
+{{node_name}}.runsettings.configure(
+        {% for key, val in setting.items() %}
+    {{key}}={{val}},
+        {% endfor %}
+)
+    {% else %}
+{{node_name}}.runsettings.{{name}}.configure(
+        {% for key, val in setting.items() %}
+    {{key}}={{val}},
+        {% endfor %}
+)
+    {% endif %}
+{% endfor %}
+{% for name, setting in k8s_run_settings.items() %}
+{{node_name}}.k8srunsettings.{{name}}.configure(
+        {% for key, val in setting.items() %}
+    {{key}}={{val}},
+        {% endfor %}
+)
+{% endfor %}
+{% if regenerate_output %}
+{{node_name}}.regenerate_output = True
+{% endif %}
+{# inputs configure #}
+{% if inputs_configure %}
+    {% for input, setting in inputs_configure.items() %}
+{{node_name}}.inputs.{{input}}.configure(
+        {% for setting_name, setting_val in setting.items() %}
+    {{ setting_name }}={{ setting_val }},
+        {% endfor %}
+)
+    {% endfor %}
+{% endif %}
+{# register as #}
+{% if register_as %}
+    {% for output, setting in register_as.items() %}
+{{node_name}}.outputs.{{output}}.register_as(
+        {% for setting_name, setting_val in setting.items() %}
+    {{ setting_name }}={{ setting_val }},
+        {% endfor %}
+)
+    {% endfor %}
+{% endif %}
+{# outputs configure #}
+{% if outputs_configure %}
+    {% for output, setting in outputs_configure.items() %}
+{{node_name}}.outputs.{{output}}.configure(
+        {% for setting_name, setting_val in setting.items() %}
+    {{ setting_name }}={{ setting_val }},
+        {% endfor %}
+)
+    {% endfor %}
+{% endif %}

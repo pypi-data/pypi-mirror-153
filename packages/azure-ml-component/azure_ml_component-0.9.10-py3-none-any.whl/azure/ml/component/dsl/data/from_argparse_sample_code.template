@@ -1,0 +1,30 @@
+import argparse
+import sys
+import runpy
+from enum import Enum
+from azure.ml.component import dsl
+from azure.ml.component.dsl._component import ComponentExecutor
+{imports}
+{enums}
+
+@dsl._component({dsl_param_dict})
+def {func_name}({func_args}
+):
+    # By default we reconstruct sys.argv and invoke the original script with runpy.
+    # If in the original script, you have a function main and call main(parser.parse_args()),
+    # you may uncomment the following code and remove sys.argv and runpy part.
+    # Here args is the same as the result `args = parser.parse_args()`
+
+    # args = argparse.Namespace(**locals())
+    # from {component_name} import main
+    # main(args)
+
+    sys.argv = [{sys_argv}
+    ]
+{append_stmt}
+    print(' '.join(sys.argv))
+    runpy.run_{entry_type}('{entry}', run_name='__main__')
+
+
+if __name__ == '__main__':
+    ComponentExecutor({func_name}).execute(sys.argv)

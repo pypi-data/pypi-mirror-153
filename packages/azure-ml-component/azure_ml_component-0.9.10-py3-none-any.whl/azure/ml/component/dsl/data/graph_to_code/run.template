@@ -1,0 +1,53 @@
+{{header}}
+import os
+import sys
+import argparse
+from pathlib import Path
+
+from azureml.core import Workspace
+from azure.ml.component._util._loggerfactory import _LoggerFactory
+
+logger = _LoggerFactory.get_logger(__name__)
+current_folder = Path(__file__).absolute().parent
+os.chdir(current_folder)
+sys.path.append(current_folder)
+
+
+def get_arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--validate", "-v", action="store_true", help="Only validate pipeline")
+    parser.add_argument("--verbose", action="store_true", help="Print verbose info")
+    parser.add_argument("--wait", action="store_true", help="Wait until pipeline terminates")
+    parser.add_argument("--wait_timeout_minutes", type=int, help="Number of seconds to wait for pipeline to terminate")
+    return parser
+
+
+def main(pipeline, workspace, **kwargs):
+    parser = get_arg_parser()
+    args, additional_args = parser.parse_known_args()
+    logger.info("args: %s", args)
+    logger.info(f"additional args: {additional_args}")
+
+    if args.validate:
+        pipeline.validate(workspace=workspace, raise_error=True)
+        logger.info(f"Hooray, pipeline validation succeed.")
+    else:
+        pipeline_run = pipeline.submit(workspace=workspace, **kwargs)
+        if args.wait:
+            timeout_seconds = args.wait_timeout_minutes * 60 if args.wait_timeout_minutes else sys.maxsize
+            pipeline_run.wait_for_completion(timeout_seconds=timeout_seconds)
+
+
+if __name__ == "__main__":
+    from pipelines.{{pipeline_module_name}} import pipeline
+
+    workspace = Workspace.from_config()
+    main(
+        pipeline=pipeline,
+        workspace=workspace,
+{% for name, val in pipeline_submit_params.items()%}
+{% filter indent(8, first=True) %}
+{{name}}={{val}},
+{% endfilter %}
+{% endfor %}
+    )

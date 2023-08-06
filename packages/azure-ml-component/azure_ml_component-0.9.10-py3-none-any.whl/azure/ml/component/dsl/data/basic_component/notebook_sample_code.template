@@ -1,0 +1,155 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Test Notebook for Building Pipeline Using Component 'COMPONENT_NAME'\n",
+    "The component 'COMPONENT_NAME' was generated through command: 'az ml component init -n COMPONENT_NAME'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from azureml.core import Workspace\n",
+    "from azureml.core.compute import AmlCompute, ComputeTarget\n",
+    "from azure.ml.component import Component, PipelineComponent, dsl\n",
+    "import sys\n",
+    "from pathlib import Path\n",
+    "# The following line adds source directory to path. \n",
+    "from COMPONENT_ENTRY import FUNCTION_NAME"
+   ]
+  },
+  {
+   "source": [
+    "## Prerequisites: Configure workspace & compute\n",
+    "\n",
+    " - Update .azureml/config.json to make sure it has information on your workspace, subscription id, etc.\n",
+    " - Change the following aml_compute_target's value to reference an existing compute target"
+   ],
+   "cell_type": "markdown",
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "workspace = Workspace.from_config(path = '.azureml/config.json')\n",
+    "aml_compute_target = \"YOUR_COMPUTE_TARGET\"\n",
+    "print(workspace.name, workspace.resource_group, workspace.location, workspace.subscription_id, aml_compute_target, sep='\\n')"
+   ]
+  },
+  {
+   "source": [
+    "# Load component(s)\n",
+    "Load a component function through one of the following:\n",
+    "- Component._from_func: when you have a python function decorated with @dsl._component\n",
+    "- Component.from_yaml: when loading from existing component yaml definition\n",
+    "- Component.load: when you have already registered the component into Azure ML workspace"
+   ],
+   "cell_type": "markdown",
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "component_func = Component._from_func(workspace, FUNCTION_NAME)\n",
+    "help(component_func)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Run component in local\n",
+    "Using component.run can execute component in local machine<br>\n",
+    "If use_docker=True, will pull image from azure and run component in container.<br>\n",
+    "If use_docker=False, will directly run component script."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# create component\n",
+    "component = component_func().set_inputs(\n",
+    "    PARAMETERS_TEMPLATE + INPUTS_TEMPLATE\n",
+    ")\n",
+    "component.run(use_docker=True)"
+   ]
+  },
+  {
+   "source": [
+    "# Create pipeline\n",
+    "This is done by calling component function(s) with the parameters/inputs/outputs the component supports"
+   ],
+   "cell_type": "markdown",
+   "metadata": {}
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# prepare dataset with the following code \n",
+    "\n",
+    "# from azureml.core import Dataset\n",
+    "\n",
+    "# your_dataset = Dataset.get_by_name(workspace, name='YOUR_DATASET_NAME')\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "@dsl.pipeline(name='PIPELINE_NAME', description='A sample pipeline uses COMPONENT_NAME', default_compute_target=aml_compute_target)\n",
+    "def sample_pipeline() -> PipelineComponent:\n",
+    "    component1 = component_func().set_inputs(\n",
+    "        REQUIRED_INPUTS\n",
+    "    )\n",
+    "    RUNSETTINGS\n",
+    "    return component1.outputs\n",
+    "\n",
+    "test_pipeline = sample_pipeline()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "test_pipeline.validate()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "run = test_pipeline.submit(\n",
+    "    experiment_name='EXPERIMENT_NAME'\n",
+    ")\n",
+    "run.wait_for_completion()\n",
+    "run"
+   ]
+  }
+ ],
+ "metadata": {},
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
