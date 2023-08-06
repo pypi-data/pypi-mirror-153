@@ -1,0 +1,137 @@
+#!/bin/bash
+
+execpath=`dirname $0`
+execpath=`realpath $execpath`
+
+source ${NEUROGLIA_BASH_LIB}
+if [ ! "$?" = 0 ]
+then
+	echo "Error initializing neuroglia-helpers, quitting $0"
+	exit 1
+fi
+
+#if [ ! -n "$SINGULARITY_DIR" ]
+#then
+#	echo "SINGULARITY_DIR not set, reverting to default: /project/6007967/akhanf/singularity" >&2
+#	export SINGULARITY_DIR=/project/6007967/akhanf/singularity
+#fi
+
+if [  "$#" -lt  1 ]
+then
+	echo "Usage: $0 {shub/docker}://org/repo:tag" >&2
+	echo "" >&2
+	echo " To simply check if path is downloaded, use: $0 {shub/docker}://org/repo:tag -n  (this returns non-zero exit code if does not exist)" >&2
+	echo " Note: does not replace container -- use shub-upgrade to replace existing container" >&2
+	exit 1
+fi
+
+#input is shub URL
+
+url=$1
+
+suff=${url##*://}
+tag=${suff#*:}
+org=${suff%%/*}
+name=${suff#*/}
+name=${name%:*}
+
+bra=master
+
+
+#check version of singularity (2 vs 3)
+version=`singularity --version`
+version=${version##*\ }
+version=${version:0:1}
+
+hub=${url%%://*}
+if [ "$hub" = "docker" ]
+then
+	if [ "$version" = "2" ]
+	then
+	cached=$SINGULARITY_DIR/bids-apps/${org}_${name}_${tag}.img
+	dlpath=$SINGULARITY_DIR/${name}-${tag}.simg
+	elif [ "$version" = "3" ]
+	then
+	cached=$SINGULARITY_DIR/bids-apps/${org}_${name}_${tag}.sif
+	dlpath=$cached
+	fi
+elif [ "$hub" = "shub" ]
+then
+	if [ "$version" = "2" ]
+	then
+	cached=$SINGULARITY_DIR/${org}-${name}-${bra}-${tag}.simg
+	dlpath=$cached
+	elif [ "$version" = "3" ]
+	then
+	cached=$SINGULARITY_DIR/${org}-${name}-${bra}-${tag}.sif
+	dlpath=$cached
+    if [ ! -e $cached ]
+    then
+        if [ -e $SINGULARITY_DIR/${org}-${name}-${bra}-${tag}.simg ]
+        then
+            cached=$SINGULARITY_DIR/${org}-${name}-${bra}-${tag}.simg
+        fi
+    fi
+	fi
+
+else
+	echo "Must use docker:// or shub://"  >&2
+	exit 1
+fi
+
+if [ "$#" -gt 1 ]
+then
+ if [ "$2"  = "-n" ]
+ then
+	#don't download, just check if exists
+	if [ ! -e $cached ]
+	then
+		echo "Container does not exist, exiting with nonzero exit code"  >&2
+		echo $cached
+		exit 1
+	else
+		echo "Container does exist, exiting with zero (success) exit code"  >&2
+		echo $cached
+		exit 0
+	fi
+ fi
+fi
+
+if [ ! -e $cached ]
+then
+	echo "container not found, attempting download with singularity pull" >&2
+	if [ ! "${HOSTNAME:4:3}" = "vdi" ]
+	then
+		echo "WARNING: Detected incompatible host: $HOSTNAME" >&2
+		echo "singularity pull on graham login or compute nodes will likely fail, please log-in to gra-vdi (VNC) to pull containers" >&2
+	fi
+
+	export SINGULARITY_CACHEDIR=$SINGULARITY_DIR
+	if [ "$version" = "2" ]
+	then
+	export SINGULARITY_PULLFOLDER=$SINGULARITY_DIR
+	rm -f $dlpath
+	singularity pull $url >&2 
+	if [ "$?" = 0 ]
+	then
+		mv -v $dlpath $cached >&2
+	fi
+	elif [ "$version" = "3" ]
+	then
+	#singularity v3 can specify pull path directly
+	SINGULARITY_TMPDIR=/tmp 
+	singularity pull  $cached $url  >&2 
+	fi
+
+	if [ ! -e $cached ]
+	then
+		echo ERROR: could not pull image >&2
+		exit 1
+	fi
+
+		
+fi
+
+
+echo `realpath $cached`
+exit 0

@@ -1,0 +1,57 @@
+#!/bin/bash
+
+host=`hostname`
+
+name=neuroglia_interactive
+jupyter_script=$NEUROGLIA_DIR/etc/jupyter.sh
+cpus=8
+hours=3
+mem=32000
+
+
+salloc_opts=""
+acct=$CC_COMPUTE_ALLOC
+srun=""
+
+while getopts "n:t:m:hYgj" flag
+do
+	case $flag in
+		Y) echo "enabling x11 forwarding"
+             salloc_opts="$salloc_opts --x11";;
+		g) echo "enabling 1 gpu, with $CC_GPU_ALLOC"
+            salloc_opts="$salloc_opts --gres=gpu:t4:1"
+            acct=$CC_GPU_ALLOC;;
+		j) echo "enabling jupyter, srun $jupyter_script"
+            srun="srun $jupyter_script";;
+		n) echo "setting cpus=$OPTARG"
+            cpus=${OPTARG};;
+		t) echo "setting hours=$OPTARG"
+            hours=${OPTARG};;
+		m) echo "setting mem=$OPTARG"
+            mem=${OPTARG};;
+		h) echo "Usage: regularInteractive [-n <cpus>] [-t <hours>] [-m <mem>] [<task>]"
+		   echo "Job parameters"
+		   echo "-n Number of CPUs; default 8"
+		   echo "-t Number of hours; default 3"
+		   echo "-m Amount of memory; default 32000"
+		   echo "Tasks (can combine multiple tasks):"
+		   echo "-Y Visualization task"
+		   echo "-g GPU task"
+		   echo "-j Jupyter task"
+		   exit 1
+	esac
+done
+
+echo "Requesting interactive job with $cpus CPUs, $mem mb memory, for maximum of $hours hours ..."
+echo "Please wait until you are granted a job allocation..."
+
+if [ ${host:0:3} == "gra" ]
+then
+	echo running on graham
+		
+    salloc -J $name -D `pwd` --time=$hours:00:00 --cpus-per-task=$cpus --ntasks=1 --mem=$mem --account=$acct $salloc_opts $srun
+	
+else
+	echo "Please ssh to graham.sharcnet.ca before using $0"
+	exit -1
+fi
