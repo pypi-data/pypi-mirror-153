@@ -1,0 +1,166 @@
+<style>
+label.coiledbuttonlabel {
+  margin-right: 40px;
+  line-height: 2em;
+}
+
+input.coiledbutton {
+  appearance: none;
+  background-color: #A6E3FF;
+
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+
+  border: 2px solid #0078d5;
+  transition: 0.2s all linear;
+  margin-right: 5px;
+
+  position: relative;
+  top: -4px;
+}
+input.coiledbutton:checked {
+  background-color: #0078d5;
+}
+input.coiledbutton:disabled {
+  border: 2px solid darkgray;
+  background-color: lightgray;
+}
+input.coiledbutton:disabled:checked {
+  background-color: darkgray;
+}
+</style>
+<div
+    style="width: 720px;
+           background-image: url(data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDIgNDczIj48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2QyZDBjYzt9PC9zdHlsZT48L2RlZnM+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMTEwLDI2OS43M2ExMDgsMTA4LDAsMCwxLTIuMDgtMjE2SDExMFoiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xOTksMjk5LjczYTEwOCwxMDgsMCwwLDAtNjguNzctMTAwLjYxVjQwMC4zNEExMDgsMTA4LDAsMCwwLDE5OSwyOTkuNzNaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMTMwLjM3LDE0Mi43MmE3MC42MSw3MC42MSwwLDEsMCwwLTE0MS4yMmgwWiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTYwLDM4OS41OWE5Miw5MiwwLDAsMCw1MCw4MS45MVYzMDcuNjhBOTIsOTIsMCwwLDAsNjAsMzg5LjU5WiIvPjwvc3ZnPg==);
+           background-repeat: no-repeat;
+           background-position: top 12px right 12px;
+           background-size: 24px;
+           box-sizing: border-box;
+           padding: 12px;
+           border-radius: 6px;
+           border: 2px solid lightgray;
+           display: grid;
+           grid-template-rows: 1fr 0.75fr 1fr;
+           grid-template-columns: 1fr 1fr;
+           grid-template-areas:
+           'overview configuration'
+           'progress progress'
+           'logs logs';"
+>
+    <div style="grid-area: overview;">
+        <h3>Overview</h3>
+        <div style="flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center;">
+            <div>
+              <span style="font-weight: 600;">Cluster Name:</span><span> {{ cluster_name }}</span>
+            </div>
+            <div>
+              <span style="font-weight: 600;">Cluster Status:</span><span> {{ overall_cluster_status | title }}</span>
+            </div>
+            <div>
+              <span style="font-weight: 600;">Scheduler Status:</span><span> {{ scheduler_status | title }}</span>
+            </div>
+            <div>
+              <span style="font-weight: 600;">Dashboard:</span>
+              {% if dashboard_address is not none %}
+                <a
+                  style="color: blue; text-decoration: underline;"
+                  href="http://{{ dashboard_address }}:8787"
+                  target="_blank"
+                >
+                http://{{ dashboard_address }}:8787
+                </a>
+             {% else %}
+               <span>Scheduler has not started yet</span>
+             {% endif %}
+            </div>
+        </div>
+    </div>
+    <div style="grid-area: configuration;">
+        <h3>Configuration</h3>
+        <div style="display: flex; flex-direction: column; justify-content: center;">
+          <div><span style="font-weight: 600;">Cloud:&nbsp;</span>{% if cloud_name is not none %}{{ cloud_name }}{% else %}Not available{% endif %}</div>
+          <div><span style="font-weight: 600;">Region:&nbsp;</span>{% if region_name is not none %}<code>{{ region_name }}</code>{% else %}Not available{% endif %}</div>
+          <div><span style="font-weight: 600;">Scheduler Instance Type:&nbsp;</span>{% if scheduler_instance_type is not none %}<code>{{ scheduler_instance_type }}</code>{% else %}Not available{% endif %}</div>
+          <div><span style="font-weight: 600;">Worker Instance Type(s):&nbsp;</span>{% if worker_instance_type is not none %}<code>{{ worker_instance_type }}</code>{% else %}Not Available{% endif %}</div>
+          <div><span style="font-weight: 600;">Software Environment:&nbsp;</span>{% if software_environment_name is not none %}<code>{{ software_environment_name }}</code>{% else %}Not Available{% endif %}</div>
+        </div>
+    </div>
+    <div style="grid-area: progress;">
+        {% include "progress.html.j2" %}
+    </div>
+    <div style="grid-area: logs; display: flex; flex-direction: column;">
+      <div style="visibility: {% if interactive %}visible{% else %}hidden{% endif %}; display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
+            <input
+              type="radio"
+              class="coiledbutton"
+              {% if not interactive %}disabled{% endif %}
+              {% if not error_logs|length %}checked{% endif %}
+              id="worker"
+              name="logs"
+              onclick="displayLogs('worker')"
+            >
+            <label class="coiledbuttonlabel" for="worker">Worker Status Logs</label>
+            <input
+              type="radio"
+              class="coiledbutton"
+              {% if not interactive %}disabled{% endif %}
+              id="scheduler"
+              name="logs"
+              onclick="displayLogs('scheduler')"
+            >
+            <label class="coiledbuttonlabel" for="scheduler">Scheduler Status Logs</label>
+            <input
+              type="radio"
+              class="coiledbutton"
+              {% if not interactive %}disabled{% endif %}
+              {% if error_logs|length %}checked{% endif %}
+              id="error"
+              name="logs"
+              onclick="displayLogs('error')"
+            >
+            <label class="coiledbuttonlabel" for="error">Error Logs</label>
+        </div>
+        <div style="height: 128px; width: 696px; margin-top: 12px;">
+          <div id="scheduler-status-logs-{{ unique }}" style="display: none; height: 100%; border: solid; overflow: auto">
+              <pre style="padding: 12px; box-sizing: border-box; white-space: pre;">
+              {%- for state in scheduler_status_logs | reverse -%}
+                  <code style="white-space: pre;"> &gt;&nbsp;{{ state | format_state }}</code><br>
+              {%- endfor -%}
+              </pre>
+          </div>
+          <div style="display: {% if error_logs|length %}none{% else %}block{% endif %}; height: 100%; border: solid; overflow: auto;" id="worker-status-logs-{{ unique }}">
+              <pre style="padding: 12px; box-sizing: border-box; white-space: pre; min-height: 100%">
+              {%- for state in worker_status_logs | reverse -%}
+                  <code style="white-space: pre;"> &gt;&nbsp;{{ state | format_state }}</code><br>
+              {%- endfor -%}
+              </pre>
+          </div>
+          <div style="display: {% if error_logs|length %}block{% else %}none{% endif %}; height: 100%; border: solid; overflow: auto;" id="error-status-logs-{{ unique }}">
+              <pre style="padding: 12px; box-sizing: border-box; white-space: pre; min-height: 100%">
+              {%- if not error_logs -%}
+              <code>No errors found</code>
+              {%- else -%}
+              {%- for state in error_logs | reverse -%}
+                  <code style="color: red; white-space: pre;">ERROR: {{ state | format_error_state }}</code><br>
+              {%- endfor -%}
+              {%- endif -%}
+              </pre>
+          </div>
+       </div>
+    </div>
+</div>
+<script>
+    function displayLogs(element) {
+        const names = ["scheduler", "worker", "error"];
+        for (let name of names) {
+            let id = name + '-status-logs-' + '{{ unique }}';
+            let logs = document.getElementById(id);
+            if (name !== element) {
+                logs.style.display = 'none';
+            } else {
+                logs.style.display = 'block';
+            }
+        }
+    }
+</script>
