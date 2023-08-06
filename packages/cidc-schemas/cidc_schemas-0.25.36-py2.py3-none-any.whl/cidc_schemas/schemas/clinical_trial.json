@@ -1,0 +1,135 @@
+{
+  "$schema": "metaschema/strict_meta_schema.json#",
+  "$id": "clinical_trial",
+  "title": "Clinical Trial",
+  "description": "Encapsulates information regarding a clinical trial.",
+  "additionalProperties": false,
+  "type": "object",
+  "properties": {
+    "nct_id": {
+      "type": "string",
+      "description": "ClinicalTrials.gov identifier. Example: NCT03731260."
+    },
+    "nci_id": {
+      "type": "string",
+      "description": "NCI Trial Identifier. Example: NCI22345."
+    },
+    "protocol_identifier": {
+      "type": "string",
+      "description": "Trial identifier used by lead organization, ie. Center for Experimental Therapeutics Program (CTEP) ID or Industry Sponsored ID.  This is usually a short identifier. Example: E4412."
+    },
+    "trial_name": {
+      "description": "Name of clinical trial.",
+      "type": "string"
+    },
+    "trial_description": {
+      "description": "A brief description of the clinical trial.",
+      "type": "string"
+    },
+    "trial_organization": {
+      "description": "Name of the primary organization that oversees the clinical trial. Example: ECOG-ACRIN, SWOG, etc.",
+      "type": "string"
+    },
+    "grant_or_affiliated_network": {
+      "description": "The primary organization providing grant funding and supporting the trial.",
+      "type": "string"
+    },
+    "trial_status": {
+      "description": "What stage the clinical trial is at in its process.",
+      "type": "string",
+      "enum": ["New", "Ongoing", "Completed"]
+    },
+    "biobank": {
+      "description": "The primary organization responsible for storing biospecimens from this study.",
+      "type": "string"
+    },
+    "lead_cimac_pis": {
+      "description": "The PI(s) from the CIMAC-CIDC network responsible for this study.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "lead_cimac_contacts": {
+      "description": "A list of contacts for this trial.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "lead_trial_staff": {
+      "description": "The names of lead trial staff members other than the PIs.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "justification": {
+      "description": "A description of the reasons why this study could provide insight into molecular biomarkers of immunotherapy.",
+      "type": "string"
+    },
+    "schema": { "$ref": "artifacts/artifact_image.json" },
+    "biomarker_plan": {
+      "description": "A description of the objectives and hypotheses for the proposed biomarkers.",
+      "type": "string"
+    },
+    "data_sharing_plan": {
+      "description": "A description of the rules governing data sharing and publications.",
+      "type": "string"
+    },
+    "expected_assays": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "A list of assays the CIDC expects to receive for this trial."
+    },
+    "collection_event_list": {
+      "description": "A list associating collection events with allowed sample types.",
+      "type": "array",
+      "items": { "$ref": "collection_event.json" }
+    },
+    "allowed_collection_event_names": {
+      "description": "Allowed values for sample.json#properties/collection_event_name for this trial.",
+      "type": "array",
+      "$comment": "This works together with sample.json#properties/collection_event_name/in_doc_ref_pattern.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_cohort_names": {
+      "description": "Allowed values for sample.json#properties/cohort_name for this trial.",
+      "type": "array",
+      "$comment": "This works together with sample.json#properties/cohort_name/in_doc_ref_pattern.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "shipments": {
+      "type": "array",
+      "items": {
+        "$ref": "shipping_core.json"
+      },
+      "mergeStrategy": "append"
+    },
+    "participants": {
+      "type": "array",
+      "description": "The collection of all data related to a specific participant in the context of a specific clinical trial.",
+      "items": {
+        "$ref": "participant.json"
+      },
+      "mergeStrategy": "arrayMergeById",
+      "mergeOptions": {
+        "idRef": "/cimac_participant_id"
+      }
+    },
+    "assays": {
+      "$comment": "Assays for this trial",
+      "$ref": "assays/components/available_assays.json"
+    },
+    "analysis": {
+      "$ref": "assays/components/available_ngs_analyses.json"
+    },
+    "clinical_data": {
+      "$ref": "clinical_data.json"
+    }
+  },
+  "required": [
+    "protocol_identifier",
+    "participants",
+    "allowed_cohort_names",
+    "allowed_collection_event_names"
+  ]
+}

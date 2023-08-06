@@ -1,0 +1,58 @@
+############################################################
+#                       General                            #
+############################################################
+
+metasheet: metasheet_{{dt}}.csv  
+assembly: hg38
+ref: ref.yaml
+mate: {% if paired_end_reads == "Paired" %}[1,2]{% else %}[0]{% endif %}
+
+
+############################################################
+#                       level1 pipeline                    #
+############################################################
+
+#### star  parameters
+#Possible values are [fr-firststrand, fr-secondstrand, fr-unstranded (default), transfrags]
+#library_type: 'fr-firststrand'  
+
+### rseqc parameters
+#rseqc_ref: house_keeping  #rseqc ref model
+
+### gene_quantification
+#run rsem or salmon. If rsem = false, then it will automatically consider salmon.
+rsem: false
+stranded: false
+
+############################################################
+#                     list samples                         #
+############################################################
+
+samples:
+{% for sample in samples %}
+  {{sample.cimac_id}}: 
+  {% if sample.files.r1 %}
+      # r1  
+    {% for fastq_gz_artifact in sample.files.r1 %}
+      - gs://{{BIOFX_BUCKET_NAME}}/{{fastq_gz_artifact.object_url}}
+    {% endfor %}
+      # r2
+    {% for fastq_gz_artifact in sample.files.r2 %}
+      - gs://{{BIOFX_BUCKET_NAME}}/{{fastq_gz_artifact.object_url}}
+    {% endfor %}
+  {% else %}
+      # bam
+    {% for bam_artifact in sample.files.bam %}
+      - gs://{{BIOFX_BUCKET_NAME}}/{{bam_artifact.object_url}}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+
+############################################################
+#                       run settings                       #
+############################################################
+runs:
+{% for sample in samples %}
+  run_{{sample.cimac_id}}:
+  - {{sample.cimac_id}}
+{% endfor %}
