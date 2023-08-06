@@ -1,0 +1,76 @@
+<style scoped>
+
+    .dataframe-div {
+      max-height: 300px;
+      overflow: auto;
+      position: relative;
+    }
+    .info_items {
+        margin: 10px 0;
+        font-size: 0.8em;
+    }
+
+    .styled-table {
+        border-collapse: collapse;
+        font-size: 0.8em;
+        font-family: sans-serif;
+        min-width: 400px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .styled-table thead tr {
+        background-color: #009879;
+        color: #ffffff;
+        text-align: left;
+    }
+
+    .styled-table tbody tr {
+        border-bottom: 1px solid #dddddd;
+    }
+
+    .styled-table tbody tr:nth-of-type(even) {
+        background-color: #f3f3f3;
+    }
+
+    .styled-table tbody tr:last-of-type {
+        border-bottom: 2px solid #009879;
+    }
+
+    .styled-table tbody tr.active-row {
+        font-weight: bold;
+        color: #009879;
+    }
+</style>
+
+{% macro header_footer(limit, total_rows, total_cols, partitions) %}
+<div class="info_items">Viewing {{limit}} of {{total_rows}} rows / {{total_cols}} columns</div>
+{% endmacro %}
+
+{{header_footer(limit, total_rows, total_cols, partitions)}}
+<div class="dataframe-div">
+    <table class="styled-table">
+        <thead>
+        <tr>
+            {%for col in cols: %}
+            <th>
+                <div class="column_name">{{col[0]}}</div>
+                <div class="data_type">{{loop.index}}</div>
+                <div class="data_type">({{col[1]}})</div>
+            </th>
+            {% endfor %}
+        </tr>
+
+        </thead>
+        <tbody>
+        {%for r in data:%}
+        <tr>
+            {%for k,v in r.items(): %}
+            <td>
+                {{v|string|replace(" ", "\u2E31")}}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
