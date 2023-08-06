@@ -1,0 +1,23 @@
+{# For HPA to actually work, we need to have the CPU requests configured correctly. #}
+{% if not config.ready_for_hpa %}
+{{ ABORT("To use autoscaling, you MUST have CPU resource requests for predictionServer and trackingAgent configured.") }}
+{% endif %}
+
+{% import '_helpers.j2' as helpers %}
+- apiVersion: autoscaling/v1
+  kind: HorizontalPodAutoscaler
+  metadata:
+    name: "{{ helpers.name(di) }}"
+    labels:
+      {{ COMPONENT_LABEL_NAME }}: predictionServer
+      {{ helpers.default_labels(di) | indent(6) }}
+    annotations:
+      {{ helpers.default_annotations() | indent(6) }}
+  spec:
+    minReplicas: {{ min_replicas }}
+    maxReplicas: {{ max_replicas }}
+    scaleTargetRef:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: "{{ helpers.name(di) }}"
+    targetCPUUtilizationPercentage: {{ config.pps_cpu_utilization }}

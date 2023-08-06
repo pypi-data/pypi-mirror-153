@@ -1,0 +1,40 @@
+# vim: set ft=yaml
+{% import '_helpers.j2' as helpers %}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ helpers.image_builder_name(di) | k8sname }}
+  labels:
+    {{ MODEL_LABEL_NAME }}: "{{ di.model_id }}"
+    {{ COMPONENT_LABEL_NAME }}: imageBuilder
+    {{ helpers.default_labels(di) | indent(4) }}
+  annotations:
+    {{ helpers.default_annotations() | indent(4) }}
+    {{ helpers.pps_annotations(di) | indent(4) }}
+{% for k,v in config.kaniko_annotations.items() %}
+    "{{ k }}": "{{ v }}"
+{% endfor %}
+spec:
+  serviceAccountName: "{{ config.kaniko_service_account }}"
+  imagePullSecrets: {{ config.image_pull_secrets | tojson }}
+  securityContext: {{ config.kaniko_pod_security_context | tojson }}
+  containers:
+  - name: kaniko
+    image: "{{ config.kaniko_image }}"
+    securityContext: {{ config.kaniko_security_context | tojson }}
+    args:
+    - --cache=true
+    - --context=tar://stdin
+    - --destination={{ helpers.model_image(di) }}
+{% for r in config.kaniko_args %}
+    - {{ r }}
+{% endfor %}
+    resources: {{ config.kaniko_resources | tojson }}
+    stdin: true
+    stdinOnce: true
+    volumeMounts: {{ config.kaniko_volume_mounts | tojson }}
+  restartPolicy: Never
+  volumes: {{ config.kaniko_volumes | tojson }}
+  nodeSelector: {{ config.kaniko_node_selector | tojson }}
+  affinity: {{ config.kaniko_affinity | tojson }}
+  tolerations: {{ config.kaniko_tolerations | tojson }}

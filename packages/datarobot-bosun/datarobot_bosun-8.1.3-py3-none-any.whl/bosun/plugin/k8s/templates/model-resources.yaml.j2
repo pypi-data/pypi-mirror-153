@@ -1,0 +1,26 @@
+{# Import helpers here so included templates don't _have_ to (but still recommended). #}
+{% import '_helpers.j2' as helpers %}
+kind: List
+apiVersion: v1
+items:
+{# The newlines are important between the `include` statements; do not remove them. #}
+{% include 'model-resources/service.yaml.j2' %}
+
+{% include 'model-resources/deployment.yaml.j2' %}
+
+{% include 'model-resources/ingress.yaml.j2' %}
+
+{# Create a PodDisruptionBudget to avoid downtime during normal cluster maintenance but
+   only if there are *always* at least two pods running, otherwise it will conflict with
+   cluster scale-down or planned node maintenance. #}
+{% if (not is_autoscale and desired_replicas > 1) or (min_replicas > 1) %}
+{% include 'model-resources/pdb.yaml.j2' %}
+{% endif %}
+
+{# TODO We don't support changing autoscaling w/o a complete deployment recreation. The issue is if the user turns
+   off autoscaling or changes the min/desired replica count we could leak the HPA and/or PDB resources #}
+{% if is_autoscale %}
+{% include 'model-resources/hpa.yaml.j2' %}
+{% endif %}
+
+{% include 'model-resources/extra.yaml.j2' %}

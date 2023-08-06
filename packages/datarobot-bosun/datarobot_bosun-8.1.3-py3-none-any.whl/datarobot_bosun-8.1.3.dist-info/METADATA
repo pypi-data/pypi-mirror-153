@@ -1,0 +1,88 @@
+Metadata-Version: 2.1
+Name: datarobot-bosun
+Version: 8.1.3
+Summary: datarobot-bosun module providing MLOps Management framework and plug-ins
+Home-page: http://datarobot.com
+Author: DataRobot
+Author-email: info@datarobot.com
+License: DataRobot
+Project-URL: Documentation, https://docs.datarobot.com/en/docs/release/public-preview/mlops-preview/mgmt-agent.html#mlops-management-agent
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: pyyaml
+Requires-Dist: pytz
+Requires-Dist: python-dateutil
+Requires-Dist: schema
+Requires-Dist: datarobot-mlops-connected-client (>=7.1)
+Requires-Dist: importlib-resources ; python_version < "3.7"
+Provides-Extra: docker
+Requires-Dist: requests ; extra == 'docker'
+Requires-Dist: docker ; extra == 'docker'
+Provides-Extra: kubernetes
+Requires-Dist: jinja2 ; extra == 'kubernetes'
+Requires-Dist: requests ; extra == 'kubernetes'
+Requires-Dist: kubernetes (>=19.15.0b1) ; extra == 'kubernetes'
+Provides-Extra: s3
+Requires-Dist: boto3 (<2,>=1.11.4) ; extra == 's3'
+
+# Bosun - DataRobot's MLOps event manager
+
+This is the Python Bosun package, which complements the Bosun distribution. In this package you will find two important components of the Bosun system:
+    - The [Bosun Python plugin framework](#the-bosun-python-plugin-framework)
+    - The [Bosun model connector framework](#the-bosun-model-connector-framework)
+
+## Installation
+
+The Bosun wheel is provided as part of the MLOps Agents tarball. To install the Bosun Python module:
+
+```shell
+pip install datarobot-bosun
+```
+
+### Additional Plugin Dependencies
+
+The basic install will provide support for the `filesystem` plugin; however, there are several other reference plugins that are provided with this package but which require additional dependencies that are not installed by default. For convenience, we provide the following optional dependencies that will install the packages necessary for the relevant plugin:
+
+* `docker` - Installs dependencies for the `docker` plugin.
+* `kubernetes` - Installs dependencies for the `kubernetes` plugin.
+* `s3` - Installs dependencies for the `s3` plugin. It also enables support for fetching external model artifacts from S3 (regardless of plugin used).
+
+You can install these extra dependencies using `pip`, for example:
+
+```shell
+pip install datarobot-bosun[docker]
+```
+
+You can also install multiple sets of dependencies at once, for example:
+
+```shell
+pip install datarobot-bosun[kubernetes,s3]
+```
+
+## The Bosun Python Plugin Framework
+
+This framework provides a simple way to develop a Bosun plugin in Python. A Bosun Python plugin is a Python class that implements several API methods, one method for each Bosun action. The plugin framework provides a runner scrip that is used to run the plugin as an external program. This way the plugin writer does not need to worry about handling command line arguments.
+
+### Example
+
+```shell
+plugin-runner --plugin test --config my_config.yaml --action pe_status --status-file /tmp/status.json
+```
+
+The example above will invoke the `plugin-runner` program which in turn will load and run the test plugin. The `my_config.yaml` file will be loaded and the configuration will be provided to the plugin. The action to run is `pe_status` which is supposed to return the status of the prediction environment. The `--status-file` argument is the path to the status file that should contain the plugin result of running the action.
+
+## The Bosun Model Connector Framework
+
+This framework provides a simple way to develop and test model connectors. A model connector is a program that fetches the model artifact given the model metadata. This framework provides some built-in support for models stored on S3 and local file systems.
+
+

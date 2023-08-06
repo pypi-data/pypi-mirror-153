@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# This is a snapshot of the installer script for .mlpkg files that were created before the
+# --output-docker-context was added. Changes should not be made to this.
+# Source: https://github.com/datarobot/DataRobot/blob/5aa83bea00d6bbedc74372cebd4e2641cc86753c/predictions_monitor/integrations/cm_pps_templates/cm_pps_installer.sh.tmpl
+
+shopt -s extglob
+
+show_help() {
+    echo "Usage: $0 [option...]" >&2
+    echo
+    echo "   --skip-agent-install     Do not install MLOps agent."
+    echo "   --output-docker-context  Do not build the image but just create the Docker context."
+    echo
+}
+
+title() {
+    msg=$1
+    GREEN='\033[1;32m'
+    NC='\033[0m' # No Color
+
+    echo
+    echo -e "*** ${GREEN}$msg${NC}"
+}
+
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -h | --help)
+    show_help
+    exit 0
+    ;;
+    -v | --version)
+    echo 3
+    exit 0
+    ;;
+    --skip-agent-install)
+    SKIP_AGENT_INSTALL=YES
+    shift
+    ;;
+    --output-docker-context)
+    OUTPUT_DOCKER_CONTEXT=YES
+    shift
+    ;;
+    *)
+    echo "Unknown option $key. Run with --help to get more information."
+    exit 1;
+    ;;
+esac
+done
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TMP_DIR=${SCRIPT_DIR}
+
+INSTALL_REQS_SCRIPT=install_requirements.sh
+INSTALL_GENERATED_FILES_SCRIPT=install_generated_files.sh
+ADDITIONAL_ENV_VARS_TXT=additional_env_vars.txt
+
+# all the model files are copied into /opt/code dir inside environment image
+MODEL_DIR_INSIDE_ENV_IMAGE="/opt/code"
+
+ENV_EXTRACT_DIR="${TMP_DIR}/env"
+MODEL_EXTRACT_DIR="${TMP_DIR}/model"
+MLOPS_EXTRACT_DIR="${TMP_DIR}/mlops"
+DEPLOYMENT_CONFIG_FILE="${TMP_DIR}/deployment_document.json"
+
+ENV_ARCHIVE_NAME=$(python3 -c "import sys, json; print(json.load(open('cm_pps_manifest.json'))['env'])")
+MODEL_ARCHIVE_NAME=$(python3 -c "import sys, json; print(json.load(open('cm_pps_manifest.json'))['model'])")
+MLOPS_ARCHIVE_NAME=$(python3 -c "import sys, json; print(json.load(open('cm_pps_manifest.json'))['mlops'])")
+
+if [[ ${ENV_ARCHIVE_NAME} == "None" ]]; then
+  echo "Environment archive file is not found. Please contact DataRobot support."
+  exit 1
+fi
+
+if [[ ${MLOPS_ARCHIVE_NAME} == "None" ]]; then
+  echo "MLOps Agent package file is not found. Please contact DataRobot support."
+  exit 1
+fi
+
+if [[ ${MODEL_ARCHIVE_NAME} == "None" ]]; then
+  echo "Model archive file is not found. Please contact DataRobot support."
+  exit 1
+fi
+
+
+title "Extracting artifacts"
+rm -rf ${ENV_EXTRACT_DIR} ${MODEL_EXTRACT_DIR} ${MLOPS_EXTRACT_DIR}
+mkdir -p ${ENV_EXTRACT_DIR}
+
+if [[ ${ENV_ARCHIVE_NAME: -7} == ".tar.gz" ]]; then
+  tar -xvf ${ENV_ARCHIVE_NAME} -C ${ENV_EXTRACT_DIR}
+else
+  unzip ${ENV_ARCHIVE_NAME} -d ${ENV_EXTRACT_DIR}
+fi
+
+mkdir -p ${MLOPS_EXTRACT_DIR}
+tar -xvf ${MLOPS_ARCHIVE_NAME} -C ${MLOPS_EXTRACT_DIR}
+
+mkdir -p ${MODEL_EXTRACT_DIR}
+unzip ${MODEL_ARCHIVE_NAME} -d ${MODEL_EXTRACT_DIR}
+
+MLOPS_WHEEL=$(find ${MLOPS_EXTRACT_DIR} -name datarobot_mlops-*.whl)
+
+
+title "Copying model files into environment directory"
+pushd ${MODEL_EXTRACT_DIR}
+# copy all the files except for requirements.txt as there is a script to install deps from model
+cp -r !(requirements.txt) ${ENV_EXTRACT_DIR}
+popd
+
+cp ${DEPLOYMENT_CONFIG_FILE} ${ENV_EXTRACT_DIR}
+
+title "Building environment docker image"
+pushd ${ENV_EXTRACT_DIR}
+
+# copy MLOps wheel
+cp ${MLOPS_WHEEL} .
+cp Dockerfile Dockerfile.bak
+MLOPS_WHEEL_BASENAME=$(basename ${MLOPS_WHEEL})
+
+# add copy and install MLOps commands into dockerfile
+echo >> Dockerfile  # force newline
+echo "COPY ${MLOPS_WHEEL_BASENAME} ${MLOPS_WHEEL_BASENAME}" >> Dockerfile
+echo "RUN pip3 install ${MLOPS_WHEEL_BASENAME}" >> Dockerfile
+
+if test -f ${INSTALL_REQS_SCRIPT}; then
+    echo "RUN cd ${MODEL_DIR_INSIDE_ENV_IMAGE} && chmod +x ${INSTALL_REQS_SCRIPT} && ./${INSTALL_REQS_SCRIPT}" >> Dockerfile
+fi
+
+# register env vars required for DRUM in Dockerfile
+if test -f ${ADDITIONAL_ENV_VARS_TXT}; then
+    echo "ENV $(cat ${ADDITIONAL_ENV_VARS_TXT})" >> Dockerfile
+fi
+
+echo "ENV DEPLOYMENT_CONFIG=${MODEL_DIR_INSIDE_ENV_IMAGE}/deployment_document.json" >> Dockerfile
+
+if test -f ${INSTALL_GENERATED_FILES_SCRIPT}; then
+    echo "RUN cd ${MODEL_DIR_INSIDE_ENV_IMAGE} && chmod +x ${INSTALL_GENERATED_FILES_SCRIPT} && ./${INSTALL_GENERATED_FILES_SCRIPT}" >> Dockerfile
+fi
+
+echo "EXPOSE 8080" >> Dockerfile
+echo "RUN chgrp -R root ${MODEL_DIR_INSIDE_ENV_IMAGE} /var/log/nginx /var/lib/nginx && chmod -R g=u ${MODEL_DIR_INSIDE_ENV_IMAGE} /var/log/nginx /var/lib/nginx" >> Dockerfile
+echo "ENTRYPOINT [\"${MODEL_DIR_INSIDE_ENV_IMAGE}/start_server.sh\"]" >> Dockerfile
+
+tar -czf ${TMP_DIR}/{{ cm_pps_image_name }}-context.tar.gz .
+

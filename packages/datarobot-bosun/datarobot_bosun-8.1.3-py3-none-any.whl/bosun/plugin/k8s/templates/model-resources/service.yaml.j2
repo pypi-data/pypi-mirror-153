@@ -1,0 +1,19 @@
+{% import '_helpers.j2' as helpers %}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: "{{ helpers.name(di) }}"
+    labels:
+      {{ COMPONENT_LABEL_NAME }}: predictionServer
+      {{ helpers.default_labels(di) | indent(6) }}
+    annotations:
+      {{ helpers.default_annotations() | indent(6) }}
+  spec:
+    ports:
+    - port: 80
+      targetPort: http-backend
+      name: http
+    selector:
+      {{ DEPLOYMENT_LABEL_NAME }}: "{{ di.id }}"
+      {{ PRED_ENV_LABEL_NAME }}: "{{ pei.id }}"
+      {{ COMPONENT_LABEL_NAME }}: predictionServer

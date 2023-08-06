@@ -1,0 +1,136 @@
+{% import '_helpers.j2' as helpers %}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    {# Don't use the helper and instead rely on the renderer to pass the name so we can support
+       updating existing deployments. #}
+    name: "{{ name }}"
+    labels:
+      {{ MODEL_LABEL_NAME }}: "{{ di.model_id }}"
+      {{ COMPONENT_LABEL_NAME }}: predictionServer
+      {{ helpers.default_labels(di) | indent(6) }}
+    annotations:
+      bosun.datarobot.com/name: "{{ di.name }}"
+      {{ helpers.pps_annotations(di) | indent(6) }}
+      {{ helpers.default_annotations() | indent(6) }}
+  spec:
+{# Don't set replicas if not provided. This helps with model replacement to not change current
+   value if autoscaling is enabled. #}
+{% if desired_replicas %}
+    replicas: {{ desired_replicas }}
+{% endif %}
+    selector:
+      matchLabels:
+        {{ helpers.selector_labels(di, "predictionServer") | indent(8) }}
+    strategy:
+      rollingUpdate:
+        maxSurge: 30%
+        maxUnavailable: 10%
+    {# MLOps will timeout this operation after 30 min so keep under that (and account for image
+       building time overhead too) #}
+    progressDeadlineSeconds: 840
+    template:
+      metadata:
+        labels:
+          {{ MODEL_LABEL_NAME }}: "{{ di.model_id }}"
+          {{ helpers.selector_labels(di, "predictionServer") | indent(10) }}
+        annotations:
+          {{ helpers.pps_annotations(di) | indent(10) }}
+          {{ helpers.default_annotations() | indent(10) }}
+{% for k,v in config.pps_annotations.items() %}
+          "{{ k }}": "{{ v }}"
+{% endfor %}
+      spec:
+        serviceAccountName: "{{ config.pps_service_account }}"
+        imagePullSecrets: {{ config.image_pull_secrets | tojson }}
+        securityContext: {{ config.pps_pod_security_context | tojson }}
+        nodeSelector: {{ config.pps_node_selector | tojson }}
+        affinity: {{ config.pps_affinity | tojson }}
+        tolerations: {{ config.pps_tolerations | tojson }}
+        volumes:
+{% if config.agent_sidecar %}
+        - name: tracking-data
+          emptyDir: {}
+{% endif %}
+{% for i in config.pps_volumes %}
+        - {{ i | tojson }}
+{% endfor %}
+        containers:
+        - name: "model-package"
+          image: "{{ helpers.model_image(di) }}"
+          securityContext: {{ config.pps_security_context | tojson }}
+          startupProbe:
+            initialDelaySeconds: 5
+            failureThreshold: 13
+            timeoutSeconds: 9
+            httpGet:
+              path: /ping
+              port: http-backend
+          livenessProbe:
+            failureThreshold: 8
+            timeoutSeconds: 9
+            httpGet:
+              path: /ping
+              port: http-backend
+          readinessProbe:
+            failureThreshold: 4
+            timeoutSeconds: 3
+            successThreshold: 2
+            httpGet:
+              path: /ping
+              port: http-backend
+          resources: {{ config.pps_resources | tojson }}
+          ports:
+          - containerPort: 8080
+            name: http-backend
+          env:
+          {# TODO: it would be nice if DRUM and the PPS images could support JSON log output via
+             a simple env var toggle. #}
+          {{ helpers.pps_env_vars(di) | indent(10) }}
+          volumeMounts:
+{% if config.agent_sidecar %}
+          - mountPath: /tmp/ta
+            name: tracking-data
+{% endif %}
+{% for i in config.pps_volume_mounts %}
+          - {{ i | tojson }}
+{% endfor %}
+{% if config.do_mlops_monitoring and config.agent_sidecar %}
+        - name: "tracking-agent"
+          image: "{{ config.agent_image }}"
+          resources: {{ config.agent_resources | tojson }}
+          securityContext: {{ config.agent_security_context | tojson }}
+          env:
+          - name: MLOPS_SERVICE_URL
+            value: "{{ config.datarobot_app_url }}"
+          - name: AGENT_LOGGING_FORMAT
+            value: {{ config.log_format }}
+          - name: AGENT_SERVER_PORT
+            value: "8123"
+          - name: MLOPS_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "{{ name }}"
+                key: secret
+          {# This helps prevent a crash loop from happening if an agent dies suddenly w/o cleaning
+             up its lockefile. It should be fine to ignore the lockfile because K8s should only
+             ever have one container of the agent reading from the same emptyDir. #}
+          - name: MLOPS_FILESYSTEM_SKIP_LOCKFILE_CHECK
+            value: "true"
+          startupProbe:
+            initialDelaySeconds: 15
+            failureThreshold: 25
+            timeoutSeconds: 3
+            httpGet:
+              path: /stats
+              port: 8123
+          livenessProbe:
+            failureThreshold: 7
+            timeoutSeconds: 3
+            httpGet:
+              path: /stats
+              port: 8123
+          volumeMounts:
+          - mountPath: /tmp/ta
+            name: tracking-data
+{% endif %}

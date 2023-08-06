@@ -1,0 +1,75 @@
+{# Don't change this naming convention. If doing so, care must be taken to be sure that we can
+   still support managing existing infrastructure. #}
+{% macro name(di) -%}
+mlops-{{ di.id }}
+{%- endmacro %}
+
+{% macro image_builder_name(di) -%}
+image-builder-{{ di.id }}
+{%- endmacro %}
+
+{% macro model_image(di) -%}
+{% if di.model_execution_type == "dedicated" -%}
+{{ config.generated_image_repo }}:m-{{ di.model_id }}_{{ config.pps_version }}
+{%- else %}
+{{ config.generated_image_repo }}:m-{{ di.model_id }}
+{%- endif %}
+{%- endmacro %}
+
+{% macro pps_env_vars(di) -%}
+{% if di.model_execution_type == "dedicated" -%}
+- name: PREDICTION_API_MONITORING_ENABLED
+  value: "{{ config.do_mlops_monitoring }}"
+{% if config.do_mlops_monitoring -%}
+- name: PREDICTION_API_MONITORING_SETTINGS
+  value: "{{ config.spooler_settings }}"
+- name: MLOPS_DEPLOYMENT_ID
+  value: "{{ di.id }}"
+- name: MLOPS_MODEL_ID
+  value: "{{ di.model_id }}"
+{% endif %}
+{% else %}
+- name: PRODUCTION
+  value: "1"
+- name: MONITOR
+  value: "{{ config.do_mlops_monitoring }}"
+{% if config.do_mlops_monitoring -%}
+- name: MONITOR_SETTINGS
+  value: "{{ config.spooler_settings }}"
+- name: DEPLOYMENT_ID
+  value: "{{ di.id }}"
+- name: MODEL_ID
+  value: "{{ di.model_id }}"
+{% endif %}
+{% endif %}
+{% for i in config.pps_environment %}
+- {{ i | tojson }}
+{% endfor %}
+{% endmacro %}
+
+{% macro default_annotations() -%}
+bosun.datarobot.com/plugin-version: v1alpha1
+{% endmacro %}
+
+{% macro pps_annotations(di) -%}
+bosun.datarobot.com/modelExecutionType: "{{ di.model_execution_type }}"
+bosun.datarobot.com/modelFormat: "{{ di.model_format }}"
+{% if di.model_execution_type == "dedicated" -%}
+bosun.datarobot.com/ppsVersion: "{{ config.pps_version }}"
+{% endif %}
+{% endmacro %}
+
+{# Don't change these labels; it will cause the new version of the agent to not recognize
+   previously deployed infrastructure unless care is taken. #}
+{% macro default_labels(di) -%}
+{{ DEPLOYMENT_LABEL_NAME }}: "{{ di.id }}"
+{{ PRED_ENV_LABEL_NAME }}: "{{ pei.id }}"
+app.kubernetes.io/part-of: DataRobot-MLOps
+app.kubernetes.io/managed-by: Bosun
+{% endmacro %}
+
+{% macro selector_labels(di, component) -%}
+{{ DEPLOYMENT_LABEL_NAME }}: "{{ di.id }}"
+{{ PRED_ENV_LABEL_NAME }}: "{{ pei.id }}"
+{{ COMPONENT_LABEL_NAME }}: "{{ component }}"
+{% endmacro %}
