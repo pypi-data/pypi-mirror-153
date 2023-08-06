@@ -1,0 +1,421 @@
+Metadata-Version: 2.1
+Name: harpo
+Version: 1.1.16
+Summary: A GPG-based secret storing/sharing library
+License: Apache-2.0
+Author: Behavox DevOps
+Author-email: devops@behavox.com
+Requires-Python: >=3.6.2,<4.0.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Security :: Cryptography
+Provides-Extra: buildtools
+Provides-Extra: publish
+Requires-Dist: PyYAML (==5.3.1)
+Requires-Dist: click (==8.0.4)
+Requires-Dist: colorlog (==4.1.0)
+Requires-Dist: filelock (==3.0.12)
+Requires-Dist: pbr (==5.4.5)
+Requires-Dist: python-gnupg (==0.4.8)
+Requires-Dist: setuptools[buildtools] (>=62.2.0,<63.0.0); extra == "buildtools"
+Requires-Dist: six (==1.15.0)
+Requires-Dist: tabulate (==0.8.7)
+Requires-Dist: twine[publish] (>=3.8.0,<4.0.0); extra == "publish"
+Requires-Dist: wheel[buildtools] (>=0.37.1,<0.38.0); extra == "buildtools"
+Description-Content-Type: text/x-rst
+
+=====
+Harpo
+=====
+-----------
+Description
+-----------
+
+    Harpocrates (Ancient Greek: Ἁρποκράτης) was the god of silence, secrets and confidentiality.
+
+**Harpo** is GPG-based secret storage/sharing library.
+
+It is aims to be a convenient wrapper around GPG and tries to solve the following problems:
+
+* Storing secrets in a repository in a secure manner
+* Providing a group-based access to the stored secrets
+* Providing an easy way to re-encrypt secrets
+
+It was inspired by `blackbox <https://github.com/StackExchange/blackbox>`_ by StackExchange.
+
+
+
+
+-----------
+Quick Start
+-----------
+
+Initialize
+==========
+
+Initialize harpo in a current directory:
+
+..  code-block:: bash
+
+    harpo system init
+
+This will create :code:`.harpo` directory that will contain your secrets and all required metadata.
+
+
+
+Create Domain
+=============
+
+Domain — is a 'directory' for secrets. To be honest, it `is` a directory that contains GPG-encrypted files, plus some metadata.
+
+Let's create one and name it :code:`secrets`:
+
+..  code-block:: bash
+
+    harpo domain create secrets
+
+
+
+Create User
+===========
+
+User is a Harpo's word for 'recipient'. A User must have a GPG key attached to it so that Harpo will use it then
+to encrypt secrets.
+
+The process of adding a user consists of two steps: add a key, create a user associated with this key:
+
+1. add a key
+~~~~~~~~~~~~
+
+This guide assumes that you already have your GPG key in your default keyring.
+Let's export your GPG public key and add it to Harpo:
+
+..  code-block:: bash
+
+    gpg --export --armor your-key-fingerprint | harpo key create -
+
+2. create a user
+~~~~~~~~~~~~~~~~
+
+The following command will create a user named :code:`alice` associated with your GPG public key:
+
+..  code-block:: bash
+
+    harpo user create alice your-key-fingerprint
+
+Let's verify by running :code:`harpo user list`. The output should look like:
+
+..  code-block::
+
+    +--------+------------------------------------------+
+    | name   | key_fingerprint                          |
+    |--------+------------------------------------------|
+    | alice  | A8EE4ED8DDFC3EFFD26EC0042477DBC294CF0AF0 |
+    +--------+------------------------------------------+
+
+
+Create Group (optional)
+=======================
+
+While you can skip this step if you have just one or two users, it's just a lot more convenient to organize your users into groups if you have many of them.
+
+Let's create a group and add Alice to it:
+
+..  code-block:: bash
+
+    harpo group create admins
+    harpo group include-user admins alice
+
+You can verify with :code:`harpo group list`:
+
+..  code-block::
+
+    +--------+-----------+
+    | name   | members   |
+    |--------+-----------|
+    | admins | ['alice'] |
+    +--------+-----------+
+
+
+
+Grant access to Domain
+======================
+
+Now we have to tell Harpo that our user/group should be able to manage secrets in Domain :code:`secrets`:
+
+..  code-block:: bash
+
+    harpo domain allow secrets %admins
+
+Note the :code:`%` character! Just like in sudoers, this character tells the program to treat :code:`admins` as a group.
+
+**OR**
+
+If you want to grant access just to a **user**, not a group:
+
+..  code-block:: bash
+
+    harpo domain allow secrets alice
+
+You can verify this with :code:`harpo domain info secrets`:
+
+..  code-block::
+
+    +---------+----------+-------------+--------+----------------------+-----------+--------------+
+    | name    | parent   | allow       | deny   | inherit_recipients   | comment   | recipients   |
+    |---------+----------+-------------+--------+----------------------+-----------+--------------|
+    | secrets | None     | ['%admins'] | []     | True                 | None      | ['alice']    |
+    +---------+----------+-------------+--------+----------------------+-----------+--------------+
+
+In column :code:`allow` you can see users and groups that have access to this domain.
+
+In column recipients you can see a final set of recipients for this domain.
+These users will be the recipients of a GPG-encrypted secret that Harpo will create.
+
+
+
+Create a secret
+===============
+
+Finally we can encrypt something.
+
+You have two slightly different ways of creating a secret using Harpo CLI. Let's go through them:
+
+1. pass secret value as an argument
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    harpo secret create [OPTIONS] DOMAIN_NAME SECRET_NAME SECRET_VALUE
+
+..  code-block:: bash
+
+    harpo secret create secrets foo bar
+
+
+2. interactive editor (beta)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You also have an option to launch your favorite editor!
+
+..  code-block:: bash
+
+    harpo secret edit secrets foo
+
+**VIM users**: There is a known issue with vim when backup files are enabled - Harpo won't save your edits at all.
+You can disable backup files with :code:`nobackup` directive.
+
+
+Read a secret
+=============
+
+This is pretty straightforward:
+
+..  code-block:: bash
+
+    harpo secret read secrets foo
+
+
+
+
+-------------
+Documentation
+-------------
+
+Domain
+======
+
+Domain — is a logical group of secrets. You can think of domain as a directory that contains secrets and other domains.
+
+Properties
+~~~~~~~~~~
+
+Domains have following properties:
+
+* **name** — the name of a Domain
+* **children** — each Domain can have any number of subdomains, i.e. children.
+  By default all permissions are inherited from the parent to children.
+  This property is not stored in metadata but instead populated in runtime.
+* **parent** — Every Domain has a parent except the root (top level) Domains. Root Domains has no parents.
+* **allow** — list of Groups and Users that have access to this Domain.
+* **deny** — list of Groups and Users that are explicitly denied to become a recipients for secrets in this Domain.
+* **recipients** — a set of Users that are derived from the list of :code:`(allow - deny)` that have access to this Domain.
+  This property is not stored in metadata but instead populated in runtime.
+* **inherit_recipients** — controls how a given Domain should inherit recipients from its parent.
+  Currently only two modes are available: True and False. Inheritance can be disabled during Domain creation from CLI
+  by adding :code:`--no-inherit-recipients` flag.
+
+Storage & metadata
+~~~~~~~~~~~~~~~~~~
+
+Domains are mapped to filesystem as directories and can be found in :code:`.harpo/data`.
+
+Every Domain also has an associated metadata in :code:`.harpo/meta/domain.json`.
+
+
+Key
+===
+
+Key is one of the simplest entities in Harpo. It's just that: a GPG public key that is stored in the Harpo's keyring.
+
+Properties
+~~~~~~~~~~
+
+* **fingerprint** — GPG key fingerprint; the main property of a Key
+
+Storage & metadata
+~~~~~~~~~~~~~~~~~~
+
+Harpo's keyring can be found in :code:`.harpo/keystore/pubring.gpg`.
+
+Keys don't use any metadata.
+
+
+User
+====
+
+In Harpo prior 1.0 users were represented by GPG keys only. Harpo 1.0 adds a new separate entity for users.
+
+This being said, Users are still mapped to Keys as 1-to-1, but this probably will change in the future
+(allowing a single User to have multiple GPG keys, for example).
+
+Currently User is just a named mapping to a Key.
+
+Properties
+~~~~~~~~~~
+
+* **name** — the name of a User
+* **key_fingerprint** — a GPG key fingerprint of a key that is associated with this User.
+
+Storage & metadata
+~~~~~~~~~~~~~~~~~~
+
+Users metadata can be found in :code:`.harpo/meta/user.json`
+
+
+Group
+=====
+
+Group — is a set of Users. Currently groups can't contain other groups.
+
+Properties
+~~~~~~~~~~
+
+* **name** — the name of a Group
+* **members** — list of members
+
+Storage & metadata
+~~~~~~~~~~~~~~~~~~
+
+Groups metadata can be found in :code:`.harpo/meta/group.json`
+
+
+Secret
+======
+
+Secret — is a GPG-encrypted data inside Domain.
+
+To encrypt a secret Harpo needs to know the list of recipients.
+Harpo gets this information form Domain that holds this secret.
+
+With one notable exception...
+
+**Shared Secrets** are secrets with the name that ends with :code:`.shared`.
+
+Secrets like this are special in a way that they are encrypted with not only with keys
+belonging to recipients of a Domain that holds these secrets, but also with keys of recipients from this Domain's subdomains
+and other Domains from the same level of hierarchy.
+
+This requires an example.
+
+An example
+~~~~~~~~~~
+
+Let's say we have the following Domain hierarchy:
+
+..  code-block::
+
+    secrets    (allow: alice)
+    ├── bar
+    │   ├── quux    (bob)  --no-inherit-recipients
+    │   │   └── credit-cards
+    │   └── secret.shared
+    └── baz    (jane)
+        └── passwords
+
+* secrets — root Domain
+* bar — a child Domain of :code:`bar`; it has a Secret called :code:`secret.shared`
+* quux — a child Domain of :code:`quux`; it has a Secret called :code:`credit-cards`;
+  it was created with :code:`--no-inherit-recipients`
+* baz — another child Domain of :code:`secrets`; it has a Secret called :code:`passwords`
+* allowed users are specified inside parenthesis
+
+
+**Q**: So, who will be able to decrypt :code:`secret.shared`?
+
+**A**: Alice, Bob and Jane. All three Users will be able to decrypt it because it's a shared Secret.
+Harpo will use the following keys to encrypt it:
+
+* Alice — because she has access to the root domain and :code:`bar` inherits recipients from its parent
+* Bob — because shared secrets are encrypted with keys from subdomains
+* Jane — because shared secrets must be encrypted with keys from the same level of hierarchy (bar and baz are on the same level)
+
+**Q**: OK, how about :code:`passwords`?
+
+**A**: Alice and Jane. Bob has no access to this secret because it's not shared
+and he only has access to his own subdomain :code:`quux`
+
+**Q**: And :code:`credit-cards`?
+
+**A**: Only Bob has access to this secret. Even though Alice has access to the root domain :code:`secrets`,
+Harpo won't use her key to encrpypt :code:`credit-cards` because :code:`quux` doesn't inherit recipients.
+
+Properties
+~~~~~~~~~~
+
+Secrets don't demonstrate any interesting properties, really.
+
+* **name** — name of a Secret
+
+Storage & Metadata
+~~~~~~~~~~~~~~~~~~
+
+Secrets are stored as GPG encrypted files in :code:`.harpo/data/<domain_name>/<secret_name>`.
+
+
+
+--------------
+Autocompletion
+--------------
+
+For Bash, add this to ~/.bashrc:
+
+..  code-block::
+
+    eval "$(_HARPO_COMPLETE=bash_source harpo)"
+
+For Zsh, add this to ~/.zshrc:
+
+..  code-block::
+
+    eval "$(_HARPO_COMPLETE=zsh_source harpo)"
+
+For Fish, add this to ~/.config/fish/completions/harpo.fish:
+
+..  code-block::
+
+    eval (env _HARPO_COMPLETE=fish_source harpo)
+
+Open a new shell to enable completion. Or run the eval command directly in your current shell to enable it temporarily.
+
+
