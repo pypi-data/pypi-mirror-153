@@ -1,0 +1,261 @@
+Scaling the U-net
+==============================
+<a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/-Python 3.9-3670A0?style=flat-square&logo=python&logoColor=ffdd54"></a>
+<a href="https://pytorch.org/get-started/locally/"><img alt="Tensorflow" src="https://img.shields.io/badge/-Tensorflow 2.7-%23FF6F00?style=flat-square&logo=Tensorflow&logoColor=white"></a>
+<a href="https://hydra.cc/"><img alt="Config: hydra" src="https://img.shields.io/badge/config-hydra 1.1-89b8cd?style=flat-square&labelColor=gray"></a>
+
+## Requirements to use this project
+- poetry
+- python 3.9
+
+You can use many ways to get a specific python version. I recommend Conda
+- [Conda installation](https://docs.conda.io/en/latest/miniconda.html) <br>
+Once installed you need to install a python 3.9 interpreter:
+````yaml
+# Conda
+conda create -n sun_py39 python=3.9
+conda activate sun_py39
+````
+
+Install poetry:
+````yaml
+# Poetry for Ubuntu
+curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+````
+
+## How to use
+````yaml
+# clone project
+git clone https://gitlab.desy.de/ivo.matteo.baltruschat/scaling_the_u_net.git
+cd scaling_the_u_net
+
+poetry install
+````
+ 1. Rename `.env.example` to `.env`. Set `PROJECT_DIR` to your root path. If you want [wandb](https://wandb.ai/) support, set `WANDB_USER` to your user name
+ 2. Run `dvc checkout --summary` to restore raw and processed data from the `shared_cache`(/beegfs/desy/group/it/ReferenceData/dvc/shared_cache).
+ 5. Now your can simply run `python run_training.py experiment=baseline`.
+
+Afterwards you can use [run_testing.py](run_testing.py) to evaluate your trained model on the test data
+ - run `python run_testing.py experiment_dir=[your_experiment_name]` (replace [...] with your experiment subdir in the experiment folder)
+ -
+## Guide
+
+### How To Get Started
+
+- First, you should probably get familiar with [Tensorflow](https://www.tensorflow.org/)
+- Next, go through [Hydra quick start guide](https://hydra.cc/docs/intro/) and [basic Hydra tutorial](https://hydra.cc/docs/tutorials/basic/your_first_app/simple_cli/)
+  <br>
+
+### How it works
+
+By design, every run is initialized by [run_training.py](run_training.py) file. All modules are dynamically instantiated from module paths specified in config. Example model config:
+
+```yaml
+filters: 64 # Channel output of first layer -> other depend on this one
+kernel_size: [3, 3] # Kernel size for all Conv layers
+num_layers: 5 # Number of u-net blocks
+regularization_factor_l1: -1 # If -1, no regularization.
+regularization_factor_l2: -1 # If -1, no regularization.
+layer_order: "CNAD" # Choose the oder of Conv,Norm,Act,Drop ["CADN", "CAND", "CDAN", "CDNA", "CNDA", "CNAD"]
+dropout_type: "spatial" # ["standard", "spatial"] Type of dropout used in a "CNAD" stack
+dropout_conv: -1 # If -1, no dropout used in a "CNAD" stack
+use_norm: "BatchNorm" # ["none", "BatchNorm", "GroupNorm"] Type of normalization used in a "CNAD" stack
+activation: "mish" # ["relu", "leakyReLU", "mish"] Type of activation used in a "CNAD" stack
+dropout: -1 # Dropout before the Conv-bock of latent space. If -1, no dropout used.
+output_activation: "linear" # ["linear", "softmax"] If "linear", model will provide logits and not prediction probabilities
+
+```
+
+This allows you to easily iterate over new models!<br>
+Every time you create a new one, just specify its module path and parameters in appriopriate config file. <br>
+The whole pipeline managing the instantiation logic is placed in [scalingtheunet/executor/training.py](scalingtheunet/executor/training.py).
+
+<br>
+
+### Main Project Configuration
+Location: [configs/config.yaml](configs/config.yaml)<br>
+Main project config contains default training configuration.<br>
+It determines how config is composed when simply executing command `python run_training.py`.
+You can overwrite all parameters by cmd arguments `python run_training.py experiment_name=test123 model.filters=16`<br>
+
+<details>
+<summary><b>Show main project configuration</b></summary>
+
+```yaml
+# specify here default training configuration
+# @package _global_
+
+# specify here default training configuration
+defaults:
+  - _self_
+  - trainer: default.yaml
+  - model: simple_unet.yaml
+  - datamodule: mg_full.yaml
+  - callbacks: default.yaml
+  - logger: default.yaml
+
+  #- mode: default.yaml
+
+  - experiment: null
+
+  # enable color logging
+  - override hydra/hydra_logging: colorlog
+  - override hydra/job_logging: colorlog
+
+# name of the run, accessed by loggers
+# allows for custom naming of the experiment
+name: ???
+
+current_time: ${now:%Y-%m-%d}_${now:%H-%M-%S}
+
+hydra:
+  # sets output paths for all file logs to `logs/experiment/name'
+  run:
+    dir: experiments/${name}/${current_time}
+  sweep:
+    dir: experiments/${name}/${current_time}
+    subdir: ${hydra.job.num}
+  output_subdir: "hydra_training"
+
+# path to original working directory
+# hydra hijacks working directory by changing it to the current log directory,
+# so it's useful to have this path as a special variable
+# https://hydra.cc/docs/next/tutorials/basic/running_your_app/working_directory
+work_dir: ${hydra:runtime.cwd}
+
+# path to folder with data
+data_dir: ${work_dir}/data/
+
+# mlflow path
+mlflow_dir: null #${work_dir}/mlflow/
+
+# tensorboard path
+tensorboard_dir: ${work_dir}/tensorboard/
+
+# pretty print config at the start of the run using Rich library
+print_config: True
+
+# pretty print history after the run using Rich library
+print_history: True
+
+# disable python warnings if they annoy you
+ignore_warnings: True
+
+# seed for random number generators in pytorch, numpy and python.random
+seed: "0xCAFFEE"
+```
+
+</details>
+<br>
+
+### Experiment Configuration
+
+Location: [configs/experiment](configs/experiment)<br>
+You should store all your experiment configurations in this folder.<br>
+Experiment configurations allow you to overwrite parameters from main project configuration.
+
+**Simple example**
+
+```yaml
+# @package _global_
+
+# to execute this experiment run:
+# python run.py experiment=example_simple.yaml
+
+defaults:
+  - override /trainer: default.yaml
+  - override /model: simple_unet.yaml
+  - override /datamodule: mg_full.yaml
+  - override /callbacks: default.yaml
+  - override /logger: default.yaml
+
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+name: simple_example
+seed: "OxCAFFEE"
+
+trainer:
+  epochs: 5
+
+model:
+  filters: 16
+  num_layers: 4
+  activation: "relu"
+
+datamodule:
+  batch_size: 8
+```
+
+</details>
+
+Project Organization
+------------
+
+```
+    ├──.venv                <- Local poetry environment
+    │   └──.gitkeep
+    ├── configs
+    ├── data
+    │   ├── external        <- Data from third party sources.
+    │   ├── interim         <- Intermediate data that has been transformed.
+    │   ├── processed       <- The final, canonical data sets for modeling.
+    │   └── raw             <- The original, immutable data dump.
+    ├── logs                <- Tensorboard logging folder; Will be created by training
+    ├── experiments         <- All your runs will be saved here; Will be created by training
+    ├── mlflow              <- MLflow logging folder; Will be created by training
+    ├── models              <- Trained and serialized models, model predictions, or model summaries
+    ├── notebooks           <- Jupyter notebooks. Naming convention is a number (for ordering),
+    │                         the creator's initials, and a short `-` delimited description, e.g.
+    │                         `1.0-jqp-initial-data-exploration`.
+    ├── references          <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── reports             <- Generated analysis as HTML, PDF, LaTeX, etc.
+    │   └── figures         <- Generated graphics and figures to be used in reporting
+    ├── test                <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── scalingtheunet                        <- Source code for use in this project.
+    │   │
+    │   ├── data                              <- Scripts to download or generate data
+    │   │   ├── __init__.py
+    │   │   └── make_dataset.py               <- TODO
+    │   ├── dataloaders                       <- Scripts to handel and load the preprocessed data
+    │   │   ├── __init__.py                   <- TODO
+    │   │   └── hzg_mg_tomo.py                <- TODO
+    │   ├── evaluation                        <- Scripts to do evaluation of the results
+    │   │   └── __init__.py                   <- TODO
+    │   ├── executor                          <- Scripts to train, eval and test models
+    │   │   ├── __init__.py                   <- TODO
+    │   │   ├── testing_9axes.py
+    │   │   └── training.py
+    │   ├── models                            <- Scripts to define model architecture
+    │   │   ├── __init__.py                   <- TODO
+    │   │   └── simple_unet.py
+    │   ├── utils                             <- TODO
+    │   │   ├── __init__.py                   <- TODO
+    │   │   ├── file_system.py                <- TODO
+    │   │   ├── logger.py                     <- TODO
+    │   │   ├── losses.py                     <- TODO
+    │   │   ├── metrics.py                    <- TODO
+    │   │   ├── my_callback.py                <- TODO
+    │   │   └── utils.py                      <- TODO
+    │   │
+    │   ├── visualization                     <- Scripts to create exploratory and results oriented
+    │   │                                       visualizations
+    │   └── __init__.py                       <- Makes {{ cookiecutter.module_name }} a Python module
+    │
+    ├── .editorconfig         <- file with format specification. You need to install
+    │                             the required plugin for your IDE in order to enable it.
+    ├── .gitignore         <- file that specifies what should we commit into
+    │                             the repository and we should not.
+    ├── LICENSE
+    ├── Makefile            <- Makefile with commands like `make data` or `make train`
+    ├── poetry.toml         <- poetry config file to install enviroment locally
+    ├── poetry.lock         <- lock file for dependencies. It is used to install exactly
+    │                         the same versions of dependencies on each build
+    ├── pyproject.toml      <- The project's dependencies for reproducing the
+    │                         analysis environment
+    ├── README.md           <- The top-level README for developers using this project.
+    └── setup.cfg           <- configuration file, that is used by all tools in this project
+```
+
+--------
