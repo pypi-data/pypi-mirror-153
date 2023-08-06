@@ -1,0 +1,30 @@
+from setuptools import setup
+
+setup(
+    name="salabim",
+    packages=["salabim"],
+    version="22.0.4",
+    include_package_data=True,
+    long_description="salabim\n\nsalabim is a discrete event simulation package in Python\nwith builtin *animation*.",
+    description="discrete event simulation in Python",
+    author="Ruud van der Ham",
+    author_email="info@salabim.org",
+    url="https://github.com/salabim/salabim",
+    download_url="https://github.com/salabim/salabim",
+    keywords=["statistics", "math", "simulation", "des", "discrete event simulation"],
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Healthcare Industry",
+        "Intended Audience :: Information Technology",
+        "Intended Audience :: Manufacturing",
+        "Intended Audience :: Science/Research",
+        "Intended Audience :: Other Audience",
+        "Intended Audience :: Telecommunications Industry",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+    ],
+    python_requires=">=3.6",
+)
