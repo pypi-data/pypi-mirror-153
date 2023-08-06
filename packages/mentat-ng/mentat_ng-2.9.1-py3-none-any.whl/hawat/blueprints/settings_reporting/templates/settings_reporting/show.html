@@ -1,0 +1,240 @@
+{%- extends "_layout.html" %}
+
+{%- block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+                    {{ macros_page.render_breadcrumbs(item) }}
+
+                    <h2>{{ vial_current_view.get_view_title() }}</h2>
+                    <hr>
+                    <h3>{{ _('Reporting settings for group %(item)s', item = item.group.name) }}{% if item.group.description %} <small>{{ item.group.description }}</small>{% endif %}</h3>
+                    <div class="pull-right">
+                        {{ macros_page.render_menu_actions(item) }}
+
+                    </div>
+                    <p>
+                        <small>
+                            <strong>{{ _('Record created') }}:</strong> {{ babel_format_datetime(item.createtime) }} ({{ _('%(delta)s ago', delta = babel_format_timedelta(current_datetime_utc - item.createtime)) }})
+                        </small>
+                    </p>
+                    <br>
+
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="active">
+                            <a href="#tab-general" aria-controls="tab-general" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('alert-info') }} {{ _('General information') }}</strong>
+                            </a>
+                        </li>
+                        {%- if can_access_endpoint('settings_reporting.update', item) %}
+                        <li role="presentation">
+                            <a href="#tab-changelog" aria-controls="tab-changelog" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('module-changelogs') }} {{ _('Changelogs') }}</strong> <span class="badge">{{ item_changelog | length }}</span>
+                            </a>
+                        </li>
+                        {%- endif %}
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+
+                        <div role="tabpanel" class="tab-pane fade in active" id="tab-general">
+                            <br>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th class="info"></th>
+                                        <th class="info">{{ _('Local setting') }}</th>
+                                        <th class="info">{{ _('Final setting') }}</th>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            {{ _('Target emails - low severity') }}:
+                                        </th>
+                                        <td>
+                                            {%- if item.emails_low is not none %}
+                                                {%- if item.emails_low %}
+                                                    {%- for subitem in item.emails_low %}
+                                                    <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                    {%- endfor %}
+                                                {%- else %}
+                                                {{ _('<< none >>') }}
+                                                {%- endif %}
+                                            {%- else %}
+                                            {{ _('<< system default >>') }}
+                                            {%- endif %}
+                                        </td>
+                                        <td>
+                                            {%- if system_default_repsettings.emails[0] is not none %}
+                                                {%- for subitem in system_default_repsettings.emails[0] %}
+                                                <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                {%- endfor %}
+                                            {%- endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            {{ _('Target emails - medium severity') }}:
+                                        </th>
+                                        <td>
+                                            {%- if item.emails_medium is not none %}
+                                                {%- if item.emails_medium %}
+                                                    {%- for subitem in item.emails_medium %}
+                                                    <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                    {%- endfor %}
+                                                {%- else %}
+                                                {{ _('<< none >>') }}
+                                                {%- endif %}
+                                            {%- else %}
+                                            {{ _('<< system default >>') }}
+                                            {%- endif %}
+                                        </td>
+                                        <td>
+                                            {%- if system_default_repsettings.emails[1] is not none %}
+                                                {%- for subitem in system_default_repsettings.emails[1] %}
+                                                <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                {%- endfor %}
+                                            {%- endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            {{ _('Target emails - high severity') }}:
+                                        </th>
+                                        <td>
+                                            {%- if item.emails_high is not none %}
+                                                {%- if item.emails_high %}
+                                                    {%- for subitem in item.emails_high %}
+                                                    <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                    {%- endfor %}
+                                                {%- else %}
+                                                {{ _('<< none >>') }}
+                                                {%- endif %}
+                                            {%- else %}
+                                            {{ _('<< system default >>') }}
+                                            {%- endif %}
+                                        </td>
+                                        <td>
+                                            {%- if system_default_repsettings.emails[2] is not none %}
+                                                {%- for subitem in system_default_repsettings.emails[2] %}
+                                                <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                {%- endfor %}
+                                            {%- endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            {{ _('Target emails - critical severity') }}:
+                                        </th>
+                                        <td>
+                                            {%- if item.emails_critical is not none %}
+                                                {%- if item.emails_critical %}
+                                                    {%- for subitem in item.emails_critical %}
+                                                    <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                    {%- endfor %}
+                                                {%- else %}
+                                                {{ _('<< none >>') }}
+                                                {%- endif %}
+                                            {%- else %}
+                                            {{ _('<< system default >>') }}
+                                            {%- endif %}
+                                        </td>
+                                        <td>
+                                            {%- if system_default_repsettings.emails[3] is not none %}
+                                                {%- for subitem in system_default_repsettings.emails[3] %}
+                                                <a href="mailto:{{ subitem }}">{{ subitem }}</a>{%- if not loop.last %} | {%- endif %}
+                                                {%- endfor %}
+                                            {%- endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            {{ _('Reporting mode') }}:
+                                        </th>
+                                        <td>
+                                            {%- if item.mode is not none %}
+                                            {{ item.mode }}
+                                            {%- else %}
+                                            {{ _('<< system default >>') }}
+                                            {%- endif %}
+                                        </td>
+                                        <td>
+                                            {{ system_default_repsettings.mode }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            {{ _('Report locale') }}:
+                                        </th>
+                                        <td>
+                                            {%- if item.locale is not none %}
+                                            {{ get_country_flag(item.locale|upper) }} {{ babel_translate_locale(item.locale, True) }} ({{ item.locale }})
+                                            {%- else %}
+                                            {{ _('<< system default >>') }}
+                                            {%- endif %}
+                                        </td>
+                                        <td>
+                                            {{ get_country_flag(system_default_repsettings.locale|upper) }} {{ babel_translate_locale(system_default_repsettings.locale, True) }} ({{ system_default_repsettings.locale }})
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            {{ _('Report timezone') }}:
+                                        </th>
+                                        <td>
+                                            {%- if item.timezone is not none %}
+                                            {{ item.timezone }}
+                                            {%- else %}
+                                            {{ _('<< system default >>') }}
+                                            {%- endif %}
+                                        </td>
+                                        <td>
+                                            {{ system_default_repsettings.timezone }}
+                                        </td>
+                                    </tr>
+                                    {%- if permission_can('admin') %}
+                                        <tr>
+                                            <th>
+                                                {{ _('Report redirection') }}:
+                                            </th>
+                                            <td>
+                                                {%- if item.redirect is not none %}
+                                                {{ macros_site.render_label_item_state(item.redirect, True) }}
+                                                {%- else %}
+                                                {{ _('<< system default >>') }}
+                                                {%- endif %}
+                                            </td>
+                                            <td>
+                                                {{ macros_site.render_label_item_state(system_default_repsettings.redirect, True) }}
+                                            </td>
+                                        </tr>
+                                    {%- endif %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {%- if can_access_endpoint('settings_reporting.update', item) %}
+                        <div role="tabpanel" class="tab-pane fade" id="tab-changelog">
+                            <br>
+                            {%- if item_changelog %}
+                            {{ macros_page.render_changelog_records(item_changelog, context_action_menu_changelogs) }}
+                            <p>
+                                <small>
+                                    {{ _('Displaying only latest %(count)s changelogs', count = 100) }}
+                                </small>
+                            </p>
+                            {%- else %}
+                            {%- call macros_site.render_alert('info', False) %}
+                            {{ _('This object does not have any changelog records at the moment.') }}
+                            {%- endcall %}
+                            {%- endif %}
+                        </div>
+                        {%- endif %}
+
+                    </div>
+
+                </div><!-- /.col-lg-12 -->
+            </div><!-- /.row -->
+
+{%- endblock content %}

@@ -1,0 +1,115 @@
+{%- extends "_layout.html" %}
+
+{%- block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <h2>{{ vial_current_view.get_view_title() }}</h2>
+
+                    <h3>{{ _('Enabled modules') }}</h3>
+                    <table class="table">
+                        {%- for key, val in get_modules_dict().items() %}
+                        <tr>
+                            <!--
+                            <td>
+                                {# get_icon(val.get_module_icon()) #}
+                            </td>
+                            -->
+                            <td>
+                                {{ key|pprint }}
+                            </td>
+                            <td>
+                                {{ val|pprint }}
+                            </td>
+                            <!--
+                            <td>
+                                {# val.get_module_title() #}
+                            </td>
+                            -->
+                        </tr>
+                        {%- endfor %}
+                    </table>
+
+                    <h3>{{ _('Endpoint permissions') }}</h3>
+                    <table class="table">
+                        {%- for key, val in get_endpoints_dict()|dictsort%}
+                        <tr>
+                            <td>
+                                {{ get_module_icon(key) }}
+                                {{ get_icon(val.get_view_icon()) }}
+                            </td>
+                            <td>
+                                {{ key }}
+                            </td>
+                            <td>
+                                {%- if val.authentication %}
+                                authenticated
+                                {%- else %}
+                                anonymous
+                                {%- endif %}
+                            </td>
+                            <td>
+                                {%- if val.authorization %}
+                                    {%- for auitem in val.authorization %}
+                                        {{ auitem|pprint }}
+                                    {%- endfor %}
+                                {%- else %}
+                                {{ _('unauthorized') }}
+                                {%- endif %}
+                            </td>
+                        </tr>
+                        {%- endfor %}
+                    </table>
+
+                    <h3>{{ _('Timezone settings') }}</h3>
+                    <table class="table">
+                        <tr>
+                            <th>{{ _('UTC time') }}:</th>
+                            <td>{{ get_datetime_utc() }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ _('Server local time') }}:</th>
+                            <td>{{ get_datetime_local() }}</td>
+                        </tr>
+                        <tr>
+                            <th>{{ _('User preference timezone') }}:</th>
+                            <td>{{ babel_format_datetime(get_datetime_utc()) }} ({{ g['timezone'] }})</td>
+                        </tr>
+                    </table>
+
+                    <h3>{{ _('Configuration') }}</h3>
+                    <pre class="pre-scrollable">{{ config|pprint }}</pre>
+
+                    <h3>{{ _('Session') }}</h3>
+                    <pre class="pre-scrollable">{{ session|pprint }}</pre>
+
+                    <h3>{{ _('Current user') }}</h3>
+                    <pre class="pre-scrollable">{{ current_user|pprint }}</pre>
+
+                    <h3>{{ _('G') }}</h3>
+                    <pre class="pre-scrollable">
+{% for k in g %}{{ k }}: {{ g[k]|pprint }}
+{% endfor %}</pre>
+
+                    <h3>{{ _('Menu - main') }}</h3>
+                    <pre class="pre-scrollable">
+{{ vial_current_menu_main|pprint }}
+---
+{{ vial_current_menu_main.get_entries()|pprint }}</pre>
+
+                    <h3>{{ _('Menu - auth') }}</h3>
+                    <pre class="pre-scrollable">
+{{ vial_current_menu_auth|pprint }}
+---
+{{ vial_current_menu_auth.get_entries()|pprint }}</pre>
+
+                    <h3>{{ _('Menu - anon') }}</h3>
+                    <pre class="pre-scrollable">
+{{ vial_current_menu_anon|pprint }}
+---
+{{ vial_current_menu_anon.get_entries()|pprint }}</pre>
+
+                </div><!-- /.col-lg-12 -->
+            </div><!-- /.row -->
+
+{%- endblock content %}

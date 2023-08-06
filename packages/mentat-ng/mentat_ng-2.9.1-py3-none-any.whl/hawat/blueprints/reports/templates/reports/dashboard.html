@@ -1,0 +1,320 @@
+{% extends "_layout.html" %}
+
+{% block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+
+                    {{ macros_page.render_breadcrumbs() }}
+
+                    <!-- Search form - BEGIN ---------------------------------->
+                    <div class="jumbotron" style="margin-top: 1em;">
+                        <h2>{{ vial_current_view.get_view_title() }}</h2>
+                        <hr>
+                        <form method="GET" class="form" action="{{ url_for(request.endpoint) }}">
+                            <div class="row">
+                                <div class="col-sm-4">
+                                    {{ macros_form.render_form_item_select(g.search_form.groups) }}
+                                </div>
+                                <div class="col-sm-4">
+                                    {{ macros_form.render_form_item_datetime(g.search_form.dt_from, 'datetimepicker-from') }}
+                                </div>
+                                <div class="col-sm-4">
+                                    {{ macros_form.render_form_item_datetime(g.search_form.dt_to, 'datetimepicker-to') }}
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <div class="btn-toolbar" role="toolbar" aria-label="{{ _('Form submission buttons') }}">
+                                <div class="btn-group" role="group">
+                                    {{ g.search_form.submit(class_='btn btn-primary') }}
+                                    <a role="button" class="btn btn-default" href="{{ url_for(request.endpoint) }}">
+                                        {{ _('Clear') }}
+                                    </a>
+                                    {{  macros_site.render_quicksearch(quicksearch_list) }}
+                                </div>
+                            </div>
+                        </form>
+                    </div> <!-- /.jumbotron -->
+                    <!-- Search form - END ------------------------------------>
+
+                    <p>
+                        {{ _('This module displays various statistical information regarding the reporting component of the Mentat system. These statistics are calculated directly from all <em>summary</em> reports, that were generated. The <em>extra</em> reports reports are included only in total number of reports overview, because otherwise they contain data duplicit to those in <em>summary</em> reports. Reports are included into the result based on their creation time.') | safe }}
+                    </p>
+
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+
+    {%- if searched %}
+        {%- if 'tiid' in request.args %}
+            {{ macros_site.render_timepager(query_params, form_data.dt_from, request.args.tiid) }}
+        {%- endif %}
+
+        {%- if items %}
+
+            <!-- Search result dump - BEGIN ----------------------------------->
+            <script>
+                var search_result_statistics = {{ statistics | tojson }};
+            </script>
+            <!-- Search result dump - END ------------------------------------->
+
+            <!-- Search result summary - BEGIN -------------------------------->
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">{{ _('Result summary') }}</h3>
+                </div>
+                <table class="table">
+                    <tr>
+                        <th>
+                            {{ _('Number of reports') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_decimal(items_count) }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            {{ _('Number of emails') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_decimal(statistics['cnt_emails']) }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            {{ _('Number of reported events') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_decimal(statistics['cnt_events']) }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            {{ _('Result time interval') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_datetime(statistics['dt_from']) }} - {{ babel_format_datetime(statistics['dt_to']) }}
+                            ({{ babel_format_timedelta(statistics['dt_to'] - statistics['dt_from']) }})
+                        </td>
+                    </tr>
+                    {%- if 'timeline_cfg' in statistics %}
+                    <tr>
+                        <th>
+                            {{ _('Timeline time interval') }}:
+                        </th>
+                        <td>
+                            {{ babel_format_datetime(statistics['timeline_cfg']['dt_from']) }} - {{ babel_format_datetime(statistics['timeline_cfg']['dt_to']) }}
+                            ({{ babel_format_timedelta(statistics['timeline_cfg']['dt_to'] - statistics['timeline_cfg']['dt_from']) }})
+                        </td>
+                    </tr>
+                    {%- endif %}
+                    {%- if permission_can('admin') and 'timeline_cfg' in statistics %}
+                    <tr>
+                        <th><span class="pull-right">{{ get_icon('role-admin') }}</span>{{ _('Timeline steps') }}:</th>
+                        <td>{{ babel_format_decimal(statistics['timeline_cfg']['count']) }} x {{ statistics['timeline_cfg']['step'].__str__() }}</td>
+                    </tr>
+                    {%- endif %}
+                </table>
+            </div>
+            <!-- Search result summary - END ---------------------------------->
+
+
+            <!-- Tab navigation - BEGIN --------------------------------------->
+            <ul class="nav nav-tabs nav-tabs-tooltipped" role="tablist">
+                <li role="presentation" class="text-center active">
+                    <a role="tab" data-toggle="tab" href="#tab-stats-cnt-reports" class="chart-tab">
+                        {{ _('# reports') }}
+                    </a>
+                </li>
+                <li role="presentation" class="text-center">
+                    <a role="tab" data-toggle="tab" href="#tab-stats-cnt-emails" class="chart-tab">
+                        {{ _('# emails') }}
+                    </a>
+                </li>
+                <li role="presentation" class="text-center">
+                    <a role="tab" data-toggle="tab" href="#tab-stats-cnt-events" class="chart-tab">
+                        {{ _('# events reported') }}
+                    </a>
+                </li>
+                <li role="presentation" class="text-center">
+                    <a role="tab" data-toggle="tab" href="#tab-stats-cnt-processed" class="chart-tab">
+                        {{ _('# events processed') }}
+                    </a>
+                </li>
+                {{
+                    macros_chart.render_dashboard_nav(
+                        statistics,
+                        'reporting-stats'
+                    )
+                }}
+            </ul>
+            <!-- Tab navigation - END ----------------------------------------->
+
+            <!-- Tab panels - BEGIN ------------------------------------------->
+            <div class="tab-content">
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade in active" id="tab-stats-cnt-reports">
+                    <h4>{{ _('Report counts') }}</h4>
+                    <p>
+                        {{ _('This view shows total numbers of event reports generated by the Mentat system per day. Numbers of <em>summary</em> and <em>extra</em> reports are shown separatelly.') | safe }}
+                    </p>
+
+                    {%-
+                        set data_series = [
+                            ['cnt_reports_summary', _('summaries')],
+                            ['cnt_reports_extra',   _('extras')]
+                        ]
+                    %}
+                    {{
+                        macros_chart.render_chart_timeline_list(
+                            statistics,
+                            'search_result_statistics',
+                            'reporting_stats',
+                            data_series
+                        )
+                    }}
+
+                    <br>
+                    {{
+                        macros_chart.render_dataset_pie_list(
+                            statistics,
+                            'search_result_statistics',
+                            'reporting_stats',
+                            data_series
+                        )
+                    }}
+                </div> <!-- /.tabpanel #tab-stats-cnt-reports -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-stats-cnt-emails">
+                    <h4>{{ _('Email counts') }}</h4>
+                    <p>
+                        {{ _('This view shows total numbers of report emails generated by the Mentat system per day.') | safe }}
+                    </p>
+                    {%- if 'emails' in statistics %}
+                        {%- if 'timeline' in statistics %}
+                    {{  macros_chart.render_chart_timeline_dict(
+                            statistics,
+                            'search_result_statistics',
+                            'mailing_stats',
+                            'emails'
+                        )
+                    }}
+
+                    <br>
+                        {%- endif %}
+                    {{  macros_chart.render_dataset_pie_dict(
+                            statistics,
+                            'search_result_statistics',
+                            'mailing_stats',
+                            'emails'
+                        )
+                    }}
+                    {%- else %}
+                    {%- call macros_site.render_alert('warning', False) %}
+                    {{ _('No data to be displayed on this panel.') }}
+                    {%- endcall %}
+                    {%- endif %}
+                </div> <!-- /.tabpanel #tab-stats-cnt-emails -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-stats-cnt-events">
+                    <h4>{{ _('Reported event counts') }}</h4>
+                    <p>
+                        {{ _('This view shows total numbers of events that have been reported within the summary event reports. Numbers of <em>new</em> and <em>relapsing</em> events are shown separatelly. <em>New</em> events are those with unique combination of source and classification, <em>relapsing</em> events are those with repeating combination of source and classification.') }}
+                    </p>
+
+                    {%-
+                        set data_series = [
+                            ['cnt_events_new',      _('new')],
+                            ['cnt_events_relapsed', _('relapsed')]
+                        ]
+                    %}
+                    {{
+                        macros_chart.render_chart_timeline_list(
+                            statistics,
+                            'search_result_statistics',
+                            'event_stats',
+                            data_series
+                        )
+                    }}
+
+                    <br>
+                    {{
+                        macros_chart.render_dataset_pie_list(
+                            statistics,
+                            'search_result_statistics',
+                            'event_stats',
+                            data_series
+                        )
+                    }}
+                </div> <!-- /.tabpanel #tab-stats-cnt-events -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-stats-cnt-processed">
+                    <h4>{{ _('Processed event counts') }}</h4>
+                    <p>
+                        {{ _('This view shows total numbers of events that have been processed while generating event reports. Numbers of <em>reported</em>, <em>filtered</em> and <em>thresholded</em> events are shown separatelly. The <em>reported</em> events are those that have been actually reported within the summary reports. The <em>filtered</em> events are those that have been filtered out by configured reporting filters and never made it to the report. And finally the <em>thresholded</em> events are those that have been postponed from reporting by the event thresholding mechanism.') }}
+                    </p>
+
+                    {%-
+                        set data_series = [
+                            ['cnt_events',             _('reported')],
+                            ['cnt_events_filtered',    _('filtered')],
+                            ['cnt_events_thresholded', _('thresholded')]
+                        ]
+                    %}
+                    {{
+                        macros_chart.render_chart_timeline_list(
+                            statistics,
+                            'search_result_statistics',
+                            'processing_stats',
+                            data_series
+                        )
+                    }}
+
+                    <br>
+                    {{
+                        macros_chart.render_dataset_pie_list(
+                            statistics,
+                            'search_result_statistics',
+                            'processing_stats',
+                            data_series
+                        )
+                    }}
+                </div> <!-- /.tabpanel #tab-stats-cnt-processed -->
+                {{
+                    macros_chart.render_dashboard_panels(
+                        statistics,
+                        'search_result_statistics',
+                        'reporting-stats'
+                    )
+                }}
+            </div>
+            <!-- Tab panels - END --------------------------------------------->
+
+            {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('statistics', statistics) }}
+            {%- endif %}
+
+        {%- else %}
+
+            {%- call macros_site.render_alert('warning', False) %}
+                {{ _('No data matches your search criteria.') }}
+            {%- endcall %}
+
+        {%- endif %}
+
+    {%- endif %}
+
+    {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('request_args', request.args) }}
+            {{ macros_site.render_raw_var('form_data', form_data) }}
+            {{ macros_site.render_raw_var('query_params', query_params) }}
+    {%- endif %}
+
+{%- endblock content %}

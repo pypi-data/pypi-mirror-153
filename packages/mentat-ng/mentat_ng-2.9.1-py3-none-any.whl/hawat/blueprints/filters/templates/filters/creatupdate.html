@@ -1,0 +1,121 @@
+{%- extends "_layout_creatupdate.html" %}
+
+{%- block itemform_fields %}
+
+    {%- if item_action == 'createfor' %}
+
+                                {{ macros_form.render_form_item_static(_('Group:'), parent.name) }}
+
+    {%- elif item_action == 'create' or current_user.has_role('admin') %}
+
+                                {{ macros_form.render_form_item_select(form.group) }}
+
+    {%- elif item_action == 'update' %}
+
+                                {{ macros_form.render_form_item_static(_('Group:'), item.group.name) }}
+
+    {%- endif %}
+                                {{ macros_form.render_form_item_default(form.name) }}
+
+                                {{ macros_form.render_form_item_default(form.description) }}
+
+                                {{ macros_form.render_form_item_default(form.type) }}
+
+                                <hr>
+
+                                <fieldset id="filter-advanced" class="{% if form.type.data and form.type.data == 'advanced' %}show{% else %}hidden{% endif %}">
+
+                                {{ macros_form.render_form_item_default(form.filter) }}
+
+                                </fieldset>
+
+                                <fieldset id="filter-basic" class="{% if not form.type.data or form.type.data == 'basic' %}show{% else %}hidden{% endif %}">
+
+                                {{ macros_form.render_form_item_select(form.detectors) }}
+
+                                {{ macros_form.render_form_item_select(form.categories) }}
+
+                                {{ macros_form.render_form_item_default(form.ips) }}
+
+                                </fieldset>
+
+                                <hr>
+
+                                {{ macros_form.render_form_item_radiobutton(form.enabled) }}
+
+                                {{ macros_form.render_form_item_datetime(form.valid_from, 'datetimepicker-from') }}
+
+                                {{ macros_form.render_form_item_datetime(form.valid_to, 'datetimepicker-to') }}
+
+{%- endblock itemform_fields %}
+
+{%- block itemform_buttons %}
+                                        {{ form.cancel(class_='btn btn-default') }}
+                                        {{ form.preview(class_='btn btn-default') }}
+                                        {{ form.submit(class_='btn btn-primary') }}
+{%- endblock itemform_buttons %}
+
+{%- block itemform_after %}
+
+            {%- if filter_preview %}
+
+            <hr>
+
+            <div class="row">
+                <div class="col-md-6 col-md-offset-3">
+                    <h4>{{ _('Filter structure preview:') }}</h4>
+                </div> <!-- /.col-md-6 -->
+            </div> <!-- /.row -->
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="rule-tree">
+                        {{ filter_preview | safe }}
+                    </div>
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+
+            {%- endif %}
+
+{%- endblock itemform_after %}
+
+
+{%- block itemform_devel %}
+
+        {%- if filter_tree %}
+
+{{ macros_site.render_raw_var('raw-filter-tree', filter_tree) }}
+
+        {%- endif %}
+
+{%- endblock itemform_devel %}
+
+
+{%- block bodyjs %}
+{{ super() }}
+            <script>
+                function hawat_filter_toggle() {
+                    sel = $('#type').val();
+                    if (!sel || sel == 'basic') {
+                        $('#filter-advanced').removeClass('show');
+                        $('#filter-advanced').addClass('hidden');
+                        $('#filter-basic').removeClass('hidden');
+                        $('#filter-basic').addClass('show');
+                    }
+                    else if (sel == 'advanced') {
+                        $('#filter-advanced').removeClass('hidden');
+                        $('#filter-advanced').addClass('show');
+                        $('#filter-basic').removeClass('show');
+                        $('#filter-basic').addClass('hidden');
+                    }
+                }
+
+                $(document).ready(function() {
+                    hawat_filter_toggle();
+                    $('#type').change(function(){
+                        hawat_filter_toggle();
+                    });
+                });
+            </script>
+
+{%- endblock bodyjs %}

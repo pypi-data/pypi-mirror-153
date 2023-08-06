@@ -1,0 +1,529 @@
+{% extends "_layout.html" %}
+
+{% block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+                    {%- if not unauth %}
+                    <ol class="breadcrumb">
+                        <li><a href="{{ url_for('home.index') }}">{{ _('Home') }}</a></li>
+                        <li><a href="{{ url_for('reports.search') }}">{{ _('Reports') }}</a></li>
+                        <li class="active">{{ _('Report detail') }}</li>
+                    </ol>
+                    {%- endif %}
+
+                    <h2>{{ vial_current_view.get_view_title() }}</h2>
+                    <hr>
+                    <h3>
+                        {{ item.label }}
+                        {{ macros_site.render_report_label_type(item) }}
+                        {{ macros_site.render_report_label_severity(item) }}
+                        {{ macros_site.render_report_label_weight(item) }}
+                        {%- if item.evcount_flt_blk %}
+                            <span class="label label-default" data-toggle="tooltip" title="{{ _('Some of the data for this report were filtered out by reporting filters') }}" >{{ get_icon('report-data-filtered') }}</span>
+                        {%- endif %}
+                        {%- if item.evcount_rlp %}
+                            <span class="label label-danger" data-toggle="tooltip" title="{{ _('Report contains relapsed events') }}" >{{ get_icon('report-data-relapsed') }}</span>
+                        {%- endif %}
+                        {%- if item.flag_testdata %}
+                            <span class="label label-default" data-toggle="tooltip" title="{{ _('Report was generated from test data') }}" >{{ get_icon('report-data-test') }}</span>
+                        {%- endif %}
+                        {%- if item.flag_mailed %}
+                            <span class="label label-default" data-toggle="tooltip" title="{{ _('Report was mailed at') }} {{ babel_format_datetime(item.mail_dt) }} ({{ _('%(delta)s ago', delta = babel_format_timedelta(current_datetime_utc - item.mail_dt)) }}){% if item.mail_to %} {{ _('to') }} {{ item.mail_to | join(', ') }}{% endif %}">{{ get_icon('report-data-mailed') }}</span>
+                        {%- endif %}
+                    </h3>
+                    {%- if item.flag_testdata %}
+                    {%- call macros_site.render_alert('info', False, 'debug') %}
+                        {{ _('This report was generated from test data.') }}
+                    {%- endcall %}
+                    {%- endif %}
+                    {%- if not current_user.is_authenticated %}
+                    {%- call macros_site.render_alert('warning', False) %}
+                        {{ _('You are currently viewing this report in unauthenticated mode. Please be aware, that additional functions are available only to authenticated users. Please login or register new account to use them.') }}
+                    {%- endcall %}
+                    {%- endif %}
+                    <p>
+                        <strong>{{ _('Target abuse group') }}:</strong>
+                        {%- for group in item.groups %}
+                            {%- if not unauth %}
+                            {%- if loop.index != 1 %},{%- endif %}
+                            <a href="{{ url_for('groups.show', item_id = group.id ) }}" data-toggle="tooltip" title="{{ _('View details of group &quot;%(item)s&quot;', item = group.name) }}">{{ group.name }}</a>
+                            {%- else %}
+                                {%- if loop.index != 1 %},{%- endif %}
+                                {{ group.name }}
+                            {%- endif %}
+                        {%- endfor %}
+                    </p>
+                    {%- if current_user.is_authenticated and item.parent %}
+                    <p>
+                        <strong>{{ _('Parent summary report') }}:</strong>
+                        <a href="{{ url_for('reports.show', item_id = item.parent.id ) }}" data-toggle="tooltip" title="{{ _('View parent summary report &quot;%(item)s&quot;', item = item.parent.label) }}">{{ item.parent.label }}</a>
+                    </p>
+                    {%- endif %}
+                    <p>
+                        <strong>{{ _('Unprotected access link') }}:</strong>
+                        <a href="{{ url_for('reports.unauth', item_id = item.label ) }}" data-toggle="tooltip" title="{{ _('Unprotected access to report &quot;%(item)s&quot;', item = item.label) }}">{{ item.label }}</a>
+                    </p>
+                    <div class="pull-right">
+                        {{ macros_page.render_menu_actions(item) }}
+                    </div>
+                    <p>
+                        <small>
+                            <strong>{{ _('Report created') }}:</strong> {{ babel_format_datetime(item.createtime) }} ({{ _('%(delta)s ago', delta = babel_format_timedelta(current_datetime_utc - item.createtime)) }})
+                            &nbsp;|&nbsp;
+                            <strong>{{ _('Report window') }}:</strong> {{ babel_format_datetime(item.dt_from) }} - {{ babel_format_datetime(item.dt_to) }} ({{ babel_format_timedelta(item.delta) }})
+                            &nbsp;|&nbsp;
+                            <strong>{{ _('Report mailed') }}:</strong> {% if item.flag_mailed %}{{ babel_format_datetime(item.mail_dt) }} ({{ _('%(delta)s ago', delta = babel_format_timedelta(current_datetime_utc - item.mail_dt)) }}){% else %}{{ _('never')}}{% endif %}
+                        </small>
+                    </p>
+
+                </div> <!-- /.col-lg-12 -->
+            </div> <!-- /.row -->
+
+            <!-- Tab navigation - BEGIN --------------------------------------->
+            <ul class="nav nav-tabs" role="tablist">
+                <li role="presentation" class="active">
+                    <a href="#tab-report-message" aria-controls="tab-report-message" role="tab" data-toggle="tab">
+                        <strong>{{ _('Message') }}</strong>
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-report-metadata" aria-controls="tab-report-metadata" role="tab" data-toggle="tab">
+                        <strong>{{ _('Metadata') }}</strong>
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-report-stats" aria-controls="tab-report-stats" role="tab" data-toggle="tab">
+                        <strong>{{ _('Statistics') }}</strong>
+                    </a>
+                </li>
+                <li role="presentation">
+                    <a href="#tab-report-data-json" aria-controls="tab-report-data-json" role="tab" data-toggle="tab">
+                        <strong>{{ _('Data') }}</strong>
+                    </a>
+                </li>
+            </ul>
+            <!-- Tab navigation - END ----------------------------------------->
+
+            <!-- Tab panels - BEGIN ------------------------------------------->
+            <div class="tab-content">
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade in active" id="tab-report-message">
+                    <br>
+                    {%- if item.structured_data -%}
+                        {%- import '_macros.common.txt.j2' as macros_common -%}
+                        {%- set default_info = load_json_from_file(event_classes_dir + "/" + template_vars['default_event_class'] + "/info.json") -%}
+                        {%- from template_vars['default_event_class'] + "/hawat.j2" import header as default_header with context -%}
+                        {%- from template_vars['default_event_class'] + "/hawat.j2" import row as default_row with context -%}
+                        {%- macro render_report_section(section_number, section_name, section_data, type) %}
+                            {% if check_file_exists(event_classes_dir + "/" + section_name + "/info.json") %}
+                                {% set info = load_json_from_file(event_classes_dir + "/" + section_name + "/info.json") %}
+                                {% for key in ['label', 'reference'] %}
+                                    {% if info[key] is undefined %}
+                                        {% set tmp = info.__setitem__(key, default_info[key]) %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                {% set info = default_info %}
+                            {% endif %}
+                            <a id="{{ type ~ '_' ~ section_name }}"></a><div> {{ '[' ~ section_number ~ '] ' ~ _(info['label']) }} </div>
+                            <div class="report-message" style="margin-left:2em">
+                                <table class="table table-condensed feedback-table table-striped">
+                                    {% if check_file_exists(event_classes_dir + "/" + section_name + "/hawat.j2") %}
+                                        {% from section_name + "/hawat.j2" import header, row with context %}
+                                    {% endif %}
+                                    {%- set table_id = section_name + '-' + type %}
+                                    <thead>
+                                        {% if header is undefined %}
+                                            {% set header = default_header %}
+                                        {% endif %}
+                                        {{ header(section_data, template_vars['default_event_class']) }}
+                                        {%- if current_user.is_authenticated %}
+                                        <th>{{ _('Feedback') }}</th>
+                                        {%- endif %}
+                                    </thead>
+                                    <tbody>
+                                    {% if row is undefined %}
+                                        {% set row = default_row %}
+                                    {% endif %}
+                                    {%- for ip in section_data | dictsort %}
+                                        {% set id = section_name + '-' + ip[0] %}
+                                        <tr id="{{ 'data-line-' + id }}">
+                                            {{ row(ip[0], ip[1], current_user.is_authenticated, template_vars['default_event_class']) }}
+                                            {%- if current_user.is_authenticated %}
+                                            <td><button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="{{ '#feedback-modal-' + escape_id(id) }}">{{ _('Feedback') }}</button></td>
+                                            {%- endif %}
+                                        </tr>
+                                    {%- endfor %}
+                                    </tbody>
+                                </table>
+                                {%- if current_user.is_authenticated %}
+                                {%- for ip in section_data | dictsort %}
+                                    {% set id = section_name + '-' + ip[0] %}
+                                    <div id="{{ 'feedback-modal-' + id }}" class="modal" tabindex="-1" role="dialog">
+                                        <div class="modal-dialog modal-lg" role="document">
+                                            <div class="modal-content">
+                                                <form id="{{ 'feedback-form-' + id }}" method="POST" action={{ url_for('reports.feedback', item_id = item.label) }} class="feedback-form">
+                                                    <div class="modal-header">
+                                                        <h4 class="modal-title">{{ _('Feedback for {:s}').format(ip[0]) }}</h5>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="table-responsive" style="margin-bottom: 0">
+                                                            <table class="table table-condensed" style="margin-bottom: 0">
+                                                                <thead>
+                                                                    {{ header(section_data, template_vars['default_event_class']) }}
+                                                                </thead>
+                                                                <tbody>
+                                                                    {{ row(ip[0], ip[1], false, template_vars['default_event_class']) }}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        {{ form.csrf_token }}
+                                                        {{ form.ip(id='feedback-ip-' + id, value=ip[0]) }}
+                                                        {{ form.section(id='feedback-section-' + id, value=type ~ '_' ~ section_name) }}
+                                                        {{ form.text(id='feedback-text-' + id, class="form-control", placeholder=_('Please, write message for administators here')) }}
+                                                        <span id="{{ 'feedback-message-' + id }}" style="display:none" class="help-block form-error"></span>
+                                                        {{ form.submit(id='feedback-submit-' + id, class="btn btn-default btn-xs") }}
+                                                        <button type="button" class="btn btn-default btn-xs" data-dismiss="modal">{{ _('Close') }}</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {%- endfor %}
+                                {%- endif %}
+                                {% if info['reference'] %}
+                                    <div>{{ _('More information:') }} <a href="{{ _(info['reference']) }}">{{ _(info['reference']) }}</a></div>
+                                {% endif %}
+                            </div>
+                        {%- endmacro -%}
+                        <div class="report-message">{{ _('Dear colleagues.') }}</div>
+                        {%- if item.structured_data['regular'] -%}
+                            {%- if item.type == 'summary' %}
+                                <div class="report-message">{{ _('Our detection systems registered following possible problem(s) related to Your IP address range or domain (timestamps are in timezone {:s}):').format(item.structured_data['timezone']) }}</div>
+                            {% else %}
+                                <div class="report-message">{{ _('Our detection systems registered following possible problem(s) related to host {:s}, that appears to belong to Your IP address range or domain (timestamps are in timezone {:s}):').format(item.structured_data['regular'].values() | list | first | first, item.structured_data['timezone']) }}</div>
+                            {% endif -%}
+                            {%- for section_name, section_data in item.structured_data['regular'] | dictsort %}
+                                {{ render_report_section(loop.index, section_name, section_data, 'regular') }}
+                            {% endfor -%}
+                        {%- endif %}
+                        {%- if item.structured_data['relapsed'] -%}
+                            {%- if item.type == 'summary' %}
+                                <div class="report-message">{{ _('Our detection systems registered following RECURRING possible problem(s) related to Your IP address range or domain (timestamps are in timezone {:s}):').format(item.structured_data['timezone']) }}</div>
+                            {% else %}
+                                <div class="report-message">{{ _('Our detection systems registered following RECURRING possible problem(s) related to host {:s}, that appears belong to Your IP address range or domain (timestamps are in timezone {:s}):').format(item.structured_data['relapsed'].values() | list | first | first, item.structured_data['timezone']) }}</div>
+                            {% endif -%}
+                            {% for section_name, section_data in item.structured_data['relapsed'] | dictsort %}
+                                {{ render_report_section(loop.index, section_name, section_data, 'relapsed') }}
+                            {% endfor %}
+                            <div class="report-message">{{ _('These possible problem(s) were already reported to You some time before, however we have detected relapses.') }}</div>
+                        {% endif -%}
+                        <div class="report-message">{{ macros_common.render_info_severity(item) }}</div>
+                        {%- if item.type == 'extra' %}
+                            <div class="report-message">{{ _('This report contains fraction of data from parent summary report [{:s}], that is also available in HTML format at:').format(item.parent.label) }}</div>
+                            <div class="report-message" style="margin-left:2em"><a href="{{ template_vars['report_access_url'] }}{{ item.parent.label }}/unauth">{{ template_vars['report_access_url'] }}{{ item.parent.label }}/unauth</a></div>
+                        {% endif %}
+                        <div class="report-message">{{ _('Attachment files containing complete information available for each event can be downloaded above message in JSON format.') }}</div>
+                        {% autoescape false %}<div class="report-message">{{ _('This message was generated by an automated system. For further communication please use the contact email address <{:s}> and for easier orientation please keep the identifier [{:s}] in email subject.').format("<a href=\"mailto:{:s}?subject={:s}\">{:s}</a>", item.label).format(template_vars['contact_email'], item.label, template_vars['contact_email']) }}</div>{% endautoescape %}
+                    <div class="report-message">{{ _('Thank you in advance for your cooperation') }}</div>
+
+                    <div>{{ _('Mentat System') }} (<a href="{{ _('https://csirt.cesnet.cz/en/services/mentat') }}">{{ _('https://csirt.cesnet.cz/en/services/mentat') }}</a>)</div>
+                    <div>{{ _('CESNET-CERTS Computer Security Team') }} &lt;<a href="mailto:certs@cesnet.cz">certs@cesnet.cz</a>&gt; (<a href="{{ _('https://csirt.cesnet.cz/en/index') }}">{{ _('https://csirt.cesnet.cz/en/index') }}</a>)</div>
+                    <div>{{ _('CESNET, a.l.e.') }} (<a href="{{ _('http://www.ces.net/') }}">{{ _('http://www.ces.net/') }}</a>)</div>
+                {% else %}
+                    <samp>
+                        {{ item.message | replace("&", "&amp;") | replace("<", "&lt;") | replace(">", "&gt;") | replace("\n", "<br/>\n") | replace(' ', '&nbsp;') | replace("\t", '&nbsp;&nbsp;&nbsp;&nbsp;') | safe }}
+                    </samp>
+                {% endif %}
+                </div> <!-- /.tabpanel #tab-report-message -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-report-metadata">
+                    <br>
+                    <table class="table table-condensed table-striped">
+                        <tr>
+                            <th>
+                                {{ _('Type') }}:
+                            </th>
+                            <td>
+                                {{ macros_site.render_report_label_type(item, True) }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('Severity') }}:
+                            </th>
+                            <td>
+                                {{ macros_site.render_report_label_severity(item, True) }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('Report window') }}:
+                            </th>
+                            <td>
+                                {{ babel_format_datetime(item.dt_from) }} - {{ babel_format_datetime(item.dt_to) }} ({{ babel_format_timedelta(item.delta) }})
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('Report delay') }}:
+                            </th>
+                            <td>
+                                {{ babel_format_timedelta(item.createtime - item.dt_to) }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('Event count') }}:
+                            </th>
+                            <td>
+                                {%- if item.type == 'summary': %}
+                                <div class="progress" data-toggle="tooltip" title="{{ _('Number of events in this report in comparison with total number of events that matched reporting conditions.') }}">
+                                    {%- if item.evcount_thr %}
+                                    <div class="progress-bar progress-bar-warning progress-bar" style="width: {{ '{:3.0f}'.format(item.evcount_thr/item.evcount_all*100) }}%">
+                                        <span>{{ item.evcount_thr }} {{ _('new events')}}</span>
+                                    </div>
+                                    {%- endif %}
+                                    {%- if item.evcount_rlp %}
+                                    <div class="progress-bar progress-bar-danger" style="width: {{ '{:3.0f}'.format(item.evcount_rlp/item.evcount_all*100) }}%">
+                                        <span>{{ item.evcount_rlp }} {{ _('relapsed')}}</span>
+                                    </div>
+                                    {%- endif %}
+                                </div>
+                                {%- else %}
+                                <div class="progress" data-toggle="tooltip" title="{{ _('Number of events in this report in comparison with total number of events in parent summary report.') }}">
+                                    <div class="progress-bar progress-bar-warning progress-bar" style="width: {{ '{:3.0f}'.format(item.evcount_rep/item.evcount_all*100) }}%">
+                                        <span>{{ item.evcount_rep }} {{ _('reported events')}}</span>
+                                    </div>
+                                </div>
+                                {%- endif %}
+                                <strong>{{ item.evcount_rep }} ({{ babel_format_percent(item.evcount_rep / item.evcount_all) }})</strong> {{ _('reported') }}{% if item.type == 'summary' %}, {{ item.evcount_all }} ({{ babel_format_percent(item.evcount_all / item.evcount_all) }}) {{ _('matched') }}, {{ item.evcount_new }} ({{ babel_format_percent(item.evcount_new / item.evcount_all) }}) {{ _('new events') }}, {{ item.evcount_flt_blk }} ({{ babel_format_percent(item.evcount_flt_blk / item.evcount_all) }}) {{ _('filtered out') }}, {{ item.evcount_thr_blk }} ({{ babel_format_percent(item.evcount_thr_blk / item.evcount_all) }}) {{ _('thresholded') }}, {{ item.evcount_rlp }} ({{ babel_format_percent(item.evcount_rlp / item.evcount_all) }}) {{ _('relapsed') }}{% else %}, {{ item.evcount_all }} {{ _('total in parent summary report') }}{%- endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('IP address count') }}:
+                            </th>
+                            <td>
+                                {{ statistics['ips'] | count }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('Target mails') }}:
+                            </th>
+                            <td>
+                            {%- if item.flag_mailed %}
+                                {% if item.mail_to %} {% if to_mails %} <strong>to: </strong> {{ to_mails | join(', ') }}, {% endif%} {% if cc_mails %} <strong>cc: </strong> {{ cc_mails | join(', ') }}, {% endif%} {% endif %} {{ babel_format_datetime(item.mail_dt) }} ({{ _('%(delta)s ago', delta = babel_format_timedelta(current_datetime_utc - item.mail_dt)) }})
+                            {%- else %}
+                                {{ _('report was not sent')}}
+                            {%- endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                {{ _('Filtering') }}:
+                            </th>
+                            <td>
+                            {%- if item.filtering %}
+                                {%- if item.filtering is mapping %}
+                                    {%- for subitem in item.filtering | dictsort %}
+                                <strong>{{ subitem[0] }}</strong> <span class="badge">{{ subitem[1] }}</span>{% if not loop.last %}<br>{% endif %}
+                                    {%- endfor %}
+                                {%- else %}
+                                    {%- for subitem in item.filtering %}
+                                <strong>{{ subitem[0] }}</strong> <span class="badge">{{ subitem[1] }}</span>{% if not loop.last %}<br>{% endif %}
+                                    {%- endfor %}
+                                {%- endif %}
+                            {%- else %}
+                                {{ _('no filters matched')}}
+                            {%- endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div> <!-- /.tabpanel #tab-report-metadata -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-report-stats">
+                    <br>
+                    <!-- Search result dump - BEGIN ----------------------------------->
+                    <script>
+                        var search_result_statistics = {{ statistics | tojson }};
+                    </script>
+                    <!-- Search result dump - END ------------------------------------->
+
+                    <!-- Inner tab navigation - BEGIN ------------------------->
+                    <ul class="nav nav-tabs nav-tabs-tooltipped nav-tabs-inner" role="tablist">
+                        {{
+                            macros_chart.render_dashboard_nav(
+                                statistics,
+                                'report-stats',
+                                hide_sections = ['abuses'],
+                                active_first = True
+                            )
+                        }}
+                    </ul>
+                    <!-- Inner tab navigation - END --------------------------->
+
+                    <!-- Inner tab panels - BEGIN ----------------------------->
+                    <div class="tab-content">
+                        {{
+                            macros_chart.render_dashboard_panels(
+                                statistics,
+                                'search_result_statistics',
+                                'report-stats',
+                                hide_sections = ['abuses'],
+                                active_first = True,
+                                cfg_params = {
+                                    'kwargs': {
+                                        'dt_from': item.dt_from,
+                                        'dt_to':   item.dt_to,
+                                        'groups':  item.groups | map(attribute = "name") | join(", ")
+                                    }
+                                }
+                            )
+                        }}
+                    </div>
+                    <!-- Inner tab panels - END ------------------------------->
+
+                </div> <!-- /.tabpanel #tab-report-stats -->
+
+                <!-- Tab panel - BEGIN ---------------------------------------->
+                <div role="tabpanel" class="tab-pane fade" id="tab-report-data-json">
+                    <br>
+                    <button id="ajax-load-report-data" class="btn btn-default">
+                        {{ get_icon('action-reload') }} {{ _('Load report data') }}
+                    </button>
+
+                    <div id="ajax-load-report-data-result" style="display: none">
+
+                        <br>
+                        <!-- Inner tab navigation - BEGIN --------------------->
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li role="presentation" class="active">
+                                <a href="#tab-ajax-report-data-raw" aria-controls="tab-ajax-report-data-raw" role="tab" data-toggle="tab">
+                                    <strong>{{ _('Raw data') }}</strong>
+                                </a>
+                            </li>
+                        </ul>
+                        <!-- Inner tab navigation - END ----------------------->
+
+                        <!-- Inner tab panels - BEGIN ------------------------->
+                        <div class="tab-content">
+
+                            <div role="tabpanel" class="tab-pane fade in active" id="tab-ajax-report-data-by-category">
+                                <br>
+                                <pre id="ajax-report-data-raw"></pre>
+                            </div>
+                        </div>
+                        <!-- Inner tab panels - END ------------------------------->
+
+                    </div> <!-- #ajax-load-report-data-result -->
+
+                </div> <!-- /.tabpanel #tab-report-data-json -->
+
+            </div>
+            <!-- Tab panels - END --------------------------------------------->
+
+    {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('item', item) }}
+            {{ macros_site.render_raw_var('statistics', statistics) }}
+            {{ macros_site.render_raw_var('filtering', item.filtering) }}
+    {%- endif %}
+
+{%- endblock content %}
+
+
+{%- block bodyjs %}
+{{ super() }}
+        <script>
+            $('#ajax-load-report-data').click(function() {
+                $.ajaxSetup({
+                    global: false,
+                    type: "GET",
+                    url: "{{ url_for('reports.data', fileid = item.label, filetype = 'json') }}",
+                    beforeSend: function () {
+                        console.log("Showing AJAX loader");
+                        $("#ajax-loader-overlay").show(100);
+                        $("#ajax-load-report-data").prop('disabled', true);
+                    },
+                    complete: function (xhr, status) {
+                        console.log("Hiding AJAX loader with status: '" + status + "'");
+                        $("#ajax-loader-overlay").hide(100);
+                        $("#ajax-load-report-data").prop('disabled', false);
+                    },
+                    error: function (xhr, status, exc) {
+                        console.log("AJAX request error: '" + status + "', '" + exc + "'");
+                        flash_message("danger", "Request error: '" + status + "', " + exc + "'");
+                        alert("Request error: '" + status + "', " + exc + "'")
+                    }
+                });
+                $.ajax({
+                    data: "{}",
+                    success: function (data, status, xhr) {
+                        console.log("AJAX request status: '" + status + "'")
+                        console.log("AJAX request result: " + JSON.stringify(data, undefined, 2));
+                        //flash_message("success", "Successfully loaded report data.");
+                        $("#ajax-report-data-raw").html(JSON.stringify(data, undefined, 2));
+                        $("#ajax-load-report-data-result").show();
+                    }
+                });
+            });
+
+            $(document).ready(function() {
+                $('.feedback-table').each(function() {
+                    var colspan = $(this).children('thead').children('tr').children('th').length - 1;
+                    $(this).children('tbody').children('tr').children('.feedback-message-cell').prop('colspan', colspan);
+                })
+            })
+
+            $('.feedback-show-btn').click(function(event) {
+                event.preventDefault();
+                var id = event.target.id.slice('feedback-show-'.length).replace(/[.\/:]/g, "\\$&");
+                if ($('#feedback-line-' + id).css('visibility') == 'visible')
+                    $('#feedback-line-' + id).css('visibility', 'collapse');
+                else
+                    $('#feedback-line-' + id).css('visibility', 'visible');
+                $('#feedback-text-' + id).focus();
+                $('#feedback-message-' + id).tooltip('destroy');
+            });
+
+            $('.feedback-form').submit(function(event) {
+                event.preventDefault();
+                var id = event.target.id.slice('feedback-form-'.length).replace(/[.\/:]/g, "\\$&");
+                $('#feedback-text-' + id).prop('readonly', true);
+                $('#feedback-submit-' + id).prop('disabled', true);
+                event.preventDefault();
+                $.ajax({
+                    global: false,
+                    type: "POST",
+                    url: "{{ url_for('reports.feedback', item_id = item.label) }}",
+                    data: $(this).serialize(),
+                    contentType: 'application/x-www-form-urlencoded',
+                    error: function (xhr, status, exc) {
+                        console.log("Feedback ended with error: '" + status + "', '" + exc + "'");
+                        $('#feedback-message-' + id).html("{{ _('We are sorry, something went wrong. Please try again later.') }}");
+                        $('#feedback-message-' + id).show();
+                        $('#feedback-text-' + id).prop('readonly', false);
+                        $('#feedback-submit-' + id).prop('disabled', false);
+                    },
+                    success: function (data, status, xhr) {
+                        console.log("Feedback ended with status: '" + status + "', '" + data + "'");
+                        $('#feedback-message-' + id).html(data.message);
+                        $('#feedback-message-' + id).show();
+                        if (data.form_errors) {
+                            $('#feedback-text-' + id).prop('readonly', false);
+                            $('#feedback-submit-' + id).prop('disabled', false);
+                        }
+                    }
+                });
+            });
+
+        </script>
+{%- endblock bodyjs %}

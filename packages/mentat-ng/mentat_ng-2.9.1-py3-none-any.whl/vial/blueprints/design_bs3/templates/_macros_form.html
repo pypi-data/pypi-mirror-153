@@ -1,0 +1,216 @@
+{#- ----------------------------------------------------------------------------
+
+    Macro for rendering a form widget in default style.
+
+----------------------------------------------------------------------------- #}
+
+{%- macro render_form_item_default(form_item, with_errors = True, placeholder = None) %}
+                                <div class="form-group{% if form_item.errors %}{{ ' has-error' }}{% endif %}">
+                                    {{ render_form_label_help(form_item) }}
+                                    {{ form_item(class_='form-control', placeholder=placeholder) }}
+    {%- if with_errors %}
+        {%- for err in form_item.errors %}
+                                    <span class="help-block form-error">{{ get_icon('form-error') }} {{ err }}</span>{%- if not loop.last %}<br>{%- endif %}
+        {%- endfor %}
+    {%- endif %}
+                                </div>
+{%- endmacro %}
+
+
+{#- ----------------------------------------------------------------------------
+
+    Macro for rendering a form select widget with selectpicker class.
+
+----------------------------------------------------------------------------- #}
+
+{%- macro render_form_item_select(form_item, with_errors = True) %}
+                                <div class="form-group{% if form_item.errors %}{{ ' has-error' }}{% endif %}">
+                                    {{ render_form_label_help(form_item) }}
+                                    {{ form_item(class_='form-control selectpicker',**{'data-live-search':'true', 'data-size': '10', 'data-selected-text-format': 'count > 3', 'data-none-selected-text': _('Nothing selected') }) }}
+    {%- if with_errors %}
+        {%- for err in form_item.errors %}
+                                    <span class="help-block form-error">{{ get_icon('form-error') }} {{ err }}</span>{%- if not loop.last %}<br>{%- endif %}
+        {%- endfor %}
+    {%- endif %}
+                                </div>
+{%- endmacro %}
+
+
+{#- ----------------------------------------------------------------------------
+
+    Macro for rendering a form widget with datetime selection class.
+
+----------------------------------------------------------------------------- #}
+
+{%- macro render_form_item_datetime(form_item, ident, with_errors = True) %}
+                                <div class="form-group{% if form_item.errors %}{{ ' has-error' }}{% endif %}">
+                                    {{ render_form_label_help(form_item) }}
+                                    <div id="{{ ident }}" class="input-group date">
+                                        {{ form_item(class_='form-control') }}
+                                        <span class="input-group-addon">
+                                            {{ get_icon('calendar') }}
+                                        </span>
+                                    </div>
+                                    <div class="text-muted">
+                                        <small>
+                                            {{ _('Note: Your selected timezone is &quot;<em>%(tz)s</em>&quot;', tz = session.timezone) | safe }}
+                                        </small>
+                                    </div>
+    {%- if with_errors %}
+        {%- for err in form_item.errors %}
+                                    <span class="help-block form-error">{{ get_icon('form-error') }} {{ err }}</span>{%- if not loop.last %}<br>{%- endif %}
+        {%- endfor %}
+    {%- endif %}
+                                </div>
+{%- endmacro %}
+
+
+{#- ----------------------------------------------------------------------------
+
+    Macro for rendering a static form widget.
+
+----------------------------------------------------------------------------- #}
+
+{%- macro render_form_item_static(form_item_label, form_item_value) %}
+                                <div class="form-group">
+                                    <label class="control-label">{{ form_item_label }}</label>
+                                    <p class="form-control-static">{{ form_item_value }}</p>
+                                </div>
+{%- endmacro %}
+
+
+{#- ----------------------------------------------------------------------------
+
+    Macro for rendering a radio button form widget.
+
+----------------------------------------------------------------------------- #}
+
+{%- macro render_form_item_radiobutton(form_item, with_errors = True) %}
+                                <div class="form-group{% if form_item.errors %}{{ ' has-error' }}{% endif %}">
+                                    <div>
+                                        {{ render_form_label_help(form_item) }}
+                                    </div>
+                                    <div class="btn-group btn-group-justified" data-toggle="buttons">
+    {%- for subfield in form_item %}
+                                        <span class="btn btn-default{% if subfield.checked %} active{% endif %}">
+                                            {{ subfield }} {{ subfield.label }}
+                                        </span>
+    {%- endfor %}
+
+                                    </div>
+    {%- if with_errors %}
+        {%- for err in form_item.errors %}
+                                    <span class="help-block form-error">{{ get_icon('form-error') }} {{ err }}</span>{%- if not loop.last %}<br>{%- endif %}
+        {%- endfor %}
+    {%- endif %}
+                                </div>
+{%- endmacro %}
+
+
+{#- ----------------------------------------------------------------------------
+
+    Macro for rendering a list of errors associated with given form widget.
+
+----------------------------------------------------------------------------- #}
+
+{%- macro render_form_errors(errors) %}
+    {%- if errors %}
+        {%- for err in errors %}
+<span class="help-block form-error">{{ get_icon('form-error') }} {{ err }}</span>{%- if not loop.last %}<br>{%- endif %}
+        {%- endfor %}
+    {%- endif %}
+{%- endmacro %}
+
+{%- macro render_form_errors_labeled(item) %}
+    {%- if errors %}
+        {%- for err in item.errors %}
+<div><span class="help-block form-error">{{ get_icon('form-error') }} <strong>{{ item.label.text }}</strong> {{ err }}</span></div>
+        {%- endfor %}
+    {%- endif %}
+{%- endmacro %}
+
+{#- ----------------------------------------------------------------------------
+
+    Macro for rendering a label with given form widget.
+
+----------------------------------------------------------------------------- #}
+
+{%- macro render_form_label_help(item, placement = 'top') %}
+                                    <label style="width: 100%">
+    {%- if item.description %}
+                                        <div class="popover-hover-container pull-right form-help">
+                                            <div class="popover-hover" role="button" data-popover-content="#fhpo-{{ item.label.field_id }}">
+                                                <a class="btn btn-xs btn-info">
+                                                    {{ get_icon('help') }}
+                                                </a>
+                                                <div id="fhpo-{{ item.label.field_id }}" class="hidden">
+                                                    <div class="popover top">
+                                                        <div class="arrow"></div>
+                                                        <h3 class="popover-title">
+                                                            {{ get_icon('help') }} {{ item.label.text }}
+                                                        </h3>
+                                                        <div class="popover-content">
+                                                            <p>
+                                                                {{ item.description | safe }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+    {%- endif %}
+                                        {{ item.label }}
+                                    </label>
+{%- endmacro %}
+
+{%- macro render_form_label_help_html(item, placement = 'top') %}
+                                    <div class="popover-hover-container pull-right form-help">
+                                        <div class="popover-hover" role="button" data-popover-content="#fhpo-{{ item.label.field_id }}">
+                                            <a class="btn btn-xs btn-info">
+                                                {{ get_icon('help') }}
+                                            </a>
+                                            <div id="fhpo-{{ item.label.field_id }}" class="hidden">
+                                                <div class="popover top">
+                                                    <div class="arrow"></div>
+                                                    <h3 class="popover-title">
+                                                        {{ get_icon('help') }} {{ item.label.text }}
+                                                    </h3>
+                                                    <div class="popover-content">
+        {%- if item.description %}
+                                                        <p>
+                                                            {{ item.description | safe }}
+                                                        </p>
+        {%- endif %}
+                                                        {{ caller() }}
+        {%- if vial_current_view.has_help %}
+                                                        <p>
+                                                            {{ macros_page.render_help_link(icon = 'reference', text = _('more help'), tooltip_text = '') }}
+                                                        </p>
+        {%- endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ item.label }}
+{%- endmacro %}
+
+{%- macro render_help_idea_reference() %}
+                                    <p>
+                                        {{ _('For more in-depth information about the <abbr title="Intrusion Detection Extensible Alert">IDEA</abbr> event format please study official <a href="%(url)s" target="_blank">documentation webpage</a>.', url = 'https://idea.cesnet.cz/en/definition') }}
+                                    </p>
+{%- endmacro %}
+
+{%- macro render_help_datetime() %}
+                                        <p>
+                                            {{ _('User may change his/her timezone preferences in his/her <a href="%(url)s">account settings</a>. Alternatively you may use unambiguous explicit UTC timestamps in the format <code>YYYY-MM-DDThh:mm:ssZ</code>. UTC timestamps are particularly usefull for pre-generated URLs, that are independent of the user preferences.', url = url_for('users.me')) }}
+                                        </p>
+{%- endmacro %}
+
+{%- macro render_help_currenttz() %}
+                                    <div class="text-muted">
+                                        <small>
+                                            {{ _('Note: Your selected timezone is &quot;<em>%(tz)s</em>&quot;', tz = session.timezone) | safe }}
+                                        </small>
+                                    </div>
+{%- endmacro %}

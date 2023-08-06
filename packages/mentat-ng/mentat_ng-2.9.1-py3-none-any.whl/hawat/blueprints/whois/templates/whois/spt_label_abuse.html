@@ -1,0 +1,39 @@
+{%- set content_id = get_uuid4() -%}
+<div class="popover-hover" role="button" data-popover-content="#po-{{ content_id }}">
+    <span class="label label-default">
+        {{ get_icon('module-whois') }} | {{ search_result[0].get('emails_low', _('-- undefined --')) | join(', ') }}{% if search_result|length > 1 %} ({{ _('%(cnt)d more', cnt = (search_result|length -1))}}){% endif %}
+    </span>
+    <div id="po-{{ content_id }}" class="hidden">
+        <div class="popover top">
+            <div class="arrow"></div>
+            <h3 class="popover-title">
+                <a href="{{ url_for('whois.search', submit = _('Search'), search = search_item) }}" data-toggle="tooltip" title="{{ _('Go to full search page') }}">
+                    {{ get_icon('module-whois') }} {{ _('Local WHOIS') }} - {{ _('Abuse resolving') }}
+                </a>
+                <span class="pull-right">
+                    <span data-toggle="tooltip" title="{{ _('Query time') }}: {{ get_timedelta(g.requeststart) }}">
+                        {{ get_icon('stopwatch') }}
+                    </span>
+                </span>
+            </h3>
+            <div class="popover-content">
+                <table class="table table-condensed">
+                    <tr>
+                        <th></th>
+                        <th>{{ _('Network') }}</th>
+                        <th>{{ _('Netname') }}</th>
+                        <th>{{ _('Contacts') }}</th>
+                    </tr>
+    {%- for sritem in search_result %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{% if 'network' in sritem %}{{ sritem['network'] }}{% endif %}</td>
+                        <td>{% if 'netname' in sritem %}{{ sritem['netname'] }}{% endif %}</td>
+                        <td>{% if 'emails_low' in sritem %}{{ sritem['emails_low'] | join(', ') }}{% endif %}</td>
+                    </tr>
+    {%- endfor %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

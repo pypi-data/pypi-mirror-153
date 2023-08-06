@@ -1,0 +1,159 @@
+{% extends "_layout_events_search.html" %}
+
+{% block sectionabout %}
+                    <p>
+                        {{ _('This module provides means for searching IDEA database based on various filtering conditions and displaying results in tabular format.') | safe }}
+                    </p>
+{% endblock sectionabout %}
+
+{% block sectionsearchresult %}
+
+            <p><strong>{{ macros_site.render_endpoint_link('timeline.search', query_params, label = _("View these results on timeline page"), with_icon = True) }}</strong></p>
+
+            {{ macros_site.render_pager(request.endpoint, query_params, pager_index_low, pager_index_high, pager_index_limit) }}
+
+            <table class="table table-striped table-bordered table-hover table-condensed table-responsive">
+                <thead>
+                    <tr>
+                        <!--
+                        <th data-toggle="tooltip" title="{{ _('Index') }}">
+                            #
+                        </th>
+                        -->
+                        {%- if in_query_params(request.args, ['st_from', 'st_to'], True, False, False) %}
+                        <th data-toggle="tooltip" title="{{ _('Event storage time') }}">
+                            {{ _('Stored at') }}
+                        </th>
+                        {%- else %}
+                        <th data-toggle="tooltip" title="{{ _('Event detection time') }}">
+                            {{ _('Detected at') }}
+                        </th>
+                        {%- endif %}
+                        <th data-toggle="tooltip" title="{{ _('Problem sources') }}" class="hidden-xs hidden-sm">
+                            {{ _('Sources') }}
+                        </th>
+                        <th data-toggle="tooltip" title="{{ _('Targets or victims') }}" class="hidden-xs hidden-sm hidden-md">
+                            {{ _('Targets') }}
+                        </th>
+                        <th data-toggle="tooltip" title="{{ _('Event severity') }}">
+                            {{ _('Severity') }}
+                        </th>
+                        <th data-toggle="tooltip" title="{{ _('Event categorization') }}">
+                            {{ _('Categorization') }}
+                        </th>
+                        <th data-toggle="tooltip" title="{{ _('Event detector') }}">
+                            {{ _('Detector') }}
+                        </th>
+                        <th data-toggle="tooltip" title="{{ _('Abuse groups') }}">
+                            {{ _('Groups') }}
+                        </th>
+                        <th data-toggle="tooltip" title="{{ _('Contextual item actions') }}">
+                            {{ get_icon('actions') }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                {%- for item in items %}
+                    <!--<tr class="clickable-row" data-href="{{ url_for('events.show', item_id = item.get_id()) }}">-->
+                    <tr>
+                        <!--
+                        <td>
+                            {{ pager_index_low + loop.index0 }}
+                        </td>
+                        -->
+                        {%- if in_query_params(request.args, ['st_from', 'st_to'], True, False, False) %}
+                        <td>
+                            {{ babel_format_datetime(item.get_storage_time()) | replace(' ', '&nbsp;' | safe )}}
+                        </td>
+                        {%- else %}
+                        <td>
+                            {{ babel_format_datetime(item.get_detect_time()) | replace(' ', '&nbsp;' | safe )}}
+                        </td>
+                        {%- endif %}
+                        <td class="hidden-xs hidden-sm">
+                            {{
+                                macros_site.render_widget_csag_address(
+                                    item.get_addresses('Source'),
+                                    [] + form_data['source_addrs'] +  form_data['target_addrs'] + form_data['host_addrs'], separate_dropdown = False,
+                                    item_limit = search_widget_item_limit
+                                )
+                            }}
+                        </td>
+                        <td class="hidden-xs hidden-sm hidden-md">
+                            {{
+                                macros_site.render_widget_csag_address(
+                                    item.get_addresses('Target'),
+                                    [] + form_data['source_addrs'] + form_data['target_addrs'] + form_data['host_addrs'], separate_dropdown = False,
+                                    item_limit = search_widget_item_limit
+                                )
+                            }}
+                        </td>
+                        <td>
+                            {%- set tmpval = item.get_severity() %}
+                            {%- if tmpval %}
+                            {{
+                                macros_site.render_widget_csag_severity(
+                                    [tmpval],
+                                    align_right = True,
+                                    separate_dropdown = False
+                                )
+                            }}
+                            {%- else %}
+                            <span data-toggle="tooltip" title="{{ _('-- unassigned --') }}">
+                                {{ get_icon('unassigned') }}
+                            </span>
+                            {%- endif %}
+                        </td>
+                        <td>
+                            {{
+                                macros_site.render_widget_csag_category(
+                                    item.get_categories(),
+                                    form_data['categories'],
+                                    align_right = True,
+                                    separate_dropdown = False
+                                )
+                            }}
+                        </td>
+                        <td>
+                            {%- set tmpval = item.get_detectors() %}
+                            {%- if tmpval %}
+                            {{
+                                macros_site.render_widget_csag_detector(
+                                    [tmpval[-1]],
+                                    form_data['detectors'],
+                                    align_right = True,
+                                    separate_dropdown = False
+                                )
+                            }}
+                            {%- else %}
+                            <span data-toggle="tooltip" title="{{ _('-- unassigned --') }}">
+                                {{ get_icon('unassigned') }}
+                            </span>
+                            {%- endif %}
+                        </td>
+                        <td>
+                            {{
+                                macros_site.render_widget_csag_abuse(
+                                    item.get_abuses(),
+                                    form_data['groups'],
+                                    align_right = True,
+                                    separate_dropdown = False
+                                )
+                            }}
+                        </td>
+                        <td>
+                            {{ macros_page.render_menu_context_actions(item) }}
+                        </td>
+                    </tr>
+                {%- endfor %}
+                </tbody>
+            </table>
+
+            {{ macros_site.render_pager(request.endpoint, query_params, pager_index_low, pager_index_high, pager_index_limit) }}
+
+            {%- if permission_can('developer') %}
+            <hr>
+            {{ macros_site.render_raw_var('items', items) }}
+            {%- endif %}
+
+{% endblock sectionsearchresult %}

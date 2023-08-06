@@ -1,0 +1,187 @@
+{%- extends "_layout.html" %}
+
+{%- block content %}
+
+            <div class="row">
+                <div class="col-lg-12">
+                    {{ macros_page.render_breadcrumbs(item) }}
+
+                    <h2>{{ vial_current_view.get_view_title() }}</h2>
+                    <hr>
+                    <h3>{{ item.name }}{% if item.description %} <small>{{ item.description }}</small>{% endif %}</h3>
+                    <div class="pull-right">
+                        {{ macros_page.render_menu_actions(item) }}
+
+                    </div>
+                    <p>
+                        <small>
+                            <strong>{{ _('Group created') }}:</strong> {{ babel_format_datetime(item.createtime) }} ({{ _('%(delta)s ago', delta = babel_format_timedelta(current_datetime_utc - item.createtime)) }})
+                        </small>
+                    </p>
+                    <br>
+
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="active">
+                            <a href="#tab-general" aria-controls="tab-general" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('alert-info') }} {{ _('General information') }}</strong>
+                            </a>
+                        </li>
+                        {%- if can_access_endpoint('groups.update', item) %}
+                        <li role="presentation">
+                            <a href="#tab-changelog" aria-controls="tab-changelog" role="tab" data-toggle="tab">
+                                <strong>{{ get_icon('module-changelogs') }} {{ _('Changelogs') }}</strong> <span class="badge">{{ item_changelog | length }}</span>
+                            </a>
+                        </li>
+                        {%- endif %}
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+
+                        <div role="tabpanel" class="tab-pane fade in active" id="tab-general">
+                            <br>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h4>{{ _('Metadata') }}</h4>
+                                    <table class="table table-striped">
+                                        <tbody>
+                                            <tr>
+                                                <th>
+                                                    {{ _('Parent group') }}:
+                                                </th>
+                                                <td>
+                                                    {%- if item.parent %}
+                                                    <a data-toggle="tooltip" href="{{ url_for('groups.show', item_id = item.parent.id ) }}" title="{{ _('View details of group &quot;%(item)s&quot;', item = item.parent.name) }}">
+                                                        {{ item.parent.name }}
+                                                    </a>
+                                                    {%- else %}
+                                                    {{ _('<< none >>') }}
+                                                    {%- endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>
+                                                    {{ _('State') }}:
+                                                </th>
+                                                <td>
+                                                    {{ macros_site.render_label_item_state(item.enabled, True) }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="col-md-4">
+                                    {%- if item.members_wanted %}
+                                    <h4>
+                                        {{ _('Membership requests') }} <span class="badge">{{ item.members_wanted | length }}</span>
+                                    </h4>
+                                    <table class="table table-striped">
+                                        <tbody>
+                                            {%- for subitem in item.members_wanted %}
+                                            <tr>
+                                                <td{%- if not subitem.enabled %} class="text-muted"{% endif %}>
+                                                    {{ subitem.login }}
+                                                </td>
+                                                <td{%- if not subitem.enabled %} class="text-muted"{% endif %}>
+                                                    {{ subitem.fullname }}
+                                                </td>
+                                                <td>
+                                                    {{ macros_page.render_menu_context_actions(subitem, context_action_menu_users, kwargs = {'other': item}) }}
+                                                </td>
+                                            </tr>
+                                            {%- endfor %}
+                                        </tbody>
+                                    </table>
+                                    {%- endif %}
+                                    <h4>
+                                        {{ _('Members') }} <span class="badge">{{ item.members | length }}</span>
+                                    </h4>
+                                    {%- if item.members %}
+                                    <table class="table table-striped">
+                                        <tbody>
+                                            {%- for subitem in item.members %}
+                                            <tr>
+                                                <td{%- if not subitem.enabled %} class="text-muted"{% endif %}>
+                                                    {{ subitem.login }}
+                                                </td>
+                                                <td{%- if not subitem.enabled %} class="text-muted"{% endif %}>
+                                                    {{ subitem.fullname }}
+                                                </td>
+                                                <td>
+                                                    {{ macros_page.render_menu_context_actions(subitem, context_action_menu_users, kwargs = {'other': item}) }}
+                                                </td>
+                                            </tr>
+                                            {%- endfor %}
+                                        </tbody>
+                                    </table>
+                                    {%- else %}
+                                    {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('This group does not have any members defined at the moment.') }}
+                                    {%- endcall %}
+                                    {%- endif %}
+                                </div>
+
+                                <div class="col-md-4">
+                                    <h4>{{ _('Managers') }} <span class="badge">{{ item.managers | length }}</span></h4>
+                                    {%- if item.managers %}
+                                    <table class="table table-striped">
+                                        <tbody>
+                                            {%- for subitem in item.managers %}
+                                            <tr>
+                                                <td>
+                                                    {{ subitem.login }}
+                                                </td>
+                                                <td>
+                                                    {{ subitem.fullname }}
+                                                </td>
+                                                <td>
+                                                    {{ macros_page.render_menu_context_actions(subitem, context_action_menu_users, kwargs = {'other': item}) }}
+                                                </td>
+                                            </tr>
+                                            {%- endfor %}
+                                        </tbody>
+                                    </table>
+                                    {%- else %}
+                                    {%- call macros_site.render_alert('info', False) %}
+                                    {{ _('This group does not have any managers defined at the moment.') }}
+                                    {%- endcall %}
+                                    {%- endif %}
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {%- if can_access_endpoint('groups.update', item) %}
+                        <div role="tabpanel" class="tab-pane fade" id="tab-changelog">
+                            <br>
+                            {%- if item_changelog %}
+                            {{ macros_page.render_changelog_records(item_changelog, context_action_menu_changelogs) }}
+                            <p>
+                                <small>
+                                    {{ _('Displaying only latest %(count)s changelogs', count = 100) }}
+                                </small>
+                            </p>
+                            {%- else %}
+                            {%- call macros_site.render_alert('info', False) %}
+                            {{ _('This group does not have any changelog records at the moment.') }}
+                            {%- endcall %}
+                            {%- endif %}
+                        </div>
+                        {%- endif %}
+
+                    </div>
+
+                </div><!-- /.col-lg-12 -->
+            </div><!-- /.row -->
+
+    {%- if permission_can('developer') %}
+
+            <hr>
+
+            {{ macros_site.render_raw_item_view(item) }}
+
+    {%- endif %}
+
+{%- endblock content %}
