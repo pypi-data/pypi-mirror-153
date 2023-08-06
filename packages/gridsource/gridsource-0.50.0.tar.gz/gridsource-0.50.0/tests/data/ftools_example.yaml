@@ -1,0 +1,489 @@
+---, m, ft
+dimensionalities:
+  lengthdim: &length_dim
+    dimensionality: length
+    example: "`mm, in`"
+    <<: *length
+
+  pressuredim: &pressure_dim
+    dimensionality: pressure
+    example: "`psi, mpa`"
+    <<: *pressure
+
+  densitydim: &density_dim
+    dimensionality: density
+    example: "`kg/mm^3, lbs/ft^3`"
+    <<: *density
+
+  areadim: &area_dim
+    dimensionality: area
+    example: "`mm^2, in^2`"
+    <<: *area
+
+  inertiadim: &inertia_dim
+    dimensionality: inertia
+    example: "`mm^4, in^4`"
+    <<: *inertia
+
+  stiffnessdim: &stiffness_dim
+    dimensionality: stiffness
+    example: "`lbf/in, N/mm`"
+    <<: *stiffness
+
+  angular_stiffnessdim: &angular_stiffness_dim
+    dimensionality: angular_stiffness
+    example:  "`lbf*in/rad, N*mm/rad`"
+    <<: *angular_stiffness
+
+  forcedim: &force_dim
+    dimensionality: force
+    example: "`N, lbf`"
+    <<: *force
+
+  momentdim: &moment_dim
+    dimensionality: moment
+    example: "`N*m, lbf*ft`"
+    <<: *moment
+
+meta:
+  key:
+    types: string
+    mandatory: True
+  magnitude:
+    types: 
+      - string
+      - number
+    mandatory: true
+  units:
+    types: string
+    mandatory: False
+    default: ""
+
+hull:
+  sta:
+    mandatory: true
+    <<: *length_dim
+  rbl:
+    mandatory: true
+    <<: *length_dim
+    minimum: 0
+
+materials:
+  id:
+    types: integer 
+    unique: true
+    mandatory: true
+  label:
+    types: string
+    mandatory: true
+    unique: true
+  E:
+    mandatory: true
+    <<: *pressure_dim
+  G:
+    mandatory: true
+    <<: *pressure_dim
+  rho:
+    default: 0
+    <<: *density_dim
+sections:
+  id:
+    types: integer 
+    unique: true
+    mandatory: true
+  label:
+    types: string
+    mandatory: true
+    unique: true
+  material_id:
+    types: integer
+    mandatory: true
+  area:
+    mandatory: true
+    <<: *area_dim
+  I1:
+    default: 0
+    <<: *inertia_dim
+  I2:
+    default: 0
+    <<: *inertia_dim
+  I3:
+    default: 0
+    <<: *inertia_dim
+  J:
+    default: 0
+    <<: *inertia_dim
+  k1:
+    default: 0.0
+    types: number
+    minimum: 0.0
+  k2:
+    default: 0.0
+    types: number
+    minimum: 0.0
+
+
+
+_KLx: &lin_stiffness
+  <<: *stiffness_dim
+  default: 0
+
+_KRx: &rot_stiffness
+  <<: *angular_stiffness_dim
+  default: 0
+
+_blocked_dofs: &dofs
+  types: string
+  pattern: ^(dofs\s*1{0,1}2{0,1}3{0,1}4{0,1}5{0,1}6{0,1}){0,1}$
+  default: "" 
+
+_label: &label
+  types: string
+  pattern: ^[a-zA-Z_][\w]*$
+  mandatory: true
+  unique: true
+
+_empty_label: &empty_label
+  types: string
+  pattern: (^$)|(^[a-zA-Z_][\w]*$)
+  mandatory: true
+  unique: true
+
+
+constraints:
+  id:
+    types: integer 
+    unique: true
+    mandatory: true
+  label:
+    <<: *label
+  blocked_dofs:
+    <<: *dofs
+  k1:
+    <<: *lin_stiffness
+  k2:
+    <<: *lin_stiffness
+  k3:
+    <<: *lin_stiffness
+  k4:
+    <<: *rot_stiffness
+  k5:
+    <<: *rot_stiffness
+  k6:
+    <<: *rot_stiffness
+  x_offset:
+    <<: *length_dim
+    default: 0
+  y_offset:
+    <<: *length_dim
+    default: 0
+  z_offset:
+    <<: *length_dim
+    default: -1
+
+springs:
+  id:
+    types: integer 
+    unique: true
+    mandatory: true
+  label:
+    <<: *label
+  k1:
+    <<: *lin_stiffness
+  k2:
+    <<: *lin_stiffness
+  k3:
+    <<: *lin_stiffness
+  k4:
+    <<: *rot_stiffness
+  k5:
+    <<: *rot_stiffness
+  k6:
+    <<: *rot_stiffness
+
+    
+
+crossbeams:
+  id:
+    types: integer 
+    unique: true
+    mandatory: true
+  label:
+    <<: *label
+    unique: false
+  pid:
+    types: integer
+    mandatory: true
+  x_loc:
+    types: number
+    mandatory: true
+    minimum: 0
+    <<: *length_dim
+  y_start:
+    <<: *length_dim
+  y_end:
+    <<: *length_dim
+  z_offset:
+    types: number
+    <<: *length_dim
+  repeat_span:
+    types: number
+    minimum: 1
+    <<: *length_dim
+  repeat_pitch:
+    types: number
+    minimum: 1
+    <<: *length_dim
+  repeat_nb:
+    types: integer
+    minimum: 1
+  repeat_discard_nth:
+    types: string
+    default: ""
+    pattern: (^$)|(^(\d+\s*)(,\s*\d+\s*)*$)
+  repeat_direction:
+    types: string
+    enum: 
+      - aft
+      - fwd
+    default: "aft"
+  y_start_constraints:
+    types: string
+    mandatory: true
+  tags:
+    types: string
+    default: ""
+  binding_released_dofs: 
+    <<: *dofs
+  gousset_spring_label:
+    <<: *label
+    unique: false
+
+crossbeams_interm_constraints:
+  crossbeam_label:
+    <<: *label
+    unique: false
+  y_loc:
+    <<: *length_dim
+    mandatory: true
+  constraint_label:
+    <<: *label
+    unique: false
+  
+
+rails:
+  bl_id:
+    types: number
+    uniqueness_id: toto
+  bl_instance_id:
+    types: integer
+    mandatory: true
+    uniqueness_id: toto
+  pid:
+    types: integer
+    mandatory: true
+  x_start:
+    <<: *length_dim
+    mandatory: false
+    minimum: 0
+  y_start:
+    <<: *length_dim
+    mandatory: false
+    uniqueness_id: toto
+  x_stop:
+    <<: *length_dim
+    mandatory: true
+    minimum: 0
+  y_stop:
+    <<: *length_dim
+    mandatory: False
+  z_rel_start:
+    types: number
+    <<: *length_dim
+  z_rel_stop:
+    types: number
+    <<: *length_dim
+  stop_splicing_spring_label:
+    <<: *empty_label
+    unique: false
+    mandatory: false
+    default: ""
+  tags:
+    types: string
+    default: ""
+
+rails_specs:
+  bl_id:
+    types: number
+    unique: true
+    mandatory: true
+  z_offset:
+    types: number
+    <<: *length_dim
+  symmetric:
+    types: integer
+    minimum: 0
+    maximum: 1
+    default: 1
+  tags:
+    types: string
+    default: ""
+  binding_released_dofs: 
+    <<: *dofs
+
+
+goussets:
+  crossbeam_label:
+    <<: *label
+    pattern: ^([a-zA-Z_][\w]*(::\d*)?|\*)$
+    unique: false
+  rail_label:
+    <<: *label
+    pattern: ^([a-zA-Z_][\w]*(::\d*)?|\*)$
+    unique: false
+  gousset_spring_label:
+    <<: *label
+    unique: false
+
+tabulated_loads:
+  block_label:
+    <<: *label
+    unique: false
+    mandatory: true
+  x:
+    <<: *length_dim
+    mandatory: true
+    uniqueness_id: toto
+  y:
+    <<: *length_dim
+    mandatory: true
+    uniqueness_id: toto
+  lcid:
+    types: integer
+    mandatory: false
+    default: _pad_
+    uniqueness_id: toto
+  fx:
+    <<: *force_dim
+    mandatory: false
+    default: 0.
+  fy:
+    <<: *force_dim
+    mandatory: false
+    default: 0.
+  fz:
+    <<: *force_dim
+    mandatory: false
+    default: 0.
+  mx:
+    <<: *moment_dim
+    mandatory: false
+    default: 0.
+  my:
+    <<: *moment_dim
+    mandatory: false
+    default: 0.
+  mz:
+    <<: *moment_dim
+    mandatory: false
+    default: 0.
+
+blocks_geom:
+  block_label:
+    <<: *label
+    unique: false
+    mandatory: false
+  point_id:
+    types: integer
+    mandatory: true
+  x:
+    <<: *length_dim
+    mandatory: true
+  y:
+    <<: *length_dim
+    mandatory: true
+
+blocks_loads:
+  block_label:
+    <<: *label
+    unique: false
+    mandatory: false
+    default: _pad_
+    uniqueness_id: toto
+  lcid:
+    types: integer
+    mandatory: false
+    default: _pad_
+    uniqueness_id: toto
+  point_id:
+    types: integer
+    mandatory: true
+    default: _pad_
+    uniqueness_id: toto
+  fx:
+    <<: *force_dim
+    mandatory: false
+    default: 0.
+  fy:
+    <<: *force_dim
+    mandatory: false
+    default: 0.
+  fz:
+    <<: *force_dim
+    mandatory: false
+    default: 0.
+  mx:
+    <<: *moment_dim
+    mandatory: false
+    default: 0.
+  my:
+    <<: *moment_dim
+    mandatory: false
+    default: 0.
+  mz:
+    <<: *moment_dim
+    mandatory: false
+    default: 0.
+
+blocks_asm:
+  rail_tag:
+    <<: *label
+    uniqueness_id: toto
+    unique: false
+    mandatory: true
+    pattern: ^[L|l|r|R][B|b][L|l]\d+((\.|,)\d+)?$
+  x_loc:
+    <<: *length_dim
+    mandatory: true
+    uniqueness_id: toto
+  block_label:
+    <<: *label
+    unique: false
+    mandatory: false
+  block_ref_point_id:
+    types: integer
+    mandatory: true
+  repeat_span:
+    types: number
+    minimum: 1
+    <<: *length_dim
+  repeat_pitch:
+    types: number
+    minimum: 1
+    <<: *length_dim
+  repeat_nb:
+    types: integer
+    minimum: 1
+  repeat_discard_nth:
+    types: string
+    default: ""
+    pattern: (^$)|(^(\d+\s*)(,\s*\d+\s*)*$)
+lcids:
+  lcid:
+    types: integer
+    mandatory: true
+    unique: true
+  label:
+    types: string
+    mandatory: true
+    unique: true
