@@ -1,0 +1,365 @@
+# Copyright (C) The Arvados Authors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+$base: "http://arvados.org/cwl#"
+$namespaces:
+  cwl: "https://w3id.org/cwl/cwl#"
+  cwltool: "http://commonwl.org/cwltool#"
+$graph:
+- $import: https://w3id.org/cwl/CommonWorkflowLanguage.yml
+
+- name: cwltool:Secrets
+  type: record
+  inVocab: false
+  extends: cwl:ProcessRequirement
+  fields:
+    class:
+      type: string
+      doc: "Always 'Secrets'"
+      jsonldPredicate:
+        "_id": "@type"
+        "_type": "@vocab"
+    secrets:
+      type: string[]
+      doc: |
+        List one or more input parameters that are sensitive (such as passwords)
+        which will be deliberately obscured from logging.
+      jsonldPredicate:
+        "_type": "@id"
+        refScope: 0
+
+- name: RunInSingleContainer
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Indicates that a subworkflow should run in a single container
+    and not be scheduled as separate steps.
+  fields:
+    - name: class
+      type: string
+      doc: "Always 'arv:RunInSingleContainer'"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+
+- name: OutputDirType
+  type: enum
+  symbols:
+    - local_output_dir
+    - keep_output_dir
+  doc:
+    - |
+      local_output_dir: Use regular file system local to the compute node.
+      There must be sufficient local scratch space to store entire output;
+      specify this with `outdirMin` of `ResourceRequirement`.  Files are
+      batch uploaded to Keep when the process completes.  Most compatible, but
+      upload step can be time consuming for very large files.
+    - |
+      keep_output_dir: Use writable Keep mount.  Files are streamed to Keep as
+      they are written.  Does not consume local scratch space, but does consume
+      RAM for output buffers (up to 192 MiB per file simultaneously open for
+      writing.)  Best suited to processes which produce sequential output of
+      large files (non-sequential writes may produced fragmented file
+      manifests).  Supports regular files and directories, does not support
+      special files such as symlinks, hard links, named pipes, named sockets,
+      or device nodes.
+
+
+- name: RuntimeConstraints
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Set Arvados-specific runtime hints.
+  fields:
+    - name: class
+      type: string
+      doc: "Always 'arv:RuntimeConstraints'"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    - name: keep_cache
+      type: int?
+      doc: |
+        Size of file data buffer for Keep mount in MiB. Default is 256
+        MiB. Increase this to reduce cache thrashing in situations such as
+        accessing multiple large (64+ MiB) files at the same time, or
+        performing random access on a large file.
+    - name: outputDirType
+      type: OutputDirType?
+      doc: |
+        Preferred backing store for output staging.  If not specified, the
+        system may choose which one to use.
+
+- name: PartitionRequirement
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Select preferred compute partitions on which to run jobs.
+  fields:
+    - name: class
+      type: string
+      doc: "Always 'arv:PartitionRequirement'"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    - name: partition
+      type:
+        - string
+        - string[]
+
+- name: APIRequirement
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Indicates that process wants to access to the Arvados API.  Will be granted
+    limited network access and have ARVADOS_API_HOST and ARVADOS_API_TOKEN set
+    in the environment.
+  fields:
+    - name: class
+      type: string
+      doc: "Always 'arv:APIRequirement'"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+
+- name: IntermediateOutput
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Specify desired handling of intermediate output collections.
+  fields:
+    class:
+      type: string
+      doc: "Always 'arv:IntermediateOutput'"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    outputTTL:
+      type: int
+      doc: |
+        If the value is greater than zero, consider intermediate output
+        collections to be temporary and should be automatically
+        trashed. Temporary collections will be trashed `outputTTL` seconds
+        after creation.  A value of zero means intermediate output should be
+        retained indefinitely (this is the default behavior).
+
+        Note: arvados-cwl-runner currently does not take workflow dependencies
+        into account when setting the TTL on an intermediate output
+        collection. If the TTL is too short, it is possible for a collection to
+        be trashed before downstream steps that consume it are started.  The
+        recommended minimum value for TTL is the expected duration of the
+        entire the workflow.
+
+- name: WorkflowRunnerResources
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Specify memory or cores resource request for the CWL runner process itself.
+  fields:
+    class:
+      type: string
+      doc: "Always 'arv:WorkflowRunnerResources'"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    ramMin:
+      type: int?
+      doc: Minimum RAM, in mebibytes (2**20)
+      jsonldPredicate: "https://w3id.org/cwl/cwl#ResourceRequirement/ramMin"
+    coresMin:
+      type: int?
+      doc: Minimum cores allocated to cwl-runner
+      jsonldPredicate: "https://w3id.org/cwl/cwl#ResourceRequirement/coresMin"
+    keep_cache:
+      type: int?
+      doc: |
+        Size of collection metadata cache for the workflow runner, in
+        MiB.  Default 256 MiB.  Will be added on to the RAM request
+        when determining node size to request.
+      jsonldPredicate: "http://arvados.org/cwl#RuntimeConstraints/keep_cache"
+    acrContainerImage:
+      type: string?
+      doc: |
+        The container image containing the correct version of
+        arvados-cwl-runner to use when invoking the workflow on
+        Arvados.
+
+- name: ClusterTarget
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Specify where a workflow step should run
+  fields:
+    class:
+      type: string
+      doc: "Always 'arv:ClusterTarget'"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    cluster_id:
+      type: string?
+      doc: The cluster to run the container
+    project_uuid:
+      type: string?
+      doc: The project that will own the container requests and intermediate collections
+
+- name: OutputStorageClass
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Specify the storage class to be used for intermediate and final output
+  fields:
+    class:
+      type: string
+      doc: "Always 'arv:StorageClassHint"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    intermediateStorageClass:
+      type:
+        - "null"
+        - string
+        - type: array
+          items: string
+      doc: One or more storages classes
+    finalStorageClass:
+      type:
+        - "null"
+        - string
+        - type: array
+          items: string
+      doc: One or more storages classes
+
+- type: record
+  name: PropertyDef
+  doc: |
+    Define a property that will be set on the submitted container
+    request associated with this workflow or step.
+  fields:
+    - name: propertyName
+      type: string
+      doc: The property key
+    - name: propertyValue
+      type: [Any]
+      doc: The property value
+
+
+- name: ProcessProperties
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Specify metadata properties that will be set on the submitted
+    container request associated with this workflow or step.
+  fields:
+    class:
+      type: string
+      doc: "Always 'arv:ProcessProperties"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    processProperties:
+      type: PropertyDef[]
+      jsonldPredicate:
+        mapSubject: propertyName
+        mapPredicate: propertyValue
+
+
+- name: cwltool:CUDARequirement
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Require support for NVIDA CUDA (GPU hardware acceleration).
+  fields:
+    class:
+      type: string
+      doc: 'cwltool:CUDARequirement'
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    cudaVersionMin:
+      type: string
+      doc: |
+        Minimum CUDA version to run the software, in X.Y format.  This
+        corresponds to a CUDA SDK release.  When running directly on
+        the host (not in a container) the host must have a compatible
+        CUDA SDK (matching the exact version, or, starting with CUDA
+        11.3, matching major version).  When run in a container, the
+        container image should provide the CUDA runtime, and the host
+        driver is injected into the container.  In this case, because
+        CUDA drivers are backwards compatible, it is possible to
+        use an older SDK with a newer driver across major versions.
+
+        See https://docs.nvidia.com/deploy/cuda-compatibility/ for
+        details.
+    cudaComputeCapability:
+      type:
+        - 'string'
+        - 'string[]'
+      doc: |
+        CUDA hardware capability required to run the software, in X.Y
+        format.
+
+        * If this is a single value, it defines only the minimum
+          compute capability.  GPUs with higher capability are also
+          accepted.
+
+        * If it is an array value, then only select GPUs with compute
+          capabilities that explicitly appear in the array.
+    cudaDeviceCountMin:
+      type: ['null', int, cwl:Expression]
+      default: 1
+      doc: |
+        Minimum number of GPU devices to request.  If not specified,
+        same as `cudaDeviceCountMax`.  If neither are specified,
+        default 1.
+    cudaDeviceCountMax:
+      type: ['null', int, cwl:Expression]
+      doc: |
+        Maximum number of GPU devices to request.  If not specified,
+        same as `cudaDeviceCountMin`.
+
+- name: UsePreemptible
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Specify a workflow step should opt-in or opt-out of using preemptible (spot) instances.
+  fields:
+    class:
+      type: string
+      doc: "Always 'arv:UsePreemptible"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    usePreemptible: boolean
+
+- name: OutputCollectionProperties
+  type: record
+  extends: cwl:ProcessRequirement
+  inVocab: false
+  doc: |
+    Specify metadata properties that will be set on the output
+    collection associated with this workflow or step.
+  fields:
+    class:
+      type: string
+      doc: "Always 'arv:OutputCollectionProperties"
+      jsonldPredicate:
+        _id: "@type"
+        _type: "@vocab"
+    outputProperties:
+      type: PropertyDef[]
+      jsonldPredicate:
+        mapSubject: propertyName
+        mapPredicate: propertyValue
