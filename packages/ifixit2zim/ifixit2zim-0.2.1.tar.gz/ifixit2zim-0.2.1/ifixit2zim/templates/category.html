@@ -1,0 +1,293 @@
+{% set rel_prefix="../" %}{% set bodyFullWidth = True %}{% extends "base.html" %}
+
+{% block title %}{{category['display_title']}}{% endblock title%}
+
+{% block specific_head %}
+<link type="text/css" href="{{rel_prefix}}assets/Wiki-topic-r_spN9srKqcGQAC8emdeTA.css" rel="stylesheet" as="style">
+<link type="text/css" href="{{rel_prefix}}assets/Wiki-common-Zf5O-KLmFhhZ0w9cRZYZoQ.css" rel="stylesheet" as="style">
+{% endblock specific_head%}
+
+{% block content %}
+<div id="page" class="">
+
+    <!-- TODO : generate sidebar appropriately -->
+
+    <div id="main">
+        <div id="mainBody">
+            <!-- MAIN BODY -->
+            <div id="banner">
+                <div id="banner-wrap">
+                    <div id="banner-wrap-bg-container">
+                        <img id="banner-wrap-bg"
+                            src="{{rel_prefix}}{{category | get_image_url(for_device=True) | get_image_path}}">
+                    </div>
+                    <div class="banner-content">
+                        <div class="banner-bucket">
+                            <div class="banner-small-photo">
+                                <img src="{{rel_prefix}}{{category | get_image_url(for_device=True) | get_image_path}}"
+                                    width="252" height="189" alt="{{category['image']['display_title']}}">
+                                {% if category['repairability_score'] %}
+                                <!-- TODO: Retrieve the href of the teardown of this device"> -->
+                                <a href="#" class="banner-repairability-score hidden-mobile repairability-score-{{category['repairability_score']}}"> {{label['repairability']}}  
+                                    <strong>{{category['repairability_score']}}</strong> / 10
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="banner-bucket banner-summary">
+                            <div class="banner-text">
+                                <h1 class="banner-title" itemprop="headline">
+                                    {{category['display_title']}}</h1>
+                                <p class="banner-blurb">
+                                    <span class="topicHeaderText originalText" itemprop="description">
+                                        {{category['description']}}</span>
+                                </p>
+                                <!-- TODO: retrieve wiki author (missing from API for now) -->
+                            </div>
+                        </div>
+                        <div class="clearer"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="topContent">
+                <!-- TODO: Check wether this is working or not at all -->
+                <div id="mobile-wiki-toc" class="hidden-desktop">
+                    <div class="react-component" data-reactroot data-name="Toc" data-props="[]">
+                        <style>
+                            #mobile-skeleton-toc {
+                                background: white;
+                                box-shadow: 0 1px 4px rgba(16, 22, 26, 0.1), 0 1px 2px rgba(16, 22, 26, 0.1);
+                                height: 83px;
+                            }
+                        </style>
+                        <div id="mobile-skeleton-toc"></div>
+                    </div>
+                </div>
+
+                {% if category['children'] | length > 0 %}
+                <div class="subcategorySection">
+                    <!-- <h2 id='Section_3_Categories' class="js-dynamic-toc-section"> -->
+                    <h2 id='Section_Childrens' class="js-dynamic-toc-section">
+                        {{ label['categories_before']}}{{ category['children'] | length }}{{ label['categories_after']}}
+                    </h2>
+                    <div class="grid">
+                        {% for child in category['children'] %}
+                        <div class="categoryListCell">
+                            <a href="{{rel_prefix}}{{child | get_category_link_from_obj}}" class="categoryAnchor">
+                                <img src="{{rel_prefix}}{{child | get_image_url(for_device=True) | get_image_path}}" width="179"
+                                    height="143" alt="{{child['display_title']}}" class="category-image" />
+                                <h5 class="title">
+                                    {{child['display_title']}}</h5>
+                            </a>
+                            <!-- TODO: retrieve child locale, not available in current API 
+                            {% if child['locale'] != lang %}
+                            <span class="lang">{{child['locale']}}</span>
+                            {% endif %}-->
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if category['featured_guides'] | length > 0 %}
+                <div class="highlight-guides">
+                    <h2 id="Section_Guides" class="blurbListTitle js-dynamic-toc-section js-guide-section">
+                        {{label['featured_guides']}}</h2>
+                    <div class="entry-container">
+                        {% for guide in category['featured_guides'] %}
+                        {% if loop.index < 3 %} <a href="{{rel_prefix}}{{guide | get_guide_link_from_obj}}"
+                            class="entry">
+                            <div class="thumbnail">
+                                <span class="featured-icon"><i class="svg-icon" alt="Featured" title="Featured"
+                                        style="display: inline-block; width: 24px; height: 24px;"><svg
+                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <circle cx="12" cy="8" r="7" />
+                                            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+                                        </svg></i></span>
+                                <img src="{{rel_prefix}}{{guide | get_image_url(for_guide=True) | get_image_path }}"
+                                    alt="{{guide['title']}}" width="176" height="131" />
+                            </div>
+                            <div class="entry-text">
+                                <h4>{{guide['title']}}</h4>
+                                <p>{{guide['summary']}}</p>
+                            </div>
+                            </a>
+                            {% endif %}
+                            {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- TODO: Check if display order on a category with all guide types if OK -->
+                {% for guide_type in ['technique', 'replacement', 'disassembly', 'teardown'] %}
+                    {% if category['guides'] | guides_in_progress(False) | selectattr('type', '==', guide_type) | list | length > 0 %}
+                        {% if guide_type in ['replacement'] %}
+                            {% set guide_text = 'subject' %}
+                        {% else %}
+                            {% set guide_text = 'title' %}
+                        {% endif %}
+                <div class="blurbListWide" data-type="{{guide_type}}">
+                    <h3 id="Section_{{guide_type}}" class="blurbListTitle js-dynamic-toc-section">
+                        <a href="#Section_{{guide_type}}" style="text-decoration: none;">
+                            {{label[guide_type + '_guides']}}</a>
+                    </h3>
+                    <div class="grid">
+                        {% for guide in category['guides'] | guides_in_progress(False) | selectattr('type', '==', guide_type) %}
+                        <div class="cell">
+                            <a href="{{rel_prefix}}{{guide | get_guide_link_from_obj}}" class="title">
+                                <img src="{{rel_prefix}}{{guide | get_image_url(for_guide=True) | get_image_path }}" width="133"
+                                    height="100" alt="{{guide[guide_text]}}" class="thumb" />
+                                <div class='title-text'>
+                                    <p>{{guide[guide_text]}}</p>
+                                </div>
+                            </a>
+                            {% if guide['locale'] != lang %}
+                            <span class="lang">{{guide['locale']}}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                    {% endif %}
+                {% endfor %}
+
+                {% if false and category['related_wikis'] | length > 0 %}
+                <div class="subcategorySection">
+                    <h2 id='Section_Related_Pages' class="js-dynamic-toc-section">
+                        {{label['related_pages']}}
+                    </h2>
+                    <div class="grid">
+                        {% for wiki in category['related_wikis'] %}
+                        <div class="categoryListCell">
+                            <a href="{{rel_prefix}}wikis/wiki_{{wiki['wikiid']}}.html" class="categoryAnchor">
+                                <!-- TODO: Move images to the appropriate folder + handle unusual extensions ? (or is it just a corner case ?) -->
+                                <img src="{{rel_prefix}}{{wiki | get_image_url(for_wiki=True) | get_image_path}}" width="179"
+                                    height="143" alt="{{wiki['display_title']}}" class="category-image" />
+                                <h5 class="title">{{wiki['display_title']}}</h5>
+                            </a>
+                            {% if wiki['locale'] != lang %}
+                            <span class="lang">{{wiki['locale']}}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div id="contentFloat">
+                <div id="content">
+                    <div class="container articleContainer topic">
+                        {% if category['guides'] | guides_in_progress | list | length > 0 %}
+                        <div class="blurbListWide" data-type="inprogress">
+                            <h3 class="blurbListTitle">
+                                <a href='#Section_In_Progress' style="text-decoration: none;">
+                                    {{label['in_progress_guides']}}</a>
+                            </h3>
+                            <div class="grid">
+
+                                {% for guide in category['guides'] | guides_in_progress %}
+                                {% if guide['type'] in ['replacement'] %}
+                                    {% set guide_text = 'subject' %}
+                                {% else %}
+                                    {% set guide_text = 'title' %}
+                                {% endif %}
+                                <div class="cell">
+                                    <a href="{{rel_prefix}}{{guide | get_guide_link_from_obj}}" class="title">
+                                        <img src="{{rel_prefix}}{{guide | get_image_url(for_guide=True) | get_image_path}}" width="133"
+                                            height="100" alt="{{guide[guide_text]}}" class="thumb" />
+                                        <div class='title-text'>
+                                            <p>{{guide['subject']}}</p>
+                                        </div>
+                                    </a>
+                                    {% if guide['locale'] != lang %}
+                                    <span class="lang">{{guide['locale']}}</span>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- TODO : retrieve questions if this makes sense -->
+                        {% if (category | category_count_tools) + (category | category_count_parts) > 0 %}
+                        <div id="Section_tools_and_parts" class="js-dynamic-toc-section">
+                            {% if category | category_count_parts > 0 %}
+                            <h2>{{label['parts']}}</h2>
+                            <div id="deviceToolsList" class="row">
+                                <ul class="attachment-link-list two-columns">
+                                    {% for part in category['parts']['categories'] %}
+                                    <li class="attachment-link">
+                                        <div class="row attachment-container">
+                                            <div class="column">
+                                                <a {{('href="' + part['url'] + '"') | cleanup_rendered_content(rel_prefix) | safe}}>
+                                                    <span>{{part['tag']}}</span>
+                                                    ({{part['count']}})
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            {% if category | category_count_tools > 0 %}
+                            <h2 class="tools-header">{{label['tools']}}</h2>
+                            <div class="deviceToolsContainer">
+                                <p>{{label['tools_introduction']}}</p>
+                                <div class="deviceToolsList">
+                                    <ul class="attachment-link-list two-columns">
+                                        {% for tool in category['tools'] %}
+                                        <li class="attachment-link">
+                                            <div class="row attachment-container">
+                                                <a {{('href="' + tool['target_url'] + '"') | cleanup_rendered_content(rel_prefix) | safe}}>
+                                                <img src="{{rel_prefix}}{{tool['image_url'] | get_image_path}}"
+                                                    alt="" width="41" height="41">
+                                                </a>
+                                                <div class="column">
+                                                    <a {{('href="' + tool['target_url'] + '"') | cleanup_rendered_content(rel_prefix) | safe}}>
+                                                        <p class="title">{{tool['title']}}</p>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <div class="clearer"></div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <div id="Wiki_Details">
+                            <div id="wikiRenderedText" class="wikiRenderedText renderedText originalText"
+                                itemprop="text">
+                                <!-- TODO: find a proper way to render wiki content:
+                                    - the rendered way is not ideal since there is a lot of links to replace
+                                    - the json/raw relies on wiki lists which seems to not be available through the API
+                                -->
+                                {{category['contents_rendered']| cleanup_rendered_content(rel_prefix) | safe}}
+                            </div>
+                        </div>
+
+                        <div class="clearer"></div>
+
+                    </div>
+
+                </div>
+
+                <!-- TODO: check mobileToc javascript stuff -->
+
+            </div>
+            <div class="clearer"></div>
+
+        </div> <!-- /mainBody -->
+
+        <div class="clearer"></div>
+    </div> <!-- /main -->
+</div> <!-- /page -->
+{% endblock content%}
