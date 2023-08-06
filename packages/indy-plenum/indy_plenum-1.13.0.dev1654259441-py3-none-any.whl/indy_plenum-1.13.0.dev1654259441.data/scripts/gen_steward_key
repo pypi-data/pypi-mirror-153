@@ -1,0 +1,45 @@
+#!python
+
+import argparse
+
+from sys import argv
+
+from plenum.common.script_helper import buildKeepDirIfNotExists, \
+    generateStewardGenesisTxn
+from plenum.common.keygen_utils import initLocalKeys
+from plenum.common.config_util import getConfig
+
+config = getConfig()
+
+if __name__ == "__main__":
+    buildKeepDirIfNotExists(config.baseDir)
+
+    parser = argparse.ArgumentParser(
+        description="Generate steward key")
+
+    parser.add_argument('name', action="store")
+    parser.add_argument('--seed', required=False, type=str,
+                        help='seed for keypair')
+    parser.add_argument('--force', help='overrides keys', action='store_true')
+    parser.add_argument('--print_gen_txn', help='prints genesis transactions',
+                        action='store_true')
+
+    args = parser.parse_args()
+    name = argv[1]
+
+    try:
+        # Initialize node stack
+        pubkey, verkey, blspk, _ = initLocalKeys(name,
+                                              config.baseDir,
+                                              args.seed,
+                                              use_bls=False,
+                                              override=args.force)
+
+        # Print genesis transaction commands
+        generateStewardGenesisTxn(config.baseDir,
+                                  args.print_gen_txn,
+                                  args.name,
+                                  verkey)
+    except Exception as ex:
+        print(ex)
+        exit()
