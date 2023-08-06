@@ -1,0 +1,15 @@
+{% set log_dir = jobs_dir + "/log" %}
+executable = {{ executable }}
+arguments = " {{ arguments }} $(filename)"
+log = {{ log_dir }}/log
+output = {{ log_dir }}/out.$(Process)
+error = {{ log_dir }}/error.$(Process)
+run_as_owner = True
+request_memory = ifThenElse(MemoryUsage =!= UNDEFINED, (ifThenElse(MemoryUsage > {{ required_mem }}, (MemoryUsage), {{ required_mem }})) * 20 / 17, {{ required_mem }})
+periodic_hold = ifThenElse(MemoryUsage =!= UNDEFINED, ( MemoryUsage >= ( ( RequestMemory ) * 20 / 14 ) ), False)
+periodic_release = (JobStatus == 5) && ((CurrentTime -EnteredCurrentStatus) > 20) && (HoldReasonCode == 3)
+request_cpus = {{ request_cpus }}
++Owner = "{{ owner }}"
+environment	= "PATH=/usr/bin HOME=/tmp/{{ uuid }}/ PYTHONHOME={{ python_home }}"
+
+queue filename matching files {{ jobs_dir }}/condor/*.json.gzip
