@@ -1,0 +1,391 @@
+Metadata-Version: 2.1
+Name: rer.ufficiostampa
+Version: 1.5.1.dev0
+Summary: Policy for Ufficio Stampa
+Home-page: https://github.com/RegioneER/rer.ufficiostampa
+Author: RedTurtle Technology
+Author-email: sviluppo@redturtle.it
+License: GPL version 2
+Project-URL: PyPI, https://pypi.python.org/pypi/rer.ufficiostampa
+Project-URL: Source, https://github.com/RegioneER/rer.ufficiostampa
+Project-URL: Tracker, https://github.com/RegioneER/rer.ufficiostampa/issues
+Description: .. This README is meant for consumption by humans and pypi. Pypi can render rst files so please do not use Sphinx features.
+           If you want to learn more about writing documentation, please check out: http://docs.plone.org/about/documentation_styleguide.html
+           This text does not appear on pypi or github. It is a comment.
+        
+        ===================
+        RER: Ufficio Stampa
+        ===================
+        
+        Prodotto per la gestione delle comunicazioni alla stampa.
+        
+        Funzionalità principali
+        =======================
+        
+        - Content-type dedicati (Comunicato Stampa e Invito Stampa)
+        - Gestione canali di iscrizioni per i giornalisti
+        - Invio dei comunicati
+        
+        Content-type
+        ============
+        
+        Sono presenti due content-type uguali tra loro per la gestione di due tipi diversi di comunicazioni:
+        
+        - **Comunicato Stampa**
+        - **Invito Stampa**
+        
+        Sono delle pagine con due campi aggiuntivi (Argomenti e Legislatura) e folderish (in cui si può inserire solo **Immagini**, **File** e **Cartelle**).
+        
+        Progressivo Comunicato Stampa
+        -----------------------------
+        
+        I comunicati stampa hanno un progressivo rispetto all'anno corrente (es: 1/2021).
+        
+        Ogni volta che viene pubblicato un Comunicato Stampa, viene incrementato il progressivo e il valore viene
+        associato a quel comunicato (scritto in un campo).
+        
+        Il primo Comunicato Stampa inviato in un anno, parte col numero 1.
+        
+        
+        Database iscritti
+        =================
+        
+        C'è un database interno (basato su `souper.plone <https://pypi.org/project/souper.plone/>`_) nel quale vengono memorizzati i dati degli iscritti.
+        
+        E' possibile interrogare il database tramite rotte api (vedi in seguito) o mediante utility Plone::
+        
+            from zope.component import getUtility
+            from rer.ufficiostampa.interfaces import ISubscriptionsStore
+        
+            tool = getUtility(ISubscriptionsStore)
+        
+        Di seguito vengono riportati i principali metodi.
+        
+        Aggiunta iscritto
+        -----------------
+        
+        - Metodo ``add``
+        - Parametri: ``data`` (dizionario con i parametri)
+        - Risposta: l'id univoco del nuovo record
+        
+        ``data`` deve essere un dizionario con la lista di possibili parametri:
+        
+        - email [obbligatorio]: indirizzo a cui inviare i comunicati
+        - channels [obbligatorio]: lista dei canali di invio di interesse
+        - name: nome dell'iscritto
+        - surname: cognome dell'iscritto
+        - phone: numero di telefono dell'iscritto
+        - newspaper: nome della testata giornalistica di riferimento dell'iscritto
+        
+        Altri campi verranno ignorati.
+        
+        Ricerca iscritti
+        ----------------
+        
+        - Metodo ``search``
+        - Parametri: ``query`` (dizionario con i parametri), ``sort_index`` (default=date), ``reverse`` (default=False)
+        - Risposta: la lista di risultati
+        
+        ``query`` è un dizionario che può contenere uno o più dei seguenti parametri:
+        
+        - text (viene ricercato nei campi nome, email e cognome)
+        - channels
+        - newspaper
+        
+        Aggiornamento dati iscritto
+        ---------------------------
+        
+        - Metodo ``update``
+        - Parametri: ``data`` (dizionario con i parametri), ``id`` (identificativo dell'iscritto)
+        - Risposta: 
+        
+        ``data`` è un dizionario che può contenere uno o più dei parametri di iscrizione.
+        
+        Cancellazione iscritto
+        -----------------------
+        
+        - Metodo ``delete``
+        - Parametri: ``id`` (identificativo dell'iscritto)
+        - Risposta: 
+        
+        Reset database
+        --------------
+        
+        - Metodo ``clear``
+        - Parametri:
+        - Risposta: 
+        
+        
+        Rotte restapi
+        =============
+        
+        Lista iscritti
+        --------------
+        
+        *@subscriptions*
+        
+        Endpoint da chiamare in **GET** sulla radice del sito.
+        
+        Ritorna la lista degli iscritti e i possibili canali. Solo per gli utenti che hanno il permesso "rer.ufficiostampa.ManageChannels"::
+        
+        > curl -i -X GET http://localhost:8080/Plone/@subscriptions -H 'Accept: application/json' -H 'Content-Type: application/json' --user admin:admin
+        
+        La risposta è simile a questa::
+        
+            {
+                "@id": "http://localhost:8080/Plone/@subscriptions",
+                "items": [
+                    ...
+                ],
+                "items_total": 42,
+                "channels": [...]
+            }
+        
+        
+        Creazione nuovo iscritto
+        ------------------------
+        
+        *@subscriptions*
+        
+        Endpoint da chiamare in **POST** sulla radice del sito.
+        
+        Solo per gli utenti che hanno il permesso "rer.ufficiostampa.ManageChannels"::
+        
+        > curl -i -X POST http://localhost:8080/Plone/@subscriptions -H 'Accept: application/json' -H 'Content-Type: application/json' --data-raw '{"email": "foo@plone.org", "channels": ["first", "second"]}' --user admin:admin
+        
+        Se l'operazione va a buon fine, il server ritorna un ``204``.
+        
+        
+        
+        Aggiornamento dati iscritto
+        ---------------------------
+        
+        *@subscriptions*
+        
+        Endpoint da chiamare in **PATCH** sulla radice del sito.
+        
+        Solo per gli utenti che hanno il permesso "rer.ufficiostampa.ManageChannels"::
+        
+        > curl -i -X PATCH http://localhost:8080/Plone/@subscriptions/subscription_id -H 'Accept: application/json' -H 'Content-Type: application/json' --data-raw '{"email": "foo@plone.org", "name": "John"}' --user admin:admin
+        
+        Dove **subscription_id** è l'id dell'iscritto da aggiornare.
+        
+        Se l'operazione va a buon fine, il server ritorna un ``204``.
+        
+        Valgono le regole dei campi per la creazione.
+        
+        Cancellazione iscritto
+        ----------------------
+        
+        *@subscriptions*
+        
+        Endpoint da chiamare in **DELETE** sulla radice del sito.
+        
+        Solo per gli utenti che hanno il permesso "rer.ufficiostampa.ManageChannels"::
+        
+        > curl -i -X DELETE http://localhost:8080/Plone/@subscriptions/subscription_id -H 'Accept: application/json' --user admin:admin
+        
+        Dove **subscription_id** è l'id dell'iscritto da aggiornare.
+        
+        Se l'operazione va a buon fine, il server ritorna un ``204``.
+        
+        
+        Cancellazione iscritto
+        ----------------------
+        
+        *@subscriptions-clear*
+        
+        Endpoint da chiamare in **GET** sulla radice del sito.
+        
+        Solo per gli utenti che hanno il permesso "rer.ufficiostampa.ManageChannels"::
+        
+        > curl -i -X DELETE http://localhost:8080/Plone/@subscriptions-clear -H 'Accept: application/json' --user admin:admin
+        
+        Svuota completamente il db degli iscritti.
+        
+        Se l'operazione va a buon fine, il server ritorna un ``204``.
+        
+        
+        Export in CSV
+        -------------
+        
+        *@subscriptions-csv*
+        
+        Endpoint da chiamare in **GET** sulla radice del sito.
+        
+        Solo per gli utenti che hanno il permesso "rer.ufficiostampa.ManageChannels"::
+        
+        > curl -i -X GET http://localhost:8080/Plone/@subscriptions-csv -H 'Accept: application/json' --user admin:admin
+        
+        Ritorna un file csv con la lista degli iscritti.
+        
+        Import da CSV
+        -------------
+        
+        *@subscriptions-csv*
+        
+        Endpoint da chiamare in **POST** sulla radice del sito.
+        
+        Solo per gli utenti che hanno il permesso "rer.ufficiostampa.ManageChannels"::
+        
+        > curl -i -X POST http://localhost:8080/Plone/@subscriptions-csv -H 'Accept: application/json' -H 'Content-Type: application/json' --data-raw '{"overwrite":true,"file":{"data": "...","encoding":"base64","content-type":"text/comma-separated-values","filename":"iscritti.csv"}}' --user admin:admin
+        
+        Accetta i seguenti parametri:
+        
+        - **overwrite**: se ``true``, se esiste già un record nel db con l'email presente nel file, questo verrà sovrascritto con i nuovi dati. Se il parametro è mancante o ``false``, viene mantenuto il valore già presente nel db senza aggiornarlo.
+        - **clear**: se ``true``, prima di eseguire l'import, viene completamente cancellato il db.
+        - **file**: il file csv da caricare. Encodato in base64
+        
+        La chiamata ritorna una risposta del genere::
+        
+            {
+                "imported": 0,
+                "skipped": []
+            }
+        
+        Dove **imported** è il numero di elementi inseriti effettivamente nel db, e **skipped** è la lista di righe del file che sono state ignorate per qualche motivo (entry già presenti e overwrite non impostato).
+        
+        
+        Installazione
+        =============
+        
+        Install rer.ufficiostampa by adding it to your buildout::
+        
+            [buildout]
+        
+            ...
+        
+            eggs =
+                rer.ufficiostampa
+        
+        
+        and then running ``bin/buildout``
+        
+        
+        Contribute
+        ----------
+        
+        - Issue Tracker: https://github.com/collective/rer.ufficiostampa/issues
+        - Source Code: https://github.com/collective/rer.ufficiostampa
+        - Documentation: https://docs.plone.org/foo/bar
+        
+        
+        Support
+        -------
+        
+        If you are having issues, please let us know.
+        We have a mailing list located at: project@example.com
+        
+        
+        License
+        -------
+        
+        The project is licensed under the GPLv2.
+        
+        
+        Contributors
+        ============
+        
+        - RedTurtle Technology, sviluppo@redturtle.it
+        
+        
+        Changelog
+        =========
+        
+        
+        1.5.1 (unreleased)
+        ------------------
+        
+        - Pass query to export-csv endpoint to export only selected subscribers.
+          [cekk]
+        
+        
+        1.5.0 (2022-03-10)
+        ------------------
+        
+        - Add versioning for Comunicato and Invito.
+          [cekk]
+        - Add solrpush behavior for additional fields.
+          [cekk]
+        
+        1.4.0 (2022-01-20)
+        ------------------
+        
+        - New search endpoint for comunicati (@search-comunicati). This is needed because new rer.sitesearch overrides @search endpoint and always search on SOLR.
+          [cekk]
+        
+        
+        1.3.0 (2022-01-20)
+        ------------------
+        
+        - Normalize title and description on save.
+          [cekk]
+        - Add effective date in Comunicato view.
+          [cekk]
+        
+        1.2.2 (2021-11-04)
+        ------------------
+        
+        - Arguments field is now required.
+          [cekk]
+        
+        
+        1.2.1 (2021-09-16)
+        ------------------
+        
+        - Cleanup subject string before send, to remove strange characters.
+          [cekk]
+        
+        
+        1.2.0 (2021-09-02)
+        ------------------
+        
+        - Cleanup channels (remove duplicated ones).
+          [cekk]
+        - Refactor how to perform queries (to handle also unicode problems).
+          [cekk]
+        - Accessibilty fixes: modal focus trap + select keyboard events
+          [nzambello]
+        
+        
+        1.1.0 (2021-08-05)
+        ------------------
+        
+        - Disallow add new items in *arguments* field.
+          [cekk]
+        - Export in csv also title and number.
+          [cekk]
+        - Correctly wrap search terms with "*'*" in it.
+          [cekk]
+        - Customize social viewlets to fix title and description meta tags (and also add a light dependency with rer.agidtheme.base).
+          [cekk]
+        - Add dependency to ftfy to better encode csv exports.
+          [cekk]
+        
+        1.0.1 (2021-07-09)
+        ------------------
+        
+        - Fix import for python2 and sort indexes.
+          [cekk]
+        
+        
+        1.0.0 (2021-05-26)
+        ------------------
+        
+        - Initial release.
+          [cekk]
+        
+Keywords: Python Plone
+Platform: UNKNOWN
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Plone
+Classifier: Framework :: Plone :: Addon
+Classifier: Framework :: Plone :: 5.2
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: GNU General Public License v2 (GPLv2)
+Requires-Python: ==2.7, >=3.6
+Provides-Extra: test
