@@ -1,0 +1,428 @@
+Metadata-Version: 2.1
+Name: picoslave
+Version: 2.0.0.dev1
+Summary: PicoSlave is a dual I2C slave simulator for hardware integration testing
+Home-page: https://gitlab.com/janoskut/picoslave
+Author: Janos Kutscherauer
+Author-email: janoskut@gmail.com
+License: MIT
+Keywords: python,Raspberry Pi Pico,I2C,testing,mock
+Platform: Linux
+Platform: Raspberry Pi
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pyusb (>=1.2)
+
+[![pypi](https://img.shields.io/pypi/v/picoslave.svg?maxAge=3600)](https://pypi.org/project/picoslave/)
+[![latest release](https://gitlab.com/janoskut/picoslave/-/badges/release.svg)](https://gitlab.com/janoskut/picoslave/-/releases/permalink/latest)
+[![pipeline status](https://gitlab.com/janoskut/picoslave/badges/develop/pipeline.svg)](https://gitlab.com/janoskut/picoslave/pipelines/develop/latest)
+[![coverage](https://gitlab.com/janoskut/picoslave/badges/develop/coverage.svg?job=report:pytest&key_text=pytest-coverage&key_width=100)](https://gitlab.com/janoskut/picoslave/-/jobs/artifacts/develop/file/htmlcov/index.html?job=report:pytest)
+[![coverage](https://gitlab.com/janoskut/picoslave/badges/develop/coverage.svg?job=report:behave&key_text=behave-coverage&key_width=100)](https://gitlab.com/janoskut/picoslave/-/jobs/artifacts/develop/file/htmlcov/index.html?job=report:behave)
+[![license](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+# PicoSlave
+
+PicoSlave is a USB controllable I2C slave device that features two independent I2C devices.
+Each I2C slave works on 256-bytes register spaces, which can be read and modified via a
+simple USB interface.
+
+PicoSlave is run on the [Raspberry Pi Pico](https://www.raspberrypi.org/documentation/microcontrollers/raspberry-pi-pico.html)
+board on the [RP2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html#welcome-to-rp2040)
+ARM Cortex-M0+ microcontroller. The two I2C interfaces of the board can be used independently or wired together to operate on the same I2C bus.
+
+## Features
+
+- linear register space:
+  - configurable for different word sizes (1, 2, 4)
+  - read/write accessible from I2C and from USB
+- statistics function to count I2C read/write register accesses
+- blocker mode to simulate SDA- or SCL-stuck condition
+
+## Overview
+
+
+```
+                     ╓┉┉┉┉┉╖
+                     ║     ║
+               ╭─────║ USB ║─────╮
+          (TX) ┥  1  ╙┉┉┉┉┉╜  40 ┝
+          (RX) ┥  2 ╔╗        39 ┝
+               ┥  3 ╚╝LED     38 ┝
+               ┥  4           37 ┝
+               ┥  5 ╔══╗      36 ┝
+         ┌ SDA ┥  6 ║BS║      35 ┝
+    I2C0 ┴ SCL ┥  7 ╚══╝      34 ┝
+           GND ┥  8           33 ┝
+         ┌ SDA ┥  9 ┏━━━━━━━┓ 32 ┝
+    I2C1 ┴ SCL ┥ 10 ┃       ┃ 31 ┝
+               ┥ 11 ┃RP2040 ┃ 30 ┝
+               ┥ 12 ┃       ┃ 29 ┝
+               ┥ 13 ┗━━━━━━━┛ 28 ┝
+               ┥ 14           27 ┝
+               ┥ 15           26 ┝
+               ┥ 16           25 ┝
+               ┥ 17           24 ┝
+               ┥ 18           23 ┝
+               ┥ 19           22 ┝
+               ┥ 20   DEBUG   21 ┝
+               ╰─────┰──┰──┰─────╯
+                     S  G  S
+                     W  N  W
+                     C  D  D
+                     L     I
+                     K     O
+```
+
+
+## Dependencies
+
+### Python
+- [`pyusb`](https://pypi.org/project/pyusb/)
+
+## References
+
+The following sources are used in this project:
+
+- I2C slave based on [vmilea/pico_i2c_slave](https://github.com/vmilea/pico_i2c_slave)
+- [rxi/log.c](https://github.com/rxi/log.c) is used as a submodule for logging
+- Using [TinyUSB](https://github.com/hathach/tinyusb)
+
+
+# Installation
+
+## Program the Raspberry Pi Pico
+
+To program the firmware onto the PicoSlave, follow these steps:
+- obtain the latest PicoSlave firmware build:
+  [stable](https://gitlab.com/janoskut/picoslave/-/jobs/artifacts/main/file/build/picoslave.uf2?job=build)
+  ([download](https://gitlab.com/janoskut/picoslave/-/jobs/artifacts/main/raw/build/picoslave.uf2?job=build))
+  | [develop](https://gitlab.com/janoskut/picoslave/-/jobs/2315262150/artifacts/file/build/picoslave.uf2)
+  ([download](https://gitlab.com/janoskut/picoslave/-/jobs/artifacts/develop/raw/build/picoslave.uf2?job=build))
+- disconnect the Raspberry Pi Pico from USB
+- while holding the `BOOTSEL` button of the board, connect USB to the PC
+    - the Raspberry Pi Pico should load as a mass storage device to the system
+- copy the `picoslave.uf2` firmware file to the mass storage device
+    - when copying is done, the Raspberry Pi Pico should reboot as `PicoSlave`
+
+## Configure the PicoSlave USB device
+
+To grant userspace access to the PicoSlave USB device, the `udev` rules must be added to the system. Make sure that the user is part of the `plugdev` user group (default for Ubuntu and Raspberry Pi OS):
+```sh
+sudo cp ./contrib/99-picoslave.rules /etc/udev/rules.d/
+sudo udevadm control --reload
+sudo udevadm trigger --attr-match=subsystem=usb
+```
+
+Alternatively, the install script `./util/install.sh` can be executed (it will ask for sudo privileges).
+
+When installing `picoslave` as a pip package, the `picoslave-install` script is added to the path
+and can be used to install the udev rules as well.
+
+## Python `picoslave` package installation
+
+PicoSlave comes as a python package (`picoslave`) which can be installed via `pip`. The package
+contains a library for operating on PicoSlave devices as well as a CLI for manual operation. The
+package can be installed from source only, currently:
+```sh
+python -m pip install git+https://gitlab.com/janoskut/picoslave.git
+```
+
+# Usage
+
+The PicoSlave allows the following operations to configure the two I2C interfaces slaves operations.
+All functions are available via the CLI as well as the Python library/package, or via the vendor
+specific USB interface.
+
+| Operation | Args         | Description |
+|-----------|--------------|-------------|
+| `config`  |              | Configure the I2C interface for slave operation (or other functions) on the specified I2C slave address on the specified memory. The I2C memory is configured as a 2-dimensional array of length `size` and width `width`. Note that an interface that is not yet configured can still already be memory-programmed (`read`/`write`/`clear`). |
+|           | `iface`      | The I2C interface (0 or 1). |
+|           | `function`   | `0x00`: Reset the interface for no operation and release the IO.<br>`0x01..0x7F`: I2C slave function. The 7-bit I2C slave address to operate on.<br>`0xF1`: Blocker function to hold the `SCL` and/or `SDA` signal low to `GND`. |
+| `read`    | | Read data from the I2C memory. When reading/writing data from/to the I2C memory, the memory is seen as a 1-dimensional array without respect to word widths and the result is a linear Byte array. Word interpretation has to be done by the API user. |
+|           | `iface`      | The I2C interface (0 or 1). |
+|           | `addr`       | The (raw) address to start reading from. |
+|           | `size`       | The number of Bytes (not words) to read from the given `addr`. |
+| `write`   | | Write data into the I2C memory. See `read` for how the memory is seen as raw, 1-dimensional memory. As an example, with a I2C slave configured for word `width=2`, in order to have an I2C master read the word `ABCD` from address `0x24`, one would have to write 2 bytes into the raw address `0x48`: `write(iface, addr=0x48, data=bytes([0xAB, 0xCD]))`. Note that data can be written into the I2C memory already before the slave is configured to operate on an I2C address. |
+|           | `iface`      | The I2C interface (0 or 1). |
+|           | `addr`       | The (raw) address to start writing `data` into. |
+|           | `data`       | The data bytes (not words) to write into the given `addr`. |
+| `clear`   |              | Reset all data in the I2C memory to 0 or a given value. |
+|           | `iface`      | The I2C interface (0 or 1). |
+|           | `value=0x00` | The reset value of the I2C memory. |
+| `stat`    |              | Get a read/write statistics report for the selected memory section. The statistics report has a maximum of `size` entries (see `config` operation) and has an entry for each addressable I2C memory address (not raw address). It gives a report for how often each I2C memory address has been read or written on the I2C interface. This report can be used to reverse-engineer or mock an I2C slave device in operation, when the internals of the I2C master or the specification of the to-be-mocked I2C slave are not known. The result data is a byte array with `size` entries, each in the (little-endian) format `{#read}{#write}`, where `#read` and `#write` are numbers of size 4 each. |
+|           | `iface`      | The I2C interface (0 or 1). |
+|           | `addr`       | The I2C memory address (not raw address) to start reading the report for. |
+|           | `size`       | The number of statistics report entries to read (from `addr`). |
+| `reset`   |              | Reset the PicoSlave MCU. This leads to all I2C configuration and memory to be reset, and also the USB device to be re-enumerated. |
+
+## CLI Usage
+
+The PicoSlave can be configured using the CLI, which can be run from the installed package, or from
+source (cloned repository):
+```sh
+# from source
+./picoslave/__main__.py -h
+python -m picoslave -h
+# from installed package
+picoslave -h
+picoslave <command> -h
+```
+Some example CLI usages:
+```sh
+picoslave scan                       # scan for PicoSlave USB devices
+picoslave config 0 0x16              # configure I2C0 for 7-bit address 0x16
+picoslave config 1 0x23              # configure I2C1 for 7-bit address 0x23
+picoslave write 0 0x10 aabbccddeeff  # write 6 bytes to memory address 0x10 of I2C0 slave
+picoslave read 0 0x10 6              # read 6 bytes from memory address 0x10 from 12C0 slave
+picoslave clear 0                    # clear the memory of I2C0 slave
+picoslave stat 0                     # get a full statistics dump for read/write access to I2C0 slave
+picoslave reset                      # reset the PicoSlave USB device
+
+# blocker function
+picoslave config -f blocker 0 --signals scl sda  # block on both signals
+picoslave config -f reset 0                      # reset the interface to release the blockage
+```
+Note that the CLI allows abbreviations for commands, e.g. `c` for `config`, etc.
+
+## Library Usage
+
+The Python library to access PicoSlave devices can be used in an almost identical way as the CLI:
+```python
+from picoslave.picoslave import PicoSlave
+
+picoslave = PicoSlave()
+picoslave.config(iface=0, slave_address=0x16)
+picoslave.write(iface=0, mem_addr=0x10, data=b'aabbccddeeff')
+res: bytes = picoslave.read(iface=0, mem_addr=0x10, size=6)
+print(' '.join(f'{b:02X}' for b in res))
+picoslave.clear(iface=0)
+picoslave.statistics(iface=0)
+picoslave.reset()
+
+# blocker function
+picoslave.config_blocker(iface=0, scl=True, sda=True)  # block on both signals
+picoslave.config_blocker(iface=0, scl=True)            # release the blockage on sda
+picoslave.config_reset(iface=0)                        # reset the interface to release the blockage
+```
+
+
+# USB Protocol
+
+## Wire packet
+
+The top level wire packet wraps the specific packets (host and response) into a simple header, which
+consists of a length and a checksum:
+```
+[LEN] [PAYLOAD] [CRC]
+```
+
+Field      | Size | Description
+-----------|------|-----------------------------------------------
+`LEN`      |  4   | Length of the packet, including [CRC]
+`PAYLOAD`  |  N   | Payload data of variable length, see `Host packet` and `Response packet`
+`CRC`      |  2   | 16-bit CRC-CCITT checksum over [PAYLOAD] initialized with `0x8408`
+
+
+## Host packet:
+
+```
+[CMD=config] [IFACE]   [ADDR]   [SIZE=N] [DATA]
+[CMD=read]   [IFACE]   [ADDR]   [SIZE=N]
+[CMD=write]  [IFACE]   [ADDR]   [SIZE=N] [DATA]
+[CMD=clear]  [IFACE]   [ADDR]   [SIZE=0]
+[CMD=stat]   [IFACE]   [ADDR]   [SIZE=N]
+[CMD=info]   [IFACE=0] [ADDR=0] [SIZE=0]
+[CMD=reset]  [IFACE=0] [ADDR=0] [SIZE=0]
+```
+
+Field    | Size | Description
+---------|------|-----------------------------------------------
+`CMD`    |  1   | command to send to the device
+`IFACE`  |  1   | I2C interface number
+`ADDR`   |  2   | 7-bit address to assign to I2C interface, or (16 bit) memory address to read/write
+`SIZE`   |  2   | `CMD=read`: number of bytes to read<br> `CMD=stat`: number of statistic entries to read<br>`CMD=config/write`: number of bytes to write (must match `len(DATA)`)
+`DATA`   |  N   | `CMD=config`: configuration structure, see "Configuration Data Structures"<br>`CMD=write`: data to write
+
+### Commands:
+
+CMD      | Value   | Description
+---------|---------|--------------------------------------------------
+`config` | `0xA0`  | configure the slave given with `IFACE` to operate on the address `ADDR`, or <br>deactivate the slave when `ADDR=0`.
+`read`   | `0xA1`  | read `SIZE` bytes from `ADDR` from the slave given with `IFACE`.
+`write`  | `0xA2`  | write `SIZE` bytes of `DATA` to the slave given with `IFACE`, to address `ADDR`. <br>Note that `SIZE` must match `len(DATA)`.
+`clear`  | `0xA3`  | clear all memory and statistics for the given `IFACE`.<br>Reset memory to the value given at `ADDR`.
+`stat`   | `0xA4`  | read `SIZE` many statistics from `ADDR`. Returns a statistics struct for each address.
+`info`   | `0xB0`  | obtain device information from picoslave, see _"Info Response"_
+`reset`  | `0xBF`  | reset the target device. Note that `IFACE` and `ADDR` are ignored, <br>but need to be transmitted as 0.
+
+### Configuration Data Structures
+
+#### Slave configuration structure
+
+Field    | Size | Description
+---------|------|-----------------------------------------------
+`SIZE`   |  2   | The number of I2C adressable words in the memory, after which the internal address counter auto-increments. The maximum (and default) size is 256 words.
+`WIDTH`  |  2   | The word size, in bytes. Allowed values are 1 (default), 2 and 4. Note that internally as well as from the USB interface (see `read`/`write`), the I2C memory is treated as a 1-dimensional array of size `size*width`. The word width defines the I2C-addressable sections. Hence when reading (or writing) from an address `N` from I2C to a memory with `width=2`, then the first read will yield `mem[N*width]` and the next read will yield `mem[N*width+1]`. In terms of endianness, the I2C transmission order can hence be seen as little-endian byte order, as the smaller memory address will be transmitted first.
+
+### Blocker configuration structure
+
+Field  | Size | Description
+-------|------|-----------------------------------------------
+`SCL`  |  1   | hold the SCL signal low to GND
+`SDA`  |  1   | hold the SDA signal low to GND
+
+
+## Response packet
+```
+[CODE=0] [SIZE=N] [DATA]
+[CODE>0] [SIZE=0]
+```
+
+Field    | Size | Description
+---------|------|-----------------------------------------------
+`CODE`   |  0   | response or error code
+`SIZE`   |  2   | number of received data bytes in `DATA`
+`DATA`   |  N   | received data (optional)
+
+## Response Codes:
+Code | Description
+-----|----------------------------------------------------------
+  0  | `OK` (no error)
+  1  | `CRC_ERROR`
+  2  | `INVALID_PACKET`
+  3  | `INVALID_REQUEST`
+  4  | `INVALID_INTERFACE`
+  5  | `INVALID_ADDRESS`
+  6  | `INVALID_SIZE`
+  7  | `MEMORY_ERROR`
+  8  | `OPERATION_FAILED`
+
+
+### Info Response
+With `CMD=info` the `DATA` part of the response is a semicolon separated ASCII string with the
+following segments:
+```
+[serial];[firmware];[protocol];[ifaces]
+```
+Segment      | Description
+-------------|----------------------------------------------------------
+  `serial`   | the device unique serial
+  `firmware` | exact firmware version
+  `protocol` | version of this USB protocol
+  `ifaces`   | number of I2C interfaces
+
+### Statistics Response
+With `CMD=stat` the `DATA` part of the response is structured data of `SIZE` statistics entries,
+each corresponding to the memory `ADDR` requested. A statistics entry has the format:
+```
+[READ_CNT][WRITE_CNT]
+```
+Where `READ_CNT` and `WRITE_CNT` are of size `4` each. They tell how many read/write accesses have
+been made to that register address.
+
+# Development
+
+## Toolchain
+```sh
+sudo apt install cmake gcc-arm-none-eabi
+```
+
+## Install SDK
+```sh
+git clone https://github.com/raspberrypi/pico-sdk
+export PICO_SDK_PATH="$(pwd)/pico-sdk"
+```
+
+## Debugging Raspberry Pi Pico
+
+Wiring:
+- https://hackaday.io/project/177198-pi-pico-picoprobe-and-vs-code/details
+- https://www.digikey.be/en/maker/projects/raspberry-pi-pico-and-rp2040-cc-part-2-debugging-with-vs-code/470abc7efb07432b82c95f6f67f184c0
+
+
+## Compiling and deploying `picoprobe`
+
+[`picoprobe`](https://github.com/raspberrypi/picoprobe) (by "raspberrypi") is the firmware which
+turns a _Raspberry Pi Pico_ into a programmer for other _Raspberry Pi Pico's_.
+
+The `picoprobe` binary needs to be flashed onto a _Raspberry Pi Pico_ only once.
+
+- latest build (built by us):
+[picoprobe.uf2](https://gitlab.com/janoskut/picoslave/-/jobs/artifacts/develop/file/picoprobe/build/picoprobe.uf2?job=build%3Apicoprobe)
+([download](https://gitlab.com/janoskut/picoslave/-/jobs/artifacts/develop/raw/picoprobe/build/picoprobe.uf2?job=build%3Apicoprobe))
+
+
+
+```sh
+# Picoprobe and picotool
+git clone https://github.com/raspberrypi/picoprobe.git --depth=1
+cmake -S picoprobe -B picoprobe/build
+cmake --build picoprobe/build -j$(nproc)
+# hold the BOOTSEL button and connect the Pico USB
+# assuming the Pico mounts at `/media/<user>/RPI-RP2`
+cp picoprobe/build/picoprobe.uf2 /media/$(whoami)/RPI-RP2
+```
+
+## OpenOCD setup
+
+### Compile & Install OpenOCD
+```sh
+sudo apt install libtool libusb-1.0-0-dev
+git clone "https://github.com/raspberrypi/openocd.git" --branch "picoprobe" --depth=1
+cd openocd
+./bootstrap
+./configure --enable-ftdi --enable-sysfsgpio --enable-bcm2835gpio --enable-picoprobe
+make -j$(nproc)
+sudo make install
+```
+
+### Configure OpenOCD
+In the `openocd` directory:
+```sh
+sudo cp ./contrib/60-openocd.rules /etc/udev/rules.d/
+sudo udevadm control --reload
+sudo udevadm trigger --attr-match=subsystem=usb
+```
+
+### Test OpenOCD
+```sh
+openocd -f interface/picoprobe.cfg -f target/rp2040.cfg
+# should show something, but no errors
+ctrl+c
+```
+
+## Program a binary
+```sh
+openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -c "program build/picoslave.elf verify reset exit"
+```
+Or use the OpenOCD helper script `picoflash.sh`:
+```sh
+# program
+./util/picoflash.sh build/picoslave.elf
+# or e.g. reset target
+./util/picoflash.sh --reset
+```
+Or even easier, use the shell tools:
+```sh
+source util/shellutil.sh
+flash
+reset
+```
+
+## Python Development
+
+QA:
+```sh
+pip install -r requirements-dev.txt
+
+flake8 picoslave
+pycodestyle picoslave
+mypy picoslave --strict
+```
+
+## System Testing
+
+-> See `./test/behave/README.md`.
+
+
