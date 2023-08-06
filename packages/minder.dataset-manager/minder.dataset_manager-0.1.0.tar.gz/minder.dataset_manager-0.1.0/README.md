@@ -1,0 +1,114 @@
+# Dataset Manager
+
+Library to pre-process CSV files from Research Portal into usable datasets.
+
+## Installation
+
+```bash
+pip install minder.dataset-manager
+```
+
+## Example
+```python
+import logging
+import asyncio
+import sys
+from typing import Optional
+from minder.dataset_manager._utils import Dataset
+from minder.dataset_manager.datasets import LabelledUtiDataset
+from minder.research_portal_client import Configuration, JobManager
+
+
+logging.basicConfig(level=logging.INFO)
+
+Configuration.set_default(
+    Configuration(
+        access_token="---REDACTED---",
+    )
+)
+
+
+async def example1():
+    job_ids = ["c25249e0-82ff-43d1-9676-f3cead0228b9"]
+    async with JobManager() as job_manager:
+        files = Dataset.download(job_ids, job_manager)
+        dataset = LabelledUtiDataset.create(job_ids, files)
+        dataset.save("./my-dataset.npz")
+
+
+async def example2():
+    job_ids = ["c25249e0-82ff-43d1-9676-f3cead0228b9"]
+    existing_dataset = "./my-dataset.npz"
+    async with JobManager() as job_manager:
+        download_task = Dataset.download(job_ids, job_manager)
+        try:
+            previous_dataset: Optional[Dataset] = None
+            if existing_dataset.exists():
+                previous_dataset = LabelledUtiDataset.load(existing_dataset)
+        finally:
+            files = await download_task
+
+        new_dataset = LabelledUtiDataset.create(job_ids, files)
+
+        dataset = (
+            await previous_dataset.update(new_dataset, job_manager=job_manager)
+            if previous_dataset is not None
+            else new_dataset
+        )
+        dataset.save("./my-dataset.npz")
+
+
+async def main():
+    await example1()
+    await example2()
+
+
+if sys.platform == "win32"::
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+asyncio.run(main())
+```
+
+# Development
+
+## Useful commands
+
+### Setup
+
+```bash
+poetry install
+```
+
+### Run tests
+  
+```bash
+poetry run pytest
+```
+
+### Code Coverage
+
+This command consists of 2 parts:
+- running tests with coverage collection
+- formatting the report: `report` (text to stdout), `xml` (GitLab compatible: cobertura), `html` (visual)
+
+```bash
+poetry run coverage run -m pytest && poetry run coverage report -m
+```
+
+### Linting
+
+```bash
+poetry run flake8
+```
+
+### Formatting
+
+```bash
+poetry run black .
+```
+
+### Type Checking
+
+```bash
+poetry run mypy .
+```
