@@ -1,0 +1,9 @@
+from _typeshed import Incomplete
+from homeassistant.exceptions import HomeAssistantError as HomeAssistantError
+
+_LOGGER: Incomplete
+
+class WriteError(HomeAssistantError): ...
+
+def write_utf8_file_atomic(filename: str, utf8_data: str, private: bool = ...) -> None: ...
+def write_utf8_file(filename: str, utf8_data: str, private: bool = ...) -> None: ...
