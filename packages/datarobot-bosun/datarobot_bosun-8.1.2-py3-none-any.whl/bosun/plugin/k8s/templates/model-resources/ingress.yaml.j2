@@ -1,0 +1,38 @@
+{% import '_helpers.j2' as helpers %}
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: "{{ helpers.name(di) }}"
+    labels:
+      {{ COMPONENT_LABEL_NAME }}: predictionServer
+      {{ helpers.default_labels(di) | indent(6) }}
+    annotations:
+      {{ helpers.default_annotations() | indent(6) }}
+{% if config.ingress_type == "nginx" %}
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "{{ config.force_ssl }}"
+{% elif config.ingress_type == "openshift" %}
+      haproxy.router.openshift.io/rewrite-target: /
+{% endif %}
+      bosun.datarobot.com/plugin-version: v1alpha1
+  spec:
+{% if config.ingress_class %}
+    ingressClassName: "{{ config.ingress_class }}"
+{% endif %}
+    rules:
+    - http:
+        paths:
+        - pathType: Prefix
+{% if config.ingress_type == "nginx" %}
+          path: "{{ config.ingress_path }}/{{ di.id }}(/|$)(.*)"
+{% elif config.ingress_type == "openshift" %}
+          path: "{{ config.ingress_path }}/{{ di.id }}"
+{% endif %}
+          backend:
+            service:
+              name: "{{ helpers.name(di) }}"
+              port:
+                name: http
+{% if config.ingress_host %}
+      host: "{{ config.ingress_host }}"
+{% endif %}
