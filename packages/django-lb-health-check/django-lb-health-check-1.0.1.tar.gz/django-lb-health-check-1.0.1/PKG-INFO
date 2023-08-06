@@ -1,0 +1,77 @@
+Metadata-Version: 2.1
+Name: django-lb-health-check
+Version: 1.0.1
+Summary: Middleware based health check for Django
+Home-page: https://github.com/Hovercross/django-lb-health-check
+License: MIT
+Keywords: django,health,alive,check
+Author: Adam Peacock
+Author-email: adam@thepeacock.net
+Requires-Python: >=3.6.2
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Requires-Dist: Django (>=2.2)
+Project-URL: Repository, https://github.com/Hovercross/django-lb-health-check
+Description-Content-Type: text/markdown
+
+# Django Load Balancer Health Check
+
+Aliveness check for Django that bypasses ALLOWED_HOSTS for the purposes of load balancers
+
+## Purpose
+
+When running on some app platforms and behind some load balancers, it is often the case that the host header is not set appropriately for health checks. When these platforms perform an HTTP health check without the proper host header an *error 400 bad request* will be returned by Django. This package provides a method to allow for for a simple "aliveness" health check that bypasses the `ALLOWED_HOSTS` protections. `ALLOWED_HOSTS` protection is bypassed only for the status aliveness check URL and not for any other requests.
+
+This package is not an alternative to something like [django-health-check](https://github.com/KristianOellegaard/django-health-check), but is instead a better alternative than the TCP health check that is the default on many load balancers. The TCP health checks can only see if your uWSGI/Gunicorn/Uvicorn/etc server is alive, while this package ensures that requests are being properly routed to Django.
+
+## How it works
+
+This package works by returning an HTTP response from a middleware class before Django's common middleware performs the host check and before the security middleware does HTTPS checks. The Django URL routing system is also bypassed since that happens "below" all middleware. During request processing, *django-lb-health-check* checks if the request is a *GET* request and matches `settings.ALIVENESS_URL`. If it is, a static plain text "200 OK" response is returned bypassing any other processing.
+
+
+## Usage
+
+Install *django-lb-health-check*
+
+```shell
+pip install django-lb-health-check
+```
+
+Add *lb_health_check* to your middleware at the top position. It **must** be above *django.middleware.common.CommonMiddleware* and in most cases should be above *django.middleware.security.SecurityMiddleware*. Security middleware does things like check for HTTPS, which is often missing in health checks from load balancers. Common middleware does the checks against ALLOWED_HOSTS.
+
+```python
+MIDDLEWARE = [
+    'lb_health_check.middleware.AliveCheck', #  <- New middleware here
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+```
+
+Set the URL you want to use for your aliveness check. Note that a GET request to this URL **will** shadow any other route you have defined through the Django URL mapper. Aliveness URL can be a string for a single health check URL or a list of strings if you want the aliveness check to run from multiple URLs. The multiple URL strategy is helpful if you are changing the URL of the endpoint by allowing both the old and new URLs to be checked.
+
+```python
+ALIVENESS_URL = "/health-check/"
+```
+
+Test your health check after starting your server:
+
+```bash
+curl localhost:8000/health-check/
+OK
+```
+
+Note that the example app has *lb_health_check* in INSTALLED_APPS. This is only necessary for testing purposes - the app does not use any Django models, admin, views, URL routing, or the like that would require it to be listed in INSTALLED_APPS.
