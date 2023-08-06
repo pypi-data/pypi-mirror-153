@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+# pylint: disable=W0142,W0403,W0404,W0613,W0622,W0622,W0704,R0904,C0103,E0611
+#
+# copyright %(year)s %(author)s, all rights reserved.
+# contact %(author-web-site)s -- mailto:%(author-email)s
+#
+# This file is part of a %(distname)s.
+#
+%(long-license)s
+"""cubicweb_%(cubename)s setup module using data from
+cubicweb_%(cubename)s/__pkginfo__.py file
+"""
+
+from os.path import join, dirname
+
+from setuptools import find_packages, setup
+
+here = dirname(__file__)
+
+# load metadata from the __pkginfo__.py file so there is no risk of conflict
+# see https://packaging.python.org/en/latest/single_source_version.html
+pkginfo = join(here, "cubicweb_%(cubename)s", "__pkginfo__.py")
+__pkginfo__ = {}
+with open(pkginfo) as f:
+    exec(f.read(), __pkginfo__)
+
+# get required metadatas
+distname = __pkginfo__["distname"]
+version = __pkginfo__["version"]
+license = __pkginfo__["license"]
+description = __pkginfo__["description"]
+web = __pkginfo__["web"]
+author = __pkginfo__["author"]
+author_email = __pkginfo__["author_email"]
+classifiers = __pkginfo__["classifiers"]
+
+with open(join(here, "README.rst")) as f:
+    long_description = f.read()
+
+# get optional metadatas
+data_files = __pkginfo__.get("data_files", None)
+dependency_links = __pkginfo__.get("dependency_links", ())
+
+requires = {}
+for entry in ("__depends__",):  # "__recommends__"):
+    requires.update(__pkginfo__.get(entry, {}))
+install_requires = [
+    "{0} {1}".format(d, v and v or "").strip() for d, v in requires.items()
+]
+
+
+setup(
+    name=distname,
+    version=version,
+    license=license,
+    description=description,
+    long_description=long_description,
+    author=author,
+    author_email=author_email,
+    url=web,
+    classifiers=classifiers,
+    packages=find_packages(exclude=["test"]),
+    install_requires=install_requires,
+    include_package_data=True,
+    entry_points={
+        "cubicweb.cubes": [
+            "%(cubename)s=cubicweb_%(cubename)s",
+        ],
+    },
+    zip_safe=False,
+)
