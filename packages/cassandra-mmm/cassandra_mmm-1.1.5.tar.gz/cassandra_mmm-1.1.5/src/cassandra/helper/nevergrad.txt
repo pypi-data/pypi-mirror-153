@@ -1,0 +1,164 @@
+import nevergrad as ng
+from data.trasformations.trasformations import saturation, adstock
+from model.linear import linear
+
+
+#' Nevergrad is used for Hyperparameters' optimizations
+#' It minimizes a function's output by changing its inputs
+#' E.G. We can ask Nevergrad to minimize our model's error
+
+#' Important: Notes on variables names
+#' Defining variables like @transformations__g_display_cost__carryover__strength
+#' Does something pretty cool in Python
+#' The double underscore "__" is like entering inside a function
+
+#' For this reason @transformations__g_display_cost__carryover__strength
+#' Can be seen as
+#' -> Enter inside the @transformations ColumnTrasformer
+#' -> Enter inside @g_display_cost Pipeline
+#' -> Enter inside @carryover Class (ExponentialCarryover())
+#' -> Use @strength variable in there
+
+#' This allows us to define Hyperparameters for all the functions called all over the model's definition
+
+
+#' We define one big function that does all the modeling
+#' This allows us to put all the Hyperparameters in one place and run Nevergrad once for all of them
+#' Create a dictionary to hold transformed columns
+#' Create a dictionary to hold transformed columns
+
+new_X = {}
+
+
+def build_model(google_search_spent_theta, google_search_spent_beta,
+                google_performance_max_spent_theta, google_performance_max_spent_beta,
+                google_display_spent_theta, google_display_spent_beta,
+                fb_retargeting_spent_theta, fb_retargeting_spent_beta,
+                fb_prospecting_spent_theta, fb_prospecting_spent_beta,
+                bing_spent_theta, bing_spent_beta):
+
+    #' Transform all media variables and set them in the new Dictionary
+    #' Adstock first and Saturation second
+    new_X["google_search_spent"] = saturation(adstock(df["google_search_spent"], google_search_spent_theta),
+                                              google_search_spent_beta)
+    new_X["google_performance_max_spent"] = saturation(
+        adstock(df["google_performance_max_spent"], google_performance_max_spent_theta),
+        google_performance_max_spent_beta)
+    new_X["google_display_spent"] = saturation(adstock(df["google_display_spent"], google_display_spent_theta),
+                                               google_display_spent_beta)
+    new_X["fb_retargeting_spent"] = saturation(adstock(df["fb_retargeting_spent"], fb_retargeting_spent_theta),
+                                               fb_retargeting_spent_beta)
+    new_X["fb_prospecting_spent"] = saturation(adstock(df["fb_prospecting_spent"], fb_prospecting_spent_theta),
+                                               fb_prospecting_spent_beta)
+    new_X["bing_spent"] = saturation(adstock(df["bing_spent"], bing_spent_theta), bing_spent_beta)
+
+    #' Cast Dictionary to DataFrame and append the output column
+    new_df = pd.DataFrame.from_dict(new_X)
+    new_df = new_df.join(df['revenue'])
+    # print(new_df)
+
+    #' Train test split data
+    X = new_df[all_features]
+    y = new_df['revenue']
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    result = df
+    result['prediction'] = model.predict(X)
+
+    nrmse_val = show_nrmse(result['revenue'], result['prediction'])
+    mape_val = show_mape(result['revenue'], result['prediction'])
+    accuracy = model.score(X_test, y_test)
+
+    #' print(nrmse_val, mape_val, accuracy)
+    return mape_val
+
+
+#' Define the list of hyperparameters to optimize
+#' List must be the same as the ones in the function's definition, same order recommended too
+instrum = ng.p.Instrumentation(
+    google_search_spent_theta=ng.p.Scalar(lower=0, upper=1),
+    google_search_spent_beta=ng.p.Scalar(lower=0, upper=1),
+
+    google_performance_max_spent_theta=ng.p.Scalar(lower=0, upper=1),
+    google_performance_max_spent_beta=ng.p.Scalar(lower=0, upper=1),
+
+    google_display_spent_theta=ng.p.Scalar(lower=0, upper=1),
+    google_display_spent_beta=ng.p.Scalar(lower=0, upper=1),
+
+    fb_retargeting_spent_theta=ng.p.Scalar(lower=0, upper=1),
+    fb_retargeting_spent_beta=ng.p.Scalar(lower=0, upper=1),
+
+    fb_prospecting_spent_theta=ng.p.Scalar(lower=0, upper=1),
+    fb_prospecting_spent_beta=ng.p.Scalar(lower=0, upper=1),
+
+    bing_spent_theta=ng.p.Scalar(lower=0, upper=1),
+    bing_spent_beta=ng.p.Scalar(lower=0, upper=1),
+
+    )
+
+#' Define an Optimizer (use NGOpt as default) and set budget as number of trials (recommended 2500+)
+optimizer = ng.optimizers.NGOpt(parametrization=instrum, budget=2500)
+
+#' Pass the function to minimize
+#' Nevergrad will automatically map Hyperparams
+recommendation = optimizer.minimize(build_model)
+
+#' Results of the optimization are inside the following variable
+recommendation.value
+
+new_X = {}
+
+def build_model(google_search_spent_theta, google_search_spent_beta,
+                google_performance_max_spent_theta, google_performance_max_spent_beta,
+                google_display_spent_theta, google_display_spent_beta,
+                fb_retargeting_spent_theta, fb_retargeting_spent_beta,
+                fb_prospecting_spent_theta, fb_prospecting_spent_beta,
+                bing_spent_theta, bing_spent_beta):
+
+    #' Transform all media variables and set them in the new Dictionary
+    #' Adstock first and Saturation second
+    new_X["google_search_spent"] = saturation(adstock(df["google_search_spent"], google_search_spent_theta),
+                                              google_search_spent_beta)
+    new_X["google_performance_max_spent"] = saturation(
+        adstock(df["google_performance_max_spent"], google_performance_max_spent_theta),
+        google_performance_max_spent_beta)
+    new_X["google_display_spent"] = saturation(adstock(df["google_display_spent"], google_display_spent_theta),
+                                               google_display_spent_beta)
+    new_X["fb_retargeting_spent"] = saturation(adstock(df["fb_retargeting_spent"], fb_retargeting_spent_theta),
+                                               fb_retargeting_spent_beta)
+    new_X["fb_prospecting_spent"] = saturation(adstock(df["fb_prospecting_spent"], fb_prospecting_spent_theta),
+                                               fb_prospecting_spent_beta)
+    new_X["bing_spent"] = saturation(adstock(df["bing_spent"], bing_spent_theta), bing_spent_beta)
+
+    #' Cast Dictionary to DataFrame and append the output column
+    new_df = pd.DataFrame.from_dict(new_X)
+    new_df = new_df.join(df['revenue'])
+
+    #' Train test split data
+    X = new_df[all_features]
+    y = new_df['revenue']
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    result = df
+    result['prediction'] = model.predict(X)
+
+    nrmse_val = show_nrmse(result['revenue'], result['prediction'])
+    mape_val = show_mape(result['revenue'], result['prediction'])
+    accuracy = model.score(X_test, y_test)
+
+    print(nrmse_val, mape_val, accuracy)
+    return mape_val, model, result
+
+mape_val, model, result = build_model(**recommendation.value[1])
+
+
+
+

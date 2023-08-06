@@ -1,0 +1,83 @@
+############################################################
+
+PIVOT:
+
+- Create a pivot table
+#' by having dataframes formatted the same way
+#' if group_by_column does not exist, put None
+
+pivot = df.pivot_table(
+    #' Define which columns to keep
+    keep_columns,
+    #' Define which columns should be indexes
+    indexes_columns,
+    #' Define which columns to group by
+    columns=group_by_column,
+    #' Define how grouped rows should be aggregated
+    aggfunc=grouping_rule)
+
+- Merge two pivot table
+#' Merge the Pivot Tables in a new DataFrame
+
+df = (
+    pd.merge(
+        #' Define the P.T. to merge
+        first_pivot,
+        second_pivot,
+        #' Define the Indexes to merge on
+        on=indexes_merge_columns,
+        #' Define methodology merging (SQL like e.g. left, inner ...)
+        how=methodology_merging
+    )
+        #' Optional - Add this to fill NaN values with 0
+        .fillna(0)
+)
+
+- Change a aggrefation level
+#' Group by can be useful in case of need to change the aggregation level or stuff like that
+#' Group by works by using Index (or Indexes) of the DataFrame
+
+#' Define how each column should be aggregated
+#' Indexes must be ignored here
+logic = {
+    'total_sales': 'sum',
+    'g_discovery_cost': 'sum',
+    'g_display_cost': 'sum',
+    'g_shopping_cost': 'sum',
+    'g_video_cost': 'sum',
+    'g_search_brand_cost': 'sum',
+    'g_search_no_brand_cost': 'sum',
+    'pinterest_cost': 'sum',
+    'fb_cost': 'sum',
+    'grocery_and_pharmacy_percent_change_from_baseline': 'mean',
+    'parks_percent_change_from_baseline': 'mean',
+    'residential_percent_change_from_baseline': 'mean',
+    'retail_and_recreation_percent_change_from_baseline': 'mean',
+    'transit_stations_percent_change_from_baseline': 'mean',
+    'workplaces_percent_change_from_baseline': 'mean',
+    'trend_fire_pit': 'mean',
+    'trend_smokeless_fire_pit': 'mean',
+    'hulu': 'sum',
+    'pr_impressions_m': 'sum',
+    'in stock': 'mean',
+    'out of stock': 'mean',
+    'emails': 'sum',
+}
+
+#' Optional: if the index should be changed do it now
+#' Reset index
+
+df.reset_index(inplace=True)
+
+#' Set new index
+df.set_index(new_indexes, inplace=True)
+#' Extra: Group by can be used on multiple indexes at once
+#' Set multiple indexes
+#' df.set_index(['date', 'region'], inplace=True)
+
+#' Proceed to group by
+if isinstance(new_indexes, str):
+    df.groupby(level=[0]).agg(logic)
+else:
+    #' The "level" array tells Indexes' indexes, just like in array positions
+    df.groupby(level=list(range(0, len(new_indexes)))).agg(logic)
