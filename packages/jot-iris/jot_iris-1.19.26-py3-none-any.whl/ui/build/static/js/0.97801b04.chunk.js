@@ -1,0 +1,2 @@
+webpackJsonp([0],{773:function(e,o){e.exports={routes:{byId:{home:{id:"home",path:"/",exact:!0,components:["Device"]},"log-view":{id:"log-view",path:"/advanced/log-view",components:[]},applications:{id:"applications",path:"/advanced/applications",components:["ApplicationList"]},"open-source-licenses":{id:"open-source-licenses",path:"/advanced/open-source-licenses",components:[]}},allIds:["home","log-view"]},accordions:[{name:"advanced",items:["log-view","open-source-licenses"]}]}}});
+//# sourceMappingURL=0.97801b04.chunk.js.map
