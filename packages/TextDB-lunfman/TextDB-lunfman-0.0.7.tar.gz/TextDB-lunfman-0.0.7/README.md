@@ -1,0 +1,84 @@
+# TextDb - RASSD(Read, Add, Save, Search, Delete)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build](https://github.com/lunfman/TextDb/actions/workflows/python-app.yml/badge.svg)](https://github.com/lunfman/TextDb/actions/workflows/python-app.yml)
+[![codecov](https://codecov.io/gh/lunfman/TextDb/branch/main/graph/badge.svg?token=5JSQ15MGZA)](https://codecov.io/gh/lunfman/TextDb)
+
+
+This package allows you to create simple text storage by using python. 
+- Main functionality is Read, Add, Save, Search,  Delete, 
+- TextDb can not update existing data !!!⚠️ONLY ADD OR DELETE⚠️!!!. Of course if you would like to update you can use a combination of Add and Delete. TextDb has
+built-in functionality for this but it does not come out of the package.
+- TextDb was created with the idea of storing large data which is not supposed to be updated.
+- TextDb can be corrupted if a user tries to update change data directly in a text file and makes a mistake during the process.(!!!⚠️Do not try to update large files directly⚠️!!!)
+
+## Installation
+
+```
+pip install TextDB-lunfman
+```
+
+## API REF
+- Notes if a db file does not exist it will be created automatically.<br>
+- To initialized database just provide a path to the file
+```
+from text_db import TextDb
+db = TextDb(path)
+```
+### API methods
+`db.get_data()` - method return a full hash_table of the db class<br><br>
+
+`db.add(row)` - method for adding new entries to db<br>
+- takes dictionary as an argument with key and value
+- key will be used as label in formatted data when save db
+
+`db.save()` - method which saves data to the file.<br>
+
+`db.delete_by_index(index)` - method for deleting entries from db by using index<br>
+
+`db.sort_by(category, is_float_base = False, is_reverse = True)`
+- method which sorts db data by using category name as a flag/indicator
+- by default sorted higher first lower last
+- if category do not present in some objects they will be passed
+- return sorted hash-table with required category
+- by default is_float_base = False it means it is sorting content as a string
+it can be used with pairs of numbers which can be converted from string to the float
+NB!! if number has ',' inside is_float_base will through an error cause it can not
+convert to the number. Good - '131.2312' Bad - '12312,122'<br>
+- is_reverse by default is true. if change to false it will sort in opposite way.<br>
+
+`db.find_by_index(index)` - method allows finding object/row from db by its index
+- return full object/row<br>
+
+`db.find_objects(category_name)` - method which returns a hash with indexes and categories values<br>
+
+`db.get_position(pattern)`  - method which uses pattern to find first match in db
+- return first found match object index, if not found return 0 <br>
+
+`db.get_obj_by_pattern(pattern)` - method return first object with found pattern as an object {}<br>
+
+`db.get_all_cat_values(category)` - method return all values of the match category as a list<br>
+
+`db.find_objs_where_value_match(category, value)` - method which returns a list with objects
+which matches with required value in category<br>
+
+`db.find_all_objs_by_pattern(pattern)` - method which returns all rows witch match with pattern.
+                                        if not found return {}<br>
+                                        
+`db.check_if_exists(pattern)` - method return boolean True if pattern present otherwise False<br>
+
+`db.filter_all_queries(patterns_arr` - method return a hash with all results of passed queries
+-patterns_arr - an array with valid queries<br>
+
+`db.get_filtered_object()` - this method return TextDb object where data equals to the
+                        latest results of filter_all_queries(patterns_arr) method
+                        Why does this method exist? After a while I found out that I want to sort the filtered data
+                        but to achieve this goal I had to write the same code again somewhere else. Of course, it
+                        was a bad solution. So I came up with the idea of this method. This allows me to use all methods
+                        from this class if needed.<br>
+                        
+`db.filter_by_almost_equal(category_name, arr_of_values)` - this method returns a hash where category values almost
+                        equal to the arr_of_values.
+                        Nb! use this method if the category  has comma separated values. <cat>'1,2'<cat>
+                        or <cat>'s,x,m'<cat>
+                        Basically it checks if values
+                        of one array present in the second arr if so add to filtered_object.
