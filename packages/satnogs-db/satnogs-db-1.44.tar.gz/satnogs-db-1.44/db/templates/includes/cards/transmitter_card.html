@@ -1,0 +1,180 @@
+{% if suggestion_card %}
+<div class="card shadow card-outline card-warning" aria-label="Suggested transmitter {{ transmitter.description }}">
+{% elif transmitter.bad_transmitter %}
+<div class="card shadow card-outline card-danger" aria-label="Bad or uncoordinated transmitter {{ transmitter.description }}">
+{% else %}
+<div class="card shadow card-outline card-satnogs" aria-label="Transmitter {{ transmitter.description }}">
+{% endif %}
+
+  <div class="card-header align-items-center no-gutters py-1">
+    <div class="row">
+        <div class="col">
+          <span class="card-title align-self-center">{% if suggestion_card %}Suggestion - {% endif %}{{ transmitter.description }}</span>
+        </div>
+        <div class="row ml-auto align-items-center">
+          {% if satellite_entry.status == 're-entered' %}
+          <i class="fas fa-satellite fa-lg align-self-center text-satnogs-inactive"
+            aria-label="Transmitter is not operational, the satellite has re-entered"
+            data-toggle="tooltip" data-placement="bottom" title="Non-operational"></i>
+          {% elif transmitter.status == 'active' %}
+          <i class="fas fa-satellite fa-lg align-self-center text-satnogs-active"
+            aria-label="Transmitter is operational"
+            data-toggle="tooltip" data-placement="bottom" title="Operational"></i>
+          {% else %}
+          <i class="fas fa-satellite fa-lg align-self-center text-satnogs-inactive"
+            aria-label="Transmitter is inactive or malfunctioning"
+            data-toggle="tooltip" data-placement="bottom" title="Malfunctioning"></i>
+          {% endif %}
+          <div class="btn-group" role="group">
+            <button class="btn btn-satnogs dropdown-toggle ml-3" data-toggle="dropdown" aria-expanded="false"
+              id="dropdown-{{ transmitter.pk }}"><i class="fas fa-bars"></i></button>
+            <div class="dropdown-menu" aria-labelledby="dropdown-{{ transmitter.pk }}">
+              {% if perms.base.approve_transmittersuggestion and suggestion_card %}
+              <form action="{% url 'transmitter_suggestion_handler' %}" method="post"
+                id="transmitter_suggestion_handler-form-{{ transmitter.pk }}">
+                {% csrf_token %}
+                <input type="hidden" name="pk" value="{{ transmitter.pk }}">
+                <button type="submit" name="approve" class="btn btn-satnogs btn-outline-success dropdown-item">
+                  <i class="fas fa-check-square mr-2"></i>
+                  Approve Suggestion
+                </button>
+                <button type="submit" name="reject" class="btn btn-satnogs btn-outline-danger dropdown-item">
+                  <i class="fas fa-minus-square mr-2"></i>
+                  Reject Suggestion
+                </button>
+              </form>
+              {% endif %}
+              {% if request.user.is_authenticated and not suggestion_card %}
+              <a class="dropdown-item update-transmitter-link" data-toggle="modal" href="#"
+              data-form-url="{% url 'update_transmitter' transmitter.pk %}">
+                <i class="fas fa-edit mr-2"></i>
+                Edit
+              </a>
+              {% endif %}
+              <a class="dropdown-item transmitter-uuid js-copy" title="UUID: {{ transmitter.uuid }}" data-toggle="tooltip" data-placement="left" data-copy="{{ transmitter.uuid }}">
+                <i class="far fa-copy mr-2"></i>
+                Copy UUID
+              </a>
+              <a class="dropdown-item" data-toggle="modal" data-target="#TransmitterCitation-{{ transmitter.pk }}">
+                <i class="fas fa-quote-left mr-2"></i>
+                Citation
+              </a>
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <dl class="row">
+      <dt class="col-sm-6">Type</dt>
+      <dd class="col-sm-6">{{ transmitter.type }}</dd>
+      {% if transmitter.service and transmitter.service != 'Unknown' %}
+      <dt class="col-sm-6">Service</dt>
+      <dd class="col-sm-6">{{ transmitter.service }}</dd>
+      {% endif %}
+      {% if transmitter.downlink_mode %}
+      <dt class="col-sm-6">Downlink Mode</dt>
+      <dd class="col-sm-6">{{ transmitter.downlink_mode }}</dd>
+      {% endif %}
+      {% if transmitter.downlink_low %}
+      <dt class="col-sm-6">Downlink Frequency</dt>
+      <dd class="col-sm-6" data-toggle="tooltip" data-placement="bottom" title="{{ transmitter.downlink_low }} Hz">
+        <span class="frequency">{{ transmitter.downlink_low }}</span></dd>
+      {% endif %}
+      {% if transmitter.downlink_drift %}
+      <dt class="col-sm-6">Downlink Drifted</dt>
+      <dd class="col-sm-6" data-toggle="tooltip" data-placement="bottom" title="{{ transmitter.downlink_drift }} ppb">
+        <span class="frequency drifted" data-freq_or="{{ transmitter.downlink_low }}" data-drift="{{ transmitter.downlink_drift }}">{{ transmitter.downlink_drift }}</span></dd>
+      {% endif %}
+      {% if transmitter.baud %}
+      <dt class="col-sm-6">Baud</dt>
+      <dd class="col-sm-6">{{ transmitter.baud|floatformat:0 }}</dd>
+      {% endif %}
+      {% if transmitter.uplink_mode %}
+      <dt class="col-sm-6">Uplink Mode</dt>
+      <dd class="col-sm-6">{{ transmitter.uplink_mode }}</dd>
+      {% endif %}
+      {% if transmitter.downlink_high %}
+      <dt class="col-sm-6">Downlink High</dt>
+      <dd class="col-sm-6" data-toggle="tooltip" data-placement="bottom" title="{{ transmitter.downlink_high }}">
+        <span class="frequency">{{ transmitter.downlink_high }}</span></dd>
+      {% endif %}
+      {% if transmitter.uplink_low %}
+      <dt class="col-sm-6">Uplink Frequency</dt>
+      <dd class="col-sm-6" data-toggle="tooltip" data-placement="bottom" title="{{ transmitter.uplink_low }}">
+        <span class="frequency">{{ transmitter.uplink_low }}</span></dd>
+      {% endif %}
+      {% if transmitter.uplink_drift %}
+      <dt class="col-sm-6">Uplink Drift</dt>
+      <dd class="col-sm-6" data-toggle="tooltip" data-placement="bottom" title="{{ transmitter.uplink_drift }} ppb">
+        <span class="frequency drifted" data-freq_or="{{ transmitter.uplink_low }}" data-drift="{{ transmitter.uplink_drift }}">{{ transmitter.uplink_drift }}</span></dd>
+      {% endif %}
+      {% if transmitter.uplink_high %}
+      <dt class="col-sm-6">Uplink High</dt>
+      <dd class="col-sm-6" data-toggle="tooltip" data-placement="bottom" title="{{ transmitter.uplink_high }}">
+        <span class="frequency">{{ transmitter.uplink_high }}</span></dd>
+      {% endif %}
+      {% if transmitter.invert %}
+      <dt class="col-sm-6">Inverted</dt>
+      <dd class="col-sm-6">Yes</dd>
+      {% endif %}
+      {% if transmitter.iaru_coordination != 'N/A' %}
+      <dt class="col-sm-6">IARU Coordination</dt>
+      {% if transmitter.iaru_coordination_url != '' %}
+      <dd class="col-sm-6"><a href="{{ transmitter.iaru_coordination_url }}" target="_blank">{{ transmitter.iaru_coordination }}</a></dd>
+      {% else %}
+      <dd class="col-sm-6">{{ transmitter.iaru_coordination }}</dd>
+      {% endif %}
+      {% endif %}
+      {% if transmitter.itu_notification.urls %}
+      <dt class="col-sm-6">ITU Notifications</dt>
+      <dd class="col-sm-6"> ITU Notified
+          {%for itu_url in transmitter.itu_notification.urls %}
+          [<a href="{{ itu_url }}" target="_blank">Link {{ forloop.counter }}</a>]
+          {% endfor %}
+      </dd>
+      {% endif %}
+    </dl>
+  </div>
+  <div class="card-footer align-items-baseline justify-content-between transmitter-card-footer">
+    {% if suggestion_card %}
+      Suggested on {{ transmitter.created|date:'Y-m-d H:i' }} by {{ transmitter.created_by }}
+    {% else %}
+      Updated on {{ transmitter.reviewed|date:'Y-m-d H:i' }}
+      {% if transmitter.created_by %}
+        by {{ transmitter.created_by }}
+      {% endif %}
+      {% if transmitter.reviewer %}
+        and reviewed by {{ transmitter.reviewer }}
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- Citation Modal -->
+<div class="modal fade" id="TransmitterCitation-{{ transmitter.pk }}" tabindex="-1" role="dialog"
+aria-labelledby="CitationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="CitationModalLabel-{{ transmitter.pk }}">Citation for {{ transmitter.uuid }}</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+            aria-hidden="true">×</span></button>
+      </div>
+      <div class="modal-body">
+        {{ transmitter.citation }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Suggestion Modal -->
+{% comment %}
+<div class="modal fade transmitter_suggestion-modal" id="EditSuggestionModal-{{ transmitter.pk }}" tabindex="-1"
+  role="dialog" aria-labelledby="EditSuggestionModalLabel" aria-hidden="true">
+  {% include 'includes/transmitter_suggestion_modal.html' with transmitter=transmitter %}
+</div>
+{% endcomment %}

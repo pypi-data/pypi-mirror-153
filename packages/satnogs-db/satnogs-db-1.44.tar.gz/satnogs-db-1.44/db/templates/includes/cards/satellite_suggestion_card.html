@@ -1,0 +1,125 @@
+<div class="card card-outline shadow card-warning my-3">
+  <!-- Card header (Satellite name etc) -->
+  <div class="card-header py-1">
+    <div class="row">
+      <div class="pl-1 col">
+        <span class="card-title mr-1">{{ satellite.satellite_entry.name }} Suggestion</span>
+      </div>
+      <div class="row ml-auto align-items-center">
+        <div class="btn-group" role="group">
+          <button class="btn btn-satnogs dropdown-toggle ml-3" data-toggle="dropdown" aria-expanded="false"
+            id="dropdown-{{ satellite_entry.pk }}"><i class="fas fa-bars"></i></button>
+          <div class="dropdown-menu" aria-labelledby="dropdown-{{ satellite_entry.pk }}">
+            {% if perms.base.approve_satellitesuggestion %}
+            <form action="{% url 'satellite_suggestion_handler' %}" method="post"
+              id="satellite_suggestion_handler-form-{{ satellite_entry.pk }}">
+              {% csrf_token %}
+              <input type="hidden" name="pk" value="{{ satellite_entry.pk }}">
+              <button type="submit" name="approve" class="btn btn-satnogs btn-outline-success dropdown-item">
+                <i class="fas fa-check-square mr-2"></i>
+                Approve Suggestion
+              </button>
+              <button type="submit" name="reject" class="btn btn-satnogs btn-outline-danger dropdown-item">
+                <i class="fas fa-minus-square mr-2"></i>
+                Reject Suggestion
+              </button>
+            </form>
+            {% endif %}
+            <a class="dropdown-item" data-toggle="modal" data-target="#SatelliteCitation-{{ satellite_entry.pk }}">
+              <i class="fas fa-quote-left mr-2"></i>
+              Citation
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /.card-header -->
+
+  <!-- Satellite card body -->
+  <div class="card-body">
+    <dl class="row">
+      <dt class="col-sm-6">Name</dt>
+      <dd class="col-sm-6">{{ satellite_entry.name }}</dd>
+      <dt class="col-sm-6">NORAD ID</dt>
+      <dd class="col-sm-6">{{ satellite_entry.norad_cat_id }}</dd>
+      {% if satellite_entry.norad_follow_id %}
+      <dt class="col-sm-6">Followed NORAD ID</dt>
+      <dd class="col-sm-6">{{ satellite_entry.norad_follow_id }}</dd>
+      {% endif %}
+      {% if satellite_entry.names %}
+      <dt class="col-sm-6">Alternative Names</dt>
+      <dd class="col-sm-6">{{ satellite_entry.names }}</dd>
+      {% endif %}
+      {% if satellite_entry.description %}
+      <dt class="col-sm-6">Description</dt>
+      <dd class="col-sm-6">{{ satellite_entry.description }}</dd>
+      {% endif %}
+      {% if satellite_entry.dashboard_url %}
+      <dt class="col-sm-6">Dashboard URL</dt>
+      <dd class="col-sm-6">{{ satellite_entry.dashboard_url }}</dd>
+      {% endif %}
+      {% if satellite_entry.image %}
+      <dt class="col-sm-6">image</dt>
+      <dd class="col-sm-6"><img class="rounded img-fluid" src="{{ satellite_entry.get_image }}" style="max-height: 82.5px;" alt="Satellite image" /></dd>
+      {% endif %}
+      {% if satellite_entry.status %}
+      <dt class="col-sm-6">status</dt>
+      <dd class="col-sm-6">{{ satellite_entry.status }}</dd>
+      {% endif %}
+      {% if satellite_entry.decayed %}
+      <dt class="col-sm-6">decayed</dt>
+      <dd class="col-sm-6">{{ satellite_entry.decayed }}</dd>
+      {% endif %}
+      {% if satellite_entry.countries %}
+      <dt class="col-sm-6">countries</dt>
+      <dd class="col-sm-6">
+        {% for country in satellite_entry.countries %}
+          <i class="align-middle flag-icon flag-icon-{{ country.code|lower }}" data-toggle="tooltip" data-placement="bottom" title="{{ country.name }}"></i>
+        {% endfor %}
+      </dd>
+      {% endif %}
+      {% if satellite_entry.website %}
+      <dt class="col-sm-6">website</dt>
+      <dd class="col-sm-6">{{ satellite_entry.website }}</dd>
+      {% endif %}
+      {% if satellite_entry.launched %}
+      <dt class="col-sm-6">launched</dt>
+      <dd class="col-sm-6">{{ satellite_entry.launched }}</dd>
+      {% endif %}
+      {% if satellite_entry.deployed %}
+      <dt class="col-sm-6">deployed</dt>
+      <dd class="col-sm-6">{{ satellite_entry.deployed }}</dd>
+      {% endif %}
+      {% if satellite_entry.operator %}
+      <dt class="col-sm-6">operator</dt>
+      <dd class="col-sm-6">{{ satellite_entry.operator.name }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+    <!-- /.card-body -->
+
+  <div class="card-footer align-items-baseline justify-content-between satellite-card-footer">
+      Suggested on {{ satellite_entry.created|date:'Y-m-d H:i' }} by {{ satellite_entry.created_by }}
+  </div>
+</div>
+
+<!-- Citation Modal -->
+<div class="modal fade" id="SatelliteCitation-{{ satellite_entry.pk }}" tabindex="-1" role="dialog"
+aria-labelledby="CitationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="CitationModalLabel-{{ satellite_entry.pk }}">Citation for {{ satellite_entry.satellite_identifier }}</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+            aria-hidden="true">×</span></button>
+      </div>
+      <div class="modal-body">
+        {{ satellite_entry.citation }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

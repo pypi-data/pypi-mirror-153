@@ -1,0 +1,49 @@
+{% load widget_tweaks %}
+
+{% if request.user.is_authenticated and perms.base.merge_satellites %}
+<form action="" method="post" id="merge_satellites-form" enctype="multipart/form-data" >
+    {% csrf_token %}
+    <div class="modal-header">
+        <h3 class="modal-title">Merge Satellites</h3>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div class="{% if form.non_field_errors %}invalid{% endif %} mb-2">
+            {% for error in form.non_field_errors %}
+            {{ error }}
+            {% endfor %}
+        </div>
+
+        {% for field in form %}
+        <div class="input-group my-1">
+            <label class="input-group-prepend input-group-text" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% render_field field|add_error_class:"is-invalid" class="form-control" placeholder=field.label %}
+            {% if field.errors %}
+                {% for error in field.errors %}
+                <p class="invalid-feedback">{{ error }}</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% endfor %}
+        <div class="alert alert-warning alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+            <h5><i class="icon fas fa-exclamation-triangle"></i> WARNING!</h5>
+            <p>"Associated Satellite" data will not be visible after merging.</p>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="submit" class="btn btn-satnogs-primary">Merge Satellites</button>
+    </div>
+</form>
+{% else %}
+<div class="modal-body">
+    <div class="text-danger">You need to login first and have permission to merge two satellites.</div>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+    <a href="{% url 'account_login' %}" class="btn btn-satnogs-primary">Log In</a>
+</div>
+{% endif %}

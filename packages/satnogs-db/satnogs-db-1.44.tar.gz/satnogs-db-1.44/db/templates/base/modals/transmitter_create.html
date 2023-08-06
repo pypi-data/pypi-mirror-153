@@ -1,0 +1,79 @@
+{% load static %}
+{% load widget_tweaks %}
+
+{% if request.user.is_authenticated %}
+<form action="" method="post" id="transmitter_create-form">
+    {% csrf_token %}
+    <div class="modal-header">
+        <h3 class="modal-title">Create Transmitter</h3>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div class="{% if form.non_field_errors %}invalid{% endif %} mb-2">
+            {% for error in form.non_field_errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+
+        {% for field in form %}
+            {% if 'itu_notification' in field.id_for_label %}
+                <div class="input-group my-1" data-toggle="tooltip" data-placement="bottom"
+                     title="ITU Notifications URLs, add one per line">
+                    <label class="input-group-prepend input-group-text" for="{{ field.id_for_label }}_per_line">{{ field.label }}</label>
+                    <textarea name="{{ field.name }}_per_line" placeholder="ITU Notification URLs, add one per line" rows="3" wrap="off"
+                              class="form-control" id="{{ field.id_for_label }}_per_line"></textarea>
+                </div>
+            {% endif %}
+            {% if 'drift' in field.id_for_label %}
+                <div class="input-group my-1"
+                     {% if field.help_text %}
+                         data-toggle="tooltip" data-placement="bottom" title="Drifted frequency, when different from the published frequency"
+                     {% endif %}
+                >
+                    <label class="input-group-prepend input-group-text" for="{{ field.id_for_label }}_hz">{{ field.label }} freq.</label>
+                    <input type="number" name="{{ field.name }}_hz" min="-9223372036854775808" max="9223372036854775807" 
+                           placeholder="Drifted Frequency" class="form-control" id="{{ field.id_for_label }}_hz">
+                    <label class="input-group-text input-group-append">Hz</label>
+                </div>
+            {% endif %}
+            <div class="input-group my-1"
+                 {% if field.help_text %}
+                     data-toggle="tooltip" data-placement="bottom" title="{{ field.help_text }}"
+                 {% endif %}
+                 {% if 'itu_notification' in field.id_for_label %}
+                     id="itu-coordination-input-group"
+                 {% endif %}
+            >
+                <label class="input-group-prepend input-group-text" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% render_field field class="form-control" placeholder=field.label %}
+
+                {% if 'drift' in field.id_for_label %}
+                    <label class="input-group-text input-group-append">PPB</label>
+                {% elif 'low' in field.id_for_label or 'high' in field.id_for_label %}
+                    <label class="input-group-text input-group-append">Hz</label>
+                {% endif %}
+                <div class="{% if field.errors %} invalid{% endif %}">
+                    {% for error in field.errors %}
+                        <p class="help-block">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="modal-footer">
+        <button type="submit" class="btn btn-satnogs-primary">Create</button>
+    </div>
+</form>
+<script src="{% static 'js/transmitter_modal.js' %}"></script>
+{% else %}
+<div class="modal-body">
+    <div class="text-danger">You need to login first to add a new transmitter suggestion.</div>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+    <a href="{% url 'account_login' %}" class="btn btn-satnogs-primary">Log In</a>
+</div>
+{% endif %}
