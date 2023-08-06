@@ -1,0 +1,1 @@
+####  @The main solution is to automatically generate use cases according to swagger file resolution
