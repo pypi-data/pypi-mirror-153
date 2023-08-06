@@ -1,0 +1,252 @@
+{% extends "base.jinja" %}
+{% block main %}
+	<form id="keysform" action="./" method="POST" onsubmit="showPacman()" class="table-holder">
+		<input type="hidden" class="csrf-token" name="csrf_token" value="{{ csrf_token() }}"/>
+		<h1>{{ _("Name your Wallet") }}</h1>
+		<div class="center">
+			<input type="text" id="wallet_name" name="wallet_name" class="inline" value="{{ wallet_name }}" placeholder="My new wallet" required>
+		</div>
+		<br>
+		<h1>{{ _("Type of the wallet") }}</h1>
+		{% set enable_taproot = (wallet_type == 'simple' and specter.taproot_support and cosigners[0].taproot_support) %}
+		<nav class="row">
+			<label>
+				<input type="radio" name="type" value="{{'sh-wsh' if wallet_type == 'multisig' else 'sh-wpkh'}}"
+				class="hidden" onchange="updateType(this.value);">
+				<div class="btn radio left" id="type_nested_segwit_btn">{{ _("Nested Segwit") }}</div>
+			</label>
+			<label>
+				<input type="radio" name="type" value="{{'wsh' if wallet_type == 'multisig' else 'wpkh'}}" checked 
+				class="hidden type_nested_segwit" onchange="updateType(this.value);">
+				<div class="btn radio {% if not enable_taproot %} right {% endif %}" id="type_native_segwit_btn">{{ _("Segwit") }}</div>
+			</label>
+			{% if enable_taproot %}
+			<label>
+				<input type="radio" name="type" value="tr"
+				class="hidden" onchange="updateType(this.value);">
+				<div class="btn radio right" id="type_taproot_btn">{{ _("Taproot") }}</div>
+			</label>
+			{% endif %}
+		</nav>
+
+		<div class="note optional">
+			<center>
+				<br>{{ _("<b>Segwit</b> uses bech32-encoded addresses (bc1), <b>Nested Segwit</b> makes it compatible with legacy software. Don't use legacy.") }}
+			</center>
+		</div>
+		<br>
+		{% if wallet_type == 'multisig' %}
+			<div class="center">
+				{{ _("Using") }} 
+				<input class="inline" type="number" name="sigs_required" min=1 max="{{ cosigners | length }}" step=1 value="{{ sigs_required }}" />
+				{{ _("of") }} 
+				<span style="margin: 0px 40px; font-size: 1.2em;">{{ cosigners | length }}<span>
+			</div>
+			<br>
+		{% endif %}
+		<div class="center" style="max-width: 500px; margin: auto;">
+			<div style="display: inline-block; text-align: center; margin-top: 10px;">
+				<input form="keysform" type="checkbox" name="rescanblockchain" id="rescan" class="inline" onchange="toggleScanOptions(this)">
+				<label for="rescan">{{ _("Scan for existing funds?") }}</label>
+				<div class="tool-tip">
+					<i class="tool-tip__icon">i</i>
+					<p class="tool-tip__info">
+						<span class="info">
+							<span class="info__title">{{ _("Importing an existing wallet") }}<br></span>
+							{{ _("Check this option to scan the blockchain for existing wallet balance and history.") }}
+						</span>
+					</p>
+				</div>
+			</div>
+			<div id="scan-options" class="hidden">
+				<br>
+				<div>
+					{{ _("Rescan type:") }} 
+					<label><input type="radio" class="inline" style="margin: 0 10px 0 20px;" name="full_rescan_option" value="full" onclick="toggleFullRescanOption(this)" checked>{{ _("Full rescan") }}</label>
+					<label><input type="radio" class="inline" style="margin: 0 10px 0 20px" name="full_rescan_option" value="utxo" onclick="toggleFullRescanOption(this);">{{ _("UTXO only") }}</label>
+					<div class="tool-tip">
+						<i class="tool-tip__icon">i</i>
+						<p class="tool-tip__info">
+							<span class="info">
+								<span class="info__title">{{ _("Choosing Rescan Type") }}<br></span>
+								{{ _("Full rescan is a relativly slow process which looks for and imports the full wallet transaction history and balance.") }}<br><br>
+								{{ _("UTXO only is a fast rescan option which only looks for existing balances (UTXO), but will not import the full transaction history.") }}
+							</span>
+						</p>
+					</div>
+				</div>
+				<br>
+				<div id="full-scan-options">
+					{% if specter.info.chain == "main" %}
+						{% set startblock=(481824 if not specter.info['pruned'] or specter.info['pruneheight'] < 481824 else specter.info['pruneheight']) %}
+					{% else %}
+						{% set startblock=(0 if not specter.info['pruned'] else specter.info['pruneheight']) %}
+					{% endif %}
+					{{ _("Rescan blockchain from block:") }} <input type="number" name="startblock" value="{{startblock}}" min="{{startblock}}" style="max-width: 150px; margin-left: 5px;">
+					{% if specter.info['pruned']  %}
+						<span class="warning" style="display: inline-block; max-width:300px;">
+							<img src="{{ url_for('static', filename='img/info_sign.svg') }}" style="width: 20px;"/><br>{{ _("You are using a pruned node.<br>Wallet history may not fully appear.<br>Rescan is limited by the pruned height to block:") }} {{specter.info['pruneheight']}}
+						</span>
+					{% endif %}
+					<div class="note center" style="margin-top: 5px; line-height: 2;">{{ _("In case you're not sure, it is best to just leave the default number.<br><b>481824</b> was the first Segwit block.") }}</div>
+					<br>
+				</div>
+				<div id="utxo-scan-options" style="display: none">
+					{% if specter.info['pruned']  %}
+						<label for="use_explorer"><input style="width: auto; min-width: auto;" type="checkbox" id="use_explorer" name="use_explorer" checked> {{ _("fetch missing data from block explorer") }}
+							<tool-tip>
+							    <h4 slot="title">{{ _("Fetch missing data") }}</h4>
+							    <span slot="paragraph">
+									{{ _("You are using a pruned node. Blocks for some transactions may be missing.") }}<br><br>
+									{{ _("Check this checkbox if you want to fetch missing information from block explorer.") }}
+							    </span>
+							</tool-tip>
+						</label>
+						<div id="utxo-explorer">
+							<br>
+							{{ _("Block explorer URL:") }}
+							{% include "components/explorer_select.jinja" %}
+							<span class="warning" id="utxo-warning" style="display: inline-block; max-width:300px;">
+							<img src="{{ url_for('static', filename='img/info_sign.svg') }}" style="width: 20px;"/><br>{{ _("Careful with block explorers!") }}<br>
+							{{ _("This may have privacy implications!") }}<br>
+							{{ _("Information fetched from the block explorer contains a list of unspent transactions of your wallet from old (pruned) blocks.") }}<br>
+							{{ _('"They" will know what transactions you are interested in.') }}
+						</span>
+					</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+		<div class="spacer"></div>
+		{% for cosigner in cosigners %}
+			<input type="hidden" name="cosigner{{ loop.index0 }}" value="{{ cosigner.alias }}"/>
+		{% endfor %}
+		<input type="hidden" name="sigs_total" value="{{ cosigners | length }}">
+		{% for device in cosigners %}
+			<h1>{{ _("Signer") }} {{ loop.index }} - {{ device.name }}</h1>
+			{% set outer_loop = loop %}
+			{% if device.keys | length > 0 %}
+				<div class="table-holder">
+					<table>
+						<thead>
+							<tr>
+								<th>{{ _("Network") }}</th>
+								<th>{{ _("Purpose") }}</th>
+								<th class="optional">{{ _("Derivation") }}</th>
+								<th class="optional">{{ _("Key") }}</th>
+								<th>{{ _("Actions") }}</th>
+							</tr>
+						</thead>
+						<tbody id="device{{ loop.index0 }}">
+							{% for key in device.keys if key.is_testnet == specter.is_testnet %}
+								<tr>
+									<td>
+										{% include "components/network_label.jinja" %}
+									</td>
+									<td>{{ key.purpose }}</td>
+									<td class="optional">{{ key.derivation }}</td>
+									<td class="scroll xpub optional"><span>{{ key.original }}</span></td>
+									<td width="120px">
+										<label>
+											<input class="device-key hidden" data-key-types="{{key.key_type}}" type="radio" name="key{{ outer_loop.index0 }}" value="{{ key.original }}" {% if loop.index == 1 %}checked{% endif %}/>
+											<div class="btn inline hovering">{{ _("Use this key") }}</div>
+										</label>
+									</td>
+								</tr>
+							{% endfor %}
+							<tr class="hidden">
+								<td>
+								{{ _("The device does not have keys matching the wallet type selected.") }}
+								</td>
+								<td>
+								{{ _("Please choose a different type or add the keys to the device...") }}
+								</td>
+								<td>
+								</td>
+								<td>
+								</td>
+								<td>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			{% else %}
+				<div class="center">{{ _("Looks like this device doesn't have keys matching this type of wallet.") }}</div>
+			{% endif %}			
+			<div class="spacer"></div>
+		{% endfor %}
+		<button type="submit" name="action" value="key" class="btn centered action">{{ _("Create wallet") }}</button>
+	</form>
+	<div class="spacer"></div>
+{% endblock %}
+{% block scripts %}
+	<script>
+		function updateType(val){
+			let keys = document.getElementsByClassName('device-key');
+			let allDevices = [];
+			let devicesWithExistingKeys = [];
+			for (let i = keys.length - 1; i >= 0; i--) {
+				let key = keys[i];
+				let type = key.getAttribute('data-key-types');
+				key.disabled = !(type == "" || type == val);
+				allDevices.push(key.parentNode.parentNode.parentNode.parentNode.id)
+				if(key.disabled){
+					key.checked = false;
+					key.parentNode.parentNode.parentNode.classList.add('hidden');
+				} else {
+					key.checked = true;
+					key.parentNode.parentNode.parentNode.classList.remove('hidden');
+					devicesWithExistingKeys.push(key.parentNode.parentNode.parentNode.parentNode.id)
+				}
+			}
+
+			for (let device of allDevices) {
+				let deviceHTML = document.getElementById(device)
+				if (devicesWithExistingKeys.indexOf(device) == -1) {
+					deviceHTML.children[deviceHTML.children.length - 1].classList.remove('hidden')
+				} else {
+					deviceHTML.children[deviceHTML.children.length - 1].classList.add('hidden')
+				}
+			}
+		}
+		// initial trigger
+		let els = document.getElementsByName("type");
+		els.forEach(el=>{
+			if (el.checked){
+				updateType(el.value);
+			}
+		})
+		function toggleScanOptions(scanCheckbox) {
+			let scanOptions = document.getElementById('scan-options');
+			if (scanCheckbox.checked) {
+				scanOptions.style.display = 'block';
+			} else {
+				scanOptions.style.display = 'none';
+			}
+		}
+
+		function toggleFullRescanOption(scanOption) {
+			let scanOptions = document.getElementById('full-scan-options');
+			let utxoOptions = document.getElementById('utxo-scan-options');
+			if (scanOption.value == 'full') {
+				scanOptions.style.display = 'block';
+				utxoOptions.style.display = 'none';
+			} else {
+				scanOptions.style.display = 'none';
+				utxoOptions.style.display = 'block';
+			}
+		}
+		let utxocheckbox = document.getElementById("use_explorer");
+		if(utxocheckbox){
+			utxocheckbox.addEventListener('change', e=>{
+				let el = document.getElementById("utxo-explorer")
+				if(utxocheckbox.checked){
+					el.style.display = "inline-block";
+				}else{
+					el.style.display = "none";
+				}
+			});
+		}
+	</script>
+{% endblock%}

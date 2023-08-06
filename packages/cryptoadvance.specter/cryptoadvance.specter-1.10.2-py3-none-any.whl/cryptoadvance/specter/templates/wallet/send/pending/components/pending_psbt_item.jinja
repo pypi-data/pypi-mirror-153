@@ -1,0 +1,53 @@
+{# 
+    pending_psbt_item - Pending PSBT table row.
+    Parameters:
+    - pending_psbt: PSBT to show in this row.
+    - wallet_alias: Active wallet alias.
+    - wallet: Wallet object.
+    - specter: Specter object.
+ #}
+{% macro pending_psbt_item(pending_psbt, wallet_alias, wallet, specter) -%}
+    {% from 'wallet/components/explorer_link.jinja' import explorer_link %}
+    <tr>
+        <td></td>
+        <td class="tx scroll optional">
+            {% if pending_psbt['address']|length == 1 %}
+                <address-label data-address="{{ pending_psbt['address'][0] }}" data-label="{{ wallet.getlabel(pending_psbt['address'][0]) }}" data-wallet="{{ wallet_alias }}"></address-label>
+            {% else %}
+                {{ pending_psbt['address']|length }} {{ _("Recipients") }}
+            {% endif %}
+        </td>
+        <td>
+            {% if specter.is_liquid %}
+                {% if pending_psbt['asset'] | unique_len == 1 %}
+                {{ (pending_psbt['amount'] | sum) | btcunitamount }} <asset-label data-asset="{{pending_psbt['asset'][0]}}" data-label="{{pending_psbt['asset'][0] | assetlabel}}"></asset-label>
+                {% else %}
+                {{ pending_psbt['asset'] | unique_len }} assets
+                {% endif %}
+            {% else %}
+            {{ (pending_psbt['amount'] | sum) | btcunitamount }}{% if specter.price_check %}<span class="note">&nbsp;({{ (pending_psbt['amount'] | sum) | altunit }})</span>{% endif %}
+            {% endif %}
+        </td>
+        <td class="optional">
+            {{ pending_psbt['time'] | datetime }}
+        </td>
+        <td>
+            {{ '{}/{}'.format(pending_psbt['sigs_count'], wallet.sigs_required) }}
+        </td>
+        <td width="170px">
+            <div class="row">
+                <form action="{{ url_for('wallets_endpoint.send_pending',wallet_alias=wallet_alias) }}" method="POST">
+                    <input type="hidden" class="csrf-token" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="pending_psbt" value='{{ pending_psbt|tojson|safe }}'>
+                    <button type="submit" name="action" value="openpsbt" class="btn" style="margin-right: 5px;">{{ _("Open") }}</button>
+                </form>
+
+                <form action="{{ url_for('wallets_endpoint.send_pending',wallet_alias=wallet_alias) }}" method="POST">
+                    <input type="hidden" class="csrf-token" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="pending_psbt" value='{{ pending_psbt|tojson|safe }}'>
+                    <button type="submit" name="action" value="deletepsbt" class="btn danger" style="margin-left: 5px;" onclick="javascript: form.action='./?pending=True';">{{ _("Delete") }}</button>
+                </form>
+            </div>
+        </td>
+    </tr>
+{%- endmacro %}
