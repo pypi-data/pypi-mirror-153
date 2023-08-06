@@ -1,0 +1,2 @@
+# diamondsword
+> a simple package
