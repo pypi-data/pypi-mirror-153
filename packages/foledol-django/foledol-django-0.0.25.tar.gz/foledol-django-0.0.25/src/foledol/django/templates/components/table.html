@@ -1,0 +1,169 @@
+{% load form_extras %}
+{% load i18n %}
+
+{% if not table.rows and table.placeholder and table.create %}
+<div class="alert alert-info">
+    <a onclick="open2('{% url table.create %}');" style="cursor:pointer;">{{table.placeholder}}</a>
+</div>
+{% else %}
+<div class="panel panel-default">
+    {% if table.heading %}
+    <div class="panel-heading">
+        {{table.heading}} {% if table.count %}({{table.count}}){% endif %}
+    </div>
+    {% endif %}
+    <div class="panel-body">
+        <!-- Search -->
+        {% if table.search %}
+        <table>
+            <tr>
+                <td>{% trans 'table_search' %}:</td>
+                {% if table.filters %}
+                <td>
+                    <select id="filter_key" name="filter_key" class="form-control" onchange="send('')">
+                        <option value="">(Aucun)</option>
+                        {% for key, value in table.filters.items %}
+                        <option value="{{ key }}" {% if filter_key == key %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                {% endif %}
+                <td>
+                    <input id="search" name="search" type='text' class="form-control" value="{{ search }}"/>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-primary mls" onclick="clear_search()">
+                        <span class="glyphicon glyphicon-repeat"></span>
+                    </button>
+                </td>
+                <td>
+                    <button type="submit" class="btn btn-primary">{% trans 'table_search_action' %}</button>
+                </td>
+                {% if table.modules %}
+                <td>
+                    <div class="dropdown">
+                          <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Actions
+                          <span class="caret"></span></button>
+                          <ul class="dropdown-menu">
+                            {% for module in table.modules %}
+                                {% if module.route %}
+                                <li><a onclick="open2('{{module.route}}');">{{module.label}}</a></li>
+                                {% else %}
+                                <li><a onclick="send2('run_{{module.key}}');">{{module.label}}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                          </ul>
+                    </div>
+                </td>
+                {% endif %}
+
+                {% if table.reports %}
+                <td>
+                    <div class="dropdown">
+                          <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Imprimer
+                          <span class="caret"></span></button>
+                          <ul class="dropdown-menu">
+                            {% for report in table.reports %}
+                                {% if report.route %}
+                                    <li><a onclick="printTo('{{report.route}}', '{{report.key}}');">{{report.label}}</a></li>
+                                {% else %}
+                                    <li><a onclick="send2('print_{{report.key}}');">{{report.label}}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                          </ul>
+                    </div>
+                </td>
+                {% endif %}
+
+                {% for button in table.buttons %}
+                <td>
+                    {% if button|class_name == 'TableButtonGroup' %}
+                    <div class="dropdown">
+                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">{{button.label}}
+                        <span class="caret"></span></button>
+                        <ul class="dropdown-menu">
+                            {% for item in button.items %}
+                                {% if item|class_name == 'TableButton' %}
+                                <li><a onclick="{{item.action}}">{{item.label}}</a></li>
+                                {% elif item|class_name == 'TableButtonDivider' %}
+                                <li role="separator" class="divider"></li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <button class="btn btn-primary mls" onclick="{{button.action}}">{{button.label}}</button>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+        </table>
+        {% endif %}
+        {% if filter_title %}
+        <div style="margin-top: 15px; margin-bottom: 10px; color: #2a437d;">{{filter_title}}</div>
+        {% endif %}
+        <!-- Content -->
+        <table class="table" style="border-collapse: unset">
+            <thead>
+            {% for column in table.columns %}
+                {% if column.sortable %}
+                    {% include "components/table_header.html" with sort=sort key=column.key name=column.name %}
+                {% else %}
+                <th>{{column.name}}</th>
+                {% endif %}
+            {% endfor %}
+            </thead>
+            {% if table.rows %}
+            {% for row in table.rows %}
+                {% if table.update %}
+                <tr class="{{ table|formatter:row }} table_row" onclick="open2('{% url table.update row.id %}')">
+                {% else %}
+                <tr class="{{ table|formatter:row }} table_row">
+                {% endif %}
+                {% for column in table.columns %}
+                    <td>
+                    {% if column.link %}
+                        <a style="cursor:pointer" onclick="event.cancelBubble=true;open2('{{row|link:column.link}}');">
+                        {% if column.method %}
+                        {{ row|method:column.method }}
+                        {% else %}
+                        {% include "components/table_column.html" with type=column.type value=row|get:column%}
+                        {% endif %}
+                        </a>
+                    {% else %}
+                        {% if column.method %}
+                        {{ row|method:column.method }}
+                        {% else %}
+                        {% include "components/table_column.html" with type=column.type value=row|get:column%}
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                {% endfor %}
+                </tr>
+            {% endfor %}
+            {% endif %}
+        </table>
+
+        {% if page_count and not no_paginate %}
+        <div class="row">
+            <!-- Pagination -->
+            {% if pagination %}
+            <div style="white-space: nowrap;">
+                {% include "components/paginator.html" %}
+            </div>
+            {% endif %}
+            <div style="width: 100%;display: flex;justify-content: flex-end">&nbsp;{{ page_count }} élément(s)</div>
+        </div>
+        {% endif %}
+
+    </div>
+    {% if table.create %}
+    <div class="panel-footer">
+        <button type="button" class="btn btn-primary" onclick="open2('{% url table.create %}');">Ajouter</button>
+        {% for button in table.extras %}
+            <button class="btn btn-primary mls" onclick="{{button.action}}">{{button.label}}</button>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}

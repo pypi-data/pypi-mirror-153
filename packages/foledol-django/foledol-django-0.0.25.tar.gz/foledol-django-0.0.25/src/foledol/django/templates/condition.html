@@ -1,0 +1,58 @@
+{% extends base %}
+{% load form_extras %}
+
+{% block content %}
+
+    <form id="form" method="post">
+        {% csrf_token %}
+        <input type="hidden" id="action" name="action" value="{{action}}"/>
+        <input type="hidden" name="path" value="{{path}}"/>
+        <input type="hidden" name="back" value="{{back}}"/>
+        <input type="hidden" name="condition_group_id" value="{{condition_group_id}}"/>
+
+        {% include "components/banners.html" %}
+
+        <div class="panel panel-default">
+            <div class="panel-body">
+
+                <div class="form-group">
+                    <div class="col-sm-4">
+                        <label>Champs</label>
+                    </div>
+                    <div class="col-sm-8">
+                        <select name="label" class="form-control">
+                            {% for field in fields %}
+                            <option value="{{field.key}}" {% if field.key == condition.label %}selected{% endif %}>{{field.label}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-4">
+                        <label>Critère</label>
+                    </div>
+                    <div class="col-sm-8">
+                        <select name="criteria" class="form-control">
+                            {% for key, value in criteria_set.items %}
+                            <option value="{{key}}" {% if criteria == key %}selected{% endif %}>{{value}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                {% include "components/field_text_short.html" with field=form|field:'value' %}
+
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-default" onclick="go_back('{{ back }}')">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                {% if user.is_staff and condition %}
+                <button type="button" class="btn btn-danger" onclick="open2('{% url 'django:condition_delete' condition.id %}')">Supprimer</button>
+                {% endif %}
+            </div>
+        </div>
+
+    </form>
+
+{% endblock %}
