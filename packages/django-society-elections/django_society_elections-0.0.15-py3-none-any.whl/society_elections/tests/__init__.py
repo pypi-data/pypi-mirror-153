@@ -1,0 +1,2 @@
+from .views_helper import IsRequestAuthenticatedTestCase
+from .views_vote import VoteViewTestCase, CreateVoteAjaxTestCase
