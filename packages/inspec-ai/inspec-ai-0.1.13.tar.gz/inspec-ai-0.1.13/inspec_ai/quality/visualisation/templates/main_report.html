@@ -1,0 +1,114 @@
+<head>
+    <title>
+        Quality Standards Report
+    </title>
+
+<style>
+    .passedImg {content: url("data:image/png;base64,{{ green_check_img }}");}
+    .failedImg {content: url("data:image/png;base64,{{ red_cross_img }}");}
+    .errorImg {content: url("data:image/png;base64,{{ exclamation_point_img }}");}
+
+    @font-face {
+      font-family: 'Nunito';
+      font-style: normal;
+      font-weight: 400;
+      {% for font in nunito_fonts %}
+      src: url{{font}};
+      {% endfor %}
+    }
+
+    {{styles}}
+
+</style>
+
+<script>
+    function displayOrHideDetailedResults(detailedResultNumber) {
+        let errorMessage = document.getElementById("error" + detailedResultNumber.toString());
+        let innerResult = document.getElementById("innerResult" + detailedResultNumber.toString());
+        let innerResultButton = document.getElementById("button" + detailedResultNumber.toString());
+
+        let showStuff = innerResultButton.innerText.includes("show detailed results");
+
+        if (showStuff){
+            innerResultButton.innerText = "(hide detailed results \u2190)";
+
+            if(innerResult){
+                innerResult.style.display = "block";
+            }
+
+            if(errorMessage){
+                errorMessage.style.display = "block";
+            }
+
+        } else {
+            innerResultButton.innerText = "(show detailed results \u2193)";
+
+           if(innerResult){
+                innerResult.style.display = "none";
+            }
+
+           if(errorMessage){
+                errorMessage.style.display = "none";
+           }
+        }
+    }
+</script>
+
+</head>
+
+<h1>Quality Standards Report</h1>
+
+<h3>{{date}}</h3>
+
+<img id='completionChart' alt="picture" src="data:image/jpeg;base64,{{ completion_circle_img }}">
+
+<h2>{{pass_count}} / {{n_evaluations}} passed</h2>
+
+<div id="listOfEvaluationsDiv">
+
+{% for result in evaluation_results %}
+
+    <div class="evaluationDiv">
+        <div class="statusIconDiv">
+            <img class="statusIcon {{result.status}}Img" alt="" src="">
+        </div>
+
+        {% if 'detailed_results' not in result and 'message' not in result %}
+            <div class="qualityStandardTextDiv">
+                    {{result.result_name}}
+            </div>
+
+        {% else %}
+            <div class="qualityStandardTextDiv" onclick=displayOrHideDetailedResults("{{loop.index}}") style="cursor: pointer">
+                {{result.result_name}}
+            </div>
+            <button onclick=displayOrHideDetailedResults("{{loop.index}}") id="button{{loop.index}}">(show detailed results &#x2193)</button>
+        {% endif %}
+
+        {% if 'message' in result %}
+            <p class="errorMsg" id="error{{loop.index}}"> > {{result.message}} </p>
+        {% endif %}
+
+        {% if 'detailed_results' in result %}
+            <div class="detailedResultsDiv" id="innerResult{{loop.index}}">
+                {% for inner_result in result.detailed_results %}
+
+                <div class="innerResultDiv">
+                    <div class="statusIconDiv">
+                        <img class="innerStatusIcon {{inner_result.status}}Img" alt="" src="">
+                    </div>
+
+                    <div class="innerQualityStandardTextDiv">
+                        {{inner_result.result_name}}
+                    </div>
+                </div>
+
+                {% endfor %}
+            </div>
+        {% endif %}
+
+    </div>
+
+{% endfor %}
+
+</div>
