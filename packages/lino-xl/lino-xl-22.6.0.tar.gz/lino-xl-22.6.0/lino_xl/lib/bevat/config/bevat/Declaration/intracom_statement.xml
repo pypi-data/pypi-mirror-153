@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<IntraConsignment xmlns="http://www.minfin.fgov.be/IntraConsignment"
+  xmlns:common="http://www.minfin.fgov.be/InputCommon"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.minfin.fgov.be/IntraConsignment NewICO-in_v0_7.xsd"
+  IntraListingsNbr="1">
+<Representative>
+    <common:RepresentativeID identificationType="NVAT" issuedBy="BE">{{our_id}}</common:RepresentativeID>
+    <common:Name>{{escape(site_config.site_company.name)}}</common:Name>
+    <common:Street>{{escape(site_config.site_company.street)}}</common:Street>
+    <common:PostCode>{{escape(site_config.site_company.zip_code)}}</common:PostCode>
+    <common:City>{{escape(str(site_config.site_company.city))}}</common:City>
+    <common:CountryCode>{{escape(str(site_config.site_company.country.isocode))}}</common:CountryCode>
+    <common:EmailAddress>{{escape(str(site_config.site_company.email) or "noreply@example.com")}}</common:EmailAddress>
+    <common:Phone>{{escape(str(site_config.site_company.phone) or "+32 456 789")}}</common:Phone>
+</Representative>
+<IntraListing SequenceNumber="1" ClientsNbr="{{len(clients_list)}}"
+    AmountSum="{{"%0.2f"|format(total_amount)}}">
+    <Declarant>
+      <common:VATNumber>0{{site_config.site_company.vid_manager.vn[2:]}}</common:VATNumber>
+      <common:Name>{{escape(site_config.site_company.name)}}</common:Name>
+      <common:Street>{{escape(site_config.site_company.street)}}</common:Street>
+      <common:PostCode>{{escape(site_config.site_company.zip_code)}}</common:PostCode>
+      <common:City>{{escape(str(site_config.site_company.city))}}</common:City>
+      <common:CountryCode>{{escape(str(site_config.site_company.country.isocode))}}</common:CountryCode>
+    </Declarant>
+    <Period>
+      <Month>{{obj.accounting_period.ref[-2:]}}</Month>
+      <Year>{{obj.accounting_period.year}}</Year>
+    </Period>
+    {% for p in clients_list %}
+    <IntraClient SequenceNumber="{{loop.index}}">
+      <CompanyVATNumber issuedBy="{{p.vid_manager.country_code}}">{{p.vid_manager.vn[2:]}}</CompanyVATNumber>
+      <Code>L</Code>
+      <Amount>{{"%0.2f"|format(p.total_base)}}</Amount>
+    </IntraClient>
+    {% endfor %}
+</IntraListing>
+</IntraConsignment>

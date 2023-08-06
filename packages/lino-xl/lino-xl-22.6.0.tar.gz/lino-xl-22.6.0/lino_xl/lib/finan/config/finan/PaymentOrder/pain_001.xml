@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.02" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<pain.001.001.02>
+<GrpHdr>
+  <MsgId>{{obj.id}}/{{obj.journal.ref}} {{obj.number}}</MsgId>
+  <CreDtTm>{{now.isoformat()}}</CreDtTm>
+  <NbOfTxs>{{obj.items.count()}}</NbOfTxs>
+  <Grpg>MIXD</Grpg>
+  <InitgPty>
+    <Nm>{{our_name|escape}}</Nm>
+{% if our_id %}
+    <Id><OrgId><PrtryId>
+      <Id>{{our_id}}</Id>
+      <Issr>{{our_issuer}}</Issr>
+    </PrtryId></OrgId></Id>
+{% endif %}
+  </InitgPty>
+</GrpHdr>
+<PmtInf>
+<PmtInfId>{{obj.journal.ref}} {{obj.number}}</PmtInfId>
+<PmtMtd>TRF</PmtMtd>
+<PmtTpInf><SvcLvl><Cd>SEPA</Cd></SvcLvl></PmtTpInf>
+<ReqdExctnDt>{{(obj.execution_date or obj.entry_date).isoformat()}}</ReqdExctnDt>
+<Dbtr>
+  <Nm>{{our_name|escape}}</Nm>
+{% if our_id %}
+  <Id><OrgId><PrtryId>
+    <Id>{{our_id}}</Id>
+    <Issr>{{our_issuer}}</Issr>
+  </PrtryId></OrgId></Id>
+{% endif %}
+</Dbtr>
+<DbtrAcct><Id><IBAN>{{obj.journal.sepa_account.iban}}</IBAN></Id></DbtrAcct>
+{% if obj.journal.sepa_account.bic %}
+<DbtrAgt><FinInstnId><BIC>{{obj.journal.sepa_account.bic}}</BIC></FinInstnId></DbtrAgt>
+{% endif %}
+{% for item in obj.items.all() %}
+<CdtTrfTxInf>
+<PmtId><EndToEndId>.</EndToEndId></PmtId>
+<Amt><InstdAmt Ccy="EUR">{{ -item.amount }}</InstdAmt></Amt>
+{% if item.bic %}
+<CdtrAgt><FinInstnId><BIC>{{item.bic}}</BIC></FinInstnId></CdtrAgt>
+{% endif %}
+<Cdtr>
+ <Nm>{{escape(str(item.partner))}}</Nm>
+{% if item.partner.country %}
+ <PstlAdr>
+ {% if item.partner.street %}
+ <AdrLine>{{item.partner.street}}</AdrLine>
+ {% endif %}
+ {% if item.partner.city %}
+ <AdrLine>{{escape(str(item.partner.city))}}</AdrLine>
+ {% endif %}
+ <Ctry>{{item.partner.country.isocode}}</Ctry>
+ </PstlAdr>
+{% endif %}
+ </Cdtr>
+<CdtrAcct><Id><IBAN>{{item.bank_account.iban}}</IBAN></Id></CdtrAcct>
+<RmtInf><Ustrd>{{escape(item.remark)}}*{{escape(item.partner.name)}}*{{item.voucher}}</Ustrd></RmtInf>
+</CdtTrfTxInf>
+{% endfor %}
+</PmtInf>
+</pain.001.001.02>
+</Document>
