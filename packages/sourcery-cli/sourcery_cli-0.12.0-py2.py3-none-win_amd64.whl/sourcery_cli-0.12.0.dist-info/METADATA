@@ -1,0 +1,122 @@
+Metadata-Version: 2.1
+Name: sourcery-cli
+Version: 0.12.0
+Summary: Magically refactor Python
+Home-page: https://github.com/sourcery-ai/sourcery
+Author: Sourcery AI
+Author-email: hello@sourcery.ai
+License: Proprietary
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Environment :: Plugins
+Classifier: Intended Audience :: Developers
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development :: Quality Assurance
+Classifier: Topic :: Text Editors :: Integrated Development Environments (IDE)
+Description-Content-Type: text/markdown
+
+![Sourcery Logo](https://sourcery.ai/sourcery-dark.svg)
+
+# _Sourcery_ Command Line Interface
+
+## Installation and usage
+
+### Installation
+
+_Sourcery_ command line interface can be installed by running:
+
+```
+pip install sourcery-cli
+```
+
+### Login
+
+Once installed you can interactively login with:
+
+```
+sourcery login
+```
+
+which will open up a browser tab and ask for confirmation. This is only needed
+once per computer.
+
+Please be aware that the _Sourcery_ CLI requires a Team subscription to use. You
+can upgrade [here](https://sourcery.ai/pricing/).
+
+## Usage
+
+To display suggested refactorings as a diff:
+
+```
+sourcery refactor {file_or_directory}
+```
+
+And to apply those changes to the files:
+
+```
+sourcery refactor --in-place {file_or_directory}
+```
+
+## Command line options
+
+_Sourcery_ provides a few options for running. You can list them by running
+`sourcery refactor --help`
+
+```
+sourcery refactor --help
+
+Usage: sourcery refactor [OPTIONS] [SRC]...
+
+  Refactor SRC files/directories. Reads from stdin when SRC is -
+
+Options:
+  -c, --code TEXT     Refactor the code passed in as a string.
+  -i, --include TEXT  Only run the specified rule. This option can be used
+                      multiple times.
+  --check             Return exit code 1 if refactorings found.  [default:
+                      False]
+  --diff / --no-diff  Output a diff for each file on stdout.  [default: diff]
+  --in-place          Make changes to files in place  [default: False]
+  --backup TEXT       Use with --in-place to backup changed files with given
+                      suffix
+  -h, --help          Show this message and exit.
+```
+
+## Configuration
+
+_Sourcery_ reads configuration settings from `.sourcery.yaml` in the project
+directory. Full details are described
+[here](https://docs.sourcery.ai/Configuration/).
+
+## Precommit Hook
+
+_Sourcery_ works great with [pre-commit](https://pre-commit.com). Once you
+[have it installed](https://pre-commit.com/#install), add this to the
+`.pre-commit-config.yaml` in your repository:
+
+```yaml
+repos:
+  - repo: https://github.com/sourcery-ai/sourcery
+    rev: v0.12.0
+    hooks:
+      - id: sourcery
+      # - args: [--in-place]  Automatically apply the refactorings in the hook
+```
+
+Then run `pre-commit install` and you're ready to go.
+
+## Continuous Integration
+
+Here's a script to run _Sourcery_ in CI that will fail the job if any
+refactorings are found:
+
+```sh
+# Install sourcery
+pip install sourcery-cli
+# Login - store SOURCERY_TOKEN in a secret/masked environment variable
+sourcery login --token $SOURCERY_TOKEN
+# Find changed files and pass them to Sourcery
+git diff main --diff-filter=AMR --name-only | xargs sourcery refactor --check
+```
