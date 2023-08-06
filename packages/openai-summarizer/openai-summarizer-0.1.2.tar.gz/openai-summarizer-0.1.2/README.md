@@ -1,0 +1,52 @@
+# OpenAI Summarizer
+
+Use the Completion engine from OpenAI to summarize text.
+
+## Applications
+
+- **Email Summarizer**: Summarize your emails in less than 50 words.
+- ...
+
+## Installation
+
+```sh
+pip install openai_summarizer
+```
+
+## Prerequisites
+
+If you use Gmail, you do **NOT** need to use your gmail's password to share access of your mailbox with this client. 
+
+For running the binary `email-summarizer` through CLI, you may be able to create an "app password" by following [these instructions](https://support.google.com/accounts/answer/185833?hl=en&ref_topic=7189145) and then using the generated token as your password.
+
+**(WIP)**
+For accessing the RESTful API, we'll have OAuth set up for most common email providers so that you don't have to share your email access credentials with this service.
+
+## Usage
+
+### Take inputs from stdin.
+Pass the email password (or some IMAP access token) and api key through stdin.
+
+```sh
+email-summarizer --mailhost <some-imap-server> -u <some-gmail-email@gmail.com> --prompt-password --prompt-apikey
+```
+
+**Example**
+
+```sh
+email-summarizer --mailhost 'imap.gmail.com' -u user@gmail.com --prompt-password --prompt-apikey
+```
+
+### Take inputs from env variable.
+Pass the email password (or some IMAP access token) and api key as an env variable.
+
+```sh
+OPENAI_API_KEY=<API_KEY> EMAIL_SUMMARIZER_MAIL_PASSWORD=<PASSWORD> email-summarizer --mailhost 'imap.gmail.com' -u user@gmail.com
+```
+
+**Example**
+
+```sh
+OPENAI_API_KEY="somesupersecretopenaiapikey" EMAIL_SUMMARIZER_MAIL_PASSWORD="passwordtoaccessemail" email-summarizer --mailhost 'imap.gmail.com' -u user@gmail.com
+```
+
