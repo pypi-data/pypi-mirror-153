@@ -1,0 +1,53 @@
+{% extends theme('base.html') %}
+{% import theme('macros/forms.html') as forms with context %}
+{% set next_url = url_for(request.endpoint, **request.view_args) if not request.routing_exception else url_for('site.home') %}
+{% set read_only_mode = config.READ_ONLY_MODE %}
+
+{% block content %}
+<section class="fr-py-3w fr-py-md-9v bg-grey-50">
+    <div class="fr-container">
+        <div class="fr-grid-row">
+            <div class="text-align-center form-container fr-col-12 fr-col-md-6 fr-col-offset-md-3">
+                <form class="form" method="post" action="{{ url_for('security.login') }}">
+                    <h1 class="fr-h4 fr-mb-0">{{ _('Log in') }}</h1>
+                        <p class="fr-mt-2w fr-mb-1w fr-text--xs text-align-left">
+                            {{ _("Fields preceded by a star (<span class='required-field-star'>*</span>) are required.") }}
+                        </p>
+                        {{ forms.render_fields(login_user_form, submit=_('Log in')) }}
+                        <div class="fr-mt-3w">
+                            <p class="fr-text--sm fr-mb-3v">
+                                {{ _('Forgot your password?') }}
+                                <a href="{{ url_for('security.forgot_password', next=next_url) }}">
+                                    {{ _('Recover your password') }}
+                                </a>
+                            </p>
+                            {% if config.SECURITY_CONFIRMABLE %}
+                            <p class="fr-text--sm fr-mb-3v">
+                                {{ _('Confirmation instructions not received?') }}
+                                <a href="{{ url_for('security.send_confirmation') }}">
+                                    {{ _('Send the instructions again') }}
+                                </a>
+                            </p>
+                            {% endif %}
+                        </div>
+                </form>
+            </div>
+        </div>
+        <div class="fr-grid-row">
+            {% if not read_only_mode %}
+            <div class="text-align-center form-container fr-mt-3w fr-col-12 fr-col-md-6 fr-col-offset-md-3">
+                <h2 class="fr-text--sm fr-mb-3v">
+                    {{ _('Don\'t have an account?')}}
+                </h2>
+                <a
+                    href="{{ url_for('security.register', next=next_url) }}"
+                    class="fr-btn"
+                >
+                    {{ _('Create an account') }}
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
