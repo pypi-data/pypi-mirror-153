@@ -1,0 +1,115 @@
+# Regular tests
+#
+# Use this to ensure your tests are passing on every push and PR (skipped on
+# pushes which only affect documentation).
+# There is also a cron job set to run weekly on the default branch, to check
+# against dependency chain rot.
+#
+# You should make sure you run jobs on at least the *oldest* and the *newest*
+# versions of python that your codebase is intended to support.
+
+name: tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 1"
+      branches: [$default-branch]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.8", "3.9", "3.10"]
+        include:
+          - os: windows-latest
+            python-version: "3.10"
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: System information
+        run: python .github/workflows/system_info.py
+
+      - name: Get pip cache dir
+        id: pip-cache
+        run: echo "::set-output name=dir::$(pip cache dir)"
+
+      - name: pip cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-py${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install flake8
+          python -m pip install --editable .[test]
+
+      - name: Sanity check with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings
+          python -m flake8 . --count --exit-zero --statistics
+
+      - name: Debug environment
+        run: python -m pip freeze
+
+      - name: Test with pytest
+        run: |
+          python -m pytest --cov=torchsample --cov-report term --cov-report xml --cov-config .coveragerc --junitxml=testresults.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unittests
+          env_vars: OS,PYTHON
+          name: Python ${{ matrix.python-version }} on ${{ runner.os }}
+
+      - name: Build HTML docs
+        run: |
+          python -m pip install --editable .[docs]
+          cd docs
+          make html
+          cd ..
+  docs-html:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Determine default branch
+        run: |
+          DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+          echo "default_branch=$DEFAULT_BRANCH" >> $GITHUB_ENV
+          echo "default_branch_ref=refs/heads/$DEFAULT_BRANCH" >> $GITHUB_ENV
+
+      - name: Determine whether repo is public
+        run: |
+          REMOTE_HTTP=$(git remote get-url origin | sed -e "s|:\([^/]\)|/\1|g" -e "s|^git@|https://|" -e "s|\.git$||")
+          echo "Probing $REMOTE_HTTP"
+          if wget -q --method=HEAD ${REMOTE_HTTP}; then IS_PUBLIC=1; else IS_PUBLIC=0; fi
+          echo "is_public=$IS_PUBLIC"
+          echo "is_public=$IS_PUBLIC" >> $GITHUB_ENV
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == env.default_branch_ref && env.is_public == 1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: "docs/_build/html/"
