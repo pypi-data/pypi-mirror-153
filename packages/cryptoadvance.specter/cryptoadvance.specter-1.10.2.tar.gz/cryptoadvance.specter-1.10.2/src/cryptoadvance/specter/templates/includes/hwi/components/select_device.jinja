@@ -1,0 +1,154 @@
+<div id="hwi_selector" class="hidden">
+    <h1>{{ _("Select USB Wallet") }}</h1>
+    <div class="flex-center flex-column" id="hwi_selector_container">
+    </div>
+</div>
+
+<script type="text/javascript">
+    async function selectDevice(devices, passphrase=null){
+        /** 
+        Spawns a window and asks user for a device.
+        Retuns null if user closed the window.
+        **/
+        let el = document.getElementById("hwi_selector_container");
+        let selectedDevice = null;
+        el.innerHTML = "";
+        devices.forEach(dev =>{
+            let btn = document.createElement('button');
+            btn.classList.add('btn');
+            btn.classList.add('flex-item');
+            btn.style.width = "200px";
+            let mfp = "unknown";
+            if('fingerprint' in dev){
+                mfp = dev.fingerprint;
+            }
+            if('needs_pin_sent' in dev && dev.needs_pin_sent){
+                mfp = "needs PIN";
+            }else if('needs_passphrase_sent' in dev && dev.needs_passphrase_sent){
+                mfp = "needs password";
+            }
+            btn.innerHTML = `${capitalize(dev.type)} - ${mfp}`;
+            btn.addEventListener('click', e=>{
+                selectedDevice = dev;
+            });
+            el.appendChild(btn);
+        });
+        showPageOverlay("hwi_selector");
+        while(selectedDevice == null){
+            await wait(100);
+            if(!overlayIsActive()){
+                console.log("cancelled");
+                return null;
+            }
+        }
+        hidePageOverlay();
+
+        try{
+            passphrase = await unlockDevice(selectedDevice, passphrase);
+        }catch(error){
+            handleHWIError(error);
+            return null;
+        }
+
+        showHWIProgress(`{{ _("Processing...") }}`, `{{ _("Keep your") }} ${capitalize(selectedDevice.type)} {{ _("connected") }}.`);
+        // Get the device again as it is now unlocked and the fingerprint is available
+        let rescanDevices = await enumerate(selectedDevice.type, selectedDevice.path, passphrase);
+        if (rescanDevices.length == 1) {
+            selectedDevice = rescanDevices[0]
+        }
+        hidePageOverlay();
+        console.log(passphrase);
+        // maybe we get password here
+        if(passphrase != null){
+            selectedDevice.passphrase = passphrase;
+        }else{
+            passphrase = "";
+        }
+        console.log(selectedDevice);
+        return selectedDevice;
+    }
+
+    async function unlockDevice(device, passphrase=null){
+        if('needs_pin_sent' in device && device.needs_pin_sent){
+            let result = await enterPin(device);
+            if(result == null){
+                return null;
+            }
+            if(!('success' in result) || !result.success){
+                throw `{{ _("Failed to unlock device! Invalid PIN code?") }}`;
+            }
+            device.needs_pin_sent = false;
+        }
+        if(passphrase!=null){
+            return passphrase;
+        }
+        if('needs_passphrase_sent' in device && device.needs_passphrase_sent){
+            console.log("need password...");
+            let passphrase = await enterPassphrase(device);
+            if(passphrase == null){
+                throw `{{ _("Operation is terminated") }}`;
+            }
+            return passphrase;
+        }
+        return null;
+    }
+
+    async function togglePassphrase(deviceType){
+        let devices = await enumerate(deviceType);
+        if(devices == null || devices.length == 0){
+            return;
+        }
+        let device = await selectDevice(devices, '');
+        showHWIProgress(`{{ _("Processing...") }}`, `{{ _("Keep your") }} ${capitalize(device.type)} {{ _("connected") }}.`);
+        let result = null;
+        try {
+            result = await hwi.togglePassphrase(device);
+        } catch (error) {
+            handleHWIError(error);
+            return null;
+        }
+        if(!overlayIsActive()){
+            // showNotification("HWI is ready again", 10000);
+            // no need to proceed at all
+            return null;
+        }
+        hidePageOverlay();
+        if (device.type == "keepkey") {
+            result = await enterPin(device, false);
+            if(result == null){
+                return null;
+            }
+            if(!('success' in result) || !result.success){
+                throw `{{ _("Failed to unlock device! Invalid PIN code?") }}`;
+            }
+        }
+        showNotification(device.type + ` {{ _("passphrase toggled successfully") }}`, 5000)
+    }
+
+    async function signMessage(deviceType, message, derivationPath, fingerprint=null){
+        let devices = await enumerate(deviceType);
+        if(devices == null || devices.length == 0){
+            return;
+        }
+        let device = await selectDevice(devices);
+        console.log(device)
+        if(device == null){
+            return;
+        }
+
+        if (fingerprint && device.fingerprint != fingerprint) {
+            handleHWIError(`{{ _("Selected device does not have matching signing key.") }}`);
+            return;
+        }
+        showHWIProgress(`{{ _("Signing message...") }}`, `{{ _("Confirm on your") }} ${capitalize(device.type)}.`);
+        let signature = null;
+        try {
+            signature = await hwi.signMessage(device, message, derivationPath);
+        } catch (error) {
+            handleHWIError(error);
+            return;
+        }
+        hidePageOverlay();
+        return signature;
+    }
+</script>

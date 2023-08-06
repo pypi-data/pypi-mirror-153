@@ -1,0 +1,259 @@
+<qr-code value='{{ wallet.account_map }}' width="400" id="export-wallet-qr-code" class="hidden"></qr-code>
+
+{% for index in range(6*6+1) %}
+<qr-code value='{{ wallet.get_address(index) }}' width="100" id="address{{index}}" class="hidden"></qr-code>
+{% endfor %}
+
+<script	type="module">
+    import { jsPDF } from "{{ url_for('static', filename='pdf/jspdf.es.min.js') }}";
+
+    function specter_pdfdoc() {
+        // Default export is a4 paper, portrait, using millimeters for units
+        const doc = new jsPDF();
+        doc.addFont("{{ url_for('static', filename='fonts/RobotoMono-Regular.ttf') }}", "Roboto", "normal");
+        doc.addFont("{{ url_for('static', filename='fonts/RobotoMono-Bold.ttf') }}", "Roboto", "bold");
+        doc.setFont("Roboto", "normal");
+        return doc
+    }
+
+    document.getElementById('pdf-wallet-download').onclick = () => {
+        const doc = specter_pdfdoc()
+        const pageHeight = 297;
+        const pageWidth = 210;
+        let useSlip132 = document.getElementById("use_slip_132_pdf").checked;
+        let currentHeight = 15;
+        doc.setFontSize(18);
+        doc.text('{{ _("Specter Backup File") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 10;
+        doc.setFontSize(14);
+        doc.text('{{ _("(keep this information with each of your key backups)") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 11;
+
+        doc.setFontSize(18);
+        doc.setFont("Roboto", "bold");
+        doc.text({{ wallet.name | tojson | safe }}.replace(/(.{55})/g, "$1\n"), 105, currentHeight, {align: 'center'});
+        currentHeight += {{ wallet.name | tojson | safe }}.replace(/(.{55})/g, "$1\n").split('\n').length * 10;
+
+        doc.setFont("Roboto", "normal");
+        doc.setFontSize(16);
+        {% if wallet.is_multisig %}
+            if ('{{ wallet.address_type }}' == 'bech32') {
+                doc.text('{{ wallet.sigs_required }} of {{ wallet.keys | length }} {{ _("multisig") }} (sorted, native segwit)', 105, currentHeight, {align: 'center'});
+            } else {
+                doc.text('{{ wallet.sigs_required }} of {{ wallet.keys | length }} {{ _("multisig") }} (sorted, nested segwit)', 105, currentHeight, {align: 'center'});
+            }
+            currentHeight += 7;
+        {% else %}
+            if ('{{ wallet.address_type }}' == 'bech32') {
+                doc.text('{{ _("(Native Segwit)") }}', 105, currentHeight, {align: 'center'});
+            } else {
+                doc.text('{{ _("(Nested Segwit)") }}', 105, currentHeight, {align: 'center'});
+            }
+            currentHeight += 7;
+        {% endif %}
+
+        if (currentHeight + 125 >= pageHeight) {
+            doc.addPage();
+            currentHeight = 20;
+        }
+
+        let qrCode = document.getElementById('export-wallet-qr-code').shadowRoot.childNodes[3].children[1].children[1].src;
+        doc.addImage(qrCode, 'PNG', 55, currentHeight, 100, 100)
+        currentHeight += 110;
+
+        doc.setFontSize(16);
+        doc.text('{{ _("Scan this QR code with Specter-Desktop") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 7;
+        doc.text('{{ _("or any other compatible wallet.") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 11;
+        
+        doc.setFontSize(16)
+        let deviceName = '';
+        let deviceType = '';
+        let xpubLines = [];
+        {% for key in wallet.keys %}
+            if (currentHeight + 50 >= pageHeight) {
+                doc.addPage();
+                currentHeight = 20;
+            }
+            {% for device in wallet.devices %}
+                {% for _key in device.keys %}
+                    {% if _key == key %}
+                        deviceName = {{ device.name | tojson | safe  }};
+                        deviceType = '{{ device.device_type | title }}';
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            
+            doc.setFontSize(16)
+            doc.setFont("Roboto", "bold");
+            doc.text(deviceName, 15, currentHeight)
+            currentHeight += 8
+            
+            doc.setFont("Roboto", "normal");
+            doc.text('{{ _("Device type:") }} ' + deviceType, 15, currentHeight);
+            currentHeight += 8
+            doc.text('{{ _("Master fingerprint:") }} {{ key.fingerprint }}', 15, currentHeight);
+            currentHeight += 8
+            doc.text('{{ _("Derivation path:") }} {{ key.derivation }}', 15, currentHeight);
+            currentHeight += 8
+
+            if (useSlip132)
+                xpubLines = "{{ key.original }}".split(/(.{36})/g);
+            else 
+                xpubLines = "{{ key.xpub }}".split(/(.{36})/g);
+            
+            xpubLines = xpubLines.filter(line => line !== '');
+            doc.text('Master public key: ' + xpubLines[0], 15, currentHeight);
+            for (var i = 1; i < xpubLines.length; i++) {
+                currentHeight += 7
+                doc.text(xpubLines[i], 79, currentHeight);
+            }
+            currentHeight += 13
+        {% endfor %}
+        currentHeight -= 3;
+
+        if (currentHeight + 25 >= pageHeight) {
+            doc.addPage();
+            currentHeight = 20;
+        }
+        
+        doc.setLineWidth(0.4)
+        doc.line(25, currentHeight, pageWidth - 25, currentHeight)
+        currentHeight += 13;
+
+        doc.setFontSize(20);
+        if (currentHeight + 40 + '{{ wallet.account_map }}'.replace(/(.{60})/g, "$1\n").split("\n").length * 7 >= pageHeight) {
+            doc.addPage();
+            currentHeight = 20;
+        }
+        doc.text('{{ _("Advanced Recovery Details") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 15;
+
+        doc.setFontSize(16);
+        doc.text('{{ _("Specter Desktop Raw Data") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 10;
+
+        doc.setFontSize(14)
+        doc.text('{{ wallet.account_map | safe }}'.replace(/(.{60})/g, "$1\n"), 15, currentHeight);
+        currentHeight += '{{ wallet.account_map }}'.replace(/(.{60})/g, "$1\n").split('\n').length * 7;
+
+        if (currentHeight + 20 + "{{ wallet.recv_descriptor|safe }}".replace(/(.{60})/g, "$1\n").split("\n").length * 7 >= pageHeight) {
+            doc.addPage();
+            currentHeight = 20;
+        }
+
+        doc.setFontSize(16);
+        doc.text('{{ _("Bitcoin Core Receive Descriptor") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 10;
+
+        doc.setFontSize(14)
+        doc.text("{{ wallet.recv_descriptor|safe }}".replace(/(.{60})/g, "$1\n"), 15, currentHeight);
+        currentHeight += "{{ wallet.recv_descriptor|safe }}".replace(/(.{60})/g, "$1\n").split('\n').length * 7;
+
+        if (currentHeight + 20 + "{{ wallet.change_descriptor|safe }}".replace(/(.{60})/g, "$1\n").split("\n").length * 7 >= pageHeight) {
+            doc.addPage();
+            currentHeight = 20;
+        }
+
+        doc.setFontSize(16);
+        doc.text('{{ _("Bitcoin Core Change Descriptor") }}', 105, currentHeight, {align: 'center'});
+        currentHeight += 10;
+
+        doc.setFontSize(14)
+        doc.text("{{ wallet.change_descriptor|safe }}".replace(/(.{60})/g, "$1\n"), 15, currentHeight);
+        currentHeight += "{{ wallet.change_descriptor|safe }}".replace(/(.{60})/g, "$1\n").split('\n').length * 7;
+
+        doc.save(({{ wallet.name.lower() | tojson | safe  }} + "_backup.pdf").replace(" ", '_'));
+    }
+
+    function chunkString(str, length) {
+        return str.match(new RegExp('.{1,' + length + '}', 'g'));
+    }
+    if (document.getElementById('pdf-paperxpub-download')) {
+        document.getElementById('pdf-paperxpub-download').onclick = () => {
+            // Default export is a4 paper, portrait, using millimeters for units
+            const doc = specter_pdfdoc()
+            const pageHeight = 210;
+            const pageWidth = 180;
+            let currentHeight = 10;
+            doc.setFontSize(18);
+            doc.setFont("Roboto", "normal");
+
+            let qrCode = document.getElementById('export-wallet-qr-code').shadowRoot.childNodes[3].children[1].children[1].src;
+            doc.addImage(qrCode, 'PNG', 5, currentHeight, 30, 30)
+            doc.text({{ wallet.name | tojson | safe }}.replace(/(.{55})/g, "$1\n"), 105, currentHeight, {align: 'center'});
+            doc.setFontSize(9);
+            doc.text('{{ _("Scan this QR code with Specter-Desktop") }}', 50, currentHeight + 6, {align: 'left'});
+            doc.text("The addresses below start from index 1. ", 50, currentHeight + 12)
+            doc.text("Feel free to use the checkbox as a proof", 50, currentHeight + 18)
+            doc.text("to have verified the address via a hardware wallet.", 50, currentHeight +24)
+
+            currentHeight += 36;
+
+            const qr_size = 18
+            doc.setFontSize(9);
+
+            let wallet_addresses = []
+            {% for index in range(6*6+1) %} // six rows, six columns
+            wallet_addresses.push("{{ wallet.get_address(index) }}")
+            {% endfor %}
+
+            for (var row = 0; row <=3 ; row++) {
+                let offset = 5
+                for (var i = 1+row*6; i <= (row+1)*6; i++) {
+                    let addressqr = document.getElementById('address'+i).shadowRoot.childNodes[3].children[1].children[1].src;
+                    let address = wallet_addresses[i]
+                    doc.addImage(addressqr, 'PNG', offset, currentHeight, qr_size, qr_size)
+                    doc.text("[ ]", offset + qr_size +2, currentHeight + 3, {align: 'left'} )
+                    doc.text("#"+i,offset + qr_size +2, currentHeight + 3 + 6, {align: 'left'})
+                    doc.text(chunkString(address,14)[0], offset, currentHeight+qr_size+4, {align: 'left'});
+                    doc.text(chunkString(address,14)[1], offset, currentHeight+qr_size+8, {align: 'left'});
+                    doc.text(chunkString(address,14)[2], offset, currentHeight+qr_size+12, {align: 'left'});
+                    offset += qr_size + 10
+                } 
+                currentHeight += qr_size + 12 + 5;
+            }
+            currentHeight += 8
+            
+            // Apart from the QR-code at the very top, we also want some minimu information about the keys
+            // in case the QR-code is no longer readable
+            let deviceName = ""
+            let deviceType = ""
+            let xpubLines = ""
+            {% for key in wallet.keys %}
+                {% for device in wallet.devices %}
+                    {% for _key in device.keys %}
+                        {% if _key == key %}
+                            deviceName = {{ device.name | tojson | safe  }};
+                            deviceType = '{{ device.device_type | title }}';
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                
+                doc.setFontSize(9)
+                doc.text('{{ _("Device Name/Type  :") }} {{ deviceName }} / {{ deviceType }}', 15, currentHeight);
+                currentHeight += 6
+                doc.text('{{ _("Master fingerprint:") }} {{ key.fingerprint }}', 15, currentHeight);
+                currentHeight += 6
+                doc.text('{{ _("Derivation path   :") }} {{ key.derivation }}', 15, currentHeight);
+                currentHeight += 6
+
+                xpubLines = "{{ key.xpub }}".split(/(.{36})/g);
+                xpubLines = xpubLines.filter(line => line !== '');
+                currentHeight += 6
+            doc.setLineDash([2, 2], 0);
+            doc.line(181,0,181,214)
+            doc.line(0,214,181,214)
+
+            {% endfor %}
+            {% if wallet.chain == "regtest" %} 
+                doc.text('{{ _("As this is a regtest-wallet, the addresses in") }}', 80, 205, {"angle": 10});
+                doc.text('{{ _("the three rows are not usable and missing 2 chars.") }}', 80, 210, {"angle": 10});
+            {% endif  %} 
+            doc.save(({{ wallet.name.lower() | tojson | safe  }} + "_backup.pdf").replace(" ", '_'));
+
+
+        }
+    }
+</script>
