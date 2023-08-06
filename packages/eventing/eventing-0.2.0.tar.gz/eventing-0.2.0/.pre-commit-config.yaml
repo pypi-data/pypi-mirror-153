@@ -1,0 +1,48 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_language_version:
+    python: python3.10
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext", "*"]
+      - id: end-of-file-fixer
+      - id: check-toml
+      - id: check-added-large-files
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.950
+    hooks:
+      - id: mypy
+        language_version: python3.9
+        # Added here because mypy doesn't respect its config
+        # exclude when the files are passed as arguments
+        exclude: ^(?!src\/)
+  - repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+      - id: black
+        exclude: ^experiments\/
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+  - repo: https://github.com/PyCQA/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-docstrings ==1.6.0
+          - flake8-import-order ==0.18.1
+        language_version: python3.9
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        # Only run pytest on staged files, in accordance with pre-commit
+        entry: sh -c 'git ls-files | grep ^tests/ | xargs venv/bin/pytest --no-cov'
+        language: system
+        pass_filenames: false
+        always_run: true
