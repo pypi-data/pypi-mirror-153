@@ -1,0 +1,44 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:meta="http://xml.zope.org/namespaces/meta"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+      meta:interpolation="true"
+      i18n:domain="nuplone"
+      tal:omit-tag="">
+  <p tal:define="status view/status"
+     tal:condition="status"
+     class="message ${python:'error' if view.widgets.errors else 'notice'}"
+     i18n:domain="plone" i18n:translate="">${status}</p>
+  <tal:errors define="errors view/widgets/errors" condition="errors">
+      <tal:error repeat="error errors">
+          <p class="message field error"
+                  tal:condition="not:nocall:error/widget"
+                  tal:content="structure error/message"
+                  i18n:translate=""
+                  i18n:domain="plone">
+                  Error
+          </p>
+      </tal:error>
+  </tal:errors>
+    <p class="discrete" tal:condition="python:getattr(view, 'description', None)">${view/description}</p>
+  <form class="concise" action="${request/getURL}" enctype="${view/enctype}" method="${view/method}" id="${view/id}">
+    <fieldset>
+      <tal:widget repeat="widget view/widgets/values" replace="structure widget/render" />
+    </fieldset>
+
+    <tal:groupform condition="python:getattr(view, 'groups', None)">
+      <fieldset tal:repeat="group view/groups" class="${group/layout|nothing}">
+        <legend i18n:domain="plone" i18n:translate="" tal:define="legend group/label" tal:condition="legend">${legend}</legend>
+        <p class="discrete" tal:define="description group/description" tal:condition="description">${description}</p>
+        <tal:widget repeat="widget group/widgets/values">
+          <tal:render replace="structure widget/render" />
+        </tal:widget>
+      </fieldset>
+    </tal:groupform>
+
+    <div class="buttonBar" tal:define="actions view/actions/values|nothing" tal:condition="actions">
+      <tal:action repeat="action actions" replace="structure action/render" />
+    </div>
+  </form>
+</html>
