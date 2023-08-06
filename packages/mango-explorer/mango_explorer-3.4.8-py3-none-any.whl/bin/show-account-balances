@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
+import os
+import os.path
+import pandas
+import sys
+import typing
+
+from decimal import Decimal
+from solana.publickey import PublicKey
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import mango  # nopep8
+
+parser = argparse.ArgumentParser(
+    description="Display the balances of all group tokens in the current wallet."
+)
+mango.ContextBuilder.add_command_line_parameters(parser)
+mango.Wallet.add_command_line_parameters(parser)
+parser.add_argument(
+    "--address",
+    type=PublicKey,
+    help="Root address to check (if not provided, the wallet address is used)",
+)
+args: argparse.Namespace = mango.parse_args(parser)
+
+address: typing.Optional[PublicKey] = args.address
+if address is None:
+    wallet = mango.Wallet.from_command_line_parameters_or_raise(args)
+    address = wallet.address
+
+with mango.ContextBuilder.from_command_line_parameters(args) as context:
+    group: mango.Group = mango.Group.load(context)
+    cache: mango.Cache = mango.Cache.load(context, group.cache)
+
+    logging.info(f"Address: {address}")
+
+    balances: typing.List[mango.InstrumentValue] = []
+    sol_balance = context.client.get_balance(address)
+    balances += [mango.InstrumentValue(mango.SolToken, sol_balance)]
+
+    for slot_token_bank in group.tokens:
+        balance = mango.InstrumentValue.fetch_total_value(
+            context, address, slot_token_bank.token
+        )
+        balances += [balance]
+
+    mango.output(f"\nToken Balances [{address}]:")
+    total_in_wallet: mango.InstrumentValue = mango.InstrumentValue(
+        group.shared_quote_token, Decimal(0)
+    )
+    for balance in balances:
+        if balance.value != 0:
+            balance_text: str = f"{balance} "
+            value_text: str = ""
+            if balance.token == group.shared_quote_token:
+                total_in_wallet = total_in_wallet + balance
+                value_text = f" worth {balance}"
+            else:
+                slot: typing.Optional[
+                    mango.GroupSlot
+                ] = group.slot_by_instrument_or_none(balance.token)
+                if slot is not None:
+                    cached_token_price: mango.InstrumentValue = (
+                        group.token_price_from_cache(cache, slot.base_instrument)
+                    )
+                    balance_value: mango.InstrumentValue = balance * cached_token_price
+                    total_in_wallet += balance_value
+                    value_text = f" worth {balance_value}"
+            mango.output(f"               {balance_text:<45}{value_text}")
+    mango.output(f"Total Value:   {total_in_wallet}")
+
+mango_accounts = mango.Account.load_all_for_owner(context, address, group)
+grand_total: mango.InstrumentValue = mango.InstrumentValue(
+    group.shared_quote_token, total_in_wallet.value
+)
+for account in mango_accounts:
+    pandas.set_option("display.max_columns", None)
+    pandas.set_option("display.width", None)
+    pandas.set_option("display.precision", 6)
+
+    open_orders: typing.Dict[str, mango.OpenOrders] = account.load_all_spot_open_orders(
+        context
+    )
+    frame: pandas.DataFrame = account.to_dataframe(group, open_orders, cache)
+    account_value = account.total_value(frame)
+    grand_total += account_value
+
+    numeric_columns = [
+        "CurrentPrice",
+        "Spot",
+        "SpotValue",
+        "SpotOpenValue",
+        "PerpPositionSize",
+        "PerpNotionalSize",
+        "RedeemablePnL",
+        "UnsettledFunding",
+    ]
+    for column_name in numeric_columns:
+        frame[column_name] = pandas.to_numeric(frame[column_name]).round(6)
+    output_columns = ["Symbol", *numeric_columns]
+    mango.output(f"\nMango Account: {account.address}")
+    mango.output(frame[output_columns])
+    if mango.output_formatter.format == mango.OutputFormat.TEXT:
+        mango.output("Account Value:", account_value)
+
+mango.output(f"\nGrand Total:   {grand_total}")

@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
+import os
+import os.path
+import sys
+
+from solana.publickey import PublicKey
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import mango  # nopep8
+
+parser = argparse.ArgumentParser(
+    description="Run the Account Scout to display problems and information about an account."
+)
+mango.ContextBuilder.add_command_line_parameters(parser)
+mango.Wallet.add_command_line_parameters(parser)
+parser.add_argument(
+    "--address",
+    type=PublicKey,
+    help="User's root address for the Account Scout to check (if not provided, the wallet address is used)",
+)
+args: argparse.Namespace = mango.parse_args(parser)
+
+address = args.address
+if address is None:
+    wallet = mango.Wallet.from_command_line_parameters_or_raise(args)
+    address = wallet.address
+
+with mango.ContextBuilder.from_command_line_parameters(args) as context:
+    logging.info(f"Address: {address}")
+
+    group = mango.Group.load(context)
+    scout = mango.AccountScout()
+    report = scout.verify_account_prepared_for_group(context, group, address)
+    mango.output(report)
