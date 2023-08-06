@@ -1,0 +1,760 @@
+'\" t
+.\"     Title: torf
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.16
+.\"      Date: 2022-05-03
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "TORF" "1" "2022-05-03" "\ \&" "\ \&"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+torf \- command line tool to create, display and edit torrents
+.SH "SYNOPSIS"
+.sp
+\fBtorf\fP \fIPATH\fP [\fIOPTIONS\fP] [\fB\-o\fP \fITORRENT\fP]
+.br
+\fBtorf\fP \fB\-i\fP \fIINPUT\fP
+.br
+\fBtorf\fP \fB\-i\fP \fIINPUT\fP [\fIOPTIONS\fP] \fB\-o\fP \fITORRENT\fP
+.br
+\fBtorf\fP \fB\-i\fP \fITORRENT\fP \fIPATH\fP
+.br
+.SH "DESCRIPTION"
+.sp
+torf can create, display and edit torrent files and verify the integrity of a
+torrent\(cqs files.
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBtorf\fP \fIPATH\fP [\fIOPTIONS\fP] [\fB\-o\fP \fITORRENT\fP]
+.br
+Create the torrent file \fITORRENT\fP from the file or directory \fIPATH\fP.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBtorf\fP \fB\-i\fP \fIINPUT\fP
+.br
+Display information stored in the torrent file or magnet URI \fIINPUT\fP.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBtorf\fP \fB\-i\fP \fIINPUT\fP [\fIOPTIONS\fP] \fB\-o\fP \fITORRENT\fP
+.br
+Edit the existing torrent file or magnet URI \fIINPUT\fP (e.g. to fix a typo) and
+create the new torrent file \fITORRENT\fP.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+Editing a torrent can change its hash, depending on what is changed,
+which essentially makes it a new torrent.  See OPTIONS to find out
+whether a certain option will change the hash.
+.sp .5v
+.RE
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBtorf\fP \fB\-i\fP \fITORRENT\fP \fIPATH\fP
+.br
+Verify that the content in \fIPATH\fP matches the metadata in the torrent file
+\fITORRENT\fP.
+.sp
+If \fIPATH\fP ends with a path separator (usually "/"), the name of the torrent (as
+specified by the metadata in \fITORRENT\fP) is appended.
+.RE
+.SH "OPTIONS"
+.sp
+Options that start with \fB\-\-no\fP take precedence.
+.sp
+\fIPATH\fP
+.RS 4
+The path to the torrent\(cqs content.
+.RE
+.sp
+\fB\-\-in\fP, \fB\-i\fP \fIINPUT\fP
+.RS 4
+Read metainfo from the torrent file or magnet URI \fIINPUT\fP.  If \fIINPUT\fP is "\-"
+and does not exist, the torrent data or magnet URI is read from stdin.
+.RE
+.sp
+\fB\-\-out\fP, \fB\-o\fP \fITORRENT\fP
+.RS 4
+Write to torrent file \fITORRENT\fP.
+.br
+Default: \fINAME\fP\fB.torrent\fP
+.RE
+.sp
+\fB\-\-reuse\fP, \fB\-r\fP \fIPATH\fP
+.RS 4
+Copy piece size and piece hashes from existing torrent \fIPATH\fP.  The existing
+torrent must have identical files.  If \fIPATH\fP is a directory, it is searched
+recursively for a matching torrent.  This option may be given multiple times.
+.RE
+.sp
+\fB\-\-noreuse\fP, \fB\-R\fP
+.RS 4
+Ignore all \fB\-\-reuse\fP arguments.  This is particularly useful you have reuse
+paths in your configuration file.
+.RE
+.sp
+\fB\-\-exclude\fP, \fB\-e\fP \fIPATTERN\fP
+.RS 4
+Exclude files from \fIPATH\fP that match the glob pattern \fIPATTERN\fP.  This option
+may be given multiple times.  See \fBEXCLUDING FILES\fP.
+.RE
+.sp
+\fB\-\-include\fP \fIPATTERN\fP
+.RS 4
+Include files from \fIPATH\fP that match the glob pattern \fIPATTERN\fP even if they
+match any \fB\-\-exclude\fP or \fB\-\-exclude\-regex\fP patterns.  This option may be given
+multiple times.  See \fBEXCLUDING FILES\fP.
+.RE
+.sp
+\fB\-\-exclude\-regex\fP, \fB\-er\fP \fIPATTERN\fP
+.RS 4
+Exclude files from \fIPATH\fP that match the regular expression \fIPATTERN\fP.  This
+option may be given multiple times.  See \fBEXCLUDING FILES\fP.
+.RE
+.sp
+\fB\-\-include\-regex\fP, \fB\-ir\fP \fIPATTERN\fP
+.RS 4
+Include files from \fIPATH\fP that match the regular expression \fIPATTERN\fP even if
+they match any \fB\-\-exclude\fP or \fB\-\-exclude\-regex\fP patterns.  This option may be
+given multiple times.  See \fBEXCLUDING FILES\fP.
+.RE
+.sp
+\fB\-\-notorrent\fP, \fB\-N\fP
+.RS 4
+Do not create a torrent file.
+.RE
+.sp
+\fB\-\-nomagnet\fP, \fB\-M\fP
+.RS 4
+Do not create a magnet URI.
+.RE
+.sp
+\fB\-\-name\fP, \fB\-n\fP \fINAME\fP
+.RS 4
+Destination file or directory when the torrent is downloaded.
+.br
+Default: Basename of \fIPATH\fP
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+When editing, this option changes the info hash and creates a new
+torrent.
+.sp .5v
+.RE
+.RE
+.sp
+\fB\-\-tracker\fP, \fB\-t\fP \fIURL\fP
+.RS 4
+List of comma\-separated announce URLs.  This option may be given multiple times
+for multiple tiers.  Clients try all URLs from one tier in random order before
+moving on to the next tier.
+.RE
+.sp
+\fB\-\-notracker\fP, \fB\-T\fP
+.RS 4
+Remove trackers from an existing torrent.
+.RE
+.sp
+\fB\-\-webseed\fP, \fB\-w\fP \fIURL\fP
+.RS 4
+A webseed URL (BEP19).  This option may be given multiple times.
+.RE
+.sp
+\fB\-\-nowebseed\fP, \fB\-W\fP
+.RS 4
+Remove webseeds from an existing torrent.
+.RE
+.sp
+\fB\-\-private\fP, \fB\-p\fP
+.RS 4
+Tell clients to only use tracker(s) for peer discovery, not DHT or PEX.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+When editing, this option changes the info hash and creates a new
+torrent.
+.sp .5v
+.RE
+.RE
+.sp
+\fB\-\-noprivate\fP, \fB\-P\fP
+.RS 4
+Allow clients to use trackerless methods like DHT and PEX for peer discovery.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+When editing, this option changes the info hash and creates a new
+torrent.
+.sp .5v
+.RE
+.RE
+.sp
+\fB\-\-comment\fP, \fB\-c\fP \fICOMMENT\fP
+.RS 4
+A comment that is stored in the torrent file.
+.RE
+.sp
+\fB\-\-nocomment\fP, \fB\-C\fP
+.RS 4
+Remove the comment from an existing torrent.
+.RE
+.sp
+\fB\-\-date\fP, \fB\-d\fP \fIDATE\fP
+.RS 4
+The creation date in the format \fIYYYY\fP\fB\-\fP\fIMM\fP\fB\-\fP\fIDD\fP[
+\fIHH\fP\fB:\fP\fIMM\fP[\fB:\fP\fISS\fP]], \fBnow\fP for the current time or \fBtoday\fP for today
+at midnight.
+.br
+Default: \fBnow\fP
+.RE
+.sp
+\fB\-\-nodate\fP, \fB\-D\fP
+.RS 4
+Remove the creation date from an existing torrent.
+.RE
+.sp
+\fB\-\-source\fP, \fB\-s\fP \fISOURCE\fP
+.RS 4
+Add a \(lqsource\(rq field to the torrent file.  This is usually used to make the
+torrent\(cqs info hash unique per tracker.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+When editing, this option changes the info hash and creates a new
+torrent.
+.sp .5v
+.RE
+.RE
+.sp
+\fB\-\-nosource\fP, \fB\-S\fP
+.RS 4
+Remove the \(lqsource\(rq field from an existing torrent.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+When editing, this option changes the info hash and creates a new
+torrent.
+.sp .5v
+.RE
+.RE
+.sp
+\fB\-\-xseed\fP, \fB\-x\fP
+.RS 4
+Randomize the info hash to help with cross\-seeding.  This simply adds an
+\fBentropy\fP field to the \fBinfo\fP section of the metainfo and sets it to a random
+integer.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+When editing, this option changes the info hash and creates a new
+torrent.
+.sp .5v
+.RE
+.RE
+.sp
+\fB\-\-noxseed\fP, \fB\-X\fP
+.RS 4
+De\-randomize a previously randomized info hash of an existing torrent.  This
+removes the \fBentropy\fP field from the \fBinfo\fP section of the metainfo.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Warning
+.ps -1
+.br
+.sp
+When editing, this option changes the info hash and creates a new
+torrent.
+.sp .5v
+.RE
+.RE
+.sp
+\fB\-\-max\-piece\-size\fP \fISIZE\fP
+.RS 4
+The maximum piece size when creating a torrent.  SIZE is multiplied by 1 MiB
+(1048576 bytes).  The resulting number must be a power of two (2, 4, 8, 16,
+etc.).  Numbers smaller than 1 are allowed, e.g. \(lq0.25\(rq sets the maximum piece
+size to 256 KiB.
+.RE
+.sp
+\fB\-\-nocreator\fP, \fB\-A\fP
+.RS 4
+Remove the name of the application that created the torrent from an existing
+torrent.
+.RE
+.sp
+\fB\-\-yes\fP, \fB\-y\fP
+.RS 4
+Answer all yes/no prompts with \(lqyes\(rq.  At the moment, all this does is
+overwrite \fITORRENT\fP without asking.
+.RE
+.sp
+\fB\-\-config\fP, \fB\-f\fP \fIFILE\fP
+.RS 4
+Read command line arguments from configuration FILE.  See \fBCONFIGURATION
+FILE\fP.
+.br
+Default: \fI$XDG_CONFIG_HOME\fP\fB/torf/config\fP where \fI$XDG_CONFIG_HOME\fP defaults
+to \fB~/.config\fP
+.RE
+.sp
+\fB\-\-noconfig\fP, \fB\-F\fP
+.RS 4
+Do not use any configuration file.
+.RE
+.sp
+\fB\-\-profile\fP, \fB\-z\fP \fIPROFILE\fP
+.RS 4
+Use predefined arguments specified in \fIPROFILE\fP.  This option may be given
+multiple times.  See \fBCONFIGURATION FILE\fP.
+.RE
+.sp
+\fB\-\-verbose\fP, \fB\-v\fP
+.RS 4
+Produce more output or be more thorough.  This option may be given multiple
+times.
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+Display bytes with and without unit prefix, e.g. "1.38 MiB / 1,448,576 B".
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+Any other effects are explained in the relevant arguments\*(Aq documentation.
+.RE
+.RE
+.sp
+\fB\-\-json\fP, \fB\-j\fP
+.RS 4
+Print information and errors as a JSON object.  Progress is not reported.
+.RE
+.sp
+\fB\-\-metainfo\fP, \fB\-m\fP
+.RS 4
+Print the torrent\(cqs metainfo as a JSON object.  Byte strings (e.g. "pieces" in
+the "info" section) are encoded in Base64.  Progress is not reported.  Errors
+are reported normally on stderr.
+.sp
+Unless \fB\-\-verbose\fP is given, any non\-standard fields are excluded and metainfo
+that doesn\(cqt represent a valid torrent results in an error.
+.sp
+Unless \fB\-\-verbose\fP is given twice, the "pieces" field in the "info" section is
+excluded.
+.RE
+.sp
+\fB\-\-human\fP, \fB\-u\fP
+.RS 4
+Display information in human\-readable output even if stdout is not a TTY.  See
+\fBPIPING OUTPUT\fP.
+.RE
+.sp
+\fB\-\-nohuman\fP, \fB\-U\fP
+.RS 4
+Display information in machine\-readable output even if stdout is a TTY.  See
+\fBPIPING OUTPUT\fP.
+.RE
+.sp
+\fB\-\-help\fP, \fB\-h\fP
+.RS 4
+Display a short help text and exit.
+.RE
+.sp
+\fB\-\-version\fP, \fB\-V\fP
+.RS 4
+Display the version number and exit.
+.RE
+.SH "EXAMPLES"
+.sp
+Create \(lqfoo.torrent\(rq with two trackers and don\(cqt store the creation date:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ torf path/to/foo \(rs
+       \-t http://example.org:6881/announce \(rs
+       \-t http://example.com:6881/announce \(rs
+       \-\-nodate
+.fam
+.fi
+.if n .RE
+.sp
+Read \(lqfoo.torrent\(rq and print its metainfo:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ torf \-i foo.torrent
+.fam
+.fi
+.if n .RE
+.sp
+Print only the name:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ torf \-i foo.torrent | grep \*(Aq^Name\*(Aq | cut \-f2
+.fam
+.fi
+.if n .RE
+.sp
+Change the comment and remove the date from \(lqfoo.torrent\(rq, write the result to
+\(lqbar.torrent\(rq:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ torf \-i foo.torrent \-c \*(AqNew comment\*(Aq \-D \-o bar.torrent
+.fam
+.fi
+.if n .RE
+.sp
+Check if \(lqpath/to/foo\(rq contains valid data as specified in \(lqbar.torrent\(rq:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ torf \-i bar.torrent path/to/foo
+.fam
+.fi
+.if n .RE
+.SH "EXCLUDING FILES"
+.sp
+The \fB\-\-exclude\fP option takes a glob pattern that is matched against each file
+path beneath \fIPATH\fP.  Files that match are not included in the torrent.
+Matching is case\-insensitive.
+.sp
+The \fB\-\-exclude\-regex\fP option works like \fB\-\-exclude\fP but it takes a regular
+expression pattern and it does case\-sensitive matching.
+.sp
+The \fB\-\-include\fP and \fB\-\-include\-regex\fP options are applied like their excluding
+counterparts, but any matching files are included even if they match any exclude
+patterns.
+.sp
+File paths start with the torrent\(cqs name (usually the last segment of \fIPATH\fP),
+e.g. if \fIPATH\fP is \(lq/home/foo/bar\(rq, each file path starts with \(lqbar/\(rq
+.sp
+Empty directories and empty files are automatically excluded.
+.sp
+Regular expressions should be Perl\-compatible for simple patterns.  See
+.URL "https://docs.python.org/3/library/re.html#regular\-expression\-syntax" "" ""
+for the
+complete documentation.
+.sp
+Glob patterns support these wildcard characters:
+.TS
+allbox tab(:);
+lt lt.
+T{
+.sp
+*
+T}:T{
+.sp
+matches everything
+T}
+T{
+.sp
+?
+T}:T{
+.sp
+matches any single character
+T}
+T{
+.sp
+[\fISEQ\fP]
+T}:T{
+.sp
+matches any character in \fISEQ\fP
+T}
+T{
+.sp
+[!\fISEQ\fP]
+T}:T{
+.sp
+matches any character not in \fISEQ\fP
+T}
+.TE
+.sp
+.SH "CONFIGURATION FILE"
+.sp
+A configuration file lists long\-form command line options with all leading \(lq\-\(rq
+characters removed.  If an option takes a parameter, \(lq=\(rq is used as a
+separator.  Spaces before and after the \(lq=\(rq are ignored.  The parameter may be
+quoted with single or double quotes to preserve leading and/or trailing spaces.
+Lines that start with \(lq#\(rq are ignored.
+.sp
+All of the options listed in the \fBOPTIONS\fP section are allowed except for
+\fIPATH\fP, \fBin\fP, \fBout\fP, \fBname\fP, \fBconfig\fP, \fBnoconfig\fP, \fBprofile\fP, \fBhelp\fP, \fBversion\fP.
+.sp
+There is rudimental support for environment variables in parameters. As usual,
+\(lq$FOO\(rq or \(lq${FOO}\(rq will be replaced with the value of the variable \fBFOO\fP,
+\(lq$\(rq is escaped with \(lq\(rs\(rq (backslash) and a literal \(lq\(rs\(rq is represented by
+two \(lq\(rs\(rq.  More complex string manipulation syntax (e.g. \(lq${FOO:3}\(rq) is not
+supported.
+.SS "Profiles"
+.sp
+A profile is a set of options bound to a name that is given to the \fB\-\-profile\fP
+option.  In the configuration file it is specified as \(lq[\fIPROFILE NAME\fP]\(rq
+followed by a list of options.  Profiles inherit any options specified globally
+at the top of the file, but they can overload them.
+.SS "Example"
+.sp
+This is an example configuration file with some global custom defaults and the
+two profiles \(lqfoo\(rq and \(lqbar\(rq:
+.sp
+.if n .RS 4
+.nf
+.fam C
+yes
+nodate
+exclude = *.txt
+
+[foo]
+tracker = https://foo1/announce
+tracker = https://foo2/announce
+private
+
+[bar]
+tracker = https://bar/announce
+comment = I love bar.
+.fam
+.fi
+.if n .RE
+.sp
+With this configuration file, these arguments are always used:
+.sp
+.if n .RS 4
+.nf
+.fam C
+\-\-yes
+\-\-nodate
+\-\-exclude \*(Aq*.txt\*(Aq
+.fam
+.fi
+.if n .RE
+.sp
+If \(lq\-\-profile foo\(rq is given, it also adds these arguments:
+.sp
+.if n .RS 4
+.nf
+.fam C
+\-\-tracker https://foo1/announce
+\-\-tracker https://foo2/announce
+\-\-private
+.fam
+.fi
+.if n .RE
+.sp
+If \(lq\-\-profile bar\(rq is given, it also adds these arguments:
+.sp
+.if n .RS 4
+.nf
+.fam C
+\-\-tracker https://bar/announce
+\-\-comment \*(AqI love bar.\*(Aq
+.fam
+.fi
+.if n .RE
+.SH "PIPING OUTPUT"
+.sp
+If stdout is not a TTY (i.e. when output is piped) or if the \fB\-\-nohuman\fP option
+is provided, the output format is different:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+Leading spaces are removed from each line.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+The delimiter between label and value as well as between multiple values
+(files, trackers, etc) is a tab character (\(lq\(rst\(rq or ASCII code 0x9).
+Trackers are flattened into a one\-dimensional list.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+Numbers are not formatted (UNIX timestamps for times, seconds for time deltas,
+raw bytes for sizes, etc).
+.RE
+.SH "EXIT CODES"
+.sp
+1
+.RS 4
+Anything not specified below
+.RE
+.sp
+2
+.RS 4
+Unknown or invalid command line arguments
+.RE
+.sp
+3
+.RS 4
+Error while reading or parsing the config file
+.RE
+.sp
+4
+.RS 4
+Error while reading a torrent file or content
+.RE
+.sp
+5
+.RS 4
+Error while writing a torrent file
+.RE
+.sp
+6
+.RS 4
+Error while verifying a torrent\(cqs content
+.RE
+.sp
+128
+.RS 4
+Aborted by SIGINT (typically Ctrl\-c was pressed)
+.RE
+.SH "REPORTING BUGS"
+.sp
+Bug reports, feature requests and poems about hedgehogs are welcome on the
+.URL "https://github.com/rndusr/torf\-cli/issues" "issue tracker" "."
