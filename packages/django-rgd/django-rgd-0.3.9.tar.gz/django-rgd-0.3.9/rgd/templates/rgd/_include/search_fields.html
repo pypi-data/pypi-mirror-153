@@ -1,0 +1,179 @@
+{% block basic_search_fields %}
+
+  <div class="column is-full field">
+    <div class="field-label is-normal">
+      <label class="label">GeoJSON geometry <button onclick="javascript:q.value=''" type="button">X</button></label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          <input class="input" type="text" name="q" value="{{ request.GET.q }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-full">
+    <div class="field">
+      <div class="field-label is-normal">
+        <label class="label">Predicate
+          <a href="https://en.wikipedia.org/wiki/DE-9IM#Spatial_predicates" target="_blank">(?)</a>
+        </label>
+      </div>
+      <div class="field-body">
+        <div class="field">
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select name="predicate" id="predicate">
+                <option value> -- select an option -- </option>
+                <option value="within">within</option>
+                <option value="contains">contains</option>
+                <option value="crosses">crosses</option>
+                <option value="disjoint">disjoint</option>
+                <option value="equals">equals</option>
+                <option selected value="intersects">intersects</option>
+                <option value="overlaps">overlaps</option>
+                <option value="touches">touches</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // automatically select the predicate field based on form
+    $("document").ready(function() {
+      var selValue = "{{ request.GET.predicate }}";
+      if (selValue) {
+        $("#predicate").val(selValue).attr("selected", "selected")
+      }
+    });
+  </script>
+
+  <div class="column is-full field mb-0">
+    <div class="field-label is-normal">
+      <label class="label">Distance (Min/Max)</label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          <input class="input" type="text" name="distance_min" value="{{ request.GET.distance_min }}">
+          <input class="input" type="text" name="distance_max" value="{{ request.GET.distance_max }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-full field mb-0">
+    <div class="field-label is-normal">
+      <label class="label">Percent Overlap</label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          <input class="input" type="text" name="percent_overlap" value="{{ request.GET.percent_overlap }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-full field mb-0">
+    <div class="field-label is-normal">
+      <label class="label">Instrumentation</label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          <input class="input" type="text" name="instrumentation" value="{{ request.GET.instrumentation }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="column is-full field mb-0">
+    <div class="field-label is-normal">
+      <label class="label">Acquired</label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          <input type="datetime-local" name="acquired_after" value="{{ request.GET.acquired_after }}">
+          <button onclick="javascript:acquired_after.value=''" type="button">X</button>
+          <input type="datetime-local" name="acquired_before" value="{{ request.GET.acquired_before }}">
+          <button onclick="javascript:acquired_before.value=''" type="button">X</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="column is-full field mb-0">
+    <div class="field-label is-normal">
+      <label class="label">Time of Day</label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          <input type="time" name="time_of_day_after" value="{{ request.GET.time_of_day_after }}">
+          <button onclick="javascript:time_of_day_after.value=''" type="button">X</button>
+          <input type="time" name="time_of_day_before" value="{{ request.GET.time_of_day_before }}">
+          <button onclick="javascript:time_of_day_before.value=''" type="button">X</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="column is-full field mb-0">
+    <div class="field-label is-normal">
+      <label class="label">Collections</label>
+    </div>
+    <div class="field-body">
+      <div class="field">
+        <div class="control">
+          <select name="collections" id="collections" multiple>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const collectionsSelector = document.getElementById('collections');
+
+    async function updateCollectionsDropdown() {
+      const collections = await fetch(
+        `${host}/api/rgd/collection`
+      ).then(response => response.json());
+
+      collections.results.forEach(({ id, name }) => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.innerHTML = `${name} (${id})`;
+        collectionsSelector.appendChild(opt);
+      });
+    }
+
+    $("document").ready(async () => {
+      // populate collections dropdown
+      await updateCollectionsDropdown();
+
+      // Automatically select the collections field based on previously submitted form.
+      // The value is converted to an Array from a Set to avoid having nothing on the
+      // right-hand side of the equal sign when no collections are selected.
+      const selectedCollections = Array.from(new Set({% for key, value in request.GET.lists %}
+        {% if key == 'collections' %}
+          {{ value|safe }}
+        {% endif %}
+      {% endfor %}));
+
+      if (selectedCollections.length > 0) {
+        $("#collections").val(selectedCollections);
+      }
+    });
+  </script>
+
+{% endblock %}
