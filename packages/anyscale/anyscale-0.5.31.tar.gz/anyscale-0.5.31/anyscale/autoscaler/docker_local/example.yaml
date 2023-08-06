@@ -1,0 +1,95 @@
+provider:
+  type: external
+  module: anyscale.autoscaler.docker_local.node_provider.DockerLocalNodeProvider
+  use_internal_ips: True
+
+# An unique identifier for the head node and workers of this cluster.
+# For DockerLocalNodeProvider will add a ray-cluster-name label to each
+# container in the cluster.
+# Run `docker ps -f label=ray-cluster-name=<cluster_name>` to view
+# running Ray node containers in the cluster.
+# (Or run the following in a Python session:
+# `provider = DockerLocalNodeProvider(<cluster_name>,{}); provider.nonterminated_nodes({})`
+# .)
+cluster_name: example
+
+# The maximum number of workers nodes to launch in addition to the head
+# node. This takes precedence over min_workers.
+max_workers: 2
+
+# The autoscaler will scale up the cluster faster with higher upscaling speed.
+# E.g., if the task requires adding more nodes then autoscaler will gradually
+# scale up the cluster in chunks of upscaling_speed*currently_running_nodes.
+# This number should be > 0.
+upscaling_speed: 1.0
+
+# TODO (Dmitri):  Replace this with bove commented-out upscaling speed if/when 
+# product Ray version is updated to use that.
+#target_utilization_fraction: 1
+
+
+# If a node is idle for this many minutes, it will be removed.
+idle_timeout_minutes: 5
+
+available_node_types:
+  worker:
+    min_workers: 1
+    max_workers: 2
+    resources: {"CPU": 1}
+    # node_config is used in DockerLocalNodeProvider.create_node().
+    # The fields can be any valid collection of keyword arguments to the Docker
+    # Python client's containers.run() method.
+    node_config:
+      image: anyscale/product:latest
+      mem_limit: 2g
+      # The shm_size should be at least 30% of mem_limit for the object store to work properly.
+      shm_size: 700m
+      # Limit of 1 CPU. (See https://docs.docker.com/config/containers/resource_constraints/#cpu.)
+      cpu_quota: 100000
+      # Run command in background
+      detach: true
+      # Keep the container running until explicitly stopped
+      command: ["/bin/bash", "-c", "--", "trap : TERM INT; sleep infinity & wait;"]
+      # Delete container when it is stopped.
+      remove: true
+  head:
+    resources: {"CPU": 1}
+    node_config:
+      image: anyscale/product:latest
+      mem_limit: 2g
+      # The shm_size should be at least 30% of mem_limit for the object store to work properly.
+      shm_size: 700m
+      # Limit of 1 CPU. (See https://docs.docker.com/config/containers/resource_constraints/#cpu.)
+      cpu_quota: 100000
+      # Run command in background.
+      detach: true
+      # Keep the container running until explicitly stopped.
+      command: ["/bin/bash", "-c", "--", "trap : TERM INT; sleep infinity & wait;"] 
+      # Delete container when it is stopped.
+      remove: true
+      # Sidestep macOS-related permissions issues when accessing docker socket from head container.
+      # TODO: Remove this once we can get autoscaler to run outside of container.
+      user: root
+
+head_node_type: head
+
+# Set up Docker for autoscaler.
+head_setup_commands:
+  - sudo apt-get update && sudo apt-get install curl systemctl -y
+  - curl -fsSL https://get.docker.com > /tmp/get-docker.sh && sudo sh /tmp/get-docker.sh
+
+head_start_ray_commands:
+  - ray stop
+  - ray start --head --port=6379 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --gcs-server-port 9031
+
+worker_start_ray_commands:
+  - ray stop
+  - ray start --address=$RAY_HEAD_IP:6379
+
+initialization_commands: []
+setup_commands: []
+worker_setup_commands: []
+cluster_synced_files: []
+file_mounts: {}
+head_node: {}
+worker_nodes: {}

@@ -1,0 +1,34 @@
+load(
+    "@py_tests_deps//:requirements.bzl",
+    "requirement",
+)
+load("@rules_python//python:defs.bzl", "py_library")
+load("//bazel:python.bzl", "py_tests_with_shim")
+
+py_library(
+    name = "test_helper_files",
+    srcs = ["conftest.py"],
+    data = ["clientLibraryConfig-aws-pool.json"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "test_connect_library",
+    srcs = ["test_connect.py"],
+)
+
+py_tests_with_shim(
+    size = "medium",
+    srcs = glob([
+        "test_*.py",
+    ]),
+    deps = [
+        ":test_connect_library",
+        ":test_helper_files",
+        "//:product_backend",
+        "//frontend/cli:anyscale",
+        requirement("click"),
+        requirement("pytest"),
+        requirement("ray"),
+    ],
+)
