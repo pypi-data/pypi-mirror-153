@@ -1,0 +1,185 @@
+{% extends "simpl/base.html" %}
+{% load static %}
+{% load i18n %}
+{% load includecontents %}
+
+{% block main_wrap_classes %}v-nav-flex-layout{% endblock %}
+
+
+
+{% block page_header %}
+<header class="page-header">
+  <div class="main-container {% block page_header_width_classes %}{% endblock %}">
+    <div class="player-grid">
+      <div class="player-col">
+        <div class="page-header-flex-wrap">
+          <h1 class="page-heading">{% trans "Manage Players" %}</h1>
+          {% includecontents "simpl/includes/search_form.html" with value=request.GET.q %}
+          Filter players
+          {% endincludecontents %}
+        </div>
+      </div>
+    </div>
+    {% include "simpl/includes/messages.html" %}
+  </div>
+</header>
+{% endblock page_header %}
+
+
+{% block content_inner %}
+<div class="player-grid">
+
+  <div class="player-col">
+      {% if not players and not inactive_players and not invites %}
+      <p>No players found.</p>
+      {% endif %}
+
+      {% if run.status >= run.STATUS.PLAY %}
+
+      <div id="active">
+        {% if players or inactive_players%}
+        <div class="player-header is-nested">
+          <p class="walkthrough-chapter-heading">Active Players
+            ({{ players|length }}{% if players|length != players_count %}/{{ players_count }}{% endif %})</p>
+            {% include "simpl/includes/players_list/list_header_togglers.html" %}
+        </div>
+        {% endif %}
+
+        {% if run.multiplayer %}
+
+          {% for team, team_players in teams.items %}
+            <div class="card player-card glow-shadow team-card">
+              <div class="player-item is-header">
+                <h2 class="player-card-heading">
+                  {{ team }}
+                </h2>
+
+                <div class="player-card-actions">
+                  <button class="toggle-button is-expanded" data-toggle-collapsible="#id_{{ team | slugify }}">
+                    {% include "includes/icon.html" with icon="caret" %}
+                  </button>
+                </div>
+              </div>
+              <div id="id_{{ team | slugify }}" data-is-accordion>
+                {% for player in team_players %}
+                  {% include "simpl/includes/players_list/multiplayer_in_play.html" %}
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}{% comment %} Single player {% endcomment %}
+          <div class="card player-card glow-shadow team-card">
+            {% for player in players %}
+                {% include "simpl/includes/players_list/singleplayer_in_play.html" %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      {% else %}{% comment %} Setup {% endcomment %}
+
+      <div id="active">
+        {% if players or inactive_players %}
+        <div class="player-header is-nested">
+          <p class="walkthrough-chapter-heading">Ready to Play
+          ({{ players|length }}{% if players|length != players_count %}/{{ players_count }}{% endif %})</p>
+          {% include "simpl/includes/players_list/list_header_togglers.html" %}
+        </div>
+        {% endif %}
+
+        {% if run.multiplayer %}
+          {% for team, team_players in teams.items %}
+            <div class="card player-card glow-shadow team-card">
+              <div class="player-item is-header">
+                <h2 class="player-card-heading">
+                  {{ team }}
+                </h2>
+              </div>
+              {% for player in team_players %}
+                {% include "simpl/includes/players_list/active_player_in_setup.html" %}
+              {% endfor %}
+            </div>
+          {% endfor %}
+        {% else %}{% comment %} Single player {% endcomment %}
+          <div class="card player-card glow-shadow team-card">
+            {% for player in players %}
+              {% include "simpl/includes/players_list/active_player_in_setup.html" %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      {% endif %}
+
+      {% if inactive_players %}
+      <div id="inactive">
+        <div class="player-header is-nested">
+          <p class="walkthrough-chapter-heading">Inactive Players
+          ({{ inactive_players|length }}{% if inactive_players|length != inactive_count %}/{{ inactive_count }}{% endif %})
+          <span class="has-dropdown tooltip-dropdown align-right">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 0C3.58214 0 0 3.58145 0 8C0 12.4186 3.58214 16 8 16C12.4179 16 16 12.4186 16 8C16 3.58145 12.4186 0 8 0ZM9.76368 11.3255L9.72831 11.3581C8.58674 12.4088 7.40564 12.8194 6.92779 12.8194C6.41248 12.8194 6.0345 12.5011 6.39514 11.1022L6.98674 8.62141C7.09007 8.22471 7.10672 8.06381 6.98674 8.06381C6.86814 8.06381 6.44855 8.22471 6.08028 8.42375C6.05564 8.43625 6.03135 8.44943 6.00746 8.46329C5.94653 8.48463 5.88004 8.48389 5.8196 8.46119C5.75917 8.43848 5.70863 8.39527 5.67682 8.33909C5.64502 8.28291 5.63396 8.21734 5.64559 8.15384C5.65722 8.09034 5.69079 8.03294 5.74044 7.99168L5.75085 7.98266C6.94443 7.03945 8.2469 6.49085 8.82531 6.49085C9.33992 6.49085 9.42592 7.11157 9.16931 8.06519L8.49103 10.675C8.37105 11.1355 8.42237 11.2943 8.54235 11.2943C8.66303 11.2943 8.9987 11.1778 9.37737 10.9365H9.37807L9.44603 10.8921C9.48794 10.8731 9.53395 10.8649 9.57985 10.8682C9.62574 10.8716 9.67007 10.8864 9.70877 10.9113C9.74747 10.9362 9.77931 10.9704 9.80138 11.0108C9.82345 11.0511 9.83505 11.0964 9.83511 11.1424C9.83551 11.2103 9.80996 11.2758 9.76368 11.3255ZM8.61101 5.2515C7.99237 5.2515 7.63173 4.886 7.64907 4.28192C7.64907 3.77356 8.07837 3.07447 8.93697 3.07447C9.5889 3.07447 9.91487 3.52042 9.91487 4.02809C9.91625 4.66407 9.34963 5.2515 8.61101 5.2515Z" fill="#2E373F" fill-opacity="0.6"></path></svg>
+            <span class="dropdown">
+              Inactive players will not be able to participate or follow along once the game is set to play.
+            </span>
+          </span></p>
+        </div>
+        <div class="card player-card team-card is-inactive-player">
+          {% for player in inactive_players %}
+            {% include "simpl/includes/players_list/inactive_player.html" %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}{% comment %} Inactive {% endcomment %}
+
+      {% if invites %}
+      <div class="player-header is-nested">
+        <p class="walkthrough-chapter-heading">Invites Sent
+        ({{ invites|length }}{% if invites|length != invites_count %}/{{ invites_count }}{% endif %})</p>
+      </div>
+      <div class="card player-card glow-shadow team-card is-inactive-player">
+        {% for player in invites %}
+          {% include "simpl/includes/players_list/invite.html" %}
+        {% endfor %}
+      </div>
+      {% endif %}{% comment %} Invites {% endcomment %}
+  </div>
+
+  <div class="player-col">
+    {% if inactive_players %}
+      <p class="walkthrough-help-heading">
+        {% include "includes/icon.html" with icon="info_alt" %}
+        There {% if inactive_players|length > 1 %}are{% else %}is{% endif %} {{ inactive_players|length }} inactive player{{ inactive_players | pluralize }}.
+      </p>
+      {% if not run.multiplayer or simpl_configuring %}
+      <p class="walkthrough-help-text is-large">
+        Select ‘Mark Active’ next to each player’s name to allow them to join
+        the game.
+      </p>
+      {% endif %}
+    {% endif %}
+
+
+    {% if run.continuous %}
+    <p class="walkthrough-help-text is-large">
+      New players are allowed to continuously join this game. 
+      To see the most up-to-date list of players, please refresh your browser.
+    </p>
+    {% else %}
+    <p class="walkthrough-help-text is-large">
+      Click ‘Impersonate’ next to a player to view their game. NOTE: No actions
+      can be made as the player while impersonating.
+    </p>
+    <p class="walkthrough-help-text is-large">
+      New players are not currently able to join this game. To allow new players
+      to join, return to the Game Status screen.
+    </p>
+    {% endif %}
+
+    <p class="walkthrough-help-text is-large">
+      <a href="{% url 'simpl.download_players' run.pk %}" target="_blank">Download CSV of players</a>
+    </p>
+
+  </div>
+
+</div>
+{% endblock %}
