@@ -1,0 +1,44 @@
+<script>
+    (function(window) {
+
+        function openDatasetExportWindow(MapStoreAPI, config) {
+            const layers = config.resourceConfig && config.resourceConfig.map && config.resourceConfig.map.layers;
+            const originalLayer = layers && layers[layers.length - 1];
+            const searchUrl = originalLayer && originalLayer.search && originalLayer.search.url;
+
+            const INIT_ACTION = 'CHANGE_MAP_VIEW';
+
+            function openModal(){
+                MapStoreAPI.offAction(INIT_ACTION, openModal);
+                if(originalLayer){
+                    MapStoreAPI.triggerAction({
+                        type: 'LAYERDOWNLOAD:CHECK_WPS_AVAILABILITY',
+                        url: originalLayer.url
+                    });
+                    MapStoreAPI.triggerAction({
+                        type: 'LAYERS:SELECT_NODE',
+                        id: originalLayer.id,
+                        nodeType: 'layer',
+                        ctrlKey: false
+                    });
+                    MapStoreAPI.triggerAction({
+                        type: 'LAYERS:DOWNLOAD',
+                        layer: {
+                            id: originalLayer.id,
+                            name: originalLayer.name,
+                            url: searchUrl || originalLayer.url
+                        }
+                    });
+                }
+            }
+            MapStoreAPI.onAction(INIT_ACTION, openModal);
+        }
+
+        window.onInitMapStoreAPI =  function(MapStoreAPI, config) {
+            openDatasetExportWindow(MapStoreAPI, config);
+        };
+
+    })(window);
+</script>
+
+{% include "./map_edit.html" with plugins_config_key="layer_export" %}
