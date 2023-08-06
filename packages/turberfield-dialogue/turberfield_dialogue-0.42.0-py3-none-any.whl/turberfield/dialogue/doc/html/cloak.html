@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Example 2: Cloak of Darkness &mdash; turberfield-dialogue 0.42.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/turberfield.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="CLI Reference" href="cli.html" />
+    <link rel="prev" title="Syntax guide" href="syntax.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> turberfield-dialogue
+          </a>
+              <div class="version">
+                0.42.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="battle.html">Example 1: Battle Royal</a></li>
+<li class="toctree-l1"><a class="reference internal" href="syntax.html">Syntax guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Example 2: Cloak of Darkness</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#interludes">Interludes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#design">Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#implementation">Implementation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#logic">Logic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dialogue">Dialogue</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#action">Action</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memory">Memory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publishing.html">Publishing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performing.html">Performing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changes.html">Change Log</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">turberfield-dialogue</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Example 2: Cloak of Darkness</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/cloak.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="example-2-cloak-of-darkness">
+<h1>Example 2: Cloak of Darkness<a class="headerlink" href="#example-2-cloak-of-darkness" title="Permalink to this headline">¶</a></h1>
+<p>Turberfield-dialogue is a screenplay system; it’s not intended by itself to be
+a game framework.</p>
+<p>Nonetheless, it strikes me that you might want to use it as a first port
+of call when prototyping ideas for a large game. Especially if that game
+is to contain a decent amount of dialogue.</p>
+<p>So I decided to explore the degree to which this is possible. And here
+is my implementation of <a class="reference external" href="http://www.firthworks.com/roger/cloak/">Cloak of Darkness</a>.</p>
+<div class="admonition-the-hello-world-of-adventure-games admonition">
+<p class="admonition-title">The <cite>Hello World</cite> of adventure games.</p>
+<p><a class="reference external" href="http://www.firthworks.com/roger/cloak/">Cloak of Darkness</a> is a scenario which exercises several features
+that all game frameworks really should support.</p>
+<p>By implementing the game, the framework author demonstrates how those
+features are achieved.</p>
+<p>The game consists of three rooms. In one room is an invisible prize.
+But the prize is damaged by the player every time he visits the room.
+It turns out that the player is carrying an item which when dropped
+in one of the other rooms, allows the prize to be seen.</p>
+</aside>
+<section id="interludes">
+<h2>Interludes<a class="headerlink" href="#interludes" title="Permalink to this headline">¶</a></h2>
+<p>An adventure game is interactive. The action frequently pauses to allow the
+player to input a command. In classic text adventures, that command is typed
+in to the console.</p>
+<p>Turberfield-dialogue has a feature called <em>interludes</em>. You may have spotted
+that earlier; it’s the fifth argument to a
+<a class="reference internal" href="api.html#turberfield.dialogue.model.SceneScript.Folder" title="turberfield.dialogue.model.SceneScript.Folder"><code class="xref py py-class docutils literal notranslate"><span class="pre">Folder</span></code></a>.
+In <a class="reference internal" href="battle.html#battle"><span class="std std-ref">Example 1: Battle Royal</span></a> we put <code class="docutils literal notranslate"><span class="pre">None</span></code> which is a way of declining to use interludes.</p>
+<p>An interlude is a function which gets called at the end of a scene script file.
+You can define a different function for each if you like. The function sees
+the folder you’re using. It knows which of the scene files has just finished.
+It also gets to see all the references you passed in to the performance.</p>
+<p>An interlude function’s return value is the metadata for a folder object.
+Returning the current folder’s metadata is like saying <em>continue</em>. Or you can
+return different metadata matching another folder and thereby branch the story.</p>
+</section>
+<section id="design">
+<h2>Design<a class="headerlink" href="#design" title="Permalink to this headline">¶</a></h2>
+<p>My first instinct was to create a scene file for each of the three rooms. Then all
+the action for a room goes in to the same file. We will repeat the sequence of
+three scenes over and over, with an interlude between them to take user input.</p>
+<p>Both the player and the cloak can move location. So we will need a state to
+represent that. Also, the message must change every time it is damaged. That could
+require another state, but it turns out that a simple Python attribute will suffice.</p>
+<p>I want the game to run in <a class="reference internal" href="battle.html#rehearsal"><span class="std std-ref">Rehearsal</span></a>. Here’s where the main problem
+arises. The default behaviour is to run sequentially through scenes, and
+deliver any dialogue possible. In this case, we only want the action to take
+place in the location of the player. Otherwise, we will get ghostly voices
+leaking in from other rooms. So we need to ensure that all other roles remain
+uncast outside of the current location.</p>
+<p>In the previous example we used an integer state variable to mark the fighters as
+alive or dead. I’ll reuse that concept. By default, every entity is masked out.
+As the player moves around, certain objects become active, and others go quiet.</p>
+</section>
+<section id="implementation">
+<h2>Implementation<a class="headerlink" href="#implementation" title="Permalink to this headline">¶</a></h2>
+<section id="logic">
+<h3>Logic<a class="headerlink" href="#logic" title="Permalink to this headline">¶</a></h3>
+<p>We’re going through the code now. If Python is new to you, don’t worry.
+My intention is just to introduce some essential concepts which you can
+work to understand later on.</p>
+<p>The top of a Python module is where imports go:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">enum</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">repeat</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+<span class="kn">from</span> <span class="nn">turberfield.dialogue.model</span> <span class="kn">import</span> <span class="n">SceneScript</span>
+<span class="kn">from</span> <span class="nn">turberfield.dialogue.types</span> <span class="kn">import</span> <span class="n">DataObject</span>
+<span class="kn">from</span> <span class="nn">turberfield.dialogue.types</span> <span class="kn">import</span> <span class="n">Stateful</span>
+</pre></div>
+</div>
+<p>Next we declare an enumeration state which will define the
+location of the player and the cloak:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@enum</span><span class="o">.</span><span class="n">unique</span>
+<span class="k">class</span> <span class="nc">Location</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">foyer</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">bar</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">cloakroom_floor</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">cloakroom_space</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">cloakroom_hook</span> <span class="o">=</span> <span class="mi">4</span>
+</pre></div>
+</div>
+<p>There are no Personas in this game; none of the voices has a name.
+But they do have state, and one of them needs attributes. The
+useful types to inherit from will be <em>Stateful</em> and <em>DataObject</em>.</p>
+<p>Each of the entities in the game gets its own class declaration:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Narrator</span><span class="p">(</span><span class="n">Stateful</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">Cloak</span><span class="p">(</span><span class="n">Stateful</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">Prize</span><span class="p">(</span><span class="n">Stateful</span><span class="p">,</span> <span class="n">DataObject</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>So now we can declare an ensemble of entities, setting attributes
+and initial state where appropriate:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ensemble</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">Narrator</span><span class="p">()</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">foyer</span><span class="p">),</span>
+    <span class="n">Cloak</span><span class="p">()</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">foyer</span><span class="p">)</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+    <span class="n">Prize</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="s2">&quot;You win!&quot;</span><span class="p">)</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>We will be taking user input and trying to interpret commands.
+Here is the world’s dumbest text parser. It returns the first
+letter of the last word typed into the console:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">parse_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>We want user input at the end of every turn. That’s done in a single
+interlude function. Should the game grow any larger, it would be better
+to give each file its own custom function, but this is good enough for
+an example. I’m just going to throw the code at you and see how you get
+on:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">interaction</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">cmd</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">narrator</span><span class="p">,</span> <span class="n">cloak</span><span class="p">,</span> <span class="n">prize</span><span class="p">,</span> <span class="o">*</span><span class="n">others</span> <span class="o">=</span> <span class="n">ensemble</span>
+    <span class="n">locn</span> <span class="o">=</span> <span class="n">narrator</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Location</span><span class="p">)</span>
+    <span class="n">action</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">locn</span> <span class="o">==</span> <span class="n">Location</span><span class="o">.</span><span class="n">foyer</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">action</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="s2">&quot;q&quot;</span><span class="p">):</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">parse_command</span><span class="p">(</span><span class="n">cmd</span> <span class="ow">or</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Enter a command: &quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;s&quot;</span><span class="p">:</span>
+            <span class="n">narrator</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">bar</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cloak</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Location</span><span class="p">)</span> <span class="o">==</span> <span class="n">locn</span><span class="p">:</span>
+                <span class="n">prize</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prize</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;w&quot;</span><span class="p">:</span>
+            <span class="n">narrator</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">cloakroom_space</span><span class="p">)</span>
+            <span class="n">cloak</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">elif</span> <span class="n">locn</span> <span class="o">==</span> <span class="n">Location</span><span class="o">.</span><span class="n">bar</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">action</span> <span class="o">!=</span> <span class="s2">&quot;n&quot;</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">parse_command</span><span class="p">(</span><span class="n">cmd</span> <span class="ow">or</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Enter a command: &quot;</span><span class="p">))</span>
+
+        <span class="n">narrator</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">foyer</span><span class="p">)</span>
+        <span class="n">prize</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">prize</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">prize</span><span class="o">.</span><span class="n">message</span><span class="p">),</span> <span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="n">prize</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">locn</span> <span class="o">==</span> <span class="n">Location</span><span class="o">.</span><span class="n">cloakroom_space</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">action</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;c&quot;</span><span class="p">,</span> <span class="s2">&quot;h&quot;</span><span class="p">,</span> <span class="s2">&quot;e&quot;</span><span class="p">):</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">parse_command</span><span class="p">(</span><span class="n">cmd</span> <span class="ow">or</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Enter a command: &quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;c&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">cloak</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Location</span><span class="p">)</span> <span class="o">==</span> <span class="n">Location</span><span class="o">.</span><span class="n">cloakroom_space</span><span class="p">:</span>
+                <span class="n">cloak</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">cloakroom_floor</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cloak</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">cloakroom_space</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;h&quot;</span><span class="p">:</span>
+            <span class="n">cloak</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">cloakroom_hook</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">narrator</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Location</span><span class="o">.</span><span class="n">foyer</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cloak</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Location</span><span class="p">)</span> <span class="o">!=</span> <span class="n">locn</span><span class="p">:</span>
+                <span class="n">cloak</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cloak</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Location</span><span class="p">)</span> <span class="o">==</span> <span class="n">locn</span><span class="p">:</span>
+        <span class="n">cloak</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">narrator</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Location</span><span class="p">))</span>
+        <span class="n">cloak</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">folder</span><span class="o">.</span><span class="n">metadata</span>
+</pre></div>
+</div>
+<p>So now we can declare the objects <em>turberfield-rehearse</em> needs to
+see; a collection of all our Python references and a folder object
+with details of the game:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">references</span> <span class="o">=</span> <span class="n">ensemble</span> <span class="o">+</span> <span class="p">[</span><span class="n">Location</span><span class="p">]</span>
+
+<span class="n">folder</span> <span class="o">=</span> <span class="n">SceneScript</span><span class="o">.</span><span class="n">Folder</span><span class="p">(</span>
+    <span class="n">pkg</span><span class="o">=</span><span class="vm">__name__</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The &#39;Hello World&#39; of text games.&quot;</span><span class="p">,</span>
+    <span class="n">metadata</span><span class="o">=</span><span class="p">{},</span>
+    <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;foyer.rst&quot;</span><span class="p">,</span> <span class="s2">&quot;bar.rst&quot;</span><span class="p">,</span> <span class="s2">&quot;cloakroom.rst&quot;</span><span class="p">],</span>
+    <span class="n">interludes</span><span class="o">=</span><span class="n">repeat</span><span class="p">(</span><span class="n">interaction</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition-coding admonition">
+<p class="admonition-title">Coding.</p>
+<p>Python is a pretty easy language to read, and so far I’ve been relying on
+that to communicate the essence of how all this works. We have reached a
+point now that you may need to take time over certain aspects of the code
+to fully understand what is going on.</p>
+<p>I recommend you explore the <a class="reference external" href="https://docs.python.org/3/">Python manual</a>. First, get to know its
+structure; how it separates the fundamentals of the language from details
+of specific modules which you discover when you realise you need them.</p>
+<p>To begin with, check out the <a class="reference external" href="https://docs.python.org/3/library/random.html#module-random">random module</a> which is very straightforward.
+After that, use the <a class="reference external" href="https://docs.python.org/3/py-modindex.html">module index</a> to find the documentation for <em>Enum</em>.</p>
+</aside>
+</section>
+<section id="dialogue">
+<h3>Dialogue<a class="headerlink" href="#dialogue" title="Permalink to this headline">¶</a></h3>
+<p>Here’s where I stop explaining each component of the game. When it comes
+to understanding the dialogue, it’s best just to study the <em>.rst</em> files
+in <em>sequences/cloak</em>. As a taster, here’s what the dialogue for the first
+room looks like. It’s probably the simplest of the three.</p>
+<div class="highlight-rest notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">entity</span><span class="p">::</span> NARRATOR
+   <span class="nc">:types:</span> logic.Narrator
+   <span class="nc">:states:</span> logic.Location.foyer
+
+<span class="p">..</span> <span class="ow">entity</span><span class="p">::</span> CLOAK
+   <span class="nc">:types:</span> logic.Cloak
+   <span class="nc">:states:</span> logic.Location.foyer
+
+<span class="gh">After the fire, a Magician returns</span>
+<span class="gh">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span>
+
+<span class="gh">From where you stand</span>
+<span class="gh">--------------------</span>
+
+<span class="s">[NARRATOR]_</span>
+
+    This place no longer looks much like a hotel. This would have been the foyer, though.
+    You can see the footprint of a grand reception desk running down one side
+    of the floor.
+
+<span class="s">[NARRATOR]_</span>
+
+    The room has been stripped of all it once contained.
+
+<span class="gh">Checking your person</span>
+<span class="gh">--------------------</span>
+
+<span class="s">[CLOAK]_</span>
+
+    You are wearing a long cloak, which gathers around you. It feels furry,
+    like velvet, although that&#39;s hard to tell by looking. It is so black
+    that its folds and textures cannot be perceived.
+
+<span class="s">[CLOAK]_</span>
+
+    It seems to swallow all light.
+
+<span class="p">..</span> <span class="ow">memory</span><span class="p">::</span> logic.Location.foyer
+   <span class="nc">:subject:</span> NARRATOR
+
+   The Player visited the foyer.
+
+<span class="gh">Looking around</span>
+<span class="gh">--------------</span>
+
+<span class="s">[NARRATOR]_</span>
+
+    To the North, the door by which you first entered is stuck fast.
+
+<span class="s">[NARRATOR]_</span>
+
+    There are other doors to the South and West.
+</pre></div>
+</div>
+</section>
+</section>
+<section id="action">
+<h2>Action<a class="headerlink" href="#action" title="Permalink to this headline">¶</a></h2>
+<p>You can run the game in a similar manner to the previous example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">sequences</span><span class="o">/</span><span class="n">cloak</span>
+<span class="o">~/</span><span class="n">py3</span><span class="mf">.5</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">turberfield</span><span class="o">-</span><span class="n">rehearse</span> <span class="nd">@rehearse</span><span class="o">.</span><span class="n">cli</span>
+</pre></div>
+</div>
+</section>
+<section id="memory">
+<h2>Memory<a class="headerlink" href="#memory" title="Permalink to this headline">¶</a></h2>
+<p>We saw for the first time above the use of a <a class="reference internal" href="syntax.html#memory"><span class="std std-ref">Memory directive</span></a>. The game scatters
+them throughout the action. The result is that a record of the player’s
+progress builds up in the dialogue database.</p>
+<p>The database Turberfield uses for this is <a class="reference external" href="https://www.sqlite.org">SQLite3</a>. You can access this database
+via Python’s own <a class="reference external" href="https://docs.python.org/3/library/sqlite3.html#module-sqlite3">SQLite3 module</a>. Or you can install a command line tool and
+issue queries that way. Try this to get a report of the passage of a game
+session:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sqlite3</span> <span class="n">cloak</span><span class="o">.</span><span class="n">sl3</span>
+
+<span class="n">sqlite</span><span class="o">&gt;</span> <span class="n">select</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">note</span><span class="o">.</span><span class="n">text</span>
+   <span class="o">...&gt;</span> <span class="kn">from</span> <span class="nn">state</span> <span class="n">join</span> <span class="n">touch</span> <span class="n">on</span> <span class="n">state</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">touch</span><span class="o">.</span><span class="n">state</span>
+   <span class="o">...&gt;</span> <span class="n">join</span> <span class="n">entity</span> <span class="k">as</span> <span class="n">s</span> <span class="n">on</span> <span class="n">touch</span><span class="o">.</span><span class="n">sbjct</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">id</span>
+   <span class="o">...&gt;</span> <span class="n">left</span> <span class="n">outer</span> <span class="n">join</span> <span class="n">entity</span> <span class="k">as</span> <span class="n">o</span> <span class="n">on</span> <span class="n">touch</span><span class="o">.</span><span class="n">objct</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">id</span>
+   <span class="o">...&gt;</span> <span class="n">left</span> <span class="n">outer</span> <span class="n">join</span> <span class="n">note</span> <span class="n">on</span> <span class="n">note</span><span class="o">.</span><span class="n">touch</span> <span class="o">=</span> <span class="n">touch</span><span class="o">.</span><span class="n">id</span><span class="p">;</span>
+
+<span class="n">Narrator</span><span class="o">|</span><span class="n">foyer</span>          <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">visited</span> <span class="n">the</span> <span class="n">foyer</span><span class="o">.</span>
+<span class="n">Cloak</span>   <span class="o">|</span><span class="n">bar</span>            <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">wore</span> <span class="n">the</span> <span class="n">cloak</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">bar</span><span class="o">.</span>
+<span class="n">Narrator</span><span class="o">|</span><span class="n">foyer</span>          <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">visited</span> <span class="n">the</span> <span class="n">foyer</span><span class="o">.</span>
+<span class="n">Cloak</span>   <span class="o">|</span><span class="n">cloakroom_floor</span><span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">dropped</span> <span class="n">the</span> <span class="n">cloak</span><span class="o">.</span>
+<span class="n">Narrator</span><span class="o">|</span><span class="n">foyer</span>          <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">visited</span> <span class="n">the</span> <span class="n">foyer</span><span class="o">.</span>
+<span class="n">Cloak</span>   <span class="o">|</span><span class="n">bar</span>            <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">wore</span> <span class="n">the</span> <span class="n">cloak</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">bar</span><span class="o">.</span>
+<span class="n">Narrator</span><span class="o">|</span><span class="n">foyer</span>          <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">visited</span> <span class="n">the</span> <span class="n">foyer</span><span class="o">.</span>
+<span class="n">Cloak</span>   <span class="o">|</span><span class="n">cloakroom_hook</span> <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">hung</span> <span class="n">the</span> <span class="n">cloak</span> <span class="n">on</span> <span class="n">a</span> <span class="n">hook</span><span class="o">.</span>
+<span class="n">Narrator</span><span class="o">|</span><span class="n">foyer</span>          <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">visited</span> <span class="n">the</span> <span class="n">foyer</span><span class="o">.</span>
+<span class="n">Prize</span>   <span class="o">|</span><span class="n">bar</span>            <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">read</span> <span class="n">the</span> <span class="n">message</span> <span class="k">as</span> <span class="s2">&quot; Yo  w n! &quot;</span><span class="o">.</span>
+<span class="n">Narrator</span><span class="o">|</span><span class="n">foyer</span>          <span class="o">|</span><span class="n">The</span> <span class="n">Player</span> <span class="n">visited</span> <span class="n">the</span> <span class="n">foyer</span><span class="o">.</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="syntax.html" class="btn btn-neutral float-left" title="Syntax guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cli.html" class="btn btn-neutral float-right" title="CLI Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2017, D Haynes.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
