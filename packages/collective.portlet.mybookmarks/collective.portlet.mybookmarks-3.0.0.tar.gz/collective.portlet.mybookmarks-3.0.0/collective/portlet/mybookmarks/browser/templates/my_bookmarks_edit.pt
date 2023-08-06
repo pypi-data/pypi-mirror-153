@@ -1,0 +1,117 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+      lang="en"
+      metal:use-macro="here/main_template/macros/master"
+      i18n:domain="collective.portlet.mybookmarks">
+  <head>
+    <metal:block fill-slot="top_slot"
+                 tal:define="disable_column_one python:request.set('disable_plone.leftcolumn',1);
+                             disable_column_two python:request.set('disable_plone.rightcolumn',1);" />
+  </head>
+  <body>
+    <metal:content-title fill-slot="content-title">
+      <metal:content-title define-macro="content-title">
+        <h1 class="documentFirstHeading" i18n:translate="mybookmarks_title_edit">
+          Edit personal bookmarks
+        </h1>
+      </metal:content-title>
+    </metal:content-title>
+    <metal:content-description fill-slot="content-description">
+      <metal:content-description define-macro="content-description">
+        <p class="documentDescription" i18n:translate="mybookmarks_description">
+          You can edit/sort/delete saved bookmarks, or add new external ones.
+        </p>
+      </metal:content-description>
+    </metal:content-description>
+    <metal:content-core fill-slot="content-core">
+      <metal:content-core define-macro="content-core"
+        tal:define="bookmarks view/get_bookmarks">
+        <div class="bookmarks-wrapper" tal:condition="bookmarks">
+          <form class="form-inline edit-bookmarks-form" action="#">
+            <span tal:replace="structure context/@@authenticator/authenticator"/>
+            <div class="bookmark-fields">
+              <tal:bookmark repeat="bookmark bookmarks">
+                <div class="bookmark-field row"
+                     data-index="${index}"
+                     tal:define="bookmark_type bookmark/type|nothing;
+                                 bookmark_title bookmark/title|nothing;
+                                 bookmark_uid bookmark/uid|nothing;
+                                 bookmark_url bookmark/url|nothing;
+                                 index repeat/bookmark/index">
+                  <input type="hidden" name="${index}-type" value="${bookmark_type}" />
+                  <div class="col-md-1 sort-column">
+                    <span class="glyphicon glyphicon-option-vertical" aria-hidden="true"></span>
+                  </div>
+                  <div class="form-group has-feedback col-md-5">
+                    <input type="text"
+                           name="${index}-title"
+                           value="${bookmark_title}"
+                           placeholder="Title"
+                           class="form-control"/>
+                  </div>
+                  <div class="form-group has-feedback col-md-5">
+                    <tal:external condition="python:bookmark.get('type') == 'external'">
+                      <input type="text"
+                             name="${index}-url"
+                             placeholder="Url"
+                             class="form-control"
+                             value="${bookmark_url}" />
+                    </tal:external>
+                    <tal:internal condition="python:bookmark.get('type') == 'internal'">
+                      <input type="text"
+                             name="${index}-url"
+                             placeholder="Url"
+                             value="${bookmark_url}"
+                             readonly />
+                    </tal:internal>
+                  </div>
+                  <div class="col-md-1">
+                    <button role="button" class="btn btn-danger remove-bookmark" href="#">
+                      <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
+              </tal:bookmark>
+            </div>
+          </form>
+        </div>
+        <hr />
+        <div class="new-bookmark-wrapper">
+          <h3 i18n:translate="add_external_bookmark_label">Add external bookmark</h3>
+          <form class="form-inline add-bookmark-form" action="${context/absolute_url}/add-external-bookmark">
+            <span tal:replace="structure context/@@authenticator/authenticator"/>
+            <div class="new-bookmark-field row">
+              <div class="form-group has-feedback col-md-5">
+                <input type="text"
+                       name="title"
+                       placeholder="Title"
+                       class="form-control"/>
+              </div>
+              <div class="form-group has-feedback col-md-5">
+                <input type="text"
+                       name="url"
+                       placeholder="Url"
+                       class="form-control"/>
+              </div>
+              <input type="hidden"
+                     name="type"
+                     value="external"/>
+              <div class="col-md-2">
+                <button type="submit" class="btn add-bookmark">
+                  <span tal:omit-tag=""
+                        i18n:translate="add_label">
+                    Add
+                  </span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <script type="text/javascript"
+                src="${portal_url}/++resource++collective.portlet.mybookmarks.javascripts/bookmarks_edit.js"></script>
+      </metal:content-core>
+    </metal:content-core>
+  </body>
+</html>
