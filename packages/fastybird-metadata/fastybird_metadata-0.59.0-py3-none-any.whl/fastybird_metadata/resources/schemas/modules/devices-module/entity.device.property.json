@@ -1,0 +1,315 @@
+{
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "definitions" : {
+    "types" : {
+      "nullable_string" : {
+        "oneOf" : [
+          {
+            "type" : "null"
+          },
+          {
+            "type" : "string"
+          }
+        ]
+      },
+      "nullable_number" : {
+        "oneOf" : [
+          {
+            "type" : "null"
+          },
+          {
+            "type" : "number"
+          }
+        ]
+      },
+      "string_number" : {
+        "oneOf" : [
+          {
+            "type" : "string"
+          },
+          {
+            "type" : "number"
+          }
+        ]
+      },
+      "nullable_data_type" : {
+        "oneOf" : [
+          {
+            "type" : "null"
+          },
+          {
+            "$ref" : "#/definitions/datatype"
+          }
+        ]
+      },
+      "nullable_format" : {
+        "oneOf" : [
+          {
+            "type" : "null"
+          },
+          {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "type" : "string"
+            }
+          },
+          {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/types/nullable_string"
+              },
+              "minItems" : 3,
+              "maxItems" : 3
+            }
+          },
+          {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "$ref" : "#/definitions/types/nullable_number"
+            },
+            "minItems" : 2,
+            "maxItems" : 2
+          }
+        ]
+      },
+      "nullable_invalid" : {
+        "oneOf" : [
+          {
+            "type" : "null"
+          },
+          {
+            "type" : "string"
+          },
+          {
+            "type" : "number"
+          }
+        ]
+      },
+      "string_number_boolean_null" : {
+        "oneOf" : [
+          {
+            "type" : "string"
+          },
+          {
+            "type" : "number"
+          },
+          {
+            "type" : "boolean"
+          },
+          {
+            "type" : "null"
+          }
+        ]
+      }
+    },
+    "type" : {
+      "type" : "string",
+      "enum" : [
+        "static",
+        "dynamic",
+        "mapped"
+      ]
+    },
+    "datatype" : {
+      "type" : "string",
+      "enum" : [
+        "char",
+        "uchar",
+        "short",
+        "ushort",
+        "int",
+        "uint",
+        "float",
+        "bool",
+        "string",
+        "enum",
+        "color",
+        "button",
+        "switch"
+      ]
+    }
+  },
+  "type" : "object",
+  "properties" : {
+    "id" : {
+      "type" : "string",
+      "description" : "Entity unique uuid v4 identifier"
+    },
+    "parent" : {
+      "$ref" : "#/definitions/types/nullable_string",
+      "description" : "Entity parent unique uuid v4 identifier",
+      "default" : null
+    },
+    "type" : {
+      "$ref" : "#/definitions/type"
+    },
+    "identifier" : {
+      "type" : "string",
+      "description" : "Unique human readable identifier"
+    },
+    "name" : {
+      "$ref" : "#/definitions/types/nullable_string",
+      "default" : null
+    },
+    "settable" : {
+      "type" : "boolean",
+      "default" : false
+    },
+    "queryable" : {
+      "type" : "boolean",
+      "default" : false
+    },
+    "data_type" : {
+      "type" : "string"
+    },
+    "unit" : {
+      "$ref" : "#/definitions/types/nullable_string",
+      "default" : null
+    },
+    "format" : {
+      "$ref" : "#/definitions/types/nullable_format",
+      "default" : null
+    },
+    "invalid" : {
+      "$ref" : "#/definitions/types/nullable_invalid",
+      "default" : null
+    },
+    "number_of_decimals" : {
+      "$ref" : "#/definitions/types/nullable_number",
+      "default" : null
+    },
+    "device" : {
+      "type" : "string",
+      "description" : "Device unique uuid v4 identifier"
+    },
+    "children" : {
+      "type" : "array",
+      "uniqueItems" : true,
+      "items" : {
+        "type" : "string"
+      },
+      "description" : "Entity children uuid v4 identifiers",
+      "default" : []
+    },
+    "owner" : {
+      "$ref" : "#/definitions/types/nullable_string",
+      "description" : "Entity owner uuid v4 identifier"
+    }
+  },
+  "if" : {
+    "properties" : {
+      "type" : {
+        "const" : "dynamic"
+      }
+    }
+  },
+  "then" : {
+    "properties" : {
+      "actual_value" : {
+        "$ref" : "#/definitions/types/string_number_boolean_null"
+      },
+      "previous_value" : {
+        "$ref" : "#/definitions/types/string_number_boolean_null"
+      },
+      "expected_value" : {
+        "$ref" : "#/definitions/types/string_number_boolean_null"
+      },
+      "pending" : {
+        "type" : "boolean"
+      },
+      "valid" : {
+        "type" : "boolean"
+      }
+    },
+    "required" : [
+      "id",
+      "type",
+      "identifier",
+      "settable",
+      "queryable",
+      "data_type",
+      "unit",
+      "format",
+      "invalid",
+      "number_of_decimals",
+      "device"
+    ]
+  },
+  "else" : {
+    "if" : {
+      "properties" : {
+        "type" : {
+          "const" : "static"
+        }
+      }
+    },
+    "then" : {
+      "properties" : {
+        "value" : {
+          "$ref" : "#/definitions/types/string_number_boolean_null"
+        },
+        "default" : {
+          "$ref" : "#/definitions/types/string_number_boolean_null"
+        }
+      },
+      "required" : [
+        "id",
+        "type",
+        "identifier",
+        "settable",
+        "queryable",
+        "data_type",
+        "unit",
+        "format",
+        "invalid",
+        "number_of_decimals",
+        "value",
+        "default",
+        "device"
+      ]
+    },
+    "else" : {
+      "properties" : {
+        "actual_value" : {
+          "$ref" : "#/definitions/types/string_number_boolean_null"
+        },
+        "previous_value" : {
+          "$ref" : "#/definitions/types/string_number_boolean_null"
+        },
+        "expected_value" : {
+          "$ref" : "#/definitions/types/string_number_boolean_null"
+        },
+        "pending" : {
+          "type" : "boolean"
+        },
+        "valid" : {
+          "type" : "boolean"
+        },
+        "value" : {
+          "$ref" : "#/definitions/types/string_number_boolean_null"
+        },
+        "default" : {
+          "$ref" : "#/definitions/types/string_number_boolean_null"
+        }
+      },
+      "required" : [
+        "id",
+        "type",
+        "identifier",
+        "settable",
+        "queryable",
+        "data_type",
+        "unit",
+        "format",
+        "invalid",
+        "number_of_decimals",
+        "device"
+      ]
+    }
+  }
+}
