@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+from summarytable import summarytable
+from pathlib import PurePath
+import os
+from time import sleep
+
+work_path = os.getcwd()
+work_dir = PurePath(work_path).parts[-1]
+allowed_dirs = ["fast_dp_dir","autoproc_dir"]
+
+try:
+    if work_dir.lower() in allowed_dirs:
+        mx_directory = PurePath(work_path).parent
+        print(mx_directory)
+        if work_dir.lower() == "fast_dp_dir":
+            basename = summarytable.BaseName("fast_dp")
+        if work_dir.lower() == "autoproc_dir":
+            basename = summarytable.BaseName("autoPROC")
+        d = summarytable.DataDirectory(mx_directory,basename=basename)
+        dobs = summarytable.DisplayObserver()
+        fobs = summarytable.FileObserver(basename=basename)
+        d.attach(dobs)
+        d.attach(fobs)
+        while True:
+            d.check_directory()
+            sleep(10)
+    else:
+        print("summarytable must be launched from autoProc_dir or fast_dp_dir...")
+except KeyboardInterrupt:
+    with open(basename.csv_pattern,'w') as csv_file:
+        with open(basename.txt_pattern,'r') as txt_file:
+            next(txt_file)
+            csv_file.write(','.join(next(txt_file).split()))
+            csv_file.write('\n')
+            for line in txt_file:
+                fix_sg_line = line.split()[0:13]
+                fix_sg_line.append(''.join(line.split()[13:][:-6]))
+                fix_sg_line.append(line.split()[-6])
+                fix_sg_line.append(line.split()[-5])
+                fix_sg_line.append(line.split()[-4])
+                fix_sg_line.append(line.split()[-3])
+                fix_sg_line.append(line.split()[-2])
+                fix_sg_line.append(line.split()[-1])
+                csv_file.write(','.join(fix_sg_line))
+                csv_file.write('\n')
+print("\nExiting gracefully...")
+
