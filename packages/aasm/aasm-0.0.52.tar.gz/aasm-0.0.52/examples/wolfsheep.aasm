@@ -1,0 +1,499 @@
+MESSAGE eat, Request
+    PRM x, float
+    PRM y, float
+EMESSAGE
+
+MESSAGE eat, Inform
+    PRM energy, float
+EMESSAGE
+
+MESSAGE broadcast, Inform
+    PRM type, float # 0 - field, 1 - sheep, 2 - wolf
+    PRM state, float
+EMESSAGE
+
+MESSAGE spawn, Inform
+    PRM type, float
+EMESSAGE
+
+MESSAGE kill, Inform
+EMESSAGE
+
+AGENT grass
+    PRM field, list, float, 10000, 0
+    PRM dead_sheep, list, conn
+    PRM alive_sheep, list, conn
+    PRM dead_wolf, list, conn
+    PRM alive_wolf, list, conn
+    PRM spawn_candidate, list, conn
+    BEHAV setup, setup
+        ACTION setup_field, modify_self
+            DECL it, 0
+            DECL amt, 0
+            WLT it, 10000
+                RAND amt, float, uniform, 0, 10
+                LW field, it, amt
+                ADD it, 1
+            EBLOCK
+        EACTION
+        ACTION broadcast, send_msg, broadcast, Inform
+            SET SEND.type, 0
+            SEND connections
+        EACTION
+    EBEHAV
+    BEHAV recv_spawn, msg_rcv, spawn, Inform
+        ACTION choose_spawn, modify_self
+            CLR spawn_candidate
+            IEQ RCV.type, 1
+                SUBS spawn_candidate, dead_sheep, 1
+                REME dead_sheep, spawn_candidate
+                ADDE alive_wolf, spawn_candidate
+            EBLOCK
+            IEQ RCV.type, 2
+                SUBS spawn_candidate, dead_wolf, 1
+                REME dead_wolf, spawn_candidate
+                ADDE alive_wolf, spawn_candidate
+            EBLOCK
+        EACTION
+        ACTION spawn, send_msg, spawn, Inform
+            SEND spawn_candidate
+        EACTION
+    EBEHAV
+    BEHAV recv_broadcast, msg_rcv, broadcast, Inform
+        ACTION add_agent, modify_self
+            IEQ RCV.type, 1
+                IEQ RCV.state, 0
+                    REME alive_sheep, RCV.jid
+                    ADDE dead_sheep, RCV.jid
+                EBLOCK
+                IEQ RCV.state, 1
+                    REME dead_sheep, RCV.jid
+                    ADDE alive_sheep, RCV.jid
+                EBLOCK
+            EBLOCK
+            IEQ RCV.type, 2
+                IEQ RCV.state, 0
+                    REME alive_wolf, RCV.jid
+                    ADDE dead_wolf, RCV.jid
+                EBLOCK
+                IEQ RCV.state, 1
+                    REME dead_wolf, RCV.jid
+                    ADDE alive_wolf, RCV.jid
+                EBLOCK
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV eat_grass, msg_rcv, eat, Request
+        ACTION parse_eat, send_msg, eat, Inform
+            DECL index, RCV.x
+            MULT index, 10
+            ADD index, RCV.y
+            DECL grass_val, 0
+            LR grass_val, field, it
+            DECL send_flag, 0
+            IGT grass_val, 1
+                SET send_flag, 1
+                SET SEND.energy, 1
+                SUBT grass_val, 1
+                LW field, index, grass_val
+            EBLOCK
+            IEQ send_flag, 0
+                SET SEND.energy, 0
+            EBLOCK
+            SEND RCV.jid
+        EACTION
+    EBEHAV
+    BEHAV regrow_grass, cyclic, 10
+        ACTION regrow, modify_self
+            DECL it, 0
+            DECL amt, 0
+            WLT it, 10000
+                LR amt, field, it
+                ADD amt, 0.1
+                IGT amt, 10
+                    SET amt, 10
+                EBLOCK
+                LW field, it, amt
+                ADD it, 1
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV recv_kill, msg_rcv, kill, Inform
+        ACTION kill_creature, modify_self
+            IN alive_sheep, RCV.jid
+            EBLOCK
+            IN alive_wolf, RCV.jid
+            EBLOCK
+        EACTION
+    EBEHAV
+EAGENT
+
+AGENT sheep
+    PRM x, float, dist, uniform, 0, 99
+    PRM y, float, dist, uniform, 0, 99
+    PRM heading, float, dist uniform, 0, 180
+    PRM invert, enum, YES, 0, NO, 100
+    PRM energy, float, init, 100
+    PRM dead, enum, YES, 0, NO, 100
+    PRM field, list, conn
+
+    BEHAV recv_spawn, msg_rcv, spawn, Inform
+        ACTION spawn, modify_self
+            SET dead, NO
+        EACTION
+    EBEHAV
+
+    BEHAV recv_kill, msg_rcv, kill, Inform
+        ACTION die, send_msg, kill, Inform
+            SET dead, YES
+            SEND field
+        EACTION
+    EBEHAV
+
+    BEHAV setup, setup
+        ACTION broadcast, send_msg, broadcast, Inform
+            SET SEND.type, 1
+            IEQ dead, YES
+                SET SEND.state, 0
+            EBLOCK
+            IEQ dead, NO
+                SET SEND.state, 1
+            EBLOCK
+            SEND connections
+        EACTION
+    EBEHAV
+
+    BEHAV move_around, cyclic, 10
+        ACTION wiggle, modify_self
+            IEQ dead, NO
+                DECL wiglR, 0
+                DECL wiglL, 0
+                RAND wiglR, float, uniform, 0, 90
+                RAND wiglL, float, uniform, 0, 90
+                DECL change_flag, 0
+                IEQ invert, YES
+                    SET change_flag, 1
+                    ADD heading, wiglL
+                    SUBT heading, wiglR
+                    ILT heading, 0
+                        SET invert, NO
+                        ADD heading, 180
+                    EBLOCK
+                    IGT heading, 180
+                        SET invert, NO
+                        SUBT heading, 180
+                    EBLOCK
+                EBLOCK
+                IEQ invert, NO
+                    IEQ change_flag, 0
+                        ADD heading, wiglL
+                        SUBT heading, wiglR
+                        ILT heading, 0
+                            SET invert, YES
+                            ADD heading, 180
+                        EBLOCK
+                        IGT heading, 180
+                            SET invert, YES
+                            SUBT heading, 180
+                        EBLOCK
+                    EBLOCK
+                EBLOCK
+            EBLOCK
+        EACTION # wiggle
+        ACTION move, modify_self
+            IEQ dead, NO
+                DECL sin, 0
+                DECL numerator, 180
+                DECL denumerator, 40500
+                SUBT numerator, x
+                MULT numerator, x
+                MULT numerator, 4
+                DECL tmp, 180
+                SUBT tmp, x
+                MULT tmp, x
+                SUBT denumerator, tmp
+                SET sin, numerator
+                DIV sin, denumerator # Bhaskara I sin approximation
+                DECL a, sin
+                DECL b, 1
+                MULT a, a
+                SUBT b, a
+                SET a, sin
+                DECL newx, x
+                DECL newy, y
+                IGT heading, 90
+                    SUBT newx, a
+                EBLOCK
+                ILTEQ heading, 90
+                    ADD newx, a
+                EBLOCK
+                IEQ invert, YES
+                    SUBT newy, b
+                EBLOCK
+                IEQ invert, NO
+                    ADD newy, b
+                EBLOCK
+                DECL bump, 0
+                ILT newx, 0
+                    SET bump, 1
+                EBLOCK
+                ILT newy, 0
+                    SET bump, 1
+                EBLOCK
+                IGT newx, 99
+                    SET bump, 1
+                EBLOCK
+                IGT newy, 99
+                    SET bump, 1
+                EBLOCK
+                IEQ bump,0
+                    SET x, newx
+                    SET y, newy
+                    SUBT energy, 1
+                EBLOCK
+                IEQ bump,1
+                    ADD heading, 90
+                    IGT heading, 180
+                        SUBT heading, 180
+                        DECL flag, 0
+                        IEQ invert, YES
+                            SET flag, 1
+                            SET invert, NO
+                        EBLOCK
+                        IEQ invert, NO
+                            IEQ flag, 0
+                                SET invert, YES
+                            EBLOCK
+                        EBLOCK
+                    EBLOCK
+                EBLOCK
+            EBLOCK
+        EACTION
+        ACTION check_if_dead, modify_self
+            ILTEQ energy, 0
+                SET dead, YES
+            EBLOCK
+        EACTION
+        ACTION eat, send_msg, eat, Request
+            IEQ dead, NO
+                SET SEND.x, x
+                SET SEND.y, y
+                SEND field
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV reproduce, cyclic, 20
+        ACTION hatch, send_msg, spawn, Inform
+            IEQ dead, NO
+                IEQ energy > 100
+                    SET SEND.type, 1
+                    SEND field
+                EBLOCK
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV grass_eat, msg_rcv, eat, Inform
+        ACTION change_energy, modify_self
+            ADD energy, SEND.energy
+        EACTION
+    EBEHAV
+    BEHAV recv_broadcast, broadcast, Inform
+        IEQ RCV.type, 0
+            ADDE field, RCV.jid
+        EBLOCK
+    EBEHAV
+
+    BEHAV get_eaten_request, eat, Request
+        ACTION send_msg, eat, Inform
+            IEQ dead, NO
+                DECL lowx, x
+                DECL lowy, y
+                DECL highx, x
+                DECL highy, y
+
+                SUBT lowx, 1
+                SUBT lowy, 1
+                ADD  highx, 1
+                ADD  highy, 1
+
+                ILT highx, RCV.x
+                    ILT highy, RCV.y
+                        IGT lowx, RCV.x
+                            IGT lowy, RCV.y
+                                SET SEND.energy, 1
+                                SEND RCV.jid
+                            EBLOCK
+                        EBLOCK
+                    EBLOCK
+                EBLOCK
+            EBLOCK
+        EACTION
+    EBEHAV
+
+EAGENT
+
+AGENT wolf
+    PRM x, float, dist, uniform, 0, 99
+    PRM y, float, dist, uniform, 0, 99
+    PRM heading, float, dist uniform, 0, 180
+    PRM invert, enum, YES, 0, NO, 100
+    PRM energy, float, init, 100
+    PRM dead, enum, YES, 0, NO, 100
+    PRM field, list, conn
+    PRM sheep, list, conn
+    PRM is_eating, enum, YES, 0, NO, 100
+
+    BEHAV recv_spawn, msg_rcv, spawn, Inform
+        ACTION spawn, modify_self
+            SET dead, NO
+        EACTION
+    EBEHAV
+
+    BEHAV setup, setup
+        ACTION broadcast, send_msg, broadcast, Inform
+            SET SEND.type, 2
+            IEQ dead, YES
+                SET SEND.state, 0
+            EBLOCK
+            IEQ dead, NO
+                SET SEND.state, 1
+            EBLOCK
+            SEND connections
+        EACTION
+    EBEHAV
+    BEHAV move_around, cyclic, 10
+        ACTION wiggle, modify_self
+            IEQ dead, NO
+                DECL wiglR, 0
+                DECL wiglL, 0
+                RAND wiglR, float, uniform, 0, 90
+                RAND wiglL, float, uniform, 0, 90
+                DECL change_flag, 0
+                IEQ invert, YES
+                    SET change_flag, 1
+                    ADD heading, wiglL
+                    SUBT heading, wiglR
+                    ILT heading, 0
+                        SET invert, NO
+                        ADD heading, 180
+                    EBLOCK
+                    IGT heading, 180
+                        SET invert, NO
+                        SUBT heading, 180
+                    EBLOCK
+                EBLOCK
+                IEQ invert, NO
+                    IEQ change_flag, 0
+                        ADD heading, wiglL
+                        SUBT heading, wiglR
+                        ILT heading, 0
+                            SET invert, YES
+                            ADD heading, 180
+                        EBLOCK
+                        IGT heading, 180
+                            SET invert, YES
+                            SUBT heading, 180
+                        EBLOCK
+                    EBLOCK
+                EBLOCK
+            EBLOCK
+        EACTION # wiggle
+        ACTION move, modify_self
+            IEQ dead, NO
+                DECL sin, 0
+                DECL numerator, 180
+                DECL denumerator, 40500
+                SUBT numerator, x
+                MULT numerator, x
+                MULT numerator, 4
+                DECL tmp, 180
+                SUBT tmp, x
+                MULT tmp, x
+                SUBT denumerator, tmp
+                SET sin, numerator
+                DIV sin, denumerator # Bhaskara I sin approximation
+                DECL a, sin
+                DECL b, 1
+                MULT a, a
+                SUBT b, a
+                SET a, sin
+                DECL newx, x
+                DECL newy, y
+                IGT heading, 90
+                    SUBT newx, a
+                EBLOCK
+                ILTEQ heading, 90
+                    ADD newx, a
+                EBLOCK
+                IEQ invert, YES
+                    SUBT newy, b
+                EBLOCK
+                IEQ invert, NO
+                    ADD newy, b
+                EBLOCK
+                DECL bump, 0
+                ILT newx, 0
+                    SET bump, 1
+                EBLOCK
+                ILT newy, 0
+                    SET bump, 1
+                EBLOCK
+                IGT newx, 99
+                    SET bump, 1
+                EBLOCK
+                IGT newy, 99
+                    SET bump, 1
+                EBLOCK
+                IEQ bump,0
+                    SET x, newx
+                    SET y, newy
+                    SUBT energy, 1
+                EBLOCK
+                IEQ bump,1
+                    ADD heading, 90
+                    IGT heading, 180
+                        SUBT heading, 180
+                        DECL flag, 0
+                        IEQ invert, YES
+                            SET flag, 1
+                            SET invert, NO
+                        EBLOCK
+                        IEQ invert, NO
+                            IEQ flag, 0
+                                SET invert, YES
+                            EBLOCK
+                        EBLOCK
+                    EBLOCK
+                EBLOCK
+            EBLOCK
+        EACTION
+        ACTION check_if_dead, modify_self
+            ILTEQ energy, 0
+                SET dead, YES
+            EBLOCK
+        EACTION
+        ACTION eat_sheep, send_msg, eat, Request
+            SET SEND.x, x
+            SET SEND.y, y
+            SEND sheep
+            SET is_eating, YES
+        EACTION
+    EBEHAV
+    BEHAV rcv_eat, msg_rcv, eat, Inform
+        ACTION eat_sheep, send_msg, kill, Inform
+            IEQ is_eating, YES
+                SET is_eating, NO
+                SEND RCV.jid
+            EBLOCK
+        EACTION
+    EBEHAV
+    BEHAV recv_broadcast, msg_rcv, broadcast, Inform
+        IEQ RCV.type, 0
+            ADDE field, RCV.jid
+        EBLOCK
+        IEQ RCV.type, 1
+            ADDE sheep, RCV.jid
+        EBLOCK
+    EBEHAV
+EAGENT
+
