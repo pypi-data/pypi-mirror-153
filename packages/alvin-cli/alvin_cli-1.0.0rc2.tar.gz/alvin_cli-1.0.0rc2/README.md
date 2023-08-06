@@ -1,0 +1,108 @@
+# Alvin CLI
+
+
+We are using `Typer` in the background and the user will be able to see the required and optional arguments along with the docstring for each CLI command when they type `--help` with the command.
+
+
+The Alvin CLI depends on `alvin_api_client` to access all the APIs and models from the backend. We have an individual repo and a package for the `alvin_api_client`.
+When the user installs the `cli` package, `api_client` package is also installed as a dependency. 
+
+
+# For local development and testing
+
+<!--
+  ⚠️ DO NOT UPDATE THE TABLE OF CONTENTS MANUALLY ️️⚠️
+  run `npx markdown-toc -i README.md`.
+
+  Please stick to 80-character line wraps as much as you can.
+-->
+
+## Table of Contents
+
+<!-- toc -->
+
+- [1. Installation](#1-installation)
+  * [1.1. Mac/Linux](#11-maclinux)
+  * [1.2. Windows](#12-windows)
+- [2. Environment setup](#2-environment-setup)
+  * [2.1 Available parameters](#21-available-parameters)
+- [3. Execution](#3-execution)
+
+<!-- tocstop -->
+
+-----
+
+## 1. Installation
+
+Install this library in a [virtualenv][1] using pip. [virtualenv][1] is a tool to
+create isolated Python environments. The basic problem it addresses is one of
+dependencies and versions, and indirectly permissions.
+
+With [virtualenv][1], it's possible to install this library without needing system
+install permissions, and without clashing with the installed system
+dependencies. Make sure you use Python 3.7+.
+
+
+### 1.1. Mac/Linux
+
+```bash
+pip3 install virtualenv
+virtualenv --python python3.7 <your-env>
+source <your-env>/bin/activate
+<your-env>/bin/pip install alvin-cli
+```
+
+### 1.2. Windows
+
+```bash
+pip3 install virtualenv
+virtualenv --python python3.7 <your-env>
+<your-env>\Scripts\activate
+<your-env>\Scripts\pip.exe install alvin-cli
+```
+
+
+## 2. Environment setup
+
+### 2.1 Available parameters
+
+Set the Required parameters in the `alvin.cfg` file.
+
+Run `alvin setup`. This will create `alvin.cfg` in your root directory under `alvin`. 
+Set up your credentials there. Generate a new API Token from https://app.alvin.ai/admin/api-keys and paste that in the configuration file along with your `alvin_platform_id`.
+
+Below is the representation of required and optional parameters for setup
+
+| Name              | Description                                        | Required | Default Value        | Sample Value                                 |
+| -------------     |----------------------------------------------------| -------- | ------------         | ------------                                 |
+| ALVIN_API_TOKEN   | Generated from the Alvin website                   | Y        | N/A                  | HhiE6LbAAOZf-Xn9Pa4MdiC-KgR4W1OuWYsGWeO8OO0= |
+| ALVIN_PLATFORM_ID | Platform ID used to create the connection on Alvin | Y        | N/A                  | alv                                          |
+| ALVIN_UI_HOST     | Used to build the Alvin UI URL, according to ENV   | N        | https://app.alvin.ai | https://app.alvin.ai                         |
+| ALVIN_API_HOST    | Used to build the Alvin UI URL, according to ENV   | N        | https://app.alvin.ai | https://app.alvin.ai                         |
+| DEBUG             | Flag to enable verbose debug logging               | N        | true                 | true                                         |
+
+
+## 3. Execution
+
+Example commands to run after setting up the configuration file
+
+- alvin available commands
+```
+alvin --help
+```
+
+- current user info
+
+```
+alvin current-user
+```
+
+- list of platforms
+
+```
+alvin platform list
+```
+
+[1]: https://virtualenv.pypa.io/en/latest/
+[2]: https://img.shields.io/pypi/v/alvin-cli.svg
+[3]: https://pypi.org/project/alvin-cli-new/
