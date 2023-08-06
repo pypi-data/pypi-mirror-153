@@ -1,0 +1,56 @@
+# ==========
+# WGBS - HMR
+# ==========
+---
+
+- slug: hmr
+  name: HMR
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/wgbs:3.0.0
+  data_name: "{{ methcounts|name|default('?') }}"
+  version: 1.4.0
+  type: data:wgbs:hmr
+  category: WGBS
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+     	Identify hypo-methylated regions.
+  input:
+    - name: methcounts
+      label: Methylation levels
+      type: data:wgbs:methcounts
+      description: |
+         Methylation levels data calculated using methcounts.
+  output:
+    - name: hmr
+      label: Hypo-methylated regions
+      type: basic:file
+    - name: tbi_jbrowse
+      label: Bed file index for Jbrowse
+      type: basic:file
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      NAME=`basename {{ methcounts.meth.file }} .meth.gz`
+
+      hmr -o "${NAME}.bed" <(zcat {{ methcounts.meth.file }})
+      re-checkrc "HMR analysis failed."
+      re-progress 0.8
+
+      bgzip -c "${NAME}.bed" > "${NAME}.bed.gz"
+      tabix -p bed "${NAME}.bed.gz"
+
+      re-save-file hmr "${NAME}.bed.gz"
+      re-save-file tbi_jbrowse "${NAME}.bed.gz.tbi"
+      re-save species {{ methcounts.species }}
+      re-save build {{ methcounts.build }}

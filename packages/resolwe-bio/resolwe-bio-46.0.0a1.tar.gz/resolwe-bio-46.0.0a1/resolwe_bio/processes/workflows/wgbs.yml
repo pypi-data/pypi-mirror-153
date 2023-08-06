@@ -1,0 +1,924 @@
+- slug: workflow-wgbs-single
+  name: WGBS (single-end)
+  data_name: "{{ reads|name|default('?') }}"
+  entity:
+    type: sample
+  requirements:
+    expression-engine: jinja
+  version: 2.2.0
+  type: data:workflow:wgbs
+  category: Pipeline
+  description: |
+    This WGBS pipeline is comprised of trimming, alignment, computation of
+    methylation levels, identification of hypo-methylated regions (HMRs) and
+    additional QC steps.
+
+    First, reads are trimmed to remove adapters or kit specific artifacts.
+    Reads are then aligned by __WALT__ aligner. [WALT (Wildcard ALignment
+    Tool)](https://github.com/smithlabcode/walt) is fast and accurate read
+    mapping for bisulfite sequencing. Then, methylation level at each genomic
+    cytosine is calculated using __methcounts__. Finally, hypo-methylated
+    regions are identified using __hmr__. Both methcounts and hmr are part of
+    [MethPipe](http://smithlabresearch.org/software/methpipe/) package.
+
+    QC steps are based on [Picard](http://broadinstitute.github.io/picard/)
+    and include high level metrics about the alignment, WGS performance and
+    summary statistics from bisulfite sequencing. Final QC reports are
+    summarized by MultiQC.
+
+  input:
+    - name: reads
+      label: Select sample(s)
+      type: data:reads:fastq:single
+    - name: walt_index
+      label: Walt index
+      type: data:index:walt
+    - name: ref_seq
+      label: Reference sequence
+      type: data:seq:nucleotide
+    - name: validation_stringency
+      label: Validation stringency
+      type: basic:string
+      choices:
+        - label: STRICT
+          value: STRICT
+        - label: LENIENT
+          value: LENIENT
+        - label: SILENT
+          value: SILENT
+      default: STRICT
+      description: |
+        Validation stringency for all SAM files read by this
+        program. Setting stringency to SILENT can improve
+        performance when processing a BAM file in which
+        variable-length data (read, qualities, tags) do not
+        otherwise need to be decoded. Default is STRICT.
+    - name: adapter_trimming
+      label: Adapter trimming
+      group:
+        - name: adapters
+          label: Adapter sequences
+          type: data:seq:nucleotide
+          required: false
+          description: |
+            Adapter sequence in FASTA format that will be removed from
+            the read. This field as well as 'Seed mismatches' and
+            'Simple clip threshold' parameters are needed to perform
+            adapter trimming.
+        - name: seed_mismatches
+          label: Seed mismatches
+          type: basic:integer
+          disabled: >
+            !adapter_trimming.adapters
+          required: false
+          description: |
+            Specifies the maximum mismatch count which will still allow
+            a full match to be performed. This field is required to
+            perform adapter trimming.
+        - name: simple_clip_threshold
+          label: Simple clip threshold
+          type: basic:integer
+          disabled: >
+            !adapter_trimming.adapters
+          required: false
+          description: |
+            Specifies how accurate the match between any adapter etc.
+            sequence must be against a read. This field is required to
+            perform adapter trimming.
+    - name: trimming_filtering
+      label: Base trimming and filtering
+      group:
+        - name: leading
+          label: Leading quality
+          type: basic:integer
+          required: false
+          description: |
+            Remove low quality bases from the beginning, if below a
+            threshold quality.
+        - name: trailing
+          label: Trailing quality
+          type: basic:integer
+          required: false
+          description: |
+            Remove low quality bases from the end, if below a
+            threshold quality.
+        - name: crop
+          label: Crop
+          type: basic:integer
+          required: false
+          description: |
+            Cut the read to a specified length by removing bases from
+            the end.
+        - name: headcrop
+          label: Headcrop
+          type: basic:integer
+          required: false
+          description: |
+            Cut the specified number of bases from the start of the
+            read.
+        - name: minlen
+          label: Minimum length
+          type: basic:integer
+          required: false
+          description: |
+            Drop the read if it is below a specified length.
+    - name: alignment
+      label: Alignment (WALT)
+      group:
+        - name: rm_dup
+          label: Remove duplicates
+          type: basic:boolean
+          default: true
+        - name: optical_distance
+          label: Optical duplicate distance
+          type: basic:integer
+          disabled: >
+            !alignment.rm_dup
+          default: 0
+          description: |
+            The maximum offset between two duplicate clusters in order
+            to consider them optical duplicates. Suggested settings of
+            100 for HiSeq style platforms or about 2500 for NovaSeq
+            ones. Default is 0 to not look for optical duplicates.
+        - name: mismatch
+          label: Maximum allowed mismatches
+          type: basic:integer
+          default: 6
+        - name: number
+          label: Number of reads to map in one loop
+          type: basic:integer
+          required: false
+          description: |
+            Sets the number of reads to mapping in each loop. Larger number results in program
+            taking more memory. This is especially evident in paired-end mapping.
+        - name: spikein_name
+          label: Chromosome name of unmethylated control sequence
+          type: basic:string
+          required: false
+          description: |
+            Specifies the name of unmethylated control sequence which is output as a separate alignment file.
+            It is recomended to remove duplicates to reduce any bias introduced by incomplete conversion
+            on PCR duplicate reads.
+        - name: filter_spikein
+          label: Remove control/spike-in sequences.
+          type: basic:boolean
+          disabled: >
+            !alignment.spikein_name
+          default: false
+          description: |
+            Remove unmethylated control reads in the final alignment based on the provided name. It is recomended to remove
+            any reads that are not naturally occuring in the sample (e.g. lambda virus spike-in).
+    - name: bsrate
+      label: Bisulfite conversion rate
+      hidden: >
+        !alignment.spikein_name
+      group:
+        - name: skip
+          label: Skip Bisulfite conversion rate step
+          type: basic:boolean
+          disabled: >
+            !alignment.spikein_name
+          default: true
+          description: |
+            Bisulfite conversion rate step can be skipped. If separate alignment file for unmethylated control
+            sequence is not produced during the alignment this process will fail.
+        - name: sequence
+          label: Unmethylated control sequence
+          type: data:seq:nucleotide
+          disabled: >
+            bsrate.skip
+          required: false
+        - name: count_all
+          label: Count all cytosines including CpGs
+          type: basic:boolean
+          default: true
+          disabled: >
+            bsrate.skip
+        - name: read_length
+          label: Average read length
+          type: basic:integer
+          default: 150
+        - name: max_mismatch
+          label: Maximum fraction of mismatches
+          type: basic:decimal
+          required: false
+          disabled: >
+            bsrate.skip
+        - name: a_rich
+          label: Reads are A-rich
+          type: basic:boolean
+          default: false
+          disabled: >
+            bsrate.skip
+    - name: methcounts
+      label: methcounts
+      group:
+        - name: cpgs
+          label: Only CpG context sites
+          type: basic:boolean
+          default: false
+          disabled: "methcounts.symmetric_cpgs"
+          description: |
+            Output file will contain methylation data for CpG context sites only. Choosing this
+            option will result in CpG content report only.
+        - name: symmetric_cpgs
+          label: Merge CpG pairs
+          type: basic:boolean
+          default: true
+          disabled: "methcounts.cpgs"
+          description: |
+            Merging CpG pairs results in symmetric methylation levels. Methylation is usually
+            symmetric (cytosines at CpG sites were methylated on both DNA strands). Choosing this
+            option will only keep the CpG sites data.
+    - name: summary
+      label: Picard AlignmentSummary
+      group:
+        - name: adapters
+          label: Adapter sequences
+          type: data:seq:nucleotide
+          required: false
+        - name: insert_size
+          label: Maximum insert size
+          type: basic:integer
+          default: 100000
+        - name: pair_orientation
+          label: Pair orientation
+          type: basic:string
+          choices:
+            - label: Unspecified
+              value: 'null'
+            - label: FR
+              value: FR
+            - label: RF
+              value: RF
+            - label: TANDEM
+              value: TANDEM
+          default: 'null'
+    - name: wgs_metrics
+      label: Picard WGS Metrics
+      group:
+        - name: read_length
+          label: Average read length
+          type: basic:integer
+          default: 150
+        - name: min_map_quality
+          label: Minimum mapping quality for a read to contribute coverage
+          type: basic:integer
+          default: 20
+        - name: min_quality
+          label: Minimum base quality for a base to contribute coverage
+          type: basic:integer
+          default: 20
+          description: |
+            N bases will be treated as having a base quality of
+            negative infinity and will therefore be excluded from coverage
+            regardless of the value of this parameter.
+        - name: coverage_cap
+          label: Maximum coverage cap
+          type: basic:integer
+          default: 250
+          description: |
+            Treat positions with coverage exceeding this value as
+            if they had coverage at this set value.
+        - name: accumulation_cap
+          label: Ignore positions with coverage above this value
+          type: basic:integer
+          default: 100000
+          description: |
+            At positions with coverage exceeding this value,
+            completely ignore reads that accumulate beyond this value
+        - name: sample_size
+          label: Sample Size used for Theoretical Het Sensitivity sampling
+          type: basic:integer
+          default: 10000
+    - name: rrbs_metrics
+      label: Picard CollectRrbsMetrics
+      group:
+        - name: min_quality
+          label: Threshold for base quality of a C base before it is considered
+          type: basic:integer
+          default: 20
+        - name: next_base_quality
+          label: Threshold for quality of a base next to a C before the C base is considered
+          type: basic:integer
+          default: 10
+        - name: min_lenght
+          label: Minimum read length
+          type: basic:integer
+          default: 5
+        - name: mismatch_rate
+          label: Maximum fraction of mismatches in a read to be considered (Between 0 and 1)
+          type: basic:decimal
+          default: 0.1
+  run:
+    language: workflow
+    program:
+      - id: trimmomatic
+        run: trimmomatic-single
+        input:
+          reads: '{{ input.reads }}'
+          illuminaclip:
+            adapters: '{{ input.adapter_trimming.adapters }}'
+            seed_mismatches: '{{ input.adapter_trimming.seed_mismatches }}'
+            simple_clip_threshold: '{{ input.adapter_trimming.simple_clip_threshold }}'
+          trim_bases:
+            trailing: '{{ input.trimming_filtering.trailing }}'
+            leading: '{{ input.trimming_filtering.leading }}'
+            crop: '{{ input.trimming_filtering.crop }}'
+            headcrop: '{{ input.trimming_filtering.headcrop }}'
+          reads_filtering:
+            minlen: '{{ input.trimming_filtering.minlen }}'
+      - id: walt
+        run: walt
+        input:
+          genome: '{{ input.walt_index }}'
+          reads: '{{ steps.trimmomatic }}'
+          rm_dup: '{{ input.alignment.rm_dup }}'
+          optical_distance: '{{ input.alignment.optical_distance }}'
+          mismatch: '{{ input.alignment.mismatch }}'
+          number: '{{ input.alignment.number }}'
+          spikein_options:
+            spikein_name: '{{ input.alignment.spikein_name }}'
+            filter_spikein: '{{ input.alignment.filter_spikein }}'
+      - id: bsrate
+        run: bs-conversion-rate
+        input:
+          mr: '{{ steps.walt }}'
+          skip: '{{ input.bsrate.skip }}'
+          sequence: '{{ input.bsrate.sequence }}'
+          count_all: '{{ input.bsrate.count_all }}'
+          read_length: '{{ input.bsrate.read_length }}'
+          max_mismatch: '{{ input.bsrate.max_mismatch }}'
+          a_rich: '{{ input.bsrate.a_rich }}'
+      - id: methcounts
+        run: methcounts
+        input:
+          genome: '{{ input.ref_seq }}'
+          alignment: '{{ steps.walt }}'
+          cpgs: '{{ input.methcounts.cpgs }}'
+          symmetric_cpgs: '{{ input.methcounts.symmetric_cpgs }}'
+      - id: hmr
+        run: hmr
+        input:
+          methcounts: '{{ steps.methcounts }}'
+      - id: markduplicates
+        run: markduplicates
+        input:
+          bam: '{{ steps.walt }}'
+          skip: '{{ input.alignment.rm_dup }}'
+          remove_duplicates: false
+          validation_stringency: '{{ input.validation_stringency }}'
+          assume_sort_order: 'coordinate'
+      - id: summary
+        run: alignment-summary
+        input:
+          bam: '{{ steps.walt }}'
+          genome: '{{ input.ref_seq }}'
+          adapters: '{{ input.summary.adapters }}'
+          validation_stringency: '{{ input.validation_stringency }}'
+          insert_size: '{{ input.summary.insert_size }}'
+          pair_orientation: '{{ input.summary.pair_orientation }}'
+          bisulfite: true
+          assume_sorted: true
+      - id: wgs_metrics
+        run: wgs-metrics
+        input:
+          bam: '{{ steps.walt }}'
+          genome: '{{ input.ref_seq }}'
+          read_length: '{{ input.wgs_metrics.read_length }}'
+          create_histogram: false
+          options:
+            min_map_quality: '{{ input.wgs_metrics.min_map_quality }}'
+            coverage_cap: '{{ input.wgs_metrics.coverage_cap }}'
+            accumulation_cap: '{{ input.wgs_metrics.accumulation_cap }}'
+            count_unpaired: false
+            sample_size: '{{ input.wgs_metrics.sample_size }}'
+            validation_stringency: '{{ input.validation_stringency }}'
+      - id: rrbs_metrics
+        run: rrbs-metrics
+        input:
+          bam: '{{ steps.walt }}'
+          genome: '{{ input.ref_seq }}'
+          min_quality: '{{ input.rrbs_metrics.min_quality }}'
+          next_base_quality: '{{ input.rrbs_metrics.next_base_quality }}'
+          min_lenght: '{{ input.rrbs_metrics.min_lenght }}'
+          mismatch_rate: '{{ input.rrbs_metrics.mismatch_rate }}'
+          validation_stringency: '{{ input.validation_stringency }}'
+          assume_sorted: true
+      - id: multiqc
+        run: multiqc
+        input:
+          data: '{{ [
+            input.reads,
+            steps.walt,
+            steps.bsrate,
+            steps.markduplicates,
+            steps.summary,
+            steps.wgs_metrics,
+            steps.rrbs_metrics,
+            ] }}'
+
+- slug: workflow-wgbs-paired
+  name: WGBS (paired-end)
+  data_name: "{{ reads|name|default('?') }}"
+  entity:
+    type: sample
+  requirements:
+    expression-engine: jinja
+  version: 2.2.0
+  type: data:workflow:wgbs
+  category: Pipeline
+  description: |
+    This WGBS pipeline is comprised of trimming, alignment, computation of
+    methylation levels, identification of hypo-methylated regions (HMRs) and
+    additional QC steps.
+
+    First, reads are trimmed to remove adapters or kit specific artifacts.
+    Reads are then aligned by __WALT__ aligner. [WALT (Wildcard ALignment
+    Tool)](https://github.com/smithlabcode/walt) is fast and accurate read
+    mapping for bisulfite sequencing. Then, methylation level at each genomic
+    cytosine is calculated using __methcounts__. Finally, hypo-methylated
+    regions are identified using __hmr__. Both methcounts and hmr are part of
+    [MethPipe](http://smithlabresearch.org/software/methpipe/) package.
+
+    QC steps are based on [Picard](http://broadinstitute.github.io/picard/)
+    and include high level metrics about the alignment, WGS performance and
+    summary statistics from bisulfite sequencing. Final QC reports are
+    summarized by MultiQC.
+
+  input:
+    - name: reads
+      label: Select sample(s)
+      type: data:reads:fastq:paired
+    - name: walt_index
+      label: Walt index
+      type: data:index:walt
+    - name: ref_seq
+      label: Reference sequence
+      type: data:seq:nucleotide
+    - name: validation_stringency
+      label: Validation stringency
+      type: basic:string
+      choices:
+        - label: STRICT
+          value: STRICT
+        - label: LENIENT
+          value: LENIENT
+        - label: SILENT
+          value: SILENT
+      default: STRICT
+      description: |
+        Validation stringency for all SAM files read by this
+        program. Setting stringency to SILENT can improve
+        performance when processing a BAM file in which
+        variable-length data (read, qualities, tags) do not
+        otherwise need to be decoded. Default is STRICT.
+    - name: adapter_trimming
+      label: Adapter trimming
+      group:
+        - name: adapters
+          label: Adapter sequences
+          type: data:seq:nucleotide
+          required: false
+          description: |
+            Adapter sequence in FASTA format that will be removed from
+            the read. This field as well as 'Seed mismatches', 'Simple
+            clip threshold' and 'Palindrome clip threshold' parameters
+            are  needed to perform adapter trimming. 'Minimum adapter
+            length' and 'Keep both reads' are optional parameters.
+        - name: seed_mismatches
+          label: Seed mismatches
+          type: basic:integer
+          disabled: >
+            !adapter_trimming.adapters
+          required: false
+          description: |
+            Specifies the maximum mismatch count which will still allow
+            a full match to be performed. This field is required to
+            perform adapter trimming.
+        - name: simple_clip_threshold
+          label: Simple clip threshold
+          type: basic:integer
+          disabled: >
+            !adapter_trimming.adapters
+          required: false
+          description: |
+            Specifies how accurate the match between any adapter etc.
+            sequence must be against a read. This field is required to
+            perform adapter trimming.
+        - name: min_adapter_length
+          label: Minimum adapter length
+          type: basic:integer
+          disabled: >
+            !adapter_trimming.seed_mismatches &&
+            !adapter_trimming.simple_clip_threshold &&
+            !adapter_trimming.palindrome_clip_threshold
+          default: 8
+          description: |
+            In addition to the alignment score, palindrome mode can
+            verify that a minimum length of adapter has been detected.
+            If unspecified, this defaults to 8 bases, for historical
+            reasons. However, since palindrome mode has a very low false
+            positive rate, this can be safely reduced, even down to 1,
+            to allow shorter adapter fragments to be removed.
+        - name: palindrome_clip_threshold
+          label: Palindrome clip threshold
+          type: basic:integer
+          disabled: >
+            !adapter_trimming.adapters
+          required: false
+          description: |
+            Specifies how accurate the match between the two 'adapter
+            ligated' reads must be for PE palindrome read alignment.
+            This field is required to perform adapter trimming.
+        - name: keep_both_reads
+          label: Keep both reads
+          type: basic:boolean
+          disabled: >
+            !adapter_trimming.seed_mismatches &&
+            !adapter_trimming.simple_clip_threshold &&
+            !adapter_trimming.palindrome_clip_threshold &&
+            !adapter_trimming.min_adapter_length
+          required: false
+          description: |
+            After read-though has been detected by palindrome mode, and
+            the adapter sequence removed, the reverse read contains the
+            same sequence information as the forward read, albeit in
+            reverse complement. For this reason, the default behaviour
+            is to entirely drop the reverse read. By specifying this
+            parameter, the reverse read will also be retained, which may
+            be useful e.g. if the downstream tools cannot handle a
+            combination of paired and unpaired reads. This field is
+            optional for preforming adapter trimming.
+    - name: trimming_filtering
+      label: Base trimming and filtering
+      group:
+        - name: leading
+          label: Leading quality
+          type: basic:integer
+          required: false
+          description: |
+            Remove low quality bases from the beginning, if below a
+            threshold quality.
+        - name: trailing
+          label: Trailing quality
+          type: basic:integer
+          required: false
+          description: |
+            Remove low quality bases from the end, if below a
+            threshold quality.
+        - name: crop
+          label: Crop
+          type: basic:integer
+          required: false
+          description: |
+            Cut the read to a specified length by removing bases from
+            the end.
+        - name: headcrop
+          label: Headcrop
+          type: basic:integer
+          required: false
+          description: |
+            Cut the specified number of bases from the start of
+            the read.
+        - name: minlen
+          label: Minimum length
+          type: basic:integer
+          required: false
+          description: |
+            Drop the read if it is below a specified length.
+    - name: alignment
+      label: Alignment (WALT)
+      group:
+        - name: rm_dup
+          label: Remove duplicates
+          type: basic:boolean
+          default: true
+        - name: optical_distance
+          label: Optical duplicate distance
+          type: basic:integer
+          disabled: >
+            !alignment.rm_dup
+          default: 0
+          description: |
+            The maximum offset between two duplicate clusters in order
+            to consider them optical duplicates. Suggested settings of
+            100 for HiSeq style platforms or about 2500 for NovaSeq
+            ones. Default is 0 to not look for optical duplicates.
+        - name: mismatch
+          label: Maximum allowed mismatches
+          type: basic:integer
+          default: 6
+        - name: number
+          label: Number of reads to map in one loop
+          type: basic:integer
+          required: false
+          description: |
+            Sets the number of reads to mapping in each loop. Larger number results in program
+            taking more memory. This is especially evident in paired-end mapping.
+        - name: spikein_name
+          label: Chromosome name of unmethylated control sequence
+          type: basic:string
+          required: false
+          description: |
+            Specifies the name of unmethylated control sequence which is output as a separate alignment file.
+            It is recomended to remove duplicates to reduce any bias introduced by incomplete conversion
+            on PCR duplicate reads.
+        - name: filter_spikein
+          label: Remove control/spike-in sequences.
+          type: basic:boolean
+          disabled: >
+            !alignment.spikein_name
+          default: false
+          description: |
+            Remove unmethylated control reads in the final alignment based on the provided name. It is recomended to remove
+            any reads that are not naturally occuring in the sample (e.g. lambda virus spike-in).
+    - name: bsrate
+      label: Bisulfite conversion rate
+      hidden: >
+        !alignment.spikein_name
+      group:
+        - name: skip
+          label: Skip Bisulfite conversion rate step
+          type: basic:boolean
+          disabled: >
+            !alignment.spikein_name
+          default: true
+          description: |
+            Bisulfite conversion rate step can be skipped. If separate alignment file for unmethylated control
+            sequence is not produced during the alignment this process will fail.
+        - name: sequence
+          label: Unmethylated control sequence
+          type: data:seq:nucleotide
+          disabled: >
+            bsrate.skip
+          required: false
+        - name: count_all
+          label: Count all cytosines including CpGs
+          type: basic:boolean
+          default: true
+          disabled: >
+            bsrate.skip
+        - name: read_length
+          label: Average read length
+          type: basic:integer
+          default: 150
+        - name: max_mismatch
+          label: Maximum fraction of mismatches
+          type: basic:decimal
+          required: false
+          disabled: >
+            bsrate.skip
+        - name: a_rich
+          label: Reads are A-rich
+          type: basic:boolean
+          default: false
+          disabled: >
+            bsrate.skip
+    - name: methcounts
+      label: methcounts
+      group:
+        - name: cpgs
+          label: Only CpG context sites
+          type: basic:boolean
+          default: false
+          disabled: "methcounts.symmetric_cpgs"
+          description: |
+            Output file will contain methylation data for CpG context sites only. Choosing this
+            option will result in CpG content report only.
+        - name: symmetric_cpgs
+          label: Merge CpG pairs
+          type: basic:boolean
+          default: true
+          disabled: "methcounts.cpgs"
+          description: |
+            Merging CpG pairs results in symmetric methylation levels. Methylation is usually
+            symmetric (cytosines at CpG sites were methylated on both DNA strands). Choosing this
+            option will only keep the CpG sites data.
+    - name: summary
+      label: Picard AlignmentSummary
+      group:
+        - name: adapters
+          label: Adapter sequences
+          type: data:seq:nucleotide
+          required: false
+        - name: insert_size
+          label: Maximum insert size
+          type: basic:integer
+          default: 100000
+        - name: pair_orientation
+          label: Pair orientation
+          type: basic:string
+          choices:
+            - label: Unspecified
+              value: 'null'
+            - label: FR
+              value: FR
+            - label: RF
+              value: RF
+            - label: TANDEM
+              value: TANDEM
+          default: 'null'
+    - name: wgs_metrics
+      label: Picard WGS Metrics
+      group:
+        - name: read_length
+          label: Average read length
+          type: basic:integer
+          default: 150
+        - name: min_map_quality
+          label: Minimum mapping quality for a read to contribute coverage
+          type: basic:integer
+          default: 20
+        - name: min_quality
+          label: Minimum base quality for a base to contribute coverage
+          type: basic:integer
+          default: 20
+          description: |
+            N bases will be treated as having a base quality of
+            negative infinity and will therefore be excluded from coverage
+            regardless of the value of this parameter.
+        - name: coverage_cap
+          label: Maximum coverage cap
+          type: basic:integer
+          default: 250
+          description: |
+            Treat positions with coverage exceeding this value as
+            if they had coverage at this set value.
+        - name: accumulation_cap
+          label: Ignore positions with coverage above this value
+          type: basic:integer
+          default: 100000
+          description: |
+            At positions with coverage exceeding this value,
+            completely ignore reads that accumulate beyond this value
+        - name: sample_size
+          label: Sample Size used for Theoretical Het Sensitivity sampling
+          type: basic:integer
+          default: 10000
+    - name: rrbs_metrics
+      label: Picard CollectRrbsMetrics
+      group:
+        - name: min_quality
+          label: Threshold for base quality of a C base before it is considered
+          type: basic:integer
+          default: 20
+        - name: next_base_quality
+          label: Threshold for quality of a base next to a C before the C base is considered
+          type: basic:integer
+          default: 10
+        - name: min_lenght
+          label: Minimum read length
+          type: basic:integer
+          default: 5
+        - name: mismatch_rate
+          label: Maximum fraction of mismatches in a read to be considered (Between 0 and 1)
+          type: basic:decimal
+          default: 0.1
+    - name: insert
+      label: Picard InsertSizeMetrics
+      group:
+        - name: minimum_fraction
+          label: Minimum fraction of reads in a category to be considered
+          type: basic:decimal
+          default: 0.05
+          description: |
+            When generating the histogram, discard any data categories
+            (out of FR, TANDEM, RF) that have fewer than this fraction
+            of overall reads (Range: 0 and 0.5).
+        - name: include_duplicates
+          label: Include reads marked as duplicates in the insert size histogram
+          type: basic:boolean
+          default: false
+        - name: deviations
+          label: Deviations limit
+          type: basic:decimal
+          default: 10.0
+          description: |
+            Generate mean, standard deviation and plots by trimming
+            the data down to MEDIAN + DEVIATIONS*MEDIAN_ABSOLUTE_DEVIATION.
+            This is done because insert size data typically includes enough
+            anomalous values from chimeras and other artifacts to make the
+            mean and standard deviation grossly misleading regarding the real
+            distribution.
+  run:
+    language: workflow
+    program:
+      - id: trimmomatic
+        run: trimmomatic-paired
+        input:
+          reads: '{{ input.reads }}'
+          illuminaclip:
+            adapters: '{{ input.adapter_trimming.adapters }}'
+            seed_mismatches: '{{ input.adapter_trimming.seed_mismatches }}'
+            simple_clip_threshold: '{{ input.adapter_trimming.simple_clip_threshold }}'
+            min_adapter_length: '{{ input.adapter_trimming.min_adapter_length }}'
+            palindrome_clip_threshold: '{{ input.adapter_trimming.palindrome_clip_threshold }}'
+            keep_both_reads: '{{ input.adapter_trimming.keep_both_reads }}'
+          trim_bases:
+            trailing: '{{ input.trimming_filtering.trailing }}'
+            leading: '{{ input.trimming_filtering.leading }}'
+            crop: '{{ input.trimming_filtering.crop }}'
+            headcrop: '{{ input.trimming_filtering.headcrop }}'
+          reads_filtering:
+            minlen: '{{ input.trimming_filtering.minlen }}'
+      - id: walt
+        run: walt
+        input:
+          genome: '{{ input.walt_index }}'
+          reads: '{{ steps.trimmomatic }}'
+          rm_dup: '{{ input.alignment.rm_dup }}'
+          optical_distance: '{{ input.alignment.optical_distance }}'
+          mismatch: '{{ input.alignment.mismatch }}'
+          number: '{{ input.alignment.number }}'
+          spikein_options:
+            spikein_name: '{{ input.alignment.spikein_name }}'
+            filter_spikein: '{{ input.alignment.filter_spikein }}'
+      - id: bsrate
+        run: bs-conversion-rate
+        input:
+          mr: '{{ steps.walt }}'
+          skip: '{{ input.bsrate.skip }}'
+          sequence: '{{ input.bsrate.sequence }}'
+          count_all: '{{ input.bsrate.count_all }}'
+          read_length: '{{ input.bsrate.read_length }}'
+          max_mismatch: '{{ input.bsrate.max_mismatch }}'
+          a_rich: '{{ input.bsrate.a_rich }}'
+      - id: methcounts
+        run: methcounts
+        input:
+          genome: '{{ input.ref_seq }}'
+          alignment: '{{ steps.walt }}'
+          cpgs: '{{ input.methcounts.cpgs }}'
+          symmetric_cpgs: '{{ input.methcounts.symmetric_cpgs }}'
+      - id: hmr
+        run: hmr
+        input:
+          methcounts: '{{ steps.methcounts }}'
+      - id: markduplicates
+        run: markduplicates
+        input:
+          bam: '{{ steps.walt }}'
+          skip: '{{ input.alignment.rm_dup }}'
+          remove_duplicates: false
+          validation_stringency: '{{ input.validation_stringency }}'
+          assume_sort_order: 'coordinate'
+      - id: summary
+        run: alignment-summary
+        input:
+          bam: '{{ steps.walt }}'
+          genome: '{{ input.ref_seq }}'
+          adapters: '{{ input.summary.adapters }}'
+          validation_stringency: '{{ input.validation_stringency }}'
+          insert_size: '{{ input.summary.insert_size }}'
+          pair_orientation: '{{ input.summary.pair_orientation }}'
+          bisulfite: true
+          assume_sorted: true
+      - id: wgs_metrics
+        run: wgs-metrics
+        input:
+          bam: '{{ steps.walt }}'
+          genome: '{{ input.ref_seq }}'
+          read_length: '{{ input.wgs_metrics.read_length }}'
+          create_histogram: false
+          options:
+            min_map_quality: '{{ input.wgs_metrics.min_map_quality }}'
+            coverage_cap: '{{ input.wgs_metrics.coverage_cap }}'
+            accumulation_cap: '{{ input.wgs_metrics.accumulation_cap }}'
+            count_unpaired: false
+            sample_size: '{{ input.wgs_metrics.sample_size }}'
+            validation_stringency: '{{ input.validation_stringency }}'
+      - id: rrbs_metrics
+        run: rrbs-metrics
+        input:
+          bam: '{{ steps.walt }}'
+          genome: '{{ input.ref_seq }}'
+          min_quality: '{{ input.rrbs_metrics.min_quality }}'
+          next_base_quality: '{{ input.rrbs_metrics.next_base_quality }}'
+          min_lenght: '{{ input.rrbs_metrics.min_lenght }}'
+          mismatch_rate: '{{ input.rrbs_metrics.mismatch_rate }}'
+          validation_stringency: '{{ input.validation_stringency }}'
+          assume_sorted: true
+      - id: insert
+        run: insert-size
+        input:
+          bam: '{{ steps.walt }}'
+          genome: '{{ input.ref_seq }}'
+          minimum_fraction: '{{ input.insert.minimum_fraction }}'
+          include_duplicates: '{{ input.insert.include_duplicates }}'
+          deviations: '{{ input.insert.deviations }}'
+          validation_stringency: '{{ input.validation_stringency }}'
+          assume_sorted: true
+      - id: multiqc
+        run: multiqc
+        input:
+          data: '{{ [
+            input.reads,
+            steps.walt,
+            steps.bsrate,
+            steps.markduplicates,
+            steps.summary,
+            steps.wgs_metrics,
+            steps.rrbs_metrics,
+            steps.insert,
+            ] }}'

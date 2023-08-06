@@ -1,0 +1,117 @@
+# ==================
+# Expression - Dicty
+# ==================
+---
+
+- slug: expression-dicty
+  name: Dictyostelium expressions
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/s4q6j6e8/resolwebio/biox:2.0.0
+  data_name: "{{ alignment.bam.file|basename|default('?') }}"
+  version: 1.4.1
+  type: data:expression:polya
+  category: Other
+  flow_collection: sample
+  persistence: CACHED
+  description: |
+    Dictyostelium-specific pipeline. Developed by Bioinformatics Laboratory,
+    Faculty of Computer and Information Science, University of Ljubljana,
+    Slovenia and Shaulsky Lab, Department of Molecular and Human Genetics,
+    Baylor College of Medicine, Houston, TX, USA.
+  input:
+    - name: alignment
+      label: Aligned sequence
+      type: data:alignment:bam
+    - name: gff
+      label: Features (GFF3)
+      type: data:annotation:gff3
+    - name: mappable
+      label: Mappability
+      type: data:mappability:bcm
+  output:
+    - name: exp
+      label: Expression RPKUM (polyA)
+      type: basic:file
+      description: mRNA reads scaled by uniquely mappable part of exons.
+    - name: rpkmpolya
+      label: Expression RPKM (polyA)
+      type: basic:file
+      description: mRNA reads scaled by exon length.
+    - name: rc
+      label: Read counts (polyA)
+      type: basic:file
+      description: mRNA reads uniquely mapped to gene exons.
+    - name: rpkum
+      label: Expression RPKUM
+      type: basic:file
+      description: Reads scaled by uniquely mappable part of exons.
+    - name: rpkm
+      label: Expression RPKM
+      type: basic:file
+      description: Reads scaled by exon length.
+    - name: rc_raw
+      label: Read counts (raw)
+      type: basic:file
+      description: Reads uniquely mapped to gene exons.
+    - name: exp_json
+      label: Expression RPKUM (polyA) (json)
+      type: basic:json
+    - name: exp_type
+      label: Expression Type (default output)
+      type: basic:string
+    - name: source
+      label: Gene ID database
+      type: basic:string
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+    - name: feature_type
+      label: Feature type
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      NAME=`basename {{ alignment.bam.file }} .bam`
+
+      xexpression.py {{ gff.annot.file }} {{ alignment.bam.file }} --rc --rpkm --rpkum {{mappable.mappability.file}}
+      re-checkrc "Calculation of expression values failed."
+      re-progress 0.5
+
+      xexpression.py {{ gff.annot.file }} {{ alignment.bam.file }} --rc --rpkm --rpkum {{mappable.mappability.file}} --mrna
+      re-checkrc "Calculation of expression values failed."
+      samtools idxstats {{ alignment.bam.file }} | cut -f -2 | head -n -1 > chrom.sizes
+      re-checkrc "Samtools idxstats command failed."
+
+      mv expression_rc.tab.gz ${NAME}_expression_rc.tab.gz
+      re-save-file rc_raw ${NAME}_expression_rc.tab.gz
+
+      mv expression_rc_polya.tab.gz ${NAME}_expression_rc_polya.tab.gz
+      re-save-file rc ${NAME}_expression_rc_polya.tab.gz
+
+      mv expression_rpkm.tab.gz ${NAME}_expression_rpkm.tab.gz
+      re-save-file rpkm ${NAME}_expression_rpkm.tab.gz
+
+      mv expression_rpkm_polya.tab.gz ${NAME}_expression_rpkm_polya.tab.gz
+      re-save-file rpkmpolya ${NAME}_expression_rpkm_polya.tab.gz
+
+      mv expression_rpkum.tab.gz ${NAME}_expression_rpkum.tab.gz
+      re-save-file rpkum ${NAME}_expression_rpkum.tab.gz
+
+      mv expression_rpkum_polya.tab.gz ${NAME}_expression_rpkum_polya.tab.gz
+      expression2storage.py ${NAME}_expression_rpkum_polya.tab.gz --output json.txt
+      re-checkrc
+      re-save exp_json json.txt
+      re-save-file exp ${NAME}_expression_rpkum_polya.tab.gz
+
+      re-save source {{gff.source}}
+      re-save species {{alignment.species}}
+      re-save build {{alignment.build}}
+      re-save feature_type gene
+      re-save exp_type polyA

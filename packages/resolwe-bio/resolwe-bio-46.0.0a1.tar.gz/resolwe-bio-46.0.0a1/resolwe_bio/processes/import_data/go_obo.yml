@@ -1,0 +1,47 @@
+# ==========================
+# Import ontology (obo) file
+# ==========================
+---
+
+- slug: upload-obo
+  name: OBO file
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    resources:
+      network: true
+  data_name: '{{ src.file|default("?") }}'
+  version: 1.4.0
+  type: data:ontology:obo
+  category: Import
+  persistence: RAW
+  description: |
+    Upload gene ontology in OBO format.
+  input:
+    - name: src
+      label: Gene ontology (OBO)
+      type: basic:file
+      description: |
+        Gene ontology in OBO format.
+      required: true
+      validate_regex: '\.obo(|\.gz|\.bz2|\.tgz|\.tar\.gz|\.tar\.bz2|\.zip|\.rar|\.7z)$'
+  output:
+    - name: obo
+      label: Ontology file
+      type: basic:file
+    - name: obo_obj
+      label: OBO object
+      type: basic:file
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      re-import {{ src.file_temp }} {{ src.file }} "obo" "obo" 0.8
+
+      preprocessor obo "${NAME}.obo" obo_obj
+      re-checkrc "Preprocessing of the uploaded .obo file failed."
+
+      re-save-file obo "${NAME}.obo.gz"
+      re-save-file obo_obj obo_obj

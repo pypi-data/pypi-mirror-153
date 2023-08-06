@@ -1,0 +1,184 @@
+# ==============================
+# Import Differential Expression
+# ==============================
+---
+
+- slug: upload-diffexp
+  name: Differential Expression (table)
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/s4q6j6e8/resolwebio/common:3.0.0
+    resources:
+      network: true
+  data_name: 'Differential expression ({{ src.file }})'
+  version: 1.5.0
+  type: data:differentialexpression:upload
+  category: Import
+  persistence: RAW
+  description: |
+    Upload Differential Expression table.
+  input:
+    - name: src
+      label: Differential expression file
+      type: basic:file
+      description: |
+        Differential expression file. Supported file types: *.xls, *.xlsx, *.tab (tab-delimited file), *.diff. DE file must include columns with log2(fold change) and FDR or pval information. DE file must contain header row with column names. Accepts DESeq, DESeq2, edgeR and CuffDiff output files.
+      validate_regex: '\.(xls|xlsx|tab|tab.gz|diff|diff.gz)$'
+    - name: gene_id
+      label: Gene ID label
+      type: basic:string
+    - name: logfc
+      label: LogFC label
+      type: basic:string
+    - name: fdr
+      label: FDR label
+      type: basic:string
+      required: false
+    - name: logodds
+      label: LogOdds label
+      type: basic:string
+      required: false
+    - name: fwer
+      label: FWER label
+      type: basic:string
+      required: false
+    - name: pvalue
+      label: Pvalue label
+      type: basic:string
+      required: false
+    - name: stat
+      label: Statistics label
+      type: basic:string
+      required: false
+    - name: source
+      label: Gene ID database
+      type: basic:string
+      allow_custom_choice: true
+      choices:
+        - label: AFFY
+          value: AFFY
+        - label: DICTYBASE
+          value: DICTYBASE
+        - label: ENSEMBL
+          value: ENSEMBL
+        - label: NCBI
+          value: NCBI
+        - label: UCSC
+          value: UCSC
+    - name: species
+      label: Species
+      type: basic:string
+      description: |
+        Species latin name.
+      allow_custom_choice: true
+      choices:
+        - label: Homo sapiens
+          value: Homo sapiens
+        - label: Mus musculus
+          value: Mus musculus
+        - label: Rattus norvegicus
+          value: Rattus norvegicus
+        - label: Dictyostelium discoideum
+          value: Dictyostelium discoideum
+        - label: Odocoileus virginianus texanus
+          value: Odocoileus virginianus texanus
+        - label: Solanum tuberosum
+          value: Solanum tuberosum
+    - name: build
+      label: Build
+      type: basic:string
+      description: |
+        Genome build or annotation version.
+    - name: feature_type
+      label: Feature type
+      type: basic:string
+      default: gene
+      choices:
+        - label: gene
+          value: gene
+        - label: transcript
+          value: transcript
+        - label: exon
+          value: exon
+    - name: case
+      label: Case
+      type: list:data:expression
+      required: false
+      description: |
+        Case samples (replicates)
+    - name: control
+      label: Control
+      type: list:data:expression
+      required: false
+      description: |
+        Control samples (replicates)
+  output:
+    - name: raw
+      label: Differential expression
+      type: basic:file
+    - name: de_json
+      label: Results table (JSON)
+      type: basic:json
+    - name: de_file
+      label: Results table (file)
+      type: basic:file
+    - name: source
+      label: Gene ID database
+      type: basic:string
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+    - name: feature_type
+      label: Feature type
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      NAME={{ src.file }}
+
+      {% if case and not control or control and not case %}
+        re-error "Both case and control sample groups need to be provided"
+      {% endif %}
+
+      GENE_ID='{% if gene_id %} --gene_id {{gene_id}} {% endif %}'
+      LOGFC='{% if logfc %} --logfc {{logfc}} {% endif %}'
+      FDR='{% if fdr %} --fdr {{fdr}} {% endif %}'
+      LOGODDS='{% if logodds %} --logodds {{logodds}} {% endif %}'
+      FWER='{% if fwer %} --fwer {{fwer}} {% endif %}'
+      PVALUE='{% if pvalue %} --pvalue {{pvalue}} {% endif %}'
+      STAT='{% if stat %} --stat {{stat}} {% endif %}'
+
+      if [[ '.{{ src.file }}' =~ \.(xls)$ ]]; then
+        re-import {{ src.file_temp }} {{ src.file }} "xls" "xls" 0.3 extract
+        convert_DE_excel_table.py {{ src.file }} > "${NAME}.tab"
+        parse_diffexp.py ${NAME}.tab de_data.json de_file.tab.gz ${GENE_ID} ${LOGFC} ${FDR} ${LOGODDS} ${FWER} ${PVALUE} ${STAT}
+        re-checkrc
+        re-progress 0.7
+        gzip "${NAME}.tab"
+      elif [[ '.{{ src.file }}' =~ \.(xlsx)$ ]]; then
+        re-import {{ src.file_temp }} {{ src.file }} "xlsx" "xlsx" 0.3 extract
+        convert_DE_excel_table.py {{ src.file }} > "${NAME}.tab"
+        parse_diffexp.py ${NAME}.tab de_data.json de_file.tab.gz ${GENE_ID} ${LOGFC} ${FDR} ${LOGODDS} ${FWER} ${PVALUE} ${STAT}
+        re-checkrc
+        re-progress 0.7
+        gzip "${NAME}.tab"
+      else
+        re-import {{ src.file_temp }} {{ src.file }} "diff|tab|gz" "tab" 0.3
+        parse_diffexp.py ${NAME}.tab de_data.json de_file.tab.gz ${GENE_ID} ${LOGFC} ${FDR} ${LOGODDS} ${FWER} ${PVALUE} ${STAT}
+        re-checkrc
+        re-progress 0.7
+        gzip "${NAME}.tab"
+      fi
+      re-save-file raw ${NAME}.tab.gz
+      re-save-file de_file de_file.tab.gz
+      re-save de_json de_data.json
+      re-save source {{ source }}
+      re-save species {{ species }}
+      re-save build {{ build }}
+      re-save feature_type {{ feature_type }}

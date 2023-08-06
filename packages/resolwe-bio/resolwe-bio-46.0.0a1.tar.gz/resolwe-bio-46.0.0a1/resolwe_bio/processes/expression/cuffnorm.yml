@@ -1,0 +1,257 @@
+# =====================
+# Expression - Cuffnorm
+# =====================
+---
+
+- slug: cuffnorm
+  name: Cuffnorm
+  requirements:
+    expression-engine: jinja
+    resources:
+      cores: 1
+    executor:
+      docker:
+        image: public.ecr.aws/genialis/resolwebio/rnaseq:6.0.0
+    relations:
+      - type: group
+        category: Replicate
+        required: True
+  data_name: '{{ cuffquant|map("name")|join(", ")|default("?") }}'
+  version: 2.5.0
+  type: data:cuffnorm
+  category: Quantify
+  persistence: CACHED
+  description: |
+    Cufflinks includes a program, Cuffnorm, that you can use to generate
+    tables of expression values that are properly normalized for library
+    size. Cuffnorm takes a GTF2/GFF3 file of transcripts as input,
+    along with two or more SAM, BAM, or CXB files for two or more
+    samples. See
+    [here](http://cole-trapnell-lab.github.io/cufflinks/cuffnorm/) for
+    more information.
+
+    Replicate relation needs to be defined for Cuffnorm to account for
+    replicates. If the replicate relation is not defined, each sample
+    will be treated individually.
+  input:
+    - name: cuffquant
+      label: Cuffquant expression file
+      type: list:data:cufflinks:cuffquant
+    - name: annotation
+      label: Annotation (GTF/GFF3)
+      type: data:annotation
+      description: |
+        A transcript annotation file produced by cufflinks, cuffcompare, or other source.
+    - name: useERCC
+      label: ERCC spike-in normalization
+      type: basic:boolean
+      default: false
+      description: |
+        Use ERRCC spike-in controls for normalization.
+  output:
+    - name: genes_count
+      label: Genes count
+      type: basic:file
+    - name: genes_fpkm
+      label: Genes FPKM
+      type: basic:file
+    - name: genes_attr
+      label: Genes attr table
+      type: basic:file
+    - name: isoform_count
+      label: Isoform count
+      type: basic:file
+    - name: isoform_fpkm
+      label: Isoform FPKM
+      type: basic:file
+    - name: isoform_attr
+      label: Isoform attr table
+      type: basic:file
+    - name: cds_count
+      label: CDS count
+      type: basic:file
+    - name: cds_fpkm
+      label: CDS FPKM
+      type: basic:file
+    - name: cds_attr
+      label: CDS attr table
+      type: basic:file
+    - name: tss_groups_count
+      label: TSS groups count
+      type: basic:file
+    - name: tss_groups_fpkm
+      label: TSS groups FPKM
+      type: basic:file
+    - name: tss_attr
+      label: TSS attr table
+      type: basic:file
+    - name: run_info
+      label: Run info
+      type: basic:file
+    - name: raw_scatter
+      label: FPKM exp scatter plot
+      type: basic:file
+    - name: boxplot
+      label: Boxplot
+      type: basic:file
+    - name: fpkm_exp_raw
+      label: FPKM exp raw
+      type: basic:file
+    - name: replicate_correlations
+      label: Replicate correlatios plot
+      type: basic:file
+    - name: fpkm_means
+      label: FPKM means
+      type: basic:file
+    - name: exp_fpkm_means
+      label: Exp FPKM means
+      type: basic:file
+    - name: norm_scatter
+      label: FKPM exp scatter normalized plot
+      type: basic:file
+      required: false
+    - name: fpkm_exp_norm
+      label: FPKM exp normalized
+      type: basic:file
+      required: false
+    - name: spike_raw
+      label: Spike raw
+      type: basic:file
+      required: false
+    - name: spike_norm
+      label: Spike normalized
+      type: basic:file
+      required: false
+    - name: R_data
+      label: All R normalization data
+      type: basic:file
+    - name: source
+      label: Gene ID database
+      type: basic:string
+    - name: species
+      label: Species
+      type: basic:string
+    - name: build
+      label: Build
+      type: basic:string
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+
+      {% for c in cuffquant %}
+        {% if c.source != annotation.source %}
+          re-warning "All samples must be annotated by the genome database the annotation file belongs to."
+          re-error "Sample {{ c|sample_name }} has {{ c.source }} gene IDs, while annotation {{ annotation|name }} has {{ annotation.source }} gene IDs."
+        {% endif %}
+
+        {% if c.species != annotation.species %}
+          re-warning "All samples must be the same species as the annotation."
+          re-error "Sample {{ c|sample_name }} is {{ c.species }}, while annotation {{ annotation|name }} is a(n) {{ annotation.species }} annotation."
+        {% endif %}
+
+        {% if c.build != annotation.build %}
+          re-warning "All samples must share the same genome build information as the annotation."
+          re-error "Sample {{ c|sample_name }} has {{ c.build }}, while annotation {{ annotation|name }} has {{ annotation.build }} build information."
+        {% endif %}
+      {% endfor %}
+
+      {% if cuffquant|map('sample_name')|unique|list|length < cuffquant|length %}
+        re-error "Two or more samples have the same name!"
+      {% endif %}
+
+      {% set experiment = cuffquant|map(attribute='cxb.file')|join(',') %}
+
+      {% set replicates = cuffquant|replicate_groups|join(',') %}
+      echo "Group labels:"
+      echo {{ replicates }}
+
+      {% set sample_names = cuffquant|map('sample_name')|join(',')|replace(' ', '_') %}
+
+      labels=`cuffnorm_group_labels.py {{ replicates }}` #construction of group labels
+      labels=${labels%?}
+
+      # put into correct format for cuffnorm
+      eval sample_groups=(`cufflinks_sample_groups.py {{ experiment }} {{ replicates }}`)
+      re-progress 0.1
+
+      cuffnorm --output-dir ./ --num-threads {{ requirements.resources.cores }} {{ annotation.annot.file }} "${sample_groups[@]}"
+      re-checkrc 'Cuffnorm analysis failed.'
+      re-progress 0.8
+
+      # Replace all cuffnorm output tables headers with sample names.
+      cuffnorm_output_table_headers.py {{ replicates }} {{ sample_names }} {{ experiment }}
+
+      # Run normalizeRNASeq.
+      Rscript --slave --no-save --no-restore-history -e " \
+        library(RNASeqT); \
+        normalizeRNASeq( \
+          geneFPKMFile='genes.fpkm_table', \
+          name='cuffnorm', \
+          groupString='${labels}', \
+          useERCC='"{{ useERCC|yesno("TRUE", "FALSE") }}"' \
+        ) \
+      "
+      re-checkrc 'normalizeRNASeq failed.'
+
+      {% if useERCC %}
+        {% for exp in cuffquant %}
+          S_NAME={{ exp|sample_name|replace(' ', '_') }}
+          parse_cuffnorm.py cuffnorm_all_fpkm_exprs_norm.txt "${S_NAME}" -n
+          re-checkrc 'Expression file parsing failed.'
+          mv expression.tab "${S_NAME}_expression.tab"
+          re-export "${S_NAME}_expression.tab"
+          re-run upload-expression-cuffnorm \
+          '{
+            "exp_type":"FPKM",
+            "cxb":{{ exp|id }},
+            "exp":"'"${S_NAME}_expression.tab"'"
+          }'
+        {% endfor %}
+      {% else %}
+        {% for exp in cuffquant %}
+          S_NAME={{ exp|sample_name|replace(' ', '_') }}
+          parse_cuffnorm.py cuffnorm_all_fpkm_exprs_raw.txt "${S_NAME}" -n
+          re-checkrc 'Expression file parsing failed.'
+          mv expression.tab "${S_NAME}_expression.tab"
+          re-export "${S_NAME}_expression.tab"
+          re-run upload-expression-cuffnorm \
+          '{
+            "exp_type":"FPKM",
+            "cxb":{{ exp|id }},
+            "exp":"'"${S_NAME}_expression.tab"'"
+          }'
+        {% endfor %}
+      {% endif %}
+
+      zip R_data.zip cuffnorm_*
+
+      re-save-file genes_count genes.count_table
+      re-save-file genes_fpkm genes.fpkm_table
+      re-save-file genes_attr genes.attr_table
+      re-save-file isoform_count isoforms.count_table
+      re-save-file isoform_fpkm isoforms.fpkm_table
+      re-save-file isoform_attr isoforms.attr_table
+      re-save-file cds_count cds.count_table
+      re-save-file cds_fpkm cds.fpkm_table
+      re-save-file cds_attr cds.attr_table
+      re-save-file tss_groups_count tss_groups.count_table
+      re-save-file tss_groups_fpkm tss_groups.fpkm_table
+      re-save-file tss_attr tss_groups.attr_table
+      re-save-file run_info run.info
+      re-save-file raw_scatter cuffnorm_all_fpkm_exprs_raw_scatter.png
+      re-save-file boxplot cuffnorm_exprs_boxplot.pdf
+      re-save-file fpkm_exp_raw cuffnorm_all_fpkm_exprs_raw.txt
+      re-save-file replicate_correlations cuffnorm_replicate_correlations.pdf
+      re-save-file fpkm_means cuffnorm_all_fpkm_means.txt
+      re-save-file exp_fpkm_means cuffnorm_exprs_fpkm_means.txt
+      {% if useERCC %}
+        re-save-file norm_scatter cuffnorm_all_fpkm_exprs_norm_scatter.png
+        re-save-file fpkm_exp_norm cuffnorm_all_fpkm_exprs_norm.txt
+        re-save-file spike_raw cuffnorm_spike_raw.pdf
+        re-save-file spike_norm cuffnorm_spike_norm.pdf
+      {% endif %}
+      re-save-file R_data R_data.zip
+      re-save source {{ annotation.source }}
+      re-save species {{ (cuffquant|first).species }}
+      re-save build {{ (cuffquant|first).build }}

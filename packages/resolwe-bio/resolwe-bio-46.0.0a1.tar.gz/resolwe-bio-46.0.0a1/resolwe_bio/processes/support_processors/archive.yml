@@ -1,0 +1,166 @@
+- slug: archive-samples
+  name: Archive samples
+  data_name: Sample archive
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/s4q6j6e8/resolwebio/common:3.0.0
+    resources:
+      cores: 10
+  version: 0.5.0
+  type: data:archive:samples
+  category: Other
+  persistence: TEMP
+  scheduling_class: interactive
+  description: |
+    Create an archive of output files. The ouput folder
+    structure is organized by sample slug and data object's
+    output-field names.
+  input:
+    - name: data
+      label: Data list
+      type: list:data
+    - name: fields
+      label: Output file fields
+      type: list:basic:string
+    - name: j
+      label: Junk paths
+      type: basic:boolean
+      description: Store just names of saved files (junk the path)
+      default: False
+  output:
+    - name: archive
+      label: Archive
+      type: basic:file
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+
+      FILE_PATH=()
+      SAMPLE_NAMES=()
+      BUILD=()
+      SPECIES=()
+      EXP_TYPE=()
+      REPORT_TYPE=()
+
+      EXP_FILE_PATHS=()
+      EXP_SAMPLE_NAMES=()
+      EXP_BUILDS=()
+      EXP_SPECIES=()
+      EXP_TYPES=()
+
+      # A change of variable in the loop is not visible outside of the loop. See
+      # https://stackoverflow.com/questions/9486393/ and
+      # https://stackoverflow.com/questions/36886650/ for details.
+      {% set info = {'exp_set_all': True} %}
+      {% for datum in data %}
+        {% if datum|type|subtype('data:expression:') and not datum.exp_set.file %}
+          {% set x=info.__setitem__('exp_set_all', False) %}
+        {% endif %}
+      {% endfor %}
+
+      {% for d in data %}
+        # Always add 'exp' and 'exp_set' output fields to provide inputs
+        {% for field in fields|unique %}
+          {% if d[field].file %}
+            {% set link = d|sample_slug ~ '/' ~ field ~ '/' ~ d[field]|relative_path %}
+            mkdir -p {{ link | dirname }}
+            ln -s --backup=numbered {{ d[field].file }} {{ link }}
+            {% for ref in d[field].refs %}
+              {% set ref_link = d|sample_slug ~ '/' ~ field ~ '/' ~ ref|relative_path %}
+              mkdir -p {{ ref_link|dirname }}
+              ln -s --backup=numbered {{ ref }} {{ ref_link }}
+            {% endfor %}
+          {% endif %}
+          {% for file in d[field] %}
+            {% if file.file %}
+              {% set link = d|sample_slug ~ '/' ~ field ~ '/' ~ file|relative_path %}
+              mkdir -p {{ link|dirname }}
+              ln -s --backup=numbered {{ d[field].file }} {{ link }}
+              {% for ref in file.refs %}
+                {% set ref_link = d|sample_slug ~ '/' ~ field ~ '/' ~ ref|relative_path %}
+                mkdir -p {{ ref_link|dirname }}
+                ln -s --backup=numbered {{ ref }} {{ ref_link }}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+
+        # Select data for IGV and organize by species / build.
+        IGV_FILE={{ d.species }}_{{ d.build }}_temp_igv.txt
+
+        {% if d|type|subtype('data:alignment:bam:') %}
+          mv {{ d|sample_slug }}/bai/{{ d.bai.file|basename }} {{ d|sample_slug }}/bam/{{ d.bai.file|basename }}
+          rm -r {{ d|sample_slug }}/bai
+          # In the first line of _temp_igv.txt file add build information and in the following lines add paths to bam files.
+          if [[ ! -f "$IGV_FILE" ]]; then
+            echo {{ d.build }} > "$IGV_FILE"
+          fi
+          echo {{ d|sample_slug }}/bam/{{ d.bam.file|basename }} >> "$IGV_FILE"
+
+        {% elif d|type|subtype('data:variants:vcf:') %}
+          # In the first line of _temp_igv.txt file add build information and in the following lines add paths to vcf files.
+          if [[ ! -f "$IGV_FILE" ]]; then
+            echo {{ d.build }} > "$IGV_FILE"
+          fi
+          echo {{ d|sample_slug }}/vcf/{{ d.vcf.file|basename }} >> "$IGV_FILE"
+        {% endif %}
+
+        # Store expression files and the corresponding info (sample names, build, species and expression type).
+        # Fetch data from exp_set or exp output field explicitly.
+        {% set field = 'exp_set' if info['exp_set_all'] else 'exp' %}
+        {% if d|type|subtype('data:expression:') %}
+          EXP_FILE_PATHS+=({{ d[field].file }})
+          EXP_SAMPLE_NAMES+=({{ d|sample_name }})
+          EXP_BUILDS+=({{ d.build }})
+          EXP_SPECIES+=({{ d.species }})
+          EXP_TYPES+=({{ d.exp_type }})
+        {% endif %}
+
+        # Store ChIP pre-peakcall and postpeak QC sample and report info
+        {% if d|type|subtype('data:chipseq:callpeak:macs2') and d.chip_qc and d.case_prepeak_qc and 'chip_qc' in fields %}
+          FILE_PATH+=({{ d|sample_slug }}/case_prepeak_qc/{{ d.case_prepeak_qc.file|basename }})
+          FILE_PATH+=({{ d|sample_slug }}/chip_qc/{{ d.chip_qc.file|basename }})
+          SAMPLE_NAMES+=({{ d|sample_slug }} {{ d|sample_slug }})
+          REPORT_TYPE+=("prepeak" "postpeak")
+        {% endif %}
+
+      {% endfor %}
+
+      # Create IGV for data from the same Species and Build.
+      for txt_file in *temp_igv.txt; do
+        [[ -f ${txt_file} ]] || continue
+        make_igv_session_archive.py --input_file "${txt_file}"
+        re-checkrc "Crating IGV session failed"
+      done
+
+      # Skip expression merge if there are no expressions on the input.
+      if [ {{ "${#EXP_TYPES[@]}" }} != 0 ]
+      then
+        expressionmerge_archive.py \
+          --file-paths "${EXP_FILE_PATHS[@]}" \
+          --sample-names "${EXP_SAMPLE_NAMES[@]}" \
+          {% if not info['exp_set_all'] %} --exp-types "${EXP_TYPES[@]}" {% endif %} \
+          --builds "${EXP_BUILDS[@]}" \
+          --species "${EXP_SPECIES[@]}"
+
+        re-checkrc "Merging expression files failed"
+      fi
+
+      if [ {{ "${#REPORT_TYPE[@]}" }} != 0 ]; then
+        merge_chipqc_archive.py \
+          --file_path "${FILE_PATH[@]}" \
+          --sample_names "${SAMPLE_NAMES[@]}" \
+          --report_type "${REPORT_TYPE[@]}"
+
+        re-checkrc "Merging QC reports failed"
+      fi
+
+      if [ -d None ]; then
+        mv None other_data
+      fi
+
+      zip -0 -r {% if j %}-j {% endif %}results.zip */ *all_expressions.txt QC_report.txt
+      re-save-file archive results.zip

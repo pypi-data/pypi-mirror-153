@@ -1,0 +1,38 @@
+# ====================
+# Import - Mappability
+# ====================
+---
+
+- slug: upload-mappability
+  name: Mappability info
+  requirements:
+    expression-engine: jinja
+    executor:
+      docker:
+        image: public.ecr.aws/s4q6j6e8/resolwebio/base:ubuntu-20.04-03042021
+    resources:
+      network: true
+  data_name: '{{ src.file|default("?") }}'
+  version: 1.2.2
+  type: data:mappability:bcm
+  category: Import
+  persistence: RAW
+  description: |
+    Upload mappability information.
+  input:
+    - name: src
+      label: Mappability file
+      type: basic:file
+      description: |
+        Mappability file: 2 column tab separated
+      validate_regex: '\.(tab)(|\.gz|\.bz2|\.tgz|\.tar\.gz|\.tar\.bz2|\.zip|\.rar|\.7z)$'
+  output:
+    - name: mappability
+      label: Uploaded mappability
+      type: basic:file
+  run:
+    runtime: polyglot
+    language: bash
+    program: |
+      re-import {{ src.file_temp }} {{ src.file }} "tab" "tab" 1.0 extract
+      re-save-file mappability "${NAME}.tab"

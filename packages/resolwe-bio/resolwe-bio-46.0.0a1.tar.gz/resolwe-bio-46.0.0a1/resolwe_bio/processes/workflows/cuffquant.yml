@@ -1,0 +1,35 @@
+- slug: workflow-rnaseq-cuffquant
+  name: RNA-Seq (Cuffquant)
+  data_name: "{{ reads|name|default('?') }}"
+  entity:
+    type: sample
+  requirements:
+    expression-engine: jinja
+  version: 2.1.0
+  type: data:workflow:rnaseq:cuffquant
+  category: Pipeline
+  input:
+    - name: reads
+      label: Input reads
+      type: data:reads:fastq
+    - name: genome
+      label: genome
+      type: data:index:hisat2
+    - name: annotation
+      label: Annotation file
+      type: data:annotation
+  run:
+    language: workflow
+    program:
+      - id: hisat2
+        run: alignment-hisat2
+        input:
+          genome: '{{input.genome}}'
+          reads: '{{input.reads}}'
+          spliced_alignments:
+            cufflinks: true
+      - id: cuffquant
+        run: cuffquant
+        input:
+          alignment: '{{steps.hisat2}}'
+          annotation: '{{input.annotation}}'
