@@ -1,0 +1,193 @@
+Metadata-Version: 2.1
+Name: rustfst-python
+Version: 0.10.0
+Summary: Library for constructing, combining, optimizing, and searching weighted finite-state transducers (FSTs). Re-implementation of OpenFst in Rust.
+Home-page: https://github.com/Garvys/rustfst
+Author: Alexandre Caulier, Emrick Sinitambirivoutin
+Author-email: alexandre.caulier.a@gmail.com, emrick.sinitambirivoutin@sonos.com
+License: Apache License, Version 2.0
+Project-URL: Documentation, https://garvys.github.io/rustfst/
+Project-URL: Source, https://github.com/Garvys/rustfst
+Keywords: fst openfst graph transducer acceptor shortest-path minimize determinize wfst
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Text Processing
+Classifier: License :: OSI Approved :: Apache Software License
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Provides-Extra: tests
+Requires-Dist: pytest (<7,>=6) ; extra == 'tests'
+
+# Rustfst
+
+[![License: MIT/Apache-2.0](https://img.shields.io/crates/l/rustfst.svg)](#license)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/Naereen/StrapDown.js/graphs/commit-activity)
+[![macOS](https://svgshare.com/i/ZjP.svg)](https://svgshare.com/i/ZjP.svg)
+[![Linux](https://svgshare.com/i/Zhy.svg)](https://svgshare.com/i/Zhy.svg)
+[![Github tag](https://badgen.net/github/tag/garvys/rustfst)](https://github.com/garvys/rustfst/tags/)
+
+
+#### Rust
+![rustc >= 1.49.0](https://img.shields.io/badge/rustc-%3E%3D1.49.0-brightgreen)
+[![Native Linux test status](https://github.com/Garvys/rustfst/workflows/Native/badge.svg)](https://github.com/Garvys/rustfst/actions)
+[![Documentation](https://docs.rs/rustfst/badge.svg)](https://docs.rs/rustfst)
+[![](https://tokei.rs/b1/github/Garvys/rustfst)](https://github.com/Garvys/rustfst)
+#### Python
+[![PyPI version](https://badge.fury.io/py/rustfst-python.svg)](https://badge.fury.io/py/rustfst-python)
+[![PyPI download month](https://img.shields.io/pypi/dm/rustfst-python.svg)](https://pypi.python.org/pypi/rustfst-python/)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/rustfst-python.svg)](https://pypi.python.org/pypi/rustfst-python/)
+
+
+<!-- cargo-sync-readme start -->
+
+This repo contains a **Rust** implementation of Weighted Finite States Transducers.
+Along with a **Python** binding.
+
+Rustfst is a library for constructing, combining, optimizing, and searching weighted
+finite-state transducers (FSTs). Weighted finite-state transducers are automata where
+each transition has an input label, an output label, and a weight.
+The more familiar finite-state acceptor is represented as a transducer
+with each transition's input and output label equal. Finite-state acceptors
+are used to represent sets of strings (specifically, regular or rational sets);
+finite-state transducers are used to represent binary relations between pairs of
+strings (specifically, rational transductions). The weights can be used to represent
+the cost of taking a particular transition.
+
+FSTs have key applications in speech recognition and synthesis, machine translation,
+optical character recognition, pattern matching, string processing, machine learning,
+information extraction and retrieval among others. Often a weighted transducer is used to
+represent a probabilistic model (e.g., an n-gram model, pronunciation model). FSTs can be
+optimized by determinization and minimization, models can be applied to hypothesis sets
+(also represented as automata) or cascaded by finite-state composition, and the best
+results can be selected by shortest-path algorithms.
+
+![fst](https://raw.githubusercontent.com/Garvys/rustfst-images-doc/master/images/project_in.svg?sanitize=true)
+
+## References
+
+Implementation heavily inspired from Mehryar Mohri's, Cyril Allauzen's and Michael Riley's work :
+- [Weighted automata algorithms](https://cs.nyu.edu/~mohri/pub/hwa.pdf)
+- [The design principles of a weighted finite-state transducer library](https://core.ac.uk/download/pdf/82101846.pdf)
+- [OpenFst: A general and efficient weighted finite-state transducer library](https://link.springer.com/chapter/10.1007%2F978-3-540-76336-9_3)
+- [Weighted finite-state transducers in speech recognition](https://repository.upenn.edu/cgi/viewcontent.cgi?article=1010&context=cis_papers)
+
+## Example
+
+```rust
+use anyhow::Result;
+use rustfst::prelude::*;
+use rustfst::algorithms::determinize::{DeterminizeType, determinize};
+use rustfst::algorithms::rm_epsilon::rm_epsilon;
+
+fn main() -> Result<()> {
+    // Creates a empty wFST
+    let mut fst = VectorFst::<TropicalWeight>::new();
+
+    // Add some states
+    let s0 = fst.add_state();
+    let s1 = fst.add_state();
+    let s2 = fst.add_state();
+
+    // Set s0 as the start state
+    fst.set_start(s0)?;
+
+    // Add a transition from s0 to s1
+    fst.add_tr(s0, Tr::new(3, 5, 10.0, s1))?;
+
+    // Add a transition from s0 to s2
+    fst.add_tr(s0, Tr::new(5, 7, 18.0, s2))?;
+
+    // Set s1 and s2 as final states
+    fst.set_final(s1, 31.0)?;
+    fst.set_final(s2, 45.0)?;
+
+    // Iter over all the paths in the wFST
+    for p in fst.paths_iter() {
+         println!("{:?}", p);
+    }
+
+    // A lot of operations are available to modify/optimize the FST.
+    // Here are a few examples :
+
+    // - Remove useless states.
+    connect(&mut fst)?;
+
+    // - Optimize the FST by merging states with the same behaviour.
+    minimize(&mut fst)?;
+
+    // - Copy all the input labels in the output.
+    project(&mut fst, ProjectType::ProjectInput);
+
+    // - Remove epsilon transitions.
+    rm_epsilon(&mut fst)?;
+
+    // - Compute an equivalent FST but deterministic.
+    fst = determinize(&fst)?;
+
+    Ok(())
+}
+```
+
+<!-- cargo-sync-readme end -->
+
+## Benchmark with OpenFST
+
+I did a benchmark some time ago on almost every linear fst algorithm and compared the results with `OpenFst`. You can find the results here :
+
+- [Benchmark at the C++ level](https://github.com/Garvys/rustfst/blob/master/bench_results/bench_funct_80.md)
+- [Benchmark at the CLI level](https://github.com/Garvys/rustfst/blob/master/bench_results/bench_cli_80.md)
+
+Spoiler alert: `Rustfst` is faster on all those algorithms 😅
+
+## Documentation
+
+The documentation of the last released version is available here :
+https://docs.rs/rustfst
+
+## Release process
+1. Use the script `update_version.sh` to update the version of every package.
+2. Push 
+3. Push a new tag with the prefix `rustfst-v`
+
+Example :
+```bash
+./update_version.sh 0.9.1-alpha.6
+git commit -am "Release 0.9.1-alpha.6"
+git push
+git tag -a rustfst-v0.9.1-alpha.6 -m "Release rustfst 0.9.1-alpha.6"  
+git push --tags
+```
+
+Optionally, if this is a major release, create a GitHub release in the UI.
+
+## Projects contained in this repository
+This repository contains two main projects:
+- `rustfst` is the Rust re-implementation.
+  - Crate available on crates.io [here](https://crates.io/crates/rustfst)
+  - Documentation available on docs.rs [here](https://docs.rs/rustfst/latest/rustfst/)
+- `rustfst-python` is the python binding of `rustfst`.
+  - Package available on Pypi [here](https://pypi.org/project/rustfst-python/)
+  - Documentation available on Github Pages [here](https://garvys.github.io/rustfst)
+
+## License
+   
+Licensed under either of
+- Apache License, Version 2.0 (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license (LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+
+
+
