@@ -1,0 +1,151 @@
+Metadata-Version: 2.1
+Name: task-object-storage
+Version: 1.1.1
+Summary: Task Object Storage package.
+Home-page: https://pypi.org/project/task-object-storage/
+Author: SKALER / Siili Solutions Oyj
+Author-email: skaler-support@siili.com
+License: Apache License 2.0
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+License-File: LICENSE
+Requires-Dist: dnspython
+Requires-Dist: pymongo (<4.0,>=3.7.2)
+Requires-Dist: robotframework (>=3.1)
+Requires-Dist: wheel
+
+Task Object Storage
+===================
+
+Transaction management for Robot Framework RPA using MongoDB.
+
+Included are two packages: ``tos`` and ``TOSLibrary``.
+The former is the actual task object storage implementation written in
+pure Python, without any Robot Framework dependencies. ``TOSLibrary`` is
+a Robot Framework keyword library built on top of ``tos``. It is built as a
+lightweight dynamic proxy library, so all the changes in ``tos`` are immediately
+available in ``TOSLibrary`` keywords.
+
+
+Quickstart guide
+----------------
+
+Requirements
+............
+
+* MongoDB (version >4)
+* Python (version >3.7)
+
+Installation
+............
+
+Latest stable version from PyPi with ``pip``:
+
+.. code-block:: bash
+
+  pip install task-object-storage
+
+Latest development version from PyPi:
+
+.. code-block:: bash
+
+  pip install task-object-storage --pre
+
+
+Usage
+.....
+
+You can import ``TOSLibrary`` into your Robot Framework suite with
+
+.. code-block:: robotframework
+
+  *** Settings ***
+  Library  TOSLibrary  ${db_server}:${db_port}  ${db_name}
+
+
+If you are using authentication in MongoDB, you can pass credentials:
+
+.. code-block:: robotframework
+
+  *** Settings ***
+  Library  TOSLibrary  ${db_server}:${db_port}  ${db_name}  ${db_user}  ${db_passw}
+
+
+You can also add prefix or suffix to the collection name.
+By passing valid ``collection_suffix`` or ``collection_prefix`` arguments to ``TOSLibrary``,
+you can create a collection with a name ``your_prefix.task_objects.your_suffix``
+
+.. code-block:: robotframework
+
+  *** Settings ***
+  Library  TOSLibrary  ${db_server}:${db_port}  ${db_name}  ${db_user}  ${db_passw}  ${collection_suffix}  ${collection_prefix}
+
+
+It is also possible to separate payloads of task objects to their own collection, and also optionally set a lifetime for them. See the full API documentation for further reference.
+
+After initialization, the keywords are callable from Robot Framework.
+
+This library instance can also be accessed inside Python keywords with
+
+.. code-block:: python
+
+  from robot.libraries.BuiltIn import BuiltIn
+
+  toslib = BuiltIn().get_library_instance("TOSLibrary")
+  toslib.keyword_name
+
+The keywords can be also called with:
+
+.. code-block:: python
+
+  BuiltIn().run_keyword("<keyword name>")
+
+
+To use task object storage in Python without any Robot Framework dependencies
+you should use ``tos`` package directly:
+
+.. code-block:: python
+
+  from tos.task_object_storage import TaskObjectStorage
+
+  tos = TaskObjectStorage(
+          db_server=server,
+          db_name=db_name,
+          db_user=db_user,
+          db_passw=db_passw,
+  )
+
+
+If ``db_user`` and ``db_passw`` are empty strings, ``TaskObjectStorage`` will default
+to using no authentication.
+
+Available keywords
+------------------
+See the full API documentation.
+
+
+For developers
+..............
+
+Release a new version by running:
+
+.. code-block:: bash
+
+  scripts/build.sh release
+
+
+You can also install the `whl` package found in the `dist` directory with
+
+.. code-block:: bash
+
+  pip install <package-name>.whl
+
+or put inside `requirements.txt`:
+
+.. code-block:: text
+
+  file:C:/path/to/<package-name>.whl  # on windows
+  file:/path/to/<package-name>.whl  # on linux
+
+
