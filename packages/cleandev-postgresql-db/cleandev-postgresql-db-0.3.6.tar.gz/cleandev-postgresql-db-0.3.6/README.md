@@ -1,0 +1,850 @@
+# Sqlalchemy Module V0.3.6
+
+[Fachada](https://refactoring.guru/es/design-patterns/facade) de la libreria Sqlalchemy 1.4.x
+
+| Properties         | Requerido          | Valor por defecto | Descripción                                                                                                                                                             |
+|--------------------|--------------------|:-----------------:|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| url_connection     | :heavy_check_mark: |       -           | Url de conexión de la base de datos                                                                                                                                     |
+| path_module_schema | :heavy_check_mark: |       -           | Paquete de python donde se almacenaran todos las clases python que representan las tablas de base de datos                                                              |
+| ddl_auto           | :heavy_check_mark: |       -           | Atributo que dependiendo de una valores especificos actuan sobre el comportamiento de la base de datos cuando arranca la aplicación                                     |
+
+![diagrama](https://gitlab.com/cleansoftware/libs/public/cleandev-postgresql-db/-/raw/master/docs/diagrama.png)
+
+## QuickStart
+
+En el momento que se importa el módulo "postgresql_db" se ejecuta la funcion "load_declarative_models()" esta funcion es
+la encargada de gestionar la creacion de la base de datos, por defecto usa la configuración del archivo properties.ini.
+
+### Propiedad ddl_auto
+
+Dentro del archivo configuracion se puede definir un parametro `ddl_auto` que en funcion del valor actua de diferente
+manera contra la base de datos.
+
+Al importar el modulo `postgresql_db` de la siguiente forma `import postgresql_db` se ejuta la
+funcion `load_declarative_models()`
+lo que da lugar a obtener dicho valor del fichero `properties.ini` y a tomar el valor de la variable `ddl_auto` tomando
+el valor del archivo de `properties.ini`
+
+```properties
+[BD_CORE]
+db_ip=172.17.0.2
+db_port=5432
+db_user=postgres
+db_password=mysecretpassword
+db_name=sqlalchemy
+url_connection=postgresql+psycopg2://%(db_user)s:%(db_password)s@%(db_ip)s:%(db_port)s/%(db_name)s
+path_module_schema=models
+ddl_auto=create
+
+```
+
+Las variables `db_ip`, `db_port`, `db_user`, `db_password`, `db_name`, `url_connection` son variables destinadas a
+la configuración de conxion con la base de datos. La variable `url_connection` no es necesario modificarla ya que es
+una variable compuesta para un uso mas sencillo.
+
+## Otras propiedades
+
+## ddl_auto
+
+La variable ddl_auto puede tomar dos valores que explicaremos a continuación que son `create` y `drop_create` cualquier
+otro valor no tendra efecto
+
+#### ddl_auto=create
+
+Usando los modelos representados con clases de python genera las tablas automaticamente cuando se importa el módulo
+`postgresql_db` -> `import postgresql_db` las tablas antiguas no se borran, es decir. Si en el modelo ponemos el nombre
+de una tabla como `users` y luego lo cambiamos a `user` se crearan dos tablas la tabla con el nombre huerfano
+no se borra automaticamente.
+
+#### ddl_auto=drop_create
+
+Esta opcion brinda la opción de borrar todas las tables que esten representadas en los modelos y la vuelve a generar.
+Si existe una tabla y no esté representada en el modelo por algun cambio esta tabla no se borrara.
+
+#### Caso de uso alternativo
+
+Si por algun motivo desea ejecutar dicho metodo manualmente ignorando lo que este en el archivo de configuración
+evite importar el modulo de esta forma `import postgresql_db` importe directamente la funcion y asi evitar la ejecucion
+del modulo de esta forma `from postgresql_db import load_declarative_models` y posteriormente pasele el valor
+manualmente
+de esta forma `load_declarative_models(ddl_auto='create')`
+
+## path_module_schema
+
+Esta variable define en que nombre del paquete va a almacenar los modelos para que la libreria los localice y cree las
+tablas automaticamente. Dado el nombre no importa si los modelos estan en multiples ficheros siempre y cuando esten
+debajo del paquete indicado
+
+Es necesario importar `Base` de esta manera `from postgresql_db import Base` y extender de la clase `Base` para que
+la libreria sea capaz de encontrar todos los paquetes que se mapearan en la base de datos como se obseva en el siguiente
+ejemplo
+
+```python
+from postgresql_db import Base
+from sqlalchemy import Column, String
+from postgresql_db.inmutables import _Params
+
+
+class User(Base):
+    __tablename__ = 'user'
+
+    uuid = Column(String, primary_key=True)
+    username = Column(String)
+    email = Column(String)
+    lastname = Column(String)
+
+    def __init__(self, **kwargs):
+        self.uuid = kwargs.get(_Params.UUID)
+        self.username = kwargs.get(_Params.USERNAME)
+        self.email = kwargs.get(_Params.EMAIL)
+        self.lastname = kwargs.get(_Params.LASTNAME)
+```
+
+## Consultas
+
+Dentro de la libreria se categorizan 3 tipos de grupos de consultas. `BasicQuery`, `StandardQuery`, `AdvanceQuery` cada
+una posee diferentes tipos de consultas que veremos a continuancion con ejemplos
+
+Para crear una transaccion y evitar llenar la base de datos de conexiones huerfanas es necesario cada vez que se vaya
+a usar alguna `Query` independiente de su tipo hacerlo de esta forma.
+
+```python
+from postgresql_db import BasicQueryImpl
+from postgresql_db.interfaces import BasicQuery
+from postgresql_db.configs import StandardSession
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        basic_query: BasicQuery = BasicQueryImpl(session=session)
+```
+
+Notese que `BasicQuery`, `StandardQuery`, `AdvanceQuery` son interfaces que pertenecen al modulo de
+`postgresql_db.interfaces` y tienen sus respectivas implementaciones que estan en el modulo de `postgresql_db`
+
+### BasicQuery
+
+Reune un grupo de operaciones con la base de datos basico como guardar y retornar todos lo valores
+
+#### save()
+
+Este metodo recibe como parametro un modelo directo que representa a la base de datos `save(model=modelo)` como se
+muestra a continuación
+
+```python
+from models import User
+from postgresql_db import BasicQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import BasicQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    user: User = User(
+        uuid=utils.get_uuid4(),
+        username='Daniel',
+        email='danielr@mail.com',
+        lastname='Rodriguez'
+    )
+
+    with StandardSession() as session:
+        basic_query: BasicQuery = BasicQueryImpl(session=session)
+        basic_query.save(model=user)
+```
+
+#### save_all()
+
+Este metodo recibe una lista de modelos y los guarda de una sola consulta en la base de datos
+`save_all(models=list_models)` como se muestra a continuación
+
+```python
+from models import User
+from postgresql_db import BasicQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import BasicQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    user1: User = User(
+        uuid=utils.get_uuid4(),
+        username='Daniel',
+        email='danielr@mail.com',
+        lastname='Rodriguez'
+    )
+
+    user2: User = User(
+        uuid=utils.get_uuid4(),
+        username='Pedro',
+        email='pedro@mail.com',
+        lastname='Ramos'
+    )
+
+    userN: User = User(
+        uuid=utils.get_uuid4(),
+        username='Juan',
+        email='juan@mail.com',
+        lastname='Hernandez'
+    )
+
+    list_model: list = [user1, user2, userN]
+
+    with StandardSession() as session:
+        basic_query: BasicQuery = BasicQueryImpl(session=session)
+        basic_query.save_all(list_model=list_model)
+```
+
+#### find_all()
+
+Este metodo recibe un nombre en formato string que debe de coincidir con el nombre de la clase del modelo y retornara
+todos los registros de dicha tabla en una lista de esta manera `basic_query.find_all(class_name='User')`
+
+```python
+from postgresql_db import BasicQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import BasicQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+
+    with StandardSession() as session:
+        basic_query: BasicQuery = BasicQueryImpl(session=session)
+        user_list: list = basic_query.find_all(class_name='User')
+        for user in user_list:
+            print(user.uuid)
+```
+
+### StandardQuery
+
+Reune un grupo de operaciones con la base de datos relacionadas con borrados y consultas filtrados por campos en
+concreto.
+
+La mayoria de metodos de este grupo recibedos parametros `class_name` y `query_dict` donde 'class_name' viene siendo
+el nombre de la clase que representa la tabla en base de datos y 'query_dict' el patron de busqueda en formato `dict` de
+python como veremos a continuación en los ejemplos siguientes.
+
+Para las pruebas tendremos en cuenta que los registro de base de datos son los siguientes
+
+| uuid                                 | username | email            | lastname  |
+|--------------------------------------|----------|------------------|-----------|
+| 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+| 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+| 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+| af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+#### find_by_filter()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros
+
+Usa en la query el tipico `LIKE=%value%` para la consulta
+
+```python
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+    # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+    # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+    # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+        user_list = standard_query.find_by_filter(
+            class_name='User',
+            query_dict={'email': 'manuel@mail.com'}
+        )  # retorna 1 item
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+
+        user_list = standard_query.find_by_filter(
+            class_name='User',
+            query_dict={'lastname': 'Rodriguez'}
+        )  # retorna 2 item
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+
+        user_list = standard_query.find_by_filter(
+            class_name='User',
+            query_dict={
+                'lastname': 'Rodriguez',
+                'username': 'Manuel'
+            }
+        )  # retorna 1 item
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+```
+
+#### find_by_filter_like()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros
+
+Usa en la query el tipico `LIKE=%value%` para la consulta
+
+```python
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+    # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+    # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+    # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+        user_list = standard_query.find_by_filter_like(
+            class_name='User',
+            query_dict={'lastname': 'a'}
+        )  # retorna 4 item
+
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        user_list = standard_query.find_by_filter_like(
+            class_name='User',
+            query_dict={'lastname': 'r'}
+        )  # retorna 3 item
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+
+        user_list = standard_query.find_by_filter_like(
+            class_name='User',
+            query_dict={
+                'lastname': 'r',
+                'email': 'juan'
+            }
+        )  # retorna 1 item
+
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+```
+
+#### get_one()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros
+
+Retorna un unico modelo por lo tanto lo mas aconsejable es usarlo con campos como claves primarias
+
+```python
+from models import User
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+    # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+    # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+    # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+        user: User = standard_query.get_one(class_name='User', query_dict={'email': 'juan@mail.com'})
+
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+```
+
+#### get_first()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros
+
+Retorna un unico modelo pese a no ser un elemento unico en la base de datos, retorna la primera ocurrencia que cumpla
+con dicho criterio
+
+```python
+from models import User
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+    # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+    # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+    # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+        user: User = standard_query.get_first(class_name='User', query_dict={'lastname': 'Rodriguez'})
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+```
+
+#### get_first_like()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros
+
+Retorna un unico modelo pese a no ser un elemento unico en la base de datos que cumpla con dicho criterio usando
+
+Usa en la query el tipico `LIKE=%value%` para la consulta
+
+```python
+from models import User
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+    # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+    # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+    # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+        user: User = standard_query.get_first_like(class_name='User', query_dict={'lastname': 'Rodriguez'})
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+```
+
+#### update()
+
+Este metodo recibe como parametros `class_name`, `query_dict`, `update_data` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros afectados por la modificación
+`update_data` los registros que se van a actualizar para todos los registros selecionados por la busqueda
+
+Actualiza los registros selecionados en la query y los actualiza usando el criterio pasado en `update_data
+
+```python
+from models import User
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+    # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+    # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+    # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+        update_row: dict = {
+            'uuid': '0548604f-4990-482b-977a-7c4164c816a9',
+            'username': 'Manuel'
+        }
+        user: User = standard_query.get_first_like(class_name='User', query_dict={'lastname': 'Rodriguez'})
+        user: User = standard_query.update(
+            class_name='User',
+            query_dict={'email': 'manuel@mail.com'},
+            update_data=update_row
+        )
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuela   | manuel@mail.com  | Rodriguez |
+
+
+
+```
+
+#### update_like()
+
+Este metodo recibe como parametros `class_name`, `query_dict`, `update_data` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros afectados por la modificación
+`update_data` los registros que se van a actualizar para todos los registros selecionados por la busqueda
+
+Actualiza los registros selecionados en la query y los actualiza usando el criterio pasado en `update_data
+`
+Usa en la query el tipico `LIKE=%value%` para la consulta
+
+#### number_rows()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros a contar
+
+Retorna el numero de registro encontrados
+
+```python
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        rows: int = standard_query.number_rows(
+            class_name='User',
+            query_dict={'email': 'manuel@mail.com'},
+        )
+        print(rows)  # 1
+
+        rows: int = standard_query.number_rows(
+            class_name='User',
+            query_dict={},
+        )
+        print(rows)  # 4
+
+```
+
+#### delete()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros a contar
+
+Elimina todos los registros seleccionados en la consulta
+
+```python
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        standard_query.delete(
+            class_name='User',
+            query_dict={'email': 'manuel@mail.com'},
+        )
+
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+
+```
+
+#### delete_like()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros a contar
+
+Elimina todos los registros seleccionados en la consulta
+
+Usa en la query el tipico `LIKE=%value%` para la consulta
+
+```python
+from postgresql_db import StandardQueryImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import StandardQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        standard_query: StandardQuery = StandardQueryImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        standard_query.delete_like()(
+            class_name='User',
+            query_dict={'lastname': 'z'},
+        )
+
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+
+```
+
+### AdvanceQuery
+
+#### find_all()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`page` el numero de pagina a consultar
+`row_for_page` numero de registros que retorna para esa pagina
+
+Busca todos los registro de una tabla y los pagina segun se le indique
+
+```python
+from postgresql_db import AdvanceQuerysImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import AdvanceQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        advance_query: AdvanceQuery = AdvanceQuerysImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        list_users: list = advance_query.find_all(class_name='User', page=0, row_for_page=1)
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+
+        list_users: list = advance_query.find_all(class_name='User', page=1, row_for_page=1)
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+
+        list_users: list = advance_query.find_all(class_name='User', page=2, row_for_page=1)
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+
+        list_users: list = advance_query.find_all(class_name='User', page=3, row_for_page=1)
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        list_users: list = advance_query.find_all(class_name='User', page=0, row_for_page=2)
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+
+        list_users: list = advance_query.find_all(class_name='User', page=1, row_for_page=2)
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+```
+
+#### find_by_filter()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros a contar
+`page` el numero de pagina a consultar
+`row_for_page` numero de registros que retorna para esa pagina
+
+```python
+from postgresql_db import AdvanceQuerysImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import AdvanceQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        advance_query: AdvanceQuery = AdvanceQuerysImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        list_users: list = advance_query.find_by_filter(
+            class_name='User',
+            query_dict={'lastname': 'Rodriguez'},
+            page=0,
+            row_for_page=2
+        )
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+
+```
+
+Busca los registro segun de una tabla segun criterio elegido y los pagina segun se le indique
+
+#### find_by_filter_like()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros a contar
+`page` el numero de pagina a consultar
+`row_for_page` numero de registros que retorna para esa pagina
+
+Busca los registro segun de una tabla segun criterio elegido y los pagina segun se le indique
+
+Usa en la query el tipico `LIKE=%value%` para la consulta
+
+```python
+from postgresql_db import AdvanceQuerysImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import AdvanceQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        advance_query: AdvanceQuery = AdvanceQuerysImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        list_users: list = advance_query.find_by_filter_like(
+            class_name='User',
+            query_dict={'lastname': 'z'},
+            page=0,
+            row_for_page=2
+        )
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+
+        list_users = advance_query.find_by_filter_like(
+            class_name='User',
+            query_dict={'lastname': 'z'},
+            page=1,
+            row_for_page=2
+        )
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+
+
+
+```
+
+#### find_by_filter_and_order_by()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros a contar
+`order_type` elige el tipo de orden ascendente o descendente
+`order_colum` columna por la cual desea ordenar
+`page` el numero de pagina a consultar
+`row_for_page` numero de registros que retorna para esa pagina
+
+Busca los registro segun de una tabla segun criterio elegido, los pagina y lo ordena por la columna indicada
+
+```python
+from postgresql_db import AdvanceQuerysImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import AdvanceQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        advance_query: AdvanceQuery = AdvanceQuerysImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        list_users: list = advance_query.find_by_filter_and_order_by(
+            class_name='User',
+            query_dict={},
+            order_type='asc',
+            order_colum='lastname',
+            page=0,
+            row_for_page=4
+        )
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+
+        list_users: list = advance_query.find_by_filter_and_order_by(
+            class_name='User',
+            query_dict={},
+            order_type='desc',
+            order_colum='lastname',
+            page=0,
+            row_for_page=4
+        )
+
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+
+```
+
+#### find_by_filter_like_and_order_by()
+
+Este metodo recibe como parametros `class_name`, `query_dict` donde:  
+`class_name` es el nombre de la clase que representa la tabla en base de datos
+`query_dict` es la query que seleccionara los registros a contar
+`order_type` elige el tipo de orden ascendente o descendente
+`order_colum` columna por la cual desea ordenar
+`page` el numero de pagina a consultar
+`row_for_page` numero de registros que retorna para esa pagina
+
+Busca los registro segun de una tabla segun criterio elegido, los pagina y lo ordena por la columna indicada
+
+Usa en la query el tipico `LIKE=%value%` para la consulta
+
+```python
+from postgresql_db import AdvanceQuerysImpl
+from generic_utils import CleanDevGenericUtils
+from postgresql_db.interfaces import AdvanceQuery
+from postgresql_db.configs import StandardSession
+
+utils: CleanDevGenericUtils = CleanDevGenericUtils()
+
+if __name__ == '__main__':
+    with StandardSession() as session:
+        advance_query: AdvanceQuery = AdvanceQuerysImpl(session=session)
+
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+
+        list_users: list = advance_query.find_by_filter_and_order_by(
+            class_name='User',
+            query_dict={},
+            order_type='asc',
+            order_colum='lastname',
+            page=0,
+            row_for_page=4
+        )
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+
+        list_users: list = advance_query.find_by_filter_and_order_by(
+            class_name='User',
+            query_dict={},
+            order_type='desc',
+            order_colum='lastname',
+            page=0,
+            row_for_page=4
+        )
+
+        # | 7a4fb3c5-5470-4da6-9e37-96bff32a0d4b | Daniel   | danielr@mail.com | Rodriguez |
+        # | 0548604f-4990-482b-977a-7c4164c816a9 | Manuel   | manuel@mail.com  | Rodriguez |
+        # | af3bccd6-476e-4a01-9d60-ff15a89eaaef | Pedro    | pedro@mail.com   | Ramos     |
+        # | 8ba5f9a1-24e0-4706-bde1-823954ee584d | Juan     | juan@mail.com    | Hernandez |
+
+```
