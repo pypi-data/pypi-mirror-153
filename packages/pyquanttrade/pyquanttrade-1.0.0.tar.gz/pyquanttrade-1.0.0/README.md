@@ -1,0 +1,1 @@
+# Pyquanttrade is a python package for algorithmic trading using quandl data
