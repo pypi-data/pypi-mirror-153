@@ -1,0 +1,55 @@
+exclude: "^swh/web/tests/resources/"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.1.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '.eml$'
+      - id: check-json
+      - id: check-yaml
+
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-bugbear==22.3.23]
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.1.0
+    hooks:
+      - id: codespell
+        name: Check source code spelling
+        exclude: >
+          (?x)^(
+              cypress/integration/directory.spec.js|
+              yarn.lock|
+              package.json
+          )$
+        args: [-L edn]
+        stages: [commit]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: env DJANGO_SETTINGS_MODULE=swh.web.settings.development mypy
+        args: [swh]
+        pass_filenames: false
+        language: system
+        types: [python]
+      - id: eslint
+        name: eslint
+        entry: node_modules/.bin/eslint -c assets/config/.eslintrc
+        language: system
+        types: [javascript]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/python/black
+    rev: 22.3.0
+    hooks:
+      - id: black
