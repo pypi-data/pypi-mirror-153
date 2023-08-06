@@ -1,0 +1,44 @@
+%pythoncode %{
+# wiringPi modes
+
+WPI_MODE_PINS = 0;
+WPI_MODE_GPIO = 1;
+WPI_MODE_GPIO_SYS = 2;
+WPI_MODE_PHYS = 3;
+WPI_MODE_PIFACE = 4;
+WPI_MODE_UNINITIALISED = -1;
+
+# Pin modes
+
+INPUT = 0;
+OUTPUT = 1;
+INPUT_PULLUP = 2;
+INPUT_PULLDOWN = 3;
+PWM_OUTPUT = 4;
+GPIO_CLOCK = 5;
+SOFT_PWM_OUTPUT = 6;
+SOFT_TONE_OUTPUT = 7;
+PWM_TONE_OUTPUT = 8;
+
+LOW = 0;
+HIGH = 1;
+
+# Pull up/down/none
+
+PUD_OFF = 0;
+PUD_DOWN = 1;
+PUD_UP = 2;
+
+# Interrupt levels
+
+INT_EDGE_SETUP = 0;
+INT_EDGE_FALLING = 1;
+INT_EDGE_RISING = 2;
+INT_EDGE_BOTH = 3;
+
+# Shifting (from wiringShift.h)
+
+LSBFIRST = 0;
+MSBFIRST = 1;
+
+%}
