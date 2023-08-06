@@ -1,0 +1,209 @@
+import logging
+import os
+import sys
+
+import click
+import pygments
+import cls_client
+import barrel
+from honcho.manager import Manager as HonchoManager
+from honcho.printer import Printer as HonchoPrinter
+
+from .core import Combine
+from .logger import logger
+from .dev import Watcher, Server
+from .exceptions import BuildError
+from . import __version__
+
+
+cls_client.set_project_key("cls_pk_QFp5bJFR1RXauHdvRUDpDngE")
+cls_client.set_project_slug("combine")
+cls_client.set_version(__version__)
+cls_client.set_noninteractive_tracking_enabled(True)
+
+
+@click.group()
+@click.version_option(__version__)
+@click.pass_context
+def cli(ctx):
+    pass
+
+
+@cli.command()
+@click.option("--check", is_flag=True, default=False)
+@click.option("--env", default="production")
+@click.option("--var", multiple=True, default=[])
+@click.option("--debug", is_flag=True, default=False)
+@click.pass_context
+@cls_client.track_command(
+    include_kwargs=["check", "env"],
+    include_env=["NETLIFY", "CIRCLECI", "TRAVIS", "GITLAB_CI", "GITHUB_ACTIONS", "CI"],
+)
+def build(ctx, check, env, var, debug):
+    """Build the site (typically during deployment)"""
+    if debug:
+        logger.setLevel(logging.DEBUG)
+
+    variables = dict(x.split("=") for x in var)
+    config_path = os.path.abspath("combine.yml")
+    combine = Combine(config_path=config_path, env=env, variables=variables)
+
+    click.secho("Building site", bold=True, color=True)
+    try:
+        combine.build(check=check)
+    except BuildError:
+        click.secho("Build error (see above)", fg="red", color=True)
+        exit(1)
+
+    if check:
+        if combine.issues:
+            click.secho(
+                f"{len(combine.issues)} check{'s' if len(combine.issues) > 1 else ''} failed",
+                fg="red",
+                color=True,
+            )
+            exit(1)
+        else:
+            click.secho("✓ All checks passed", fg="green", color=True)
+
+
+@cli.command()
+@click.option("--port", type=int, default=8000)
+@click.option("--debug", is_flag=True, default=False)
+@click.pass_context
+def work(ctx, port, debug):
+    """Start a local server to build the site while you work"""
+    if debug:
+        logger.setLevel(logging.DEBUG)
+
+    cls_client.track_event(slug="work", type="command", metadata={}, dispatch=True)
+
+    config_path = os.path.abspath("combine.yml")
+    combine = Combine(
+        config_path=config_path,
+        env="development",
+        variables={"base_url": f"http://127.0.0.1:{port}"},
+    )
+    click.secho("Building site", bold=True, color=True)
+    try:
+        combine.build(check=True)
+    except BuildError:
+        click.secho("Build error (see above)", fg="red", color=True)
+        exit(1)
+
+    header = (
+        """
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃      ┏━━━━━┓                                               ┃
+┃      ┗┓   ┏┻━━━┓    Site is live: http://127.0.0.1:%s    ┃
+┃    ┏━━┫   ┣━━┓ ┃                                           ┃
+┃    ┃ ┏┻━━━┻┓ ┃      Docs: https://combine.dropseed.dev     ┃
+┃ ┏━━┻━┻━━━━━┻━┻━━┓                                          ┃
+┃ ┣━━━━━━━━━━━━━━━┫   Watching for file changes...           ┃
+┃ ┗━━━━◡◡━━━◡◡━━━━┛                                          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+"""
+        % port
+    )
+
+    click.secho(header, fg="green", bold=True, color=True)
+
+    debug_flag = "--debug" if debug else ""
+
+    bin_path = os.path.dirname(sys.executable)
+    combine_path = os.path.join(bin_path, "combine")
+    honcho_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+
+    manager = HonchoManager(HonchoPrinter())
+    manager._system_print = lambda x: None
+    manager.add_process(
+        "server",
+        f"{combine_path} utils server --port {port} {debug_flag}",
+        env=honcho_env,
+    )
+    manager.add_process(
+        "combine",
+        f"{combine_path} utils watch --port {port} {debug_flag}",
+        env=honcho_env,
+    )
+
+    # Add additional custom watch processes
+    for i, step in enumerate(combine.config.steps):
+        if step.has_watch_process:
+            name = step.get_name() or f"step-{i}"
+            manager.add_process(
+                name,
+                step.watch,
+            )
+
+    manager.loop()
+
+
+@cli.group()
+@click.pass_context
+def utils(ctx):
+    """Utility commands"""
+    pass
+
+
+@utils.command()
+@click.option("--port", type=int, default=8000)
+@click.option("--debug", is_flag=True, default=False)
+@click.pass_context
+def server(ctx, port, debug):
+    if debug:
+        logger.setLevel(logging.DEBUG)
+
+    config_path = os.path.abspath("combine.yml")
+    combine = Combine(
+        config_path=config_path,
+        env="development",
+        variables={"base_url": f"http://127.0.0.1:{port}"},
+    )
+
+    Server(combine.output_path, port).serve()
+
+
+@utils.command()
+@click.option("--port", type=int, default=8000)
+@click.option("--debug", is_flag=True, default=False)
+@click.pass_context
+def watch(ctx, port, debug):
+    if debug:
+        logger.setLevel(logging.DEBUG)
+
+    config_path = os.path.abspath("combine.yml")
+    combine = Combine(
+        config_path=config_path,
+        env="development",
+        variables={"base_url": f"http://127.0.0.1:{port}"},
+    )
+
+    Watcher(".", combine=combine).watch()
+
+
+@utils.command()
+@click.option(
+    "--style",
+    default="default",
+    show_default=True,
+    type=click.Choice(list(pygments.styles.get_all_styles())),
+)
+@click.pass_context
+@cls_client.track_command(include_kwargs=["style"])
+def highlight_css(ctx, style):
+    """Outputs the CSS which can be customized for highlighted code"""
+    for line in (
+        pygments.formatters.HtmlFormatter(style=style).get_style_defs().splitlines()
+    ):
+        click.echo(f".highlight {line}")
+
+
+@cli.command()
+def update():
+    """Update your version of combine"""
+    barrel.update("combine")
+
+
+if __name__ == "__main__":
+    cli()
