@@ -1,0 +1,260 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "BOB-ARCHIVE" "1" "Jun 06, 2022" "0.21.0rc1" "Bob"
+.SH NAME
+bob-archive \- Manage binary artifacts archive
+.SH SYNOPSIS
+.sp
+Generic command format:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+bob archive [\-h] subcommand ...
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Available sub\-commands:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+bob archive clean [\-h] [\-\-dry\-run] [\-n] [\-v] [\-f]
+                  expression [expression ...]
+bob archive find [\-h] [\-n] [\-v] [\-f] expression [expression ...]
+bob archive scan [\-h] [\-v] [\-f]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH DESCRIPTION
+.sp
+The bob archive command can be used to manage local binary artifact archives.
+The command must be executed in the root of the archive and needs write access
+to create an index cache.
+.sp
+Artifacts are managed by the information included in their \fI\%Audit Trail\fP\&. See the Audit Trail documentation for a detailed description of
+the included data. Currently the \fBbob archive\fP command has access to the
+\fBmeta\fP, \fBbuild\fP and \fBmetaEnv\fP sections of the audit trail:
+.INDENT 0.0
+.IP \(bu 2
+\fBbuild.date\fP: The date and time of the build (UTC, ISO 8601), e.g.
+\(dq2019\-12\-02T13:19:34.193136+00:00\(dq.
+.IP \(bu 2
+\fBbuild.machine\fP: The hardware identifier as returned by the uname system call.
+.IP \(bu 2
+\fBbuild.nodename\fP: The host name.
+.IP \(bu 2
+\fBbuild.os\-release\fP: Content of \fB/etc/os\-release\fP, if existing.
+.IP \(bu 2
+\fBbuild.release\fP: The operating system release.
+.IP \(bu 2
+\fBbuild.sysname\fP: The operating system name (e.g. \(dqLinux\(dq).
+.IP \(bu 2
+\fBbuild.version\fP: The operating system version.
+.IP \(bu 2
+\fBmeta.bob\fP: Bob version string.
+.IP \(bu 2
+\fBmeta.jenkins\-build\-tag\fP: Jenkins \fB$BUILD_TAG\fP (only present on Jenkins builds).
+.IP \(bu 2
+\fBmeta.jenkins\-build\-url\fP: Jenkins \fB$BUILD_URL\fP (only present on Jenkins builds).
+.IP \(bu 2
+\fBmeta.jenkins\-node\fP: Jenkins \fB$NODE_NAME\fP (only present on Jenkins builds).
+.IP \(bu 2
+\fBmeta.language\fP: \(dqbash\(dq / \(dqPowerShell\(dq
+.IP \(bu 2
+\fBmeta.package\fP: Package path of the artifact that was built.
+.IP \(bu 2
+\fBmeta.recipe\fP: Name of the recipe that declared the package.
+.IP \(bu 2
+\fBmeta.step\fP: \(dqsrc\(dq / \(dqbuild\(dq / \(dqdist\(dq
+.IP \(bu 2
+\fBmetaEnv.<VAR>\fP: Value of \fI\%metaEnvironment\fP
+variable \fB<VAR>\fP\&.
+.UNINDENT
+.sp
+\fBATTENTION:\fP
+.INDENT 0.0
+.INDENT 3.5
+Be careful when matching by \fBmeta.package\fP\&. The retention expression (see
+\fBclean\fP command below) has to match an actually present artifact. There
+may be more than one possible path trough the dependency tree to the same
+package.  It is also possible that multiple packages produce the identical
+result. Only one such package will usually be built by Bob. None of these
+alternate possible package paths are recorded so you should double check if
+you query actually maches.
+.UNINDENT
+.UNINDENT
+.SH OPTIONS
+.INDENT 0.0
+.TP
+.B \fB\-\-dry\-run\fP
+Do not actually delete any artifacts but show what would get removed.
+.TP
+.B \fB\-n\fP
+Don\(aqt rescan the archive for new artifacts. The command will work on the
+last scanned data. Useful if the scan takes a long time (e.g. big archive
+on network mount) and was already run recently.
+.TP
+.B \fB\-v\fP
+Be a bit more chatty on what is done.
+.TP
+.B \fB\-f\fP
+Return a non\-zero exit code in case of errors
+.UNINDENT
+.SH COMMANDS
+.INDENT 0.0
+.TP
+.B clean
+Remove unneeded artifacts from the archive.
+.sp
+The command takes one or more retention expressions. Any artifact that is
+matched by at least one of the expressions or referenced transitively by a
+matched artifact is kept. If an artifact is neither matched by any
+expression nor referenced by a retained artifact it is deleted.
+.sp
+The expression language has the following general syntax:
+.INDENT 7.0
+.INDENT 3.5
+\fIPredicate\fP [\fBLIMIT\fP \fILimit\fP [\fBORDER BY\fP \fIField\fP [\fBASC\fP | \fBDESC\fP]]]
+.UNINDENT
+.UNINDENT
+.sp
+The \fIPredicate\fP supports the following constructs:
+.INDENT 7.0
+.IP \(bu 2
+Strings are written with double quotes, e.g. \fB\(dqfoo\(dq\fP\&. To embed
+double quotes in the string itself escape them with \fB\e\fP\&.
+.IP \(bu 2
+Certain fields from the audit trail can be accessed by their name.
+Sub\-fields are specified with a dot operator, e.g. \fBmeta.package\fP\&. All
+fields are case sensitive and of string type. Referencing a non\-existing
+field is supported but will yield a distinct \(dqundefined\(dq value. This
+special value can only be compared with \fB==\fP and \fB!=\fP with other
+values.
+.IP \(bu 2
+Strings and fields can be compared by the following operators (in
+decreasing precedence): \fB<\fP, \fB<=\fP, \fB>\fP, \fB>=\fP, \fB==\fP, \fB!=\fP\&.
+They are compared character by character by their unicode code point. If
+the end of a operand is reached before finding a difference the string
+lengths are compared instead.
+.IP \(bu 2
+String comparisons can be logically combined with \fB&&\fP (and)
+respectively \fB||\fP (or). There is also a \fB!\fP (not) logical operator.
+.IP \(bu 2
+Parenthesis can be used to override precedence.
+.UNINDENT
+.sp
+The optional \fILimit\fP field must be an integer number greater than zero. It
+limits the number of artifacts that are retained by \fIPredicate\fP\&. If no
+\fILimit\fP is specified all matching artifacts are retained. By default the
+artifacts are sorted by the \fBbuild.date\fP field in descending order so
+that only the most recent \fILimit\fP artifacts are retained.  If \fIField\fP is
+not populated the artifact is always put at the end of the list. Specify
+\fBASC\fP to sort the artifacts in ascending order by \fIField\fP\&.
+.sp
+A typical usage of the \fBclean\fP command is to remove old artifacts from a
+continuous build artifact archive. Suppose the root package that is built
+is called \fBplatform/app\fP and we want to retain only artifacts that are
+referenced by builds that are at most seven days old:
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+bob archive clean \(dqmeta.package == \e\(dqplatform/app\e\(dq && \e
+                   build.date >= \e\(dq$(date \-u \-Idate \-d\-7days)\e\(dq\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+The following example retains only the last three builds from a recipe:
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+bob archive clean \(aqmeta.recipe == \(dqroot\(dq LIMIT 3\(aq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Both examples above can be combined, e.g. to keep all builds of the last
+week while making sure that at least the last build is kept, even if that
+build is older.
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+bob archive clean \(dqmeta.package == \e\(dqplatform/app\e\(dq && \e
+                   build.date >= \e\(dq$(date \-u \-Idate \-d\-7days)\e\(dq\(dq \e
+                  \(aqmeta.package == \e\(dqplatform/app\e\(dq LIMIT 1\(aq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.TP
+.B find
+Find artifacts matching a retention expression.
+.sp
+This expressions that can be given to this command are the same as for the
+\fBclean\fP command above. All artifacts that match at least one of the
+expressions are printed on stdout. Use this command to search for
+particular artifacts or to check that you retention expressions actually
+match the intended artifacts.
+.TP
+.B scan
+Scan for added artifacts.
+.sp
+The \fBarchive\fP command keeps a cache of all indexed artifacts. To freshen
+this cache use this command. Even though other sub\-commands will do a scan
+too (unless suppressed by \fB\-n\fP) it might be helpful to do the scan on a
+more convenient time. If the archive is located e.g. on a slow network
+drive it could be advantageous to scan the archive with a cron job over
+night.
+.UNINDENT
+.SH NOTES
+.sp
+\fBbob archive\fP only works for local binary artifact archives. If you\(aqre using a
+remote archive, you need shell access and a working Bob installation on the
+machine providing your archive in order to be able to use \fBbob archive\fP\&.
+.SH AUTHOR
+Jan Klötzke
+.SH COPYRIGHT
+2016-2020, The BobBuildTool Contributors
+.\" Generated by docutils manpage writer.
+.

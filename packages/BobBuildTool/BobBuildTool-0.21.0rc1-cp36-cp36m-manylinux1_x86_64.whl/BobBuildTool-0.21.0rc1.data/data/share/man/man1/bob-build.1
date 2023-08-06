@@ -1,0 +1,356 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "BOB-BUILD" "1" "Jun 06, 2022" "0.21.0rc1" "Bob"
+.SH NAME
+bob-build \- Bob release mode build
+.SH SYNOPSIS
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+bob build [\-h] [\-\-destination DEST] [\-j [JOBS]] [\-k] [\-f] [\-n] [\-p]
+          [\-\-without\-provided] [\-A | \-\-audit] [\-b | \-B | \-\-normal]
+          [\-\-clean | \-\-incremental] [\-\-always\-checkout RE] [\-\-resume]
+          [\-q] [\-v] [\-\-no\-logfiles] [\-D DEFINES] [\-c CONFIGFILE]
+          [\-e NAME] [\-E] [\-M META] [\-\-upload] [\-\-link\-deps]
+          [\-\-no\-link\-deps] [\-\-download MODE] [\-\-download\-layer MODE]
+          [\-\-shared | \-\-no\-shared] [\-\-install | \-\-no\-install]
+          [\-\-sandbox | \-\-no\-sandbox] [\-\-clean\-checkout]
+          PACKAGE [PACKAGE ...]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH DESCRIPTION
+.sp
+The \fIbob build\fP command is building packages locally in release mode. This mode
+is intended to provide maximum correctness at the expense of build time and
+disk requirements.
+.SH DEFAULT OPTIONS
+.sp
+By default \fIbob build\fP works in the \fBwork\fP subdirectory of the project root
+directory. The source\-, build\- and package\-directories of packages are kept
+next to each other (\fBwork/<pkg>/src\fP, \fBwork/<pkg>/build\fP and
+\fBwork/<pkg>/dist\fP). The \fB<pkg>\fP\-subdirectories are derived from the package
+name. As recipes are changed Bob will always use a new, dedicated directory for
+each variant by adding a counting suffix to the above directories.
+.sp
+In contrast to \fIbob dev\fP the following options take precedence. They can be
+overridden individually by their inverse switches:
+.INDENT 0.0
+.IP \(bu 2
+\fB\-\-download=yes\fP
+.IP \(bu 2
+\fB\-\-clean\fP
+.IP \(bu 2
+\fB\-\-sandbox\fP
+.UNINDENT
+.SH BUILD TREE LOCATION
+.sp
+The build can be done directly in the project root directory or in a separate
+directory. To build outside of the project directory the build\-tree must first
+be initialized with \fI\%bob init\fP\&. Any number of build
+trees may refer to the same project. Inside the external build\-tree there may
+be a dedicated \fBdefault.yaml\fP, overriding settings from the project.
+.SH OPTIONS
+.INDENT 0.0
+.TP
+.B \fB\-\-always\-checkout RE\fP
+Always checkout packages that match the regular expression pattern \fBRE\fP\&.
+The option may be given more than once. In this case all patterns will be
+checked.
+.sp
+Bob may skip the checkout of packages where a correct binary artifact can
+be downloaded from an archive. While this can dramatically decrease the
+build time of large projects it can hamper actually changing and rebuilding
+the packages with modifications. Use this option to instruct Bob to always
+checkout the sources of the packages that you may want to modify.
+.sp
+This option will just make sure that the sources of matching packages are
+checked out. Bob will still try to find matching binary artifacts to skip
+the actual compilation of these packages. See the \fB\-\-download\fP and
+\fB\-\-download\-layer\fP option to control what is built and what is downloaded.
+.TP
+.B \fB\-\-audit\fP
+Generate an audit trail when building.
+.sp
+This is the default unless the user changed it in \fBdefault.yaml\fP\&.
+.TP
+.B \fB\-\-clean\fP
+Do clean builds by clearing the build directory before executing the build
+commands. It will \fInot\fP clean all build results (e.g. like \fBmake clean\fP)
+but rather make sure that no old build artifacts are in the workspace when
+a package is rebuilt. To actually force a rebuild (even though nothing has
+changed) use \fB\-f\fP\&.
+.sp
+This is the default for release mode builds. See \fB\-\-incremental\fP for the
+inverse option.
+.TP
+.B \fB\-\-clean\-checkout\fP
+Do a clean checkout if SCM state is unclean.
+.sp
+Bob will check all SCMs for local changes at the start of a checkout. If a
+SCM checkout is tainted (e.g. dirty, switched branch, unpushed commits,
+\&...) Bob will move it into the attic and do a fresh checkout.
+.sp
+Use this option if you are not sure about the state of the source code. You
+can also use \(aq\fI\%bob status\fP\(aq to check the state
+without changing it.
+.TP
+.B \fB\-\-destination DEST\fP
+Destination of build result (will be overwritten!)
+.sp
+All build results are copied recursively into the given folder. Colliding
+files will be overwritten but other existing files or directories are kept.
+Unless \fB\-\-without\-provided\fP is given using this option will implicitly
+enable \fB\-\-with\-provided\fP to build and copy all provided packages of the
+built package(s).
+.TP
+.B \fB\-\-download MODE\fP
+Download from binary archive (yes, no, deps, forced, forced\-deps, packages)
+.INDENT 7.0
+.TP
+.B no
+build given module and it\(aqs dependencies from sources
+.TP
+.B yes
+download given module, if download fails \- build it from sources
+(default for release mode)
+.TP
+.B forced
+like \(aqyes\(aq above, but fail if any download fails
+.TP
+.B deps
+download dependencies of given module and build the module
+afterwards. If downloading of any dependency fails \- build it
+from sources (default for develop mode)
+.TP
+.B forced\-deps
+like \(aqdeps\(aq above, but fail if any download fails
+.TP
+.B forced\-fallback
+combination of forced and forced\-deps modes: if forced fails fall back to
+forced\-deps
+.TP
+.B packages=<packages regex>
+download modules that match a given regular expression, build all other.
+.UNINDENT
+.TP
+.B \fB\-\-download\-layer MODE\fP
+Download from binary archive for layer (yes, no, forced)
+.sp
+Acts like \fB\-\-download\fP but only for the modules of the layer that match a
+given regular expression (\fB\-\-download\fP option will be overwritten for
+matching modules).
+Can be used multiple times (if regex is used also multiple times the last mode wins).
+A sub layer is separated with a \fB/\fP\&.
+.INDENT 7.0
+.TP
+.B no=<layer regex>
+build modules of a layer that match a given regular expression from sources
+.TP
+.B yes=<layer regex>
+download modules of a layer that match a given regular expression, if download fails \- build it from sources
+.TP
+.B forced=<layer regex>
+like \(aqyes\(aq above, but fail if any download fails
+.UNINDENT
+.TP
+.B \fB\-\-incremental\fP
+Reuse build directory for incremental builds.
+.sp
+This is the inverse option to \fB\-\-clean\fP\&. Build workspaces will be reused
+as long as their recipes were not changed. If the recipe did change Bob
+will still do a clean build automatically.
+.TP
+.B \fB\-\-install\fP
+Install shared packages. A shared location must have been configured so
+that Bob knows where to put the package. This is the default.
+.TP
+.B \fB\-\-link\-deps\fP
+Create symlinks to dependencies next to workspace.
+.TP
+.B \fB\-\-no\-install\fP
+Do not install shared packages if a shared location is configured.
+.TP
+.B \fB\-\-no\-sandbox\fP
+Disable sandboxing
+.TP
+.B \fB\-\-no\-shared\fP
+Do not use shared packages even if they are available.
+.TP
+.B \fB\-\-resume\fP
+Resume build where it was previously interrupted.
+.sp
+All packages that were built in the previous invocation of Bob are not
+checked again. In particular changes to the source code of these packages
+are not considered. Use this option to quickly resume the build if it
+failed and the error has been corrected in the failing package.
+.TP
+.B \fB\-\-sandbox\fP
+Enable sandboxing
+.TP
+.B \fB\-\-shared\fP
+Use shared packages if they are available. This is the default.
+.TP
+.B \fB\-\-upload\fP
+Upload to binary archive
+.TP
+.B \fB\-A, \-\-no\-audit\fP
+Do not generate an audit trail.
+.sp
+The generation of the audit trail is usually barely noticeable. But if a
+large number of repositories is checked out it can add a significant
+overhead nonetheless. This option suppresses the generation of the audit
+trail.
+.sp
+Note that it is not possible to upload such built artifacts to a binary
+archive because vital information is missing. It is also not possible to
+install shared packages that were built without audit trail for the same
+reason.
+.TP
+.B \fB\-B, \-\-checkout\-only\fP
+Don\(aqt build, just check out sources
+.TP
+.B \fB\-D VAR=VALUE\fP
+Override default or set environment variable.
+.sp
+Sets the variable \fBVAR\fP to \fBVALUE\fP\&. This overrides the value possibly
+set by \fBdefault.yaml\fP, config files passed by \fB\-c\fP or any file that was
+included by either of these files.
+.TP
+.B \fB\-E\fP
+Preserve whole environment.
+.sp
+Normally only variables configured in the whitelist are passed unchanged
+from the environment. With this option all environment variables that are
+set while invoking Bob are kept. Use with care as this might affect some
+packages whose recipes are not robust.
+.TP
+.B \fB\-M VAR=VALUE\fP
+Assign the meta variable \fBVAR\fP to the given value in the audit trail.
+The variable can later be matched by \fI\%bob archive\fP as
+\fBmeta.VAR\fP to select artifacts built by this project. Variables that are
+defined by Bob itself (e.g. \fBmeta.bob\fP) cannot be redifined!
+.TP
+.B \fB\-b, \-\-build\-only\fP
+Don\(aqt checkout, just build and package
+.sp
+If the sources of a package that needs to be built are missing then Bob
+will still check them out. This option just prevents updates of existing
+source workspaces that are fetched from remote locations. A notable
+exception is the \fBimport\fP SCM which will still update the workspace even
+if this option is present.
+.TP
+.B \fB\-c CONFIGFILE\fP
+Use additional configuration file.
+.sp
+The \fB\&.yaml\fP suffix is appended automatically and the configuration file
+is searched relative to the project root directory unless an absolute path
+is given. Bob will parse these user configuration files after
+\fIdefault.yaml\fP\&. They are using the same schema.
+.sp
+This option can be given multiple times. The files will be parsed in the
+order as they appeared on the command line.
+.TP
+.B \fB\-e NAME\fP
+Preserve environment variable.
+.sp
+Unless \fB\-E\fP this allows the fine grained addition of single environment
+variables to the whitelist.
+.TP
+.B \fB\-f, \-\-force\fP
+Force execution of all build steps.
+.sp
+Usually Bob decides if a build step or any of its input has changed and
+will skip the execution of it if this is not the case. With this option Bob
+not use that optimization and will execute all build steps.
+.TP
+.B \fB\-j, \-\-jobs\fP
+Specifies the number of jobs to run simultaneously.
+.sp
+Any checkout/build/package step that needs to be executed are counted as a
+job. Downloads and uploads of binary artifacts are separate jobs too. If a
+job fails the other currently running jobs are still finished before Bob
+returns. No new jobs are scheduled, though, unless the \fB\-k\fP option is
+given (see below).
+.sp
+If the \-j option is given without an argument, Bob will run as many jobs as
+there are processors on the machine.
+.TP
+.B \fB\-k, \-\-keep\-going\fP
+Continue  as much as possible after an error.
+.sp
+While the package that failed to build and all the packages that depend on
+it cannot be built either, the other dependencies are still processed.
+Normally Bob stops on the first error that is encountered.
+.TP
+.B \fB\-n, \-\-no\-deps\fP
+Don\(aqt build dependencies.
+.sp
+Only builds the package that was given on the command line. Bob will not
+check if the dependencies of that package are available and if they are
+up\-to\-date.
+.TP
+.B \fB\-\-no\-link\-deps\fP
+Do not create symlinks to dependencies next to workspace.
+.TP
+.B \fB\-\-no\-logfiles\fP
+Don\(aqt write a logfile. Without this bob is creating a logfile in the
+current workspace. Because of the pipe\-usage many tools like gcc,
+ls, git detect they are not running on a tty and disable output
+coloring. Disable the logfile generation to get the colored output
+back.
+.TP
+.B \fB\-p, \-\-with\-provided\fP
+Build provided dependencies too. In combination with \fB\-\-destination\fP this
+is the default. In any other case \fB\-\-without\-provided\fP is default.
+.TP
+.B \fB\-q, \-\-quiet\fP
+Decrease verbosity (may be specified multiple times)
+.TP
+.B \fB\-v, \-\-verbose\fP
+Increase verbosity (may be specified multiple times)
+.TP
+.B \fB\-\-without\-provided\fP
+Build just the named packages without their provided dependencies. This is
+the default unless the \fB\-\-destination\fP option is given too.
+.UNINDENT
+.SH SEE ALSO
+.sp
+\fI\%bobpaths(7)\fP \fI\%bob\-status(1)\fP
+\fI\%bob\-init(1)\fP
+.SH AUTHOR
+Jan Klötzke
+.SH COPYRIGHT
+2016-2020, The BobBuildTool Contributors
+.\" Generated by docutils manpage writer.
+.
