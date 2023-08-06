@@ -1,0 +1,51 @@
+#!python
+
+import os
+import sys
+
+from stp_core.loop.looper import Looper
+from stp_core.types import HA
+from plenum.common.config_util import getConfig
+from plenum.server.config_helper import NodeConfigHelper
+from plenum.server.node import Node
+from stp_core.common.log import Logger
+
+config = getConfig()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 6:
+        raise Exception("Provide name and two pairs of IP/port for running the node "
+                        "and client stacks in form 'node_name node_ip node_port client_ip client_port'")
+
+    selfName = sys.argv[1]
+    ha = HA(sys.argv[2], int(sys.argv[3]))
+    cliha = HA(sys.argv[4], int(sys.argv[5]))
+
+    config_helper = NodeConfigHelper(selfName, config)
+
+    logFileName = os.path.join(config_helper.log_dir, selfName + ".log")
+
+    Logger().enableFileLogging(logFileName)
+
+    print("Start plenum node:\n"
+          "------------------\n"
+          "ledger_dir = {}\n"
+          "keys_dir = {}\n"
+          "genesis_dir = {}\n"
+          "plugins_dir = {}\n"
+          "------------------"
+          .format(config_helper.ledger_dir,
+                  config_helper.keys_dir,
+                  config_helper.genesis_dir,
+                  config_helper.plugins_dir))
+
+    print("You can find logs in {}".format(logFileName))
+
+    with Looper(debug=config.LOOPER_DEBUG) as looper:
+        node = Node(selfName,
+                    ha=ha,
+                    cliha=cliha,
+                    config=config)
+        looper.add(node)
+        looper.run()
