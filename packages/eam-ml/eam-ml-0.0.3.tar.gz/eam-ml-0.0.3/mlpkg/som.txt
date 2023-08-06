@@ -1,0 +1,55 @@
+install.packages("kohonen")
+library(kohonen)
+data <- read.csv("data.csv", header = T)
+str(data)
+set.seed(222)
+X <- scale(data[,-1])
+summary(X)
+g <- somgrid(xdim = 4, ydim = 4, topo = "rectangular" )
+map <- som(X,
+           grid = g,
+           alpha = c(0.05, 0.01),
+           radius = 1)
+plot(map, type='codes',palette.name = rainbow)
+map$unit.classif
+map$codes
+
+plot(map, type = "mapping")
+
+//supervised som
+
+set.seed(123)
+ind <- sample(2, nrow(data), replace = T, prob = c(0.7, 0.3))
+train <- data[ind == 1,]
+test <- data[ind == 2,]
+
+//normalisation
+trainX <- scale(train[,-1])
+testX <- scale(test[,-1],
+               center = attr(trainX, "scaled:center"),
+               scale = attr(trainX, "scaled:scale"))
+trainY <- factor(train[,1])
+Y <- factor(test[,1])
+test[,1] <- 0
+testXY <- list(independent = testX, dependent = test[,1])
+
+//gradient boosting 
+set.seed(223)
+map1 <- xyf(trainX,
+            classvec2classmat(factor(trainY)),
+            grid = somgrid(5, 5, "hexagonal"),
+            rlen = 100)
+plot(map1, type='codes',palette.name = rainbow)
+
+//cluster boundary 
+par(mfrow = c(1,2))
+plot(map1,
+     type = 'codes',
+     main = c("Codes X", "Codes Y"))
+map1.hc <- cutree(hclust(dist(map1$codes[[2]])), 2)
+add.cluster.boundaries(map1, map1.hc)
+par(mfrow = c(1,1))
+
+//prediction
+pred <- predict(map1, newdata = testXY)
+table(Predicted = pred$predictions[[2]], Actual = Y)
