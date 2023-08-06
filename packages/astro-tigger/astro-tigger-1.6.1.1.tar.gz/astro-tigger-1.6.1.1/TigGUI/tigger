@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+
+# Copyright (C) 2002-2022
+# The MeqTree Foundation &
+# ASTRON (Netherlands Foundation for Research in Astronomy)
+# P.O.Box 2, 7990 AA Dwingeloo, The Netherlands
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, see <http://www.gnu.org/licenses/>,
+# or write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+import faulthandler
+import time
+
+from TigGUI.Tools import dependency_check  # checks dependencies are available
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette
+from PyQt5.QtWidgets import QStyleFactory, QSizePolicy, QStyle, QSplashScreen
+
+faulthandler.enable()
+import sys
+import os
+import traceback
+from optparse import OptionParser
+
+from PyQt5.Qt import QApplication, QColor
+
+from TigGUI.kitties import utils
+
+
+def main():
+    import TigGUI.init
+
+    _verbosity = utils.verbosity(name="startup")
+    dprint = _verbosity.dprint
+    dprintf = _verbosity.dprintf
+
+    # parse options is the first thing we should do
+
+    usage = "usage: %prog [options] <sky models or FITS files>"
+    parser = OptionParser(usage=usage)
+    parser.add_option("-d", "--debug", dest="verbose", type="string", action="append", metavar="Context=Level",
+                      help="(for debugging Python code) sets verbosity level of the named Python context. May be used multiple times.")
+    parser.add_option("-T", "--timestamps", action="store_true",
+                      help="(for debugging Python code) enable timestamps in debug output")
+    (options, rem_args) = parser.parse_args()
+
+    if options.timestamps:
+        try:
+            TigGUI.kitties.utils.verbosity.enable_timestamps()
+        except:
+            pass
+    dprint(1, "starting up")
+
+    import TigGUI
+
+    print("Welcome to Tigger " + TigGUI.release_string)
+    print("Please wait a second while the GUI starts up.")
+
+    dprint(1, "imported TigGUI")
+    TigGUI.startup_dprint = dprint
+    TigGUI.startup_dprintf = dprintf
+
+    dprint(1, "imported Qt5")
+    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"  # enable auto scaling based on monitor's pixel density
+    os.environ["QT_SCALE_FACTOR"] = "1"  # set global scale factor for entire application
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # enable highdpi scaling
+    # QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)  # only for PyQt 5.15
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)  # enable highdpi icons
+    QApplication.setAttribute(Qt.AA_UseDesktopOpenGL, True)  # force the use of OpenGL
+    QApplication.setDesktopSettingsAware(True)  # App will use System fonts, colours etc...
+    app = QApplication(sys.argv)
+    # Even after setting style to Fusion, it still causes a style warning from Qt
+    app.setStyle(QStyleFactory.create("Fusion"))
+    # get screen size
+    screen = app.primaryScreen()
+    size = screen.size()
+    usable_screen = screen.availableGeometry()
+    print(f"Detected screen size {size.width()}x{size.height()}, usable area {usable_screen.width()}x{usable_screen.height()}")
+
+    # setup Dark Mode QPalette - initial setup
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    palette.setColor(QPalette.WindowText, Qt.white)
+    palette.setColor(QPalette.Light, QColor(68, 68, 68))
+    palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ToolTipBase, Qt.white)
+    palette.setColor(QPalette.ToolTipText, Qt.black)
+    palette.setColor(QPalette.Text, Qt.white)
+    palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ButtonText, Qt.white)
+    palette.setColor(QPalette.BrightText, Qt.red)
+    palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    palette.setColor(QPalette.Highlight, QColor(42, 130, 218, 192))
+    palette.setColor(QPalette.HighlightedText, Qt.white)
+
+    # setup Dark Mode disabled QPalette
+    palette.setColor(QPalette.Disabled, QPalette.Window, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.WindowText, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.Base, QColor(68, 68, 68))
+    palette.setColor(QPalette.Disabled, QPalette.Text, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.Button, QColor(53, 53, 53, 128))
+    palette.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(255, 255, 255, 128))
+    palette.setColor(QPalette.Disabled, QPalette.BrightText, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.Link, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.Highlight, Qt.black)
+    palette.setColor(QPalette.Disabled, QPalette.HighlightedText, Qt.black)
+
+    # add Dark Mode to Tigger
+    app.setPalette(palette)
+    from TigGUI.init import pixmaps
+    app.setWindowIcon(pixmaps.tigger_starface.icon())
+    # Need for PlotStyles colors -- ignore error on non-X11 platforms like the Mac
+    try:
+        QColor.setAllowX11ColorNames(True)  # TODO - this seems to be a Qt4 call and needs updating.
+    except AttributeError:
+        pass
+
+    dprint(1, "created QApplication")
+    splash = QSplashScreen(pixmaps.tigger_splash.pm(), Qt.WindowStaysOnTopHint)
+    splash.show()
+    splash.showMessage("Welcome to TigGUI!", Qt.AlignBottom)
+    time.sleep(2)
+    app.processEvents()
+
+    import TigGUI.Images
+    import TigGUI.MainWindow
+    dprint(1, "imported TigGUI.MainWindow")
+    import TigGUI.Tools
+
+    # although this seems unused, it is actually registering these plugins
+    dprint(1, "imported TigGUI.Tools")
+
+    # max width and height for main window
+    max_w, max_h = int(usable_screen.width()*0.9), int(usable_screen.height()*0.88)
+    mainwin = TigGUI.MainWindow.MainWindow(None, max_width=max_w, max_height=max_h)
+    # set minimum size as the height of image control dialog
+    if usable_screen.width() >= 895 <= usable_screen.height():
+        mainwin.setMinimumHeight(895)
+        mainwin.setMinimumWidth(895)
+    # centre on screen
+    centre = QStyle.alignedRect(Qt.LeftToRight, Qt.AlignHCenter, mainwin.size(), QApplication.desktop().availableGeometry())
+    mainwin.setGeometry(centre)
+    # set main window size constraints and policy
+    dprint(1, "created main window")
+
+    # add optional tools
+    for name, callback in TigGUI.Tools.getRegisteredTools():
+        mainwin.addTool(name, callback)
+    dprint(1, "added optional tools")
+
+    # parse remaining args
+    images = [arg for arg in rem_args if TigGUI.Images.isFITS(arg)]
+    models = [arg for arg in rem_args if arg not in images]
+
+    if len(models) > 1:
+        parser.error("Only one model should be specified at the command line.")
+
+    # load images first
+    for img in images:
+        file_loading = os.path.basename(img)
+        splash.showMessage(f"Loading image {file_loading}", Qt.AlignBottom)
+        app.processEvents()
+        mainwin.loadImage(img)
+        dprint(1, "loaded image", img)
+
+    splash.showMessage(f"Loaded images", Qt.AlignBottom)
+    app.processEvents()
+
+    # load model, if specified
+    for mod in models:
+        dprint(2, "Loading model" + mod)
+        try:
+            mainwin.openFile(mod, _show=False)
+        except:
+            traceback.print_exc()
+            print("Error loading model %s" % mod)
+            exit(1)
+
+        model_loading = os.path.basename(mod)
+        splash.showMessage(f"Loading model {model_loading}", Qt.AlignBottom)
+        app.processEvents()
+        dprint(1, "loaded model", mod)
+
+    splash.showMessage(f"Loaded model", Qt.AlignBottom)
+    app.processEvents()
+
+    # start updating the plot
+    mainwin.enableUpdates()
+    dprint(1, "started plot updates")
+
+    # flush app event queue, so windows get resized , etc.
+    splash.showMessage(f"Starting up", Qt.AlignBottom)
+    app.processEvents()
+
+    # handle SIGINT
+    def sigint_handler(sig, stackframe):
+        print("Caught Ctrl+C, exiting...")
+        mainwin.close()
+
+    import signal
+    signal.signal(signal.SIGINT, sigint_handler)  # TODO -check this is still valid/used
+    dprint(1, "added signal handler")
+
+    splash.finish(mainwin)
+    mainwin.raise_()
+
+    app.exec_()
+
+
+if __name__ == "__main__":
+    main()
