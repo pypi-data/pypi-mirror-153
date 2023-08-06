@@ -1,0 +1,129 @@
+metadata:
+  title: Scope of work and pricing letter - general
+  short title: Scope of work and pricing - general
+  comment: This interview generates a general scope of work and pricing letter. 
+---
+objects:
+  - scope: DAList.using(object_type=Individual,there_is_another=False)
+  - circ: DAList.using(object_type=Individual,there_is_another=False)
+---
+mandatory: True
+question: Scope of work and pricing letter
+subquestion: |
+  This interview generates a general scope of work and pricing letter.
+fields:
+  - Contact name: contact_name
+    hint: Mr J Smith and Mrs J Smith
+    required: False
+  - Salutation name: contact
+    hint: John and Jane
+    required: False
+  - Contact address/email: contact_address
+    required: False
+  - Legal name of client: client
+    required: False  
+  - Our reference: action_id
+    required: False
+  - Description of Work: work
+    input type: area
+    help: e.g. 'Tax and structuring advice - John and Jane Smith' | 'Estate planning advice - John and Jane Smith' | 'Trust review - Smith Family Trust'
+    required: False
+  - Price: price
+    hint: No need to insert '$'
+    required: False
+  - Are additional documents required to be signed?: additional
+    choices:
+      - Yes
+      - No
+  - Is an appointment of agent?: appointment
+    choices:
+      - Yes
+      - No
+    required: False
+  - Agent firm (if any): firm
+    required: False
+  - Is an authority to act form required?: authority
+    choices:
+      - Yes
+      - No
+    required: False
+  - Description of authority to act for client (if required): work_authority
+    input type: area
+    hint: e.g. 'Opening of bank account for ##'
+    required: False
+---
+mandatory: True
+code: |
+  if scope.there_are_any:
+    review_scope
+---
+question: Click yes to insert scope of work
+yesno: scope.there_are_any
+---
+table: scope.table
+rows: scope
+columns: 
+  - Scope of work: row_item
+edit:
+  - name.first
+---
+question: | 
+  Scope of work details
+subquestion: |
+  Scope of work to be undertaken is as follows: 
+  
+  ${scope.table}
+
+  ${scope.add_action() }
+field: review_scope
+---
+question: |
+  Information about the ${ordinal(i)} scope of work item
+fields:
+  - Line item of scope of work: scope[i].name.first
+    input type: area
+---
+mandatory: True
+code: |
+  if circ.there_are_any:
+    review_circ
+---
+question: Click yes to insert circumstances of client
+yesno: circ.there_are_any
+---
+table: circ.table
+rows: circ
+columns: 
+  - Circumstances of client: row_item
+edit:
+  - name.first
+---
+question: | 
+  Circumstances of client details
+subquestion: |
+  Circumstances of client are as follows: 
+  
+  ${circ.table}
+
+  ${circ.add_action() }
+field: review_circ
+---
+question: |
+  Information about the ${ordinal(i)} circumstance of the client
+fields:
+  - Client circumstance: circ[i].name.first
+    input type: area
+---
+mandatory: true
+question: |
+  Letter confirming scope of work and quote
+subquestion: |
+  Document available for download below.
+attachment:
+  name: Letter confirming scope of work and quote
+  filename: Letter confirming scope of work and quote - ${ client }
+  docx template file: Scope_of_work_and_pricing_letter.docx
+  valid formats:
+    - pdf
+    - docx
+allow emailing: False

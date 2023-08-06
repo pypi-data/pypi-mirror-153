@@ -1,0 +1,210 @@
+metadata:
+  title: Scope of work and pricing letter - estate planning
+  short title: Scope of work and pricing - estate planning
+  comment: This interview generates a estate planning scope of work and pricing letter. 
+---
+objects:
+  - assetss: DAList.using(object_type=Individual,there_is_another=False)
+  - assetsc: DAList.using(object_type=Individual,there_is_another=False)
+  - assetst: DAList.using(object_type=Individual,there_is_another=False)
+---
+mandatory: True
+question: Client questions
+subquestion: Ask the following questions and complete
+fields:
+  - Full legal name of clients: client
+  - Contact name: contact_name
+    hint: Mr J Smith and Mrs J Smith
+  - Salutation name: contact
+    hint: John and Jane
+  - Street address of clients: contact_address
+  - Email address of clients: contact_email
+  - Phone number of clients: contact_phone
+  - Do you have children?: client_children
+    choices:
+      - Yes
+      - No
+  - Do you have minor children?: client_minor
+    choices:
+      - Yes
+      - No
+      - N/A
+  - Are there ex-spouses or defactos that we should be aware of?: client_exspouse
+    choices:
+      - Yes
+      - No
+  - Do you have any step-children that we should be aware of?: client_step
+    choices:
+      - Yes
+      - No
+      - N/A
+  - Have you had a formal/Court approved separation?: client_divorce
+    choices:
+      - Yes
+      - No
+      - N/A
+  - Do you have any dependents with special needs or persons who are dependent on you?: client_dependents
+    choices:
+      - Yes
+      - No
+  - Are there any persons that you think would challenge your Will?: client_challenge
+    help: This could be through an ex-spouse, step-child or a disgruntled beneficiary
+    choices:
+      - Yes
+      - No
+  - How many QLD properties do you own (collectively)?: client_property_no
+    hint: number only
+  - Do you own properties interstate?: client_interstate
+    choices:
+      - Yes
+      - No
+  - Do you own assets or control structures overseas?: client_overseasassets
+    choices:
+      - Yes
+      - No
+  - Do you have family members or persons you would like to benefit from your estate who resides overseas?: client_overseasrecipients
+    choices:
+      - Yes
+      - No
+  - Do you run a business?: client_business
+    choices:
+      - Yes
+      - No
+  - Do you run the business with another person?: client_businessmulti
+    choices:
+      - Yes
+      - No
+      - N/A
+  - Are you in a joint venture or partnership with any other persons (but not running a business)?: client_partnership
+    choices:
+      - Yes
+      - No
+---
+mandatory: True
+code: |
+  if assetss.there_are_any:
+    review_assetss
+---
+question: Superannuation
+yesno: assetss.there_are_any
+---
+table: assetss.table
+rows: assetss
+columns: 
+  - Name of superannuation fund: row_item
+  - Type of fund: row_item.type
+edit:
+  - name.first
+---
+question: | 
+  Superannuation fund details
+subquestion: |
+  You hold superannuation with the following funds: 
+  
+  ${assetss.table}
+
+  ${assetss.add_action() }
+field: review_assetss
+---
+question: |
+  Information about the ${ordinal(i)} superannuation fund
+fields:
+  - Name of superannuation fund: assetss[i].name.first
+  - Type of superannuation fund: assetss[i].type
+    choices:
+      - Retail/Industry
+      - SMSF
+---
+mandatory: True
+code: |
+  if assetst.there_are_any:
+    review_assetst
+---
+question: Assets held in trust details
+subquestion: Do you have a trust?
+yesno: assetst.there_are_any
+---
+table: assetst.table
+rows: assetst
+columns: 
+  - Name of trust: row_item
+edit:
+  - name.first
+---
+question: | 
+  Trusts
+subquestion: |
+  You have the following trusts: 
+  
+  ${assetst.table}
+
+  ${assetst.add_action() }
+field: review_assetst
+---
+question: |
+  Information about the ${ordinal(i)} trust
+fields:
+  - Name of trust: assetst[i].name.first
+---
+mandatory: True
+code: |
+  if assetsc.there_are_any:
+    review_assetsc
+---
+question: Companies
+subquestion: Do you have a company?
+yesno: assetsc.there_are_any
+---
+table: assetsc.table
+rows: assetsc
+columns: 
+  - Name of company: row_item
+edit:
+  - name.first
+---
+question: | 
+  Companies
+subquestion: |
+  You have the following companies: 
+  
+  ${assetsc.table}
+
+  ${assetsc.add_action() }
+field: review_assetsc
+---
+question: |
+  Information about the ${ordinal(i)} company
+fields:
+  - Name of company (include ACN): assetsc[i].name.first
+---
+mandatory: True
+question: Scope of work and pricing letter
+subquestion: |
+  This interview generates a general scope of work and pricing letter.
+fields:
+  - Our reference: action_id
+    required: False
+  - Price: price
+    hint: No need to insert '$'
+    required: False
+  - Is an appointment of agent?: appointment
+    choices:
+      - Yes
+      - No
+    required: False
+  - Agent firm (if any): firm
+    required: False
+---
+mandatory: true
+question: |
+  Letter confirming scope of work and quote for QLD estate plan
+subquestion: |
+  Document available for download below.
+attachment:
+  name: Letter confirming scope of work and quote for QLD estate plan
+  filename: Letter confirming scope of work and quote - ${ client }
+  docx template file: Scope_of_work_and_pricing_letter_-_estate_planning.docx
+  valid formats:
+    - pdf
+    - docx
+allow emailing: False
