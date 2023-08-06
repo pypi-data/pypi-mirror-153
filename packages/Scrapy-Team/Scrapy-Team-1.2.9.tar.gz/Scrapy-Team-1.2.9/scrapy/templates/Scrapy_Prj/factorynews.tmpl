@@ -1,0 +1,79 @@
+import scrapy
+from scrapy.xcc_items.factoryitems import FactoryNewsItem,FactoryNewsMapItem,FactoryCatergoryItem
+import datetime
+import random
+from scrapy.utils.python import to_bytes
+import hashlib
+class $classname(scrapy.Spider):
+    name = '$name'
+    start_urls = []
+
+    def parse(self, response): # 获取最大翻页数,生成列表页码请求
+        last_list_parse_xpath_func = ''
+        last_url = response.xpath(f"{last_list_parse_xpath_func}").extract_first()
+        last_page_num = last_url.split("=")[-1]
+        for num in range(1,int(last_page_num)):
+            page_list_url = 'www.xxx.com/xxxxxxx&page={}'.format(str(num))
+            yield scrapy.Request(page_list_url,callback=self.parse_list,dont_filter= True)
+
+    def parse_list(self,response): # 列表页解析详情链接,发生请求
+        list_parse_xpath_func = ''
+        for page_unit in response.xpath(f"{list_parse_xpath_func}"):
+            abs_page_url = page_unit.xpath("./*/@href").extract_first()
+            full_page_url = response.urljoin(abs_page_url)
+            yield scrapy.Request(response.urljoin(abs_page_url),callback=self.page_detail,dont_filter=True)
+
+    def page_detail(self,response):
+        item = FactoryNewsItem()
+        item_map = FactoryNewsMapItem()
+        item['source'] = self.give_source(response)
+        item['category'] =  self.give_category(response)
+        item['source_url'] = self.parse_url(response)
+        item['title'] = self.parse_title(response)
+        item['article_from'] =  self.parse_article_from(response)
+        item['content'] = self.parse_content(response)
+        item['publish_time'] =  self.parse_publish_time(response)
+        item['img_url'] =  self.parse_img_url(response)
+        item['read_number'] = random.randint(33,77)*random.randint(33,77) #浏览次数(文章没有则随机2000以内) <-----
+        item['create_time'] = datetime.datetime.now() #*创建时间<-----
+        item['creator'] = 'Triscoe' #*创建人<-----
+        # item['is_open'] =  #资讯是否公开(网信资讯设置为0) <----- 需要确认是否是网信资讯
+        media_guid = hashlib.sha1(to_bytes(response.url)).hexdigest()
+        item['appdetail_id'] = media_guid #uuid对应品牌id(品牌资讯需要,普通资讯不用写) <----- hash.sha1模式与原厂关联
+        yield item
+        item_map['appdetail_id'] = media_guid
+        item_map['brand_id'] = 5417
+        yield item_map
+
+    def give_source(self,response):
+        return 'Rohm(eg.)'
+
+    def give_category(self,response):
+        return 'rohm_factory(eg.)'
+
+    def parse_url(self,response):
+        return response.url
+
+    def parse_article_from(self,response):
+        return
+
+    def parse_title(self,response):
+        return
+
+    def parse_content(self,response):
+        return
+
+    def parse_publish_time(self,response):
+        return
+
+    def parse_img_url(self,response):
+        return
+
+    def parse_title(self,response):
+        return
+
+    def parse_title(self,response):
+        return
+
+    def parse_title(self,response):
+        return
