@@ -1,0 +1,75 @@
+[tool.poetry]
+name = "openvpn-ldap-auth"
+version = "0.1.6"
+description = "An auth verify script for OpenVPN to authenticate via LDAP."
+authors = ["Philipp Hossner <philipph@posteo.de>"]
+license = 'MIT'
+readme = 'README.md'
+homepage = 'https://github.com/phihos/python-openvpn-ldap-auth/'
+repository = 'https://github.com/phihos/python-openvpn-ldap-auth/'
+keywords = [
+    "OpenVPN",
+    "LDAP",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Plugins",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX",
+    "Topic :: System :: Systems Administration :: Authentication/Directory :: LDAP",
+]
+
+packages = [{ include = "openvpn_ldap_auth" }, ]
+
+[tool.poetry.scripts]
+openvpn-ldap-auth = 'openvpn_ldap_auth.main:main'
+
+[tool.poetry.dependencies]
+python = "^3.6"
+PyYAML = "^5.4.1"
+python-ldap = "^3.3.1"
+Cerberus = "^1.3.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2"
+pytest-timeout = "^1.4.2"
+pexpect = "^4.8.0"
+pyinstaller = "^4.2"
+plotly = "^4.14.3"
+kaleido = "0.2.1"
+stdeb = "^0.10.0"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+isolated_build = true
+envlist = python{36,37,38,39}-openvpn{24,25}
+basepython = python3
+
+[testenv:python{36,37,38,39}-openvpn{24,25}]
+skip_install = true
+setenv =
+    python36: python_version=3.6
+    python37: python_version=3.7
+    python38: python_version=3.8
+    python39: python_version=3.9
+    openvpn23: openvpn_version=2.3
+    openvpn24: openvpn_version=2.4
+    openvpn25: openvpn_version=2.5
+whitelist_externals =
+    docker-compose
+    bash
+commands_pre:
+    docker-compose -f tests/resources/docker/docker-compose.yml up -d --build
+    docker-compose -f tests/resources/docker/docker-compose.yml run openvpn bash -c 'openvpn --version || true'
+commands =
+    docker-compose -f tests/resources/docker/docker-compose.yml run openvpn bash -c 'poetry install && poetry build && ./pyinstaller.sh && mv dist/openvpn-ldap-auth /usr/bin/openvpn-ldap-auth-pyinstaller && pip install --upgrade --find-links=dist openvpn-ldap-auth && poetry run pytest {posargs}'
+commands_post:
+    bash -c "docker-compose -f tests/resources/docker/docker-compose.yml run openvpn chown -R $UID /project"
+    docker-compose -f tests/resources/docker/docker-compose.yml down
+"""
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
