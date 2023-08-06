@@ -1,0 +1,70 @@
+# Append Hygiene SDK
+
+Append Hygiene SDK provides a library of classes for working with On-Demand API in your Python code.
+
+## Requirements
+
+* Python 3.6+
+* Must be logged into the private VPN.
+
+## Installation
+
+```bash
+pip install append-hygiene-sdk 
+```
+
+## Environment Variables
+
+- `ONDEMAND_URL`: On-Demand Base URL.
+
+## Examples
+
+### Hygiene
+
+```python
+import time
+
+from dotenv import load_dotenv
+
+from append_hygiene_sdk import Hygiene
+
+load_dotenv()
+
+# Step 1: Create the Hygiene object
+my_hygiene = Hygiene()
+
+# Step 2: Add your custom payload to the Hygiene object and execute the hygiene push
+my_hygiene.push_hygiene(
+    payload={
+        "filepath": "s3://bucket-name/folder1/folder2/file1.csv",
+        "result_path": "s3://bucket-name/folder1/folder2/",
+        "verification": False,
+        "has_header": True,
+        "email_column_number": 1,
+        "omit_suppressions": False,
+        "ignore_duplicates": False,
+        "suppression_types": [
+            "trap",
+            "high_complainer",
+            "low_complainer"
+        ],
+        "on_success_uri": "mailto:[EMAIL]?subject=[SUCCESS SUBJECT LINE]",
+        "on_error_uri": "mailto:[EMAIL]?subject=[FAILED SUBJECT LINE]",
+        "callback_context": "{\"clientID\": \"123\"}"
+    }
+)
+
+# Step 3: Wait for the hygiene to complete
+while my_hygiene.hygiene_status(my_hygiene.hygiene_id):
+    time.sleep(10)
+    print("Waiting for Hygiene to complete...")
+```
+
+## CHANGELOG
+
+### [0.1.0] - 2020-05-31
+
+- Added `Hygiene` object to the SDK.
+- Added `push_hygiene` method to Hygiene class.
+- Added `hygiene_status` method to Hygiene class.
+- Updated `README.md`
