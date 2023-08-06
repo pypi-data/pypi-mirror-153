@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta:__legacy__"
+
+[tool.mypy]
+[[tool.mypy.overrides]]
+module = [
+    "setuptools",
+]
+ignore_missing_imports = true
+
+[tool.pylint.'MASTER']
+extension-pkg-whitelist = "lxml"
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = "no-self-use,too-many-locals,line-too-long,missing-docstring,invalid-name,too-many-instance-attributes,too-few-public-methods,broad-except"
+output-format = "text"
+reports = "no"
+
+[tool.tox]
+legacy_tox_ini = '''
+
+[tox]
+isolated_build = True
+envlist = clean,py{36,37,38,39},report
+
+[testenv]
+depends =
+    {py36,py37,py38,py39}: clean
+    report: py36,py37,py38,py39
+deps =
+    coverage[toml]
+    pytest
+    lark
+    tei2neo
+commands =
+    coverage run --append -m unittest discover -s tests -v
+
+[testenv:report]
+skip_install = true
+commands =
+    coverage report
+
+[testenv:clean]
+skip_install = true
+commands = coverage erase
+'''
