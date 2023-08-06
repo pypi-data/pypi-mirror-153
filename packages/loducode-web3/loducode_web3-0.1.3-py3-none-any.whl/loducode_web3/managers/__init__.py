@@ -1,0 +1,2 @@
+from loducode_web3.managers.attribute_nft_manager import AttributeNftManager
+from loducode_web3.managers.nft_manager import NftManager
