@@ -1,0 +1,85 @@
+{
+  "type": "record",
+  "name": "EditableDashboardProperties",
+  "namespace": "com.linkedin.pegasus2avro.dashboard",
+  "doc": "Stores editable changes made to properties. This separates changes made from\ningestion pipelines and edits in the UI to avoid accidental overwrites of user-provided data by ingestion pipelines",
+  "fields": [
+    {
+      "name": "created",
+      "type": {
+        "type": "record",
+        "name": "AuditStamp",
+        "namespace": "com.linkedin.pegasus2avro.common",
+        "doc": "Data captured on a resource/association/sub-resource level giving insight into when that resource/association/sub-resource moved into a particular lifecycle stage, and who acted to move it into that specific lifecycle stage.",
+        "fields": [
+          {
+            "name": "time",
+            "type": "long",
+            "doc": "When did the resource/association/sub-resource move into the specific lifecycle stage represented by this AuditEvent."
+          },
+          {
+            "name": "actor",
+            "type": "string",
+            "doc": "The entity (e.g. a member URN) which will be credited for moving the resource/association/sub-resource into the specific lifecycle stage. It is also the one used to authorize the change.",
+            "java": {
+              "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+            }
+          },
+          {
+            "name": "impersonator",
+            "type": [
+              "null",
+              "string"
+            ],
+            "doc": "The entity (e.g. a service URN) which performs the change on behalf of the Actor and must be authorized to act as the Actor.",
+            "default": null,
+            "java": {
+              "class": "com.linkedin.pegasus2avro.common.urn.Urn"
+            }
+          }
+        ]
+      },
+      "doc": "An AuditStamp corresponding to the creation of this resource/association/sub-resource. A value of 0 for time indicates missing data.",
+      "default": {
+        "actor": "urn:li:corpuser:unknown",
+        "impersonator": null,
+        "time": 0
+      }
+    },
+    {
+      "name": "lastModified",
+      "type": "com.linkedin.pegasus2avro.common.AuditStamp",
+      "doc": "An AuditStamp corresponding to the last modification of this resource/association/sub-resource. If no modification has happened since creation, lastModified should be the same as created. A value of 0 for time indicates missing data.",
+      "default": {
+        "actor": "urn:li:corpuser:unknown",
+        "impersonator": null,
+        "time": 0
+      }
+    },
+    {
+      "name": "deleted",
+      "type": [
+        "null",
+        "com.linkedin.pegasus2avro.common.AuditStamp"
+      ],
+      "doc": "An AuditStamp corresponding to the deletion of this resource/association/sub-resource. Logically, deleted MUST have a later timestamp than creation. It may or may not have the same time as lastModified depending upon the resource/association/sub-resource semantics.",
+      "default": null
+    },
+    {
+      "name": "description",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "Edited documentation of the dashboard",
+      "default": null,
+      "Searchable": {
+        "fieldName": "editedDescription",
+        "fieldType": "TEXT"
+      }
+    }
+  ],
+  "Aspect": {
+    "name": "editableDashboardProperties"
+  }
+}
