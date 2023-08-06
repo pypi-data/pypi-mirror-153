@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunktiled=self.webpackChunktiled||[]).push([[128],{19128:function(e,t,n){n.r(t);n(72791);var a=n(94070),i=n(80184);t.default=function(e){return(0,i.jsx)(a.Z,{severity:"warning",children:'This item contains many arrays and/or tables. Bulk download was only recently added to the Tiled server, and it is not yet supported by this web interface. Go to the "View" tab and navigate to one items inside to download.'})}}}]);
+//# sourceMappingURL=128.74bef542.chunk.js.map
