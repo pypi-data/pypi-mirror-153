@@ -1,0 +1,67 @@
+{% load form_extras %}
+
+<div class="panel panel-default">
+    <div class="panel-body">
+
+        <table class="table" style="border-collapse: unset">
+            <thead>
+            {% for column in columns %}
+                {% if not column.hidden %}
+                    {% include "components/table_header.html" with sort=sort key=column.label name=column.label_as_str %}
+                {% else %}
+                    {% if column.sortable %}
+                        {% include "components/table_header.html" with sort=sort key=column.label name=column.label_as_str %}
+                    {% else %}
+                    <th>{{column.label_as_str}}</th>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+            </thead>
+            {% for row in rows %}
+                {% include "components/grid_row.html" with form=row|editor:fields row=row columns=columns %}
+            {% endfor %}
+        </table>
+
+        {% if count %}
+        <div class="row">
+            <!-- Pagination -->
+            {% if pagination %}
+            <div style="white-space: nowrap;">
+                {% include "components/paginator.html" %}
+            </div>
+            {% endif %}
+            <div style="width: 100%;display: flex;justify-content: flex-end">&nbsp;{{ count }} élément(s)</div>
+        </div>
+        {% endif %}
+
+    </div>
+    <div class="panel-footer">
+        <div style="display: flex;">
+        {% if edit %}
+        <button type="button" class="btn btn-primary" onclick="send('done');">Terminer</button>
+        {% else %}
+        <button type="button" class="btn btn-primary" onclick="send('edit');">Modifier</button>
+        {% endif %}
+
+
+        <button type="button" class="btn btn-primary" onclick="send('print');">Imprimer</button>
+        {% if reports %}
+        <div class="dropdown dropup">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+            <span class="caret"></span></button>
+            <ul class="dropdown-menu">
+                {% for report in reports %}
+                {% if report.route %}
+                <li><a onclick="printTo('{{report.route}}', '{{report.key}}');">{{report.label}}</a></li>
+                {% elif report.key %}
+                <li><a onclick="send2('print_{{report.key}}');">{{report.label}}</a></li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <button type="button" class="btn btn-primary" onclick="send('export');">Exporter</button>
+        <button type="button" class="btn btn-primary" onclick="copy_grid_to_clipboard('{{grid_url}}');">Copier</button>
+        </div>
+    </div>
+</div>
