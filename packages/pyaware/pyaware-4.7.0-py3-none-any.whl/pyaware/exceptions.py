@@ -1,0 +1,2 @@
+class StopException(RuntimeError):
+    pass

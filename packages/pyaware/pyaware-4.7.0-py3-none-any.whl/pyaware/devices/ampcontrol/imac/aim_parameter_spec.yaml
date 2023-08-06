@@ -1,0 +1,386 @@
+parameters:
+  dev_id:
+    source: roll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+  data-flags:
+    source: poll
+    form:
+      type: ParamBits
+      address: {type: ref_param, param: address-flags, null_ref: 0}
+      idx: data-flags
+      bitmask:
+        power-alarm-trip: 6
+        power-alarm-warn: 5
+        set-point-2-not-3: 4
+        set-point-not-1-not-2: 3
+        set-point-alarm-3: 2
+        set-point-alarm-2: 1
+        set-point-alarm-1: 0
+  data-flags-raw:
+    source: poll
+    form:
+      type: Param
+      address: { type: ref_param, param: address-flags, null_ref: 0 }
+      idx: data-flags
+    triggers:
+      process:
+        store:
+          - [always]
+  data-analog:
+    source: poll
+    form:
+      type: Param
+      address: {type: ref_param, param: address-analog, null_ref: 0}
+      idx: data-analog
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  data-power:
+    source: poll
+    form:
+      type: Param
+      address: {type: ref_param, param: address-power, null_ref: 0}
+      idx: data-power
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  address-flags:
+    source: block
+    form:
+      type: ParamMask
+      address: 1038
+      idx: address-flags
+      block: 0
+      mask: 0xFF
+    triggers:
+      collect:
+        read:
+          - [deadline, 86400]
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  exception-scan-trigger-margin:
+    source: block
+    form:
+      type: Param
+      address: 1039
+      idx: exception-scan-trigger-margin
+      block: 0
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 100
+            max: 10000
+  address-analog:
+    source: block
+    form:
+      type: ParamMask
+      address: 1038
+      idx: address-analog
+      block: 1
+      mask: 0xFF
+    triggers:
+      collect:
+        read:
+          - [deadline, 86400]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  set-point-1:
+    source: block
+    form:
+      type: Param
+      address: 1039
+      idx: set-point-1
+      block: 1
+    triggers:
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 20000
+  set-point-2:
+    source: block
+    form:
+      type: Param
+      address: 1040
+      idx: set-point-2
+      block: 1
+    triggers:
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 20000
+  set-point-3:
+    source: block
+    form:
+      type: Param
+      address: 1041
+      idx: set-point-3
+      block: 1
+    triggers:
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 20000
+  address-power:
+    source: block
+    form:
+      type: ParamMask
+      address: 1038
+      idx: address-power
+      block: 2
+      mask: 0xFF
+    triggers:
+      collect:
+        read:
+          - [deadline, 86400]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  power-set-point-warn:
+    source: block
+    form:
+      type: ParamMaskScale
+      address: 1039
+      idx: power-set-point-warn
+      block: 2
+      scale: 0.01
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 10
+            max: 24
+            step: 1
+            scale: 100
+  power-set-point-alarm:
+    source: block
+    form:
+      type: ParamMaskScale
+      address: 1040
+      idx: power-set-point-alarm
+      block: 2
+      scale: 0.01
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 8
+            max: 24
+            step: 1
+            scale: 100
+  hysteresis-setting:
+    source: block
+    form:
+      type: ParamMask
+      address: 1041
+      idx: hysteresis-setting
+      block: 2
+      mask: 0xf000
+      rshift: 12
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 16
+  hysteresis-setting-analog:
+    source: block
+    form:
+      type: ParamLookup
+      address: 1041
+      idx: hysteresis-setting-analog
+      block: 2
+      mask: 0xf000
+      table:
+        0: 0
+        1: 25
+        2: 75
+        4: 100
+        5: 150
+        6: 200
+        7: 250
+        8: 300
+        9: 350
+        10: 400
+        11: 450
+        12: 500
+        13: 600
+        14: 700
+        15: 800
+      table_reversed:
+        0: 0
+        25: 1
+        75: 2
+        100: 4
+        150: 5
+        200: 6
+        250: 7
+        300: 8
+        350: 9
+        400: 10
+        450: 11
+        500: 12
+        600: 13
+        700: 14
+        800: 15
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: in_list
+            lst:
+              - 0
+              - 25
+              - 75
+              - 100
+              - 150
+              - 200
+              - 250
+              - 300
+              - 350
+              - 400
+              - 450
+              - 500
+              - 600
+              - 700
+              - 800
+  hysteresis-setting-power:
+    source: block
+    form:
+      type: ParamMaskBool
+      address: 1041
+      idx: hysteresis-setting-power
+      block: 2
+      mask: 0xf000
+      rshift: 12
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+  hysteresis-setting-block-size:
+    source: block
+    form:
+      type: ParamMask
+      address: 1041
+      idx: hysteresis-setting-block-size
+      block: 2
+      mask: 0x0fff
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 100
+            max: 500
+  power-alarm-trip:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  power-alarm-warn:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  set-point-2-not-3:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  set-point-not-1-not-2:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  set-point-alarm-3:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  set-point-alarm-2:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  set-point-alarm-1:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]

@@ -1,0 +1,2 @@
+class InterfaceValidationError(IOError):
+    pass

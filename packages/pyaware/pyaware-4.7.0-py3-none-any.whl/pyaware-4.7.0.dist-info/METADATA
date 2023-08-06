@@ -1,0 +1,2915 @@
+Metadata-Version: 2.1
+Name: pyaware
+Version: 4.7.0
+Summary: Framework for reading connected devices and publishing to the AWARE cloud
+Author: Ryan Parry-Jones
+Author-email: Ryan.Parry-Jones@ampcontrolgroup.com
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Intended Audience :: Manufacturing
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Programming Language :: Python :: 3 :: Only
+Requires-Python: >=3.5.2
+Description-Content-Type: text/markdown
+Requires-Dist: aiomodbus (>=0.4.0)
+Requires-Dist: hbmqtt (==0.9.6)
+Requires-Dist: transitions (==0.8.7)
+Requires-Dist: websockets (==8.1)
+Requires-Dist: passlib (==1.7.4)
+Requires-Dist: docopt (==0.6.2)
+Requires-Dist: PyYAML (==5.4.1)
+Requires-Dist: pymodbus (==2.3.0)
+Requires-Dist: cryptography (==2.8)
+Requires-Dist: PyJWT (==1.7.1)
+Requires-Dist: ruamel.yaml (==0.16.10)
+Requires-Dist: deepdiff (==5.0.1)
+Requires-Dist: pydantic (==1.6.1)
+Requires-Dist: aiohttp (==3.6.2)
+Requires-Dist: python-dateutil (==2.8.1)
+Requires-Dist: packaging
+Requires-Dist: yappi (==1.2.5)
+Requires-Dist: janus (==0.5.0)
+Requires-Dist: aiosqlite (==0.16.0)
+Requires-Dist: beautifulsoup4 (==4.9.3)
+Requires-Dist: requests (==2.25.0)
+Requires-Dist: ifaddr (==0.1.7)
+Requires-Dist: puresnmp (==1.10.2.post1)
+
+# pyAWARE
+
+Python middleware for AWARE Gateway.
+This is to be installed on an edge device for reading data from non-iot devices, aggregating the data and then publishes
+the data to either the cloud or to a local network via MQTT.
+
+There are sections of this readme which will diverge between legacy and current implementation. See below devices that 
+require our legacy steps vs the current steps,
+##### Current
+- [MOXA UC-2100](https://www.moxa.com/en/products/industrial-computing/arm-based-computers/uc-2100-series)
+- [MOXA V2403](https://www.moxa.com/en/products/industrial-computing/x86-computers/v2403-series)
+##### Legacy
+- [Siemens IOT2040](https://new.siemens.com/global/en/products/automation/pc-based/iot-gateways/iot2000.html)
+___________
+# Contents
+- [Installation](#markdown-header-installation)
+- [Building new releases](#markdown-header-building-new-releases)
+- [Field Production Installation](#markdown-header-field-production-installation)
+- [Production Image Installation](#markdown-header-production-image-installation)
+- [Dev Installation](#markdown-header-dev-installation)
+- [Online Installation](#markdown-header-online-installation)
+- [Offline Installation](#markdown-header-offline-installation)
+- [Service Installation](#markdown-header-service-installation)
+- [Usage](#markdown-header-usage)
+    - [Folder Structure](#markdown-header-folder-structure)
+    - [Gateway Config (gateway.yaml)](#markdown-header-gateway-config-gatewayyaml)
+    - [MQTT Connection Config (connection.yaml)](#markdown-header-mqtt-connection-config-connectionyaml)
+    - [Translation Config (translation.yaml)](#markdown-header-translation-config-translationyaml)
+- [Deploying Gateway](#markdown-header-deploying-gateway)
+- [Creating new devices](#markdown-header-creating-new-devices)
+    - [Sources](#markdown-header-sources)
+    - [Transformations](#markdown-header-transformations)
+    - [Parameters](#markdown-header-parameters)
+___________
+
+# Installation
+
+Install is recommended on a virtual environment on python 3.7 or above.
+```console
+pip install virtualenv
+virtualenv /path/to/new/env -p /path/to/python  
+```
+Activate the environment to do commands such as pip
+```console
+/path/to/new/env/Scripts/activate
+or
+/path/to/ENV/bin/activate
+```
+Or run the python directly
+```console
+/path/to/new/env/Scripts/python
+or
+/path/to/ENV/bin/python
+```
+
+---------------------
+Building new releases
+---------------------
+In order to do a new release follow the following checklist:
+- Create a release branch
+- Set the current working directory to the top level folder of pyAWARE
+- Update ReleaseNotes.md to include the major changes in this revision (review git logs)
+- Update `__version__` string in `__init__.py` in the top level folder
+- Run
+```bash
+python setup.py bdist_wheel
+```
+- The output .whl folder should be in the dist/* folder (empty this folder before running as there may be issues with
+  other whl files with the same name in this directory)
+- Open it with 7zip or similar and check that the python files, non-python files and scripts are included as expected.
+- Test the features and fixes that have been introduced in this revision. With this test the core functionality of 
+  pyAWARE i.e. modbus comms, MQTT comms, cloud comms etc.
+- Create, approve and merge into both the 'develop' branch and the 'production' branch
+
+------------------------
+Field Production Installation
+------------------------
+NOTE: If unit doesn't have access to the internet, follow the offline installation instructions for getting the 
+dependencies installed.
+##### Current Install
+For rolling out updates. If it is a pure python release update, copy the wheel file via SCP to /usr/share/aware
+then use 
+```base
+pip install pyaware-<version>-py3-non-any.whl
+```
+##### Legacy Install
+For rolling out updates. If it is a pure python release update, copy the wheel file via SCP to /etc/AWARE
+then use 
+```base
+pip install pyaware-<version>-py3-non-any.whl
+```
+
+----------------
+Production Image Installation
+----------------
+- Retrieve the current system image from [Subversion](http://prwivsvn0.primatec.local/svn/automation/Ampcontrol%20IOT%20Images)  
+  for your device.
+##### Current
+- Install the image onto a USB Drive.
+- Enter uBoot and install the image to the IPC.
+- Update the pyAWARE install and dependencies.
+##### Legacy
+- Burn this to an SD card to be installed onto your device.
+- Install the SD card into your device and perform an initial boot. 
+- Update the pyAWARE install and dependencies.
+
+--------------------
+Dev Installation
+--------------------
+- Have python 3.5.2 -> 3.7.X installed
+- Check out the pyAWARE project
+- Open terminal or cmd prompt and navigate to the checked out project
+```console
+pip install -e .
+pip install -r requirements.txt
+```
+This will connect to the internet and download the necessary packages
+
+--------------------
+Online Installation
+--------------------
+- Have python 3.7.X installed
+- Check out the pyaware project
+- Open terminal or cmd prompt and navigate to the checked out project
+```console
+pip install .
+pip install -r requirements.txt
+```
+This will connect to the internet and download the necessary packages
+
+--------------------
+Offline Installation
+--------------------
+Installing can take a long time on embedded devices such as the IOT 2040
+To speed up this process do the following,
+- Have python 3.7 or above installed
+- Check out the pyAWARE project
+- Open terminal or cmd prompt and navigate to the checked out project
+- Download the required packages by doing the following (Note: The platform and index will change based on the architecture )
+For the moxa we are using the piwheels cache which has prebuilt wheels for the arm architecture. 
+On a desktop (tested on python 3.9) we need to get other packages to support the install that pip doesn't download on the other architecture.
+```console
+pip download pyaware wheel pip importlib_metadata ruamel.yaml.clib zipp --extra-index-url https://www.piwheels.org/simple --platform linux_armv7l --python-version 3.7 --only-binary=:all: -d pkgs
+```
+
+On moxa device
+Activate a python 3.7 environment. This is required as hbmqtt does not have a distribution release for 3.7 so specifying 3.7 doesn't work.
+By using the natural 3.7 environment we get the 3.4-3.5 package which is still compatible.
+```
+pip download pyaware pip wheel -d pkgs --extra-index-url https://www.piwheels.org/simple --only-binary=:all:
+```
+- Copy the pkgs directory to the target device
+- Activate the virtual environment  
+- Install the packages
+```console
+pip install --upgrade pip wheel --no-index --find-links="pkgs" && pip install --upgrade pyaware --no-index --find-links="pkgs"
+```
+
+Download and install only source files and platform agnostic files.
+Do this on the device so that it will not download x86 binaries.
+```
+pip download setuptools wheel pip pyaware cython -d pkgs --no-cache
+```
+Offline install from source
+```
+pip install --upgrade pip wheel --no-index --find-links="pkgs" && pip install --upgrade pyaware --no-index --find-links="pkgs"
+```
+
+------------------
+Service Installation
+------------------
+##### Current
+**NOTE**: This only is to be performed if pyaware.service is not found at this location -> /etc/systemd/system
+- Create a service file called *pyaware.service* which contains the below,
+```
+[unit]
+Description=pyaware
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/usr/share/aware/venv/bin/python -m pyaware /etc/aware/
+
+[Install]WantedBy=multi-user.target
+```
+- Put this file in `/etc/systemd/system`
+
+This service should start on boot and will restart if it errors out. To explicitly start/stop/restart this service use 
+the commands below,
+```console
+sudo systemctl [cmd] pyaware
+
+where cmd can be -> status, start, stop, restart etc.
+```
+
+##### Legacy
+**NOTE**: This only is to be performed if inittab does not contain the lines below.
+- Append to the file at `/etc/inittab` the following lines
+
+```console
+# Start the aware process
+AWAR:2345:respawn:/usr/bin/env AWAREPATH=/etc/AWARE python3 /etc/AWARE/main.py
+```
+
+------------------
+Example Configuration:
+------------------
+pyAWARE has example configuration files available to use through deployment. In the event of an installation of pyAWARE,
+pyAWARE will place the configuration files at the base of your python deployment in a folder called `pyaware_example_config`.
+
+-----
+Usage
+-----
+pyAWARE uses config files to take inputs into the program. These are read in on pyAWARE boot and will require a restart
+to the program in order for any changes to occur. The config files are written in yaml and are required to be in a
+specific folder structure. All config files should be placed in /etc/AWARE (on Linux).
+
+### Folder Structure
+A generic folder structure is shown below that details the path each config file should be found in. Starting at the 
+AWAREPATH i.e. `/etc/AWARE` (on Linux).
+```console
+.
+├── config
+|   ├── connection.yaml
+|   ├── gateway.yaml
+|   └── translation.yaml
+└── credentials
+    ├── google_roots.pem
+    └── rsa_private.pem
+```
+### Gateway Config (gateway.yaml)
+Gateway config is the heart of pyAWARE and is the config file responsible for using pyAWARE's core features. An example 
+gateway.yaml file is shown below,
+```yaml
+aware_version: manual
+scheduled_restart:
+  hour: 14
+database:
+  max_size: 500MB
+  memory: true
+#  relative_directory: db
+#  absolute_directory: "C:\dev\Ampcontrol IOT\Device Management\Deployments\tempdb"
+backlog_enable: true
+communication:
+  - name: ...
+    type: ...
+    version: 1
+    params:
+      ...
+devices: [...]
+```
+
+#### Options
+- **aware_version** - Specifies what pyAWARE version to use either put in the exact version required or one of the
+  options below. Defaults to *latest*. NOTE: To update the system requires internet access. 
+      - *manual* - pyAWARE will not attempt to update.
+      - *latest* - pyAWARE will attempt to update to the latest version.
+- **scheduled_restart** - Specifies if pyAWARE should restart after a period of time. Defaults to never restart.
+     - *hour* - Integer specifying the time in hours when pyAWARE should restart after starting up.
+- **database** - Specifies a database to backup unsent MQTT data. Defaults to initialising a 500MB database using in 
+  memory SQLite. Will only use one of the memory options below with the following priority *memory* -> 
+  *absolute_directory* -> *relative_directory*.
+     - *max_size* - Maximum size of the database in the format *XXXMB*.
+     - *memory* - Specifies pyAWARE to use in memory SQLite for intialising the database. Value is to be *true* or *false*
+     - *absolute_directory* - Specifies the absolute directory.
+     - *relative_directory* - Specifies the relative directory. Identifies the folder structure from the AWAREPATH.
+- **backlog_enable** - Specifies whether or not to use the backlog to retain MQTT messages if the broker can not be 
+  reached. This defaults to *false*. Value is to be *true* or *false*.   
+- **communication** - Specifies the communication options required in the current deployment. 
+      - *name* - Name of the communication. This is a config only reference to be used throughout the config file.
+      - *type* - Type of pyAWARE supported communication. 
+      - *version* - Version of the communication method to be used. 
+      - *params* - Parameters to be passed to the communication. These are communication specific and are detailed in
+      [Communication Parameters](#markdown-header-communication-parameters).
+- **devices** - Specifies the devices that are currently in use by communication reference name. This is written in 
+config as an array of names. This is currently only required by the cloud MQTT.
+##### Communication Types
+Communication types describe servers, clients and devices that make up the core of pyAWARE. The types of communication 
+and their config [parameters](#markdown-header-communication-parameters) will be specified here. 
+
+
+- **modbus_rtu** - Pymodbus' Modbus RTU Serial Client.
+    - Required:
+        - *port* - Name of the serial port to use. i.e. COM# (for windows) OR /dev/ttyS# (for linux), where # is the number 
+        of the port.
+        - *stopbits* - Number of stop bits.
+        - *parity* - Type of parity. e.g. 'N' for None, 'E' for Even Or 'O' for Odd.
+        - *baudrate* - The baudrate of the communication.
+    - Optional:  
+        - *bytesize* - The number of bits in a byte of serial data (defaults to 8).
+        - *timeout* - The timeout for loss of communication in seconds (defaults to 3 s).
+- **modbus_rtu2** - AioModbus' Modbus RTU Serial Client.
+    - Required:
+        - *port* - Name of the serial port to use. i.e. COM# (for windows) OR /dev/ttyS# (for linux), where # is the number 
+          of the port.
+        - *stopbits* - Number of stop bits.
+        - *parity* - Type of parity. e.g. 'N' for None, 'E' for Even Or 'O' for Odd.
+        - *baudrate* - The baudrate of the communication.
+    - Optional:  
+        - *bytesize* - The number of bits in a byte of serial data (defaults to 8).
+        - *default_unit_id* The modbus unit id to use if there is no unit id present on the child device to this client
+          (defaults to 0).
+- **modbus_tcp** - Pymodbus' Modbus TCP Client.
+    - Required:
+        - *host* - Hostname / IP address of the client.
+    - Optional:
+        - *port* - Port to set up the client connection (defaults to 502).
+        - *client_port* - Port of the connected device (defaults to 0 or listen on all ports).
+- **modbus_tcp2** - AioModbus' Modbus TCP Client.
+    - Required:
+        - *host* - Hostname / IP address of the client.
+    - Optional:
+        - *port* - Port to set up the client connection (defaults to 502).
+        - *client_port* - Port of the connected device (defaults to 0 or listen on all ports).
+        - *auto_reconnect_after* - Time to automatically reconnect to the client on a disconnect event in seconds 
+          (defaults to None i.e. does not try to reconnect). 
+        - *default_timeout* - Timeout from a client to disconnect in seconds (defaults to 0.2).
+        - *max_active_request* - Maximum number of requests on which to disconnect (defaults to None).
+        - *default_unit_id* - The modbus unit id to use if there is no unit id present on the child device to this client
+          (defaults to 0).
+- **modbus_tcp_server** - Pymodbus' Modbus TCP Server.
+    - Required:
+        - *host* - Modbus TCP Server Hostname / IP Address.
+        - *server_id* - ID of the server as a string. This is to be used to map devices into the server.
+    - Optional:
+        - *port* - Port to set up the server connection (defaults to 502).
+        - *coil_register_blocks* - The contiguous blocks of coil registers to intialise the server as arrays of ints written 
+          in the form [start, end], (defaults to None i.e. initialises 0-65535 with zeros).
+        - *discrete_register_blocks* - The contiguous blocks of discrete registers to intialise the server as arrays of ints 
+          written in the form [start, end], (defaults to None i.e. initialises 0-65535 with zeros).  
+        - *holding_register_blocks* - The contiguous blocks of holding registers to intialise the server as arrays of ints 
+          written in the form [start, end], (defaults to None i.e. initialises 0-65535 with zeros).
+        - *input_register_blocks* - The contiguous blocks of input registers to intialise the server as arrays of ints 
+          written in the form [start, end], (defaults to None i.e. initialises 0-65535 with zeros).
+- **sp_pro** - SP PRO Serial Client using AioSPPRO. Communicates with Selectronic devices that speak the SPPRO Protocol.
+    - Required:
+        - *port* - Name of the serial port to use. i.e. COM# (for windows) OR /dev/ttyS# (for linux), where # is the number 
+          of the port.
+        - *stopbits* - Number of stop bits.
+        - *parity* - Type of parity. e.g. 'N' for None, 'E' for Even Or 'O' for Odd.
+        - *baudrate* - The baudrate of the communication.
+    - Optional:
+        - *bytesize* - The number of bits in a byte of serial data (defaults to 8).
+        - *default_timeout* - The timeout for loss of communication in seconds (defaults to 0.2 s).
+        - *password* - The SP PRO password to use to log into the unit (defaults to Selectronic SP PRO).
+        - *auto_reconnect_after* - Time to automatically reconnect to the client on a disconnect event in seconds 
+          (defaults to None i.e. does not try to reconnect).
+        - *retry_failed_login* - Flag to retry a failed login attempt on the SP PRO (defaults to True).
+        - *login_attempts* - The number of attempts to try and login to the SP PRO (defaults to 3). 
+- **imac2_auto_detect** - Establishes the IMAC 2 Protocol and begins the auto detection process. Also performs topology 
+  functionality.
+    - Required:
+        - *client_ser* - Modbus RTU Serial Client that the IMAC 2 is using to make connection.
+        - *client_eth* - Modbus TCP Client that the IMAC 2 is using to make connection.
+    - Optional:
+        - *unit* - Modbus unit number of the iMAC (defaults to 1).
+- **translator** - The translator controller. This translates data from / to devices from / to servers. Uses a separate 
+  [translation config file](#markdown-header-translation-config-translationyaml) to determine mappings.
+    - Required:
+        - *config* - Translation configuration file.
+        - *devices* - List of device ID's to be used.
+        - *servers* - List of server ID's to be used.
+- **modbus_device** - A generic modbus device definition.
+    - Required:
+        - *client* - Modbus Client as defined in previous communication. i.e. Either modbus_rtu. modbus_rtu2, modbus_tcp
+        modbus_tcp2.
+        - *device_id* - Device Identifier to use throughout the program. This has to be the same name as the cloud id for 
+        cloud implementation.
+        - *config* - Device Config file. This can either be a file defined in pyAWARE (located in src/pyaware/devices) or a
+        self defined config file.
+    - Optional:
+        - *unit* - Modbus Unit ID (defaults to 0).
+        - *address_shift* - Integer value to shift all device parameter addresses from the ones defined in config 
+          (defaults to 0).
+        - *poll_intervals* - Sets the interval of the poll in seconds to read data from the device. The device config file 
+          may have different polls, so the interval has to be defined as poll specific in the form {"poll1": 1} (defaults to 
+          None).
+- **comap_device** - A ComAP device that is inherited from Modbus device and has all the parameters defined within that 
+  along with the additional functionality to execute ComAp device.
+    - Required:
+        - Refer to required parameters of modbus_device.
+    - Optional:
+        - Refer to optional parameters of modbus_device.
+- **sp_pro_device** - A Selectronic, SP PRO device.
+    - Required:
+        - *client* - SP PRO serial client as defined in previous communication i.e. sp_pro
+        - *device_id* - Device Identifier to use throughout the program. This has to be the same name as the cloud id for 
+        cloud implementation.
+        - *config* - Device Config file. This can either be a file defined in pyAWARE (located in src/pyaware/devices) or 
+          a self defined config file.
+    - Optional:
+        - *poll_intervals* - Sets the interval of the poll in seconds to read data from the device. The device config file 
+          may have different polls, so the interval has to be defined as poll specific in the form {"poll1": 1} (defaults to 
+          None). 
+- **solar_cube** - Solar Cube deployment. Establishes internal heartbeat and internal mqtt watchdogs for cloud mqtt.
+    - Required:
+        - *device_id* - Device Identifier to use throughout the program. This has to be the same name as the cloud id for 
+        cloud implementation.
+    - Optional:
+        - *cloud_broker* - Instance of the cloud MQTT broker for the watchdogs to monitor.
+
+##### Communication Parameters
+Each communication type has a list of parameters. These parameters are specific to the communication option chosen 
+(e.g. A device may need a device_id as an input and will error until you define this in config). 
+Each parameter has a type and value. Parameter types tell PyAWARE how to interpret the parameter value and the 
+parameter value is what you would like to set as that parameter. As you will see this can be either a specified value, 
+function or reference. Example config can be seen below detailing how to write this in config,
+```yaml
+communication:
+  - name: ref_comms_name # Comms protocol e.g. modbus or similar
+    ...
+  - name: ref_dev_name # Device defintion e.g. power-meter
+    ...
+  - name: ...
+    type: ...
+    # This is an example communication option which makes use of each different communication parameter type
+    params: 
+      param1: 
+        type: value
+        value: "This is my parameter value"
+      param2:
+        type: ref_comms
+        value: ref_comms_name # This is the reference name of a comms protocol in the config file
+      param3:
+        type: ref_path
+        value: ref/path/from/AWAREPATH # This is the reference path from AWAREPATH
+      param4:
+        type: ref_device
+        value: ref_dev_name # This is the reference name of a device in the config file
+      param5: 
+        type: ref_comms_param 
+        value: ref_comms_name
+        key: ref_comms_param_name # Parameter name from the reference device object
+      param6:
+        type: ref_translation_config
+        value: translation/location # Location of the translation.yaml file from AWAREPATH
+      param7:
+        type: ref_translation
+        value: [...] # List of reference config names to pass through to translation
+      param8: 
+        type: ref_mac_address
+        value: ethx # Adapter name to get MAC Address from
+```
+
+- **value** - The most common option. This is just a value that is interpreted raw. It can be a string, number, etc.
+- **ref_comms** - Reference to a communication protocol elsewhere in the config file. e.g. If you have a modbus TCP 
+  client defined with the name 'modbus_client' this parameter will take the object instantiated during that process as 
+  the reference parameter.
+- **ref_path** - This parameter is interpreted as a path from the AWAREPATH. e.g. If you defined a path 'location/here'
+  the path this parameter becomes is AWAREPATH/location/here.
+- **ref_device** - Reference to a device definition elsewhere in the config file. e.g. If you have a modbus device 
+  defined with the name 'modbus_device_1' this parameter will take the object instantiated during that process as the 
+  reference parameter.
+- **ref_comms_param** - Reference to a parameter belonging to a communication protocol elsewhere in the config file. 
+  e.g. If you have a modbus TCP client defined with the name 'modbus_client' and it has a parameter called 'client_id' 
+  this parameter will take the object instantiated during that process as the reference object and retrieve the 
+  parameter with the name defined in *key* which in this case lets say 'client_id' and store it as that parameter on the 
+  current item.  
+- **ref_translation_config** - Reference to the location of the translation config file (*translation.yaml*). e.g. If 
+  you defined a path 'location/here' the path this parameter becomes is AWAREPATH/config/location/here.
+- **ref_translation** - List of object references in the current config file to put into a parameter. 
+- **ref_mac_address** - The adapter name that you wish to retrieve the parameter mac address from. This has to be the 
+  name your platform has given the adapter and has to be a valid adapter on the machine.
+  
+### MQTT Connection Config (connection.yaml)
+Connection.yaml specifies the all the requirements for connecting to an appropriate mqtt broker. This is separated from
+gateway.yaml in order to provide robustness to failure when a user uploads an invalid configuration, 
+pyaware will still connect in order to receive a new configuration.
+An example connection.yaml file is shown 
+below,
+```yaml
+defaults: 'gcp'
+# feature_flags:
+#   feature_mqtt: true
+device-id: 'gateway-id'
+project_id: 'project-id'
+registry_id: 'registry-id'
+cloud_region: 'gcp-region'
+```
+#### Options
+- **defaults** - Chooses which base configuration defaults to use
+    - *gcp* - Use the Google Cloud Defaults
+    - *local* - Use the local on-premises mqtt broker default
+- **feature_flags** - Set of core pyAWARE features to enable or disable.
+    - *feature_mqtt* - Enables or disables the use of an mqtt broker. Defaults to *true*.
+
+All options can be provided in the dynamic form as can be specified [Communication Parameters](#markdown-header-communication-parameters).. 
+Note: Any parameters that rely on information retrieved from devices in gateway.yaml will delay the final connection to 
+the broker until all of gateway.yaml is processed.
+Any invalid gateway.yaml will then cause connection.yaml to not be processed and pyaware never connecting to the broker.
+  
+##### Local Configurations
+###### Required
+- **device_id** - Device ID of the device that is required to be connected to.
+  
+###### Optional
+- **gateway_id** - Gateway ID to publish / subscribe to via MQTT (defaults to "").
+- **serial_number** - Serial Number to publish / subscribe to via MQTT (defaults to "").
+- **authentication_required** - Determines whether authentication is required to connect to the Local Broker (defaults
+  to False).
+- **host** - Hostname or IP address of the local MQTT broker (defaults to 127.0.0.1).
+- **port** - The port number of the Local MQTT broker (defaults to 1883).
+- **keepalive** - The number of seconds to keep the MQTT connection alive (defaults to 60).
+- **bind_address** - The IP address of a local network interface to bind this client to, assuming multiple interfaces 
+  exist (defaults to "").
+- **clean_session** - A boolean that determines the client type. If True, the broker will remove all information about 
+  this client when it disconnects. If False, the client is a durable client and subscription information and queued 
+  messages will be retained when the client disconnects (defaults to False).
+- **parsers** - A dictionary containing additional MQTT parsers for the broker. A full list of the current parsers are 
+  found in src\pyaware\mqtt\config as default_local_parsers() (defaults to the list of local parsers). e.g. 
+  {"topic": "my/MQTT/topic/{variable_name}/here"}
+- **disable_parsers** - A list containing the keys representing the MQTT parsers to remove on the broker. A full list 
+  of the current parsers are found in src\pyaware\mqtt\config as default_local_parsers().
+- **subscribe_qos** - Topic subscription qos (defaults to 1).
+- **publish_qos** - Topic publish qos (defaults to 1).
+- **token_life** - Life of an MQTT token in seconds (defaults to 0).
+- **batch** - Batch MQTT messages enable (defaults to True).
+- **batch_hold_off** - Time window to batch MQTT messages in seconds (defaults to 5).
+- **max_message_queue_size** - Maximum number of messages to have in the queue (defaults to 100).
+- **max_in_flight_messages** - Maximum number of in-flight MQTT messages (defaults to 100).
+- **backlog_enable** - Enable to backlog mqtt messages if not sent to MQTT broker (defaults to false).
+- **parsers_default** - Select the topic parser defaults that can be overridden by parsers. (defaults to 'local')
+
+##### GCP Configurations
+###### Required
+- **device_id** - Device ID of the device as configured in GCP IOT Core
+
+###### Optional
+- **project_id** - Project ID on google cloud platform (defaults to aware-iot).
+- **registry_id** - Registry ID on google cloud platform (defaults to aware-iot).
+- **token_life** - Life of an MQTT token in seconds (defaults to 60).
+- **cloud_region** - Cloud region on google cloud platform (defaults to asia-east1). 
+- **host** - Hostname or IP address of the GCP broker (defaults to mqtt.googleapis.com).
+- **port** - The port number of the Local MQTT broker (defaults to 8883).
+- **keepalive** - The number of seconds to keep the MQTT connection alive (defaults to 60).
+- **bind_address** - The IP address of a local network interface to bind this client to, assuming multiple interfaces 
+  exist (defaults to "").
+- **clean_session** - A boolean that determines the client type. If True, the broker will remove all information about 
+  this client when it disconnects. If False, the client is a durable client and subscription information and queued 
+  messages will be retained when the client disconnects (defaults to False).
+- **parsers** - A dictionary containing additional MQTT parsers for the broker. A full list of the current parsers are 
+  found in src\pyaware\mqtt\config as default_gcp_parsers() (defaults to the list of local parsers). e.g. 
+  {"topic": "my/MQTT/topic/{variable_name}/here"}
+- **disable_parsers** - A list containing the keys representing the MQTT parsers to remove on the broker. A full list 
+  of the current parsers are found in src\pyaware\mqtt\config as default_gcp_parsers().  
+- **private_key_path** - Path to the private key file "rsa_private.pem" (defaults to 
+  AWAREPATH/credentials/rsa_private.pem). 
+- **ca_cert_path** - Path to the Google Cloud Platform ca certificate file "google_roots.pem" (defaults to 
+  AWAREPATH/credentials/google_roots.pem).
+- **authentication_required** - Determines whether authentication is required to connect to the Local Broker (defaults
+  to False).
+- **subscribe_qos** - Topic subscription qos (defaults to 1).
+- **publish_qos** - Topic publish qos (defaults to 1).
+- **batch** - Batch MQTT messages enable (defaults to True).
+- **batch_hold_off** - Time window to batch MQTT messages in seconds (defaults to 5).
+- **max_message_queue_size** - Maximum number of messages to have in the queue (defaults to 100).
+- **max_in_flight_messages** - Maximum number of in-flight MQTT messages (defaults to 100).
+- **backlog_enable** - Enable to backlog mqtt messages if not sent to MQTT broker (defaults to false).
+- **parsers_default** - Select the topic parser defaults that can be overridden by parsers. (defaults to 'gcp')  
+
+### Translation Config (translation.yaml)
+PyAWARE can also be used to host data in a server. In order to pass data from / to devices from / to servers, pyAWARE 
+uses this translation configuration to determine how the data is to be mapped from point A to point B and vice versa. 
+An example translation.yaml is shown below. This shows how a server 'server_1' can pass data to / from a device 
+'device_1'.
+```yaml
+server-translation:
+  server_1:
+    devices:
+      device_1:
+        transformations:
+          - rename_keys:
+              definition:
+                reg-0: zero
+                reg-1: one
+                reg-2: two
+                reg-3: three
+                reg-4: four
+                reg-5: five
+                reg-6: six
+                reg-7: seven
+                reg-8: eight
+                reg-9: nine
+    registers:
+      holding: 
+        zero:
+          form:
+            type: ParamCType
+            address: 1000
+            idx: zero
+            data_type: ushort    
+        one:
+          form:
+            type: ParamCType
+            address: 1001
+            idx: one
+            data_type: ushort  
+        two:
+          form:
+            type: ParamCType
+            address: 1002
+            idx: two
+            data_type: ushort   
+        three:
+          form:
+            type: ParamCType
+            address: 1003
+            idx: three
+            data_type: ushort   
+        four:
+          form:
+            type: ParamCType
+            address: 1004
+            idx: four
+            data_type: ushort
+        five:
+          form:
+            type: ParamCType
+            address: 1005
+            idx: five
+            data_type: ushort
+        six:
+          form:
+            type: ParamCType
+            address: 1006
+            idx: six
+            data_type: ushort
+        seven:
+          form:
+            type: ParamCType
+            address: 1007
+            idx: seven
+            data_type: ushort
+        eight:
+          form:
+            type: ParamCType
+            address: 1008
+            idx: eight
+            data_type: ushort
+        nine:
+          form:
+            type: ParamCType
+            address: 1009
+            idx: nine
+            data_type: ushort
+device-translation:
+  device_1: 
+    servers:
+      server_1:
+        transformations:
+          - rename_keys:
+              definition:
+                zero: reg-0
+                one: reg-1
+                two: reg-2
+                three: reg-3
+                four: reg-4
+                five: reg-5
+                six: reg-6
+                seven: reg-7
+                eight: reg-8
+                nine: reg-9
+```
+There are two key parts to this config file. We have a server translation that maps how data is recieved from the device
+and placed into the server. We also have a device translation which does the opposite i.e. takes data from a server and
+maps it back to the device. This relationship can be from any number of servers to/from any number of devices.
+#### Registers
+This defines how the selected server will layout its registers and map each of its parameters to an address. **NOTE**: 
+This is similar how devices layout their parameters. An example is below,
+```yaml
+...
+registers:
+      holding: 
+        zero:
+          form:
+            type: ParamCType
+            address: 1000
+            idx: zero
+            data_type: ushort    
+        one:
+          form:
+            type: ParamCType
+            address: 1001
+            idx: one
+            data_type: ushort  
+        two:
+          form:
+            type: ParamCType
+            address: 1002
+            idx: two
+            data_type: ushort   
+        three:
+          form:
+            type: ParamCType
+            address: 1003
+            idx: three
+            data_type: ushort   
+        four:
+          form:
+            type: ParamCType
+            address: 1004
+            idx: four
+            data_type: ushort
+        five:
+          form:
+            type: ParamCType
+            address: 1005
+            idx: five
+            data_type: ushort
+        six:
+          form:
+            type: ParamCType
+            address: 1006
+            idx: six
+            data_type: ushort
+        seven:
+          form:
+            type: ParamCType
+            address: 1007
+            idx: seven
+            data_type: ushort
+        eight:
+          form:
+            type: ParamCType
+            address: 1008
+            idx: eight
+            data_type: ushort
+        nine:
+          form:
+            type: ParamCType
+            address: 1009
+            idx: nine
+            data_type: ushort
+...
+```
+The parameter directly under 'registers' is the type of register to be defined, there are four registers in a Modbus
+registers to be defined with the names below. Under each register type here is a list of server parameters with their 
+form which includes the type of parameter, address and data type. **NOTE**: Each register must have been defined already
+under the server in gateway.yaml. 
+
+
+- *holding* - Modbus Holding Register
+- *input* - Modbus Input Register
+- *coil* - Modbus Coil Register
+- *discrete* - Modbus Discrete Register  
+
+#### Transformations
+This describes how the data is to be transformed before entering either the server or the device depending on if it is
+defined under the server or device. The list of transformations is described below,
+
+
+- **rename_keys** - Takes a dictionary of key mapping to map parameters by.
+```yaml
+...
+transformations:
+  ...
+  - rename_keys: 
+    definitions:
+      device_or_server_param_name: new_server_or_device_param_name
+      ...
+```  
+- **remove_keys** - Takes a set of keys to be removed from the param pool. 
+```yaml
+...
+transformations:
+  ...
+  - remove_keys: 
+    definitions:
+      - device_or_server_param_name_to_remove
+      ...
+``` 
+- **scale_values** - Takes a dictionary of parameter-scale value mapping. Returns a dictionary of scaled parameters.
+```yaml
+...
+transformations:
+  ...
+  - scale_values: 
+    definitions:
+      device_or_server_param_name_to_scale: scale_factor
+      ...
+``` 
+- **multiply_params** - Takes a dictionary of parameter-parameter mapping. Returns a dictionary of multiplied 
+  parameters.
+```yaml
+...
+transformations:
+  ...
+  - multiply_params:
+    definitions:
+      device_or_server_param_to_multiply: [device_or_server_param_to_multiply]
+      # We can also multiply a param by itself by below
+      device_param1: [device_param1]
+      # Or between multiple params and itself
+      device_param2: [device_param2, device_param1, device_param3]
+      ...
+```  
+- **group_params** - Takes a dictionary of the parameter name to map to and a list of param names to group.
+```yaml
+...
+transformations:
+  ...
+  - group_params:
+    definitions:
+      device_or_server_param_to_map_top_level: [device_or_server_param1, device_or_server_param2, ..., 
+                                                device_or_server_paramN]
+      ...
+```  
+-----------------
+Deploying Gateway
+-----------------
+For any new deployment on an embedded device, an image needs to be generated. All images for deployment can be found 
+on [Subversion](http://prwivsvn0.primatec.local/svn/automation/Ampcontrol%20IOT%20Images).
+
+After the device is set up with all the correct dependencies (as per offline installation), 
+an image should be stored for reuse. This can be done by doing the following.
+
+[Generating reusable SD card image](https://www.howtogeek.com/341944/how-to-clone-your-raspberry-pi-sd-card-for-foolproof-backup/).
+
+[Setting up an new SD card with the image](https://www.howtogeek.com/170794/ask-htg-how-can-i-reclaim-the-full-capacity-of-an-sd-card/).
+
+Once the image is loaded, test your new deployment by, 
+- Inserting the new SD card / Booting the device with the new image.
+- Installing the latest pyAWARE as per installation instructions.
+- Copying over the new config files.
+- Generating credentials for Google Cloud and putting them in /etc/AWARE/credentials
+- Validate it works by running python -m pyaware /etc/AWARE
+- Restart IOT Device
+
+--------------------
+Creating new devices
+--------------------
+Device configs are stored in src/pyaware/devices.
+An example device config can be seen below,
+```yaml
+sources:
+  poll:
+    type: poll
+    handle: holding
+    poll_interval: 0
+    blocks:
+      - [0, 10]
+  poll_input:
+    type: poll
+    handle: input
+    poll_interval: 5
+    blocks:
+      - [0, 10]
+parameters:
+  reg-0:
+    source: poll
+    form:
+      type: Param
+      address: 0
+      idx: reg-0
+    triggers:
+      process:
+        send:
+          - [state]
+  reg-1:
+    source: poll
+    form:
+      type: Param
+      address: 1
+      idx: reg-1
+    triggers:
+      process:
+        send:
+          - [state]
+  reg-2:
+    source: poll
+    form:
+      type: Param
+      address: 2
+      idx: reg-2
+    triggers:
+      process:
+        send:
+          - [value, 50]
+  reg-3:
+    source: poll
+    form:
+      type: Param
+      address: 3
+      idx: reg-3
+    triggers:
+      process:
+        send:
+          - [time, 5]
+  reg-4:
+    source: poll
+    form:
+      type: Param
+      address: 4
+      idx: reg-4
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  reg-5:
+    source: poll
+    form:
+      type: Param
+      address: 5
+      idx: reg-5
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  reg-6:
+    source: poll
+    form:
+      type: Param
+      address: 6
+      idx: reg-6
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  reg-7:
+    source: poll
+    form:
+      type: Param
+      address: 7
+      idx: reg-7
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  reg-8:
+    source: poll
+    form:
+      type: Param
+      address: 8
+      idx: reg-8
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  reg-9:
+    source: poll
+    form:
+      type: Param
+      address: 9
+      idx: reg-9
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+   reg-input-0:
+     source: poll_input
+     form:
+       type: Param
+       address: 0
+       idx: reg-input-0
+     triggers:
+       process:
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-1:
+     source: poll_input
+     form:
+       type: Param
+       address: 1
+       idx: reg-input-1
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-2:
+     source: poll_input
+     form:
+       type: Param
+       address: 2
+       idx: reg-input-2
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-3:
+     source: poll_input
+     form:
+       type: Param
+       address: 3
+       idx: reg-input-3
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-4:
+     source: poll_input
+     form:
+       type: Param
+       address: 4
+       idx: reg-input-4
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-5:
+     source: poll_input
+     form:
+       type: Param
+       address: 5
+       idx: reg-input-5
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-6:
+     source: poll_input
+     form:
+       type: Param
+       address: 6
+       idx: reg-input-6
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-7:
+     source: poll_input
+     form:
+       type: Param
+       address: 7
+       idx: reg-input-7
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-8:
+     source: poll_input
+     form:
+       type: Param
+       address: 8
+       idx: reg-input-8
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+   reg-input-9:
+     source: poll_input
+     form:
+       type: Param
+       address: 9
+       idx: reg-input-9
+     triggers:
+       process:
+         store:
+           - [always]
+         send:
+           - [state]
+           - [time, 60]
+transformations:
+  - scale_values:
+      definition:
+        reg-input-9: 3.052e-5
+```
+There are a few key areas of device config, sources, transformations & parameters.
+### Sources
+Sources represent all of the device blocks to be polled along side the names of each poll. Under each poll we have the
+following parameters to define,
+
+
+- Required
+    - *blocks* - This defines each contiguous block of addresses to read for each device in the form 
+    [start_address, end_address].
+- Optional:
+    - *poll_interval* - The poll interval in seconds in which to read this data (Defaults to 5).
+### Transformations
+These are identical to transformations defined in translation.yaml except they only apply to the device and the result 
+will be sent directly to MQTT. See translation.yaml for more details.
+### Parameters
+These are the core of each device, they detail the parameters of each device, what data types the parameters are made 
+up of and what address(es) they belong to.
+
+- Conditionally Required:
+    - *source* - The poll this parameter currently belongs to. Required on at least the parent parameter.
+    - *form* - What the parameter looks like. These are defined in [parameter types](#parameter-types). 
+      Required on at least the children parameters.
+    
+- Optional:
+    - *children* - Parameters that are related to the parent parameter. See [parameter hierarchy](#parameter-types)
+#### Parameter Types 
+- *Param* - Raw parameter value taken from a single address. Scaling and rounding to the significant figures is 
+  provided.
+    - Required:
+        - *address* - The start address of the parameter. **NOTE**: This is required to be within the source address blocks.  
+        - *idx* - The actual name of the parameter. 
+     - Optional:    
+        - *scale* - Factor to multiply the parameter value with (Defaults to 1).
+        - *significant_figures* - Number of significant figures to round to (defaults to None).
+- *ParamStatic* - This is a 'virtual' constant parameter where the user defines its value and it is not read from the 
+  device.
+    - Required:
+        - *value* - Value of the parameter.
+        - *idx* - The actual name of the parameter. 
+- *ParamBoolArray* - Converts the list of addresses to an array of integer values either 1 or 0. Gives the parameter 
+  name 'idx' to all these values.
+    - Required:
+        - *address* - The addresses of the parameter as a block. **NOTE**: This is required to be within the source address 
+          blocks.  
+        - *idx* - The actual name of the parameter. 
+        - *length* - Length of the array.
+- *ParamEnumBoolArray* - The table initialises all parameters in it to False. If a parameter name is found in the list
+  of addresses it then sets this to false until a terminator is reached (if one is provided) or it ends the collection.
+    - Required:
+        - *address* - The addresses of the parameter as a block. **NOTE**: This is required to be within the source address 
+          blocks.
+        - *table* - Dictionary of each number with its corresponding value.
+    - Optional:  
+        - *terminator* - Character to stop reading the addresses on (Defaults to None).
+- *ParamText* - Converts parameter to text. 
+    - Required:
+        - *address* - The start address the parameter is located. 
+        - *idx* - The actual name of the parameter. 
+        - *length* - Length of the text to read from the start address.
+    - Optional:
+        - *padding* - Padding that the text is padded with from the addresses read (Defaults to b"\x00").
+        - *swap_bytes* - Enable to indicate if the bytes are to be swapped (Defaults to False)
+        - *strip_leading* - Text to strip from the start of the string (Defaults to "").
+        - *strip_lagging* - Text to strip from the end of the string (Defaults to "").
+- *ParamDict* - Parameter to be decoded as a json object.
+    - Required:
+        - *key* - Parameter key to fetch from the json object.
+        - *idx* - Name to rename the json object.
+    - Optional:
+        - *table* - Table representing the json structure (Defaults to an empty dict)
+- *ParamBits* - Parameter bitmask register. 
+  NOTE: This is legacy and should use the hierarchical pattern for new devices that implement the new parameter pattern.
+    - Required:
+        - *address* - The start address the parameter is located. 
+        - *bitmask* - A dictionary presenting the bitmask of the parameter written as {0: "stop", 1:"start", ...}
+    - Optional:
+        - *idx* - Name of the total bitmask register (Defaults to None).
+- *ParamMask* - Applies a mask to the parameter after read. 
+    - Required:
+        - *address* - The start address the parameter is located. 
+        - *idx* - The actual name of the parameter.
+    - Optional:
+        - *mask* - Mask to apply to the parameter (Defaults to 0xFFFF).
+        - *rshift* - Shifts the bits to the right by the int provided (Defaults to 0).
+- *ParamOffset* - Treats the Parameter as a ParamMask but also provides an offset.  
+    - Optional:
+        - *offset* - Offset to apply to the parameter (Defaults to 0).
+- *ParamMaskBool* - Treats the Parameter as a ParamMask but returns all the values as bools instead of ints.
+- *ParamMaskScale* -  Applies a mask to the parameter after read and scales the result.
+    - Required: 
+        - *address* - The start address the parameter is located. 
+        - *idx* - The actual name of the parameter.
+    - Optional:
+        - *mask* - Mask to apply to the parameter (Defaults to 0xFFFF).
+        - *rshift* - Shifts the bits to the right by the int provided (Defaults to 0).
+        - *scale* - Scale factor to scale the parameter by (Defaults to 1).
+        - *significant_figures* - Number of significant figures to round to (defaults to None).
+- *ParamLookup* - For the value read from the address will apply the result to a table and return the result similar to
+  and Enum.
+    - Required
+        - *address* - The start address the parameter is located. 
+        - *idx* - The actual name of the parameter.
+        - *table* - Dictionary of each number with its corresponding value.
+        - *table* - Inversed dictionary of each number with its corresponding value.
+    - Optional:
+        - *mask* - Mask to apply to the parameter (Defaults to 0xFFFF).
+        - *rshift* - Shifts the bits to the right by the int provided (Defaults to 0).
+- *ParamCType* - This is used for most Parameters, this enforces a parameter to be a particular data type from the 
+  registers provided and returns an exception if the data binding cannot be performed.
+    - Required:
+        - *type* - ParamCType
+        - *address* - The start address of the parameter. **NOTE**: This is required to be within the source address blocks.  
+        - *idx* - The actual name of the parameter. 
+    - Optional:    
+        - *data_type* - The data type of the parameter (Defaults to ushort). The data types are detailed 
+          [here](https://docs.python.org/3/library/struct.html#format-characters). These types are written as below,
+          - *char*
+          - *schar* 
+          - *bool* 
+          - *short*
+          - *ushort*
+          - *int*
+          - *uint*
+          - *long*
+          - *ulong*
+          - *longlong*
+          - *ulonglong*
+          - *float*
+          - *double*
+          - *char[]*
+        - *byte_order* - Order of each byte (Defaults to >) e.g. '>' big endian, '<' little endian. 
+        - *word_order* - Order of each word (Defaults to >) e.g. '>' big endian, '<' little endian.
+- *ParamCTypeScale* - Treats the parameter as a ParamCType but applies scaling to the parameter after decode and removes
+  scaling during the encode.
+    - Optional:
+        - *scale* - Scale factor to scale the parameter by (Defaults to 1).
+- *ParamCTypeScaleModulus* - Treats the parameter as a ParamCType but applies scaling and modulus to the parameter after 
+  decode and removes scaling and modulus operations during the encode.
+    - Optional:
+        - *scale* - Scale factor to scale the parameter by (Defaults to 1).
+        - *modulus* - Modulus to apply (Defaults to 65535).
+        - *invert_on_overflow* - Enable to invert the parameter sign on overflow (Defaults to False).
+- *ParamArray* - Treats the parameter as an array of uint16 values from a starting address for a specified count
+    - Required
+        - *address* - The start address the parameter is located. 
+        - *idx* - The actual name of the parameter.
+        - *count* - The number of addresses starting at *address* to include in the array.
+    
+### Parameter Hierarchy
+
+Parameters can be defined in a hierarchical pattern. This allows you to define parameters that need to be related for
+purposes of managing reads/writes by parameter name. The hierarchy is defined by setting the children on the parent 
+parameter. If there are children on the parameter then the form becomes optional. Caution must be made when not 
+specifying the form on the parent as writes to the children parameters will ignore the current state of any 
+bits/registers that are not explicitly defined in the heirarchy.
+
+For example
+```yaml
+  reg-3:
+    source: poll
+    form:
+      type: Param
+      address: 3
+      idx: reg-3
+    children:
+      reg-3-bit-0:
+        form:
+          type: ParamBit
+          address: 3
+          idx: reg-3-bit-0
+          bit: 0
+        triggers:
+          process:
+            send:
+              - [always]
+          write:
+            validators:
+              - trig_type: writable
+      reg-3-bit-1:
+        form:
+          type: ParamBit
+          address: 3
+          idx: reg-3-bit-1
+          bit: 1
+        triggers:
+          write:
+            validators:
+              - trig_type: writable
+      reg-3-bit-2:
+        form:
+          type: ParamBit
+          address: 3
+          idx: reg-3-bit-2
+          bit: 2
+        triggers:
+          write:
+            validators:
+              - trig_type: writable
+    triggers:
+      process:
+#        send:
+#          - [time, 5]
+        send:
+          - [always]
+```
+
+If the reg-3 initial state is 0xFFFF and a write parameters to reg-3-bit-1 is False, then the register's final state 
+would be 0xFFFD. However, if reg-3 did not have the form specified (capturing the whole register) then the final value 
+would be 0x0005. 
+
+### Triggers
+Triggers are applied to parameter data to determine different operations that are required to trigger to certain inputs.
+An example of triggers can be seen in the sample device parameter file below, 
+```yaml
+...
+parameters:
+  reg-0:
+    source: poll
+    form:
+      type: Param
+      address: 0
+      idx: reg-0
+    triggers:
+      process:
+        store:
+          - [always]
+        event:
+          - [state]
+        send:
+          - [state]
+          - [time, 30]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+          - trig_type: comparison
+            ref_name: current_state
+            ref_key: mode
+            comp_type: e
+            comp_value: 1  
+          - trig_type: in_list
+            lst:
+              - 0
+              - 1
+      collect:
+        read:
+          - [deadline, 3600]
+...
+```
+There are three trigger types, [process](#markdown-header-process), [write](#markdown-header-write) and 
+[collect](#markdown-header-collect). 
+
+#### Process
+Process triggers are triggers which when called process the parameter data. They can have 3 different states 
+(send, event, store). Each process trigger states have different types. Process types describe when these events will 
+trigger.
+
+
+- **Send** - A send state will send the data on this trigger.
+- **Event** - An event state will trigger an event.
+- **Store** - A store state will store the data on this trigger.
+
+##### Process Trigger Types
+- *state* - When the parameter data changes state (i.e. value), this will trigger.
+- *time* - When a specified period of time has passed (in seconds) this will trigger.
+- *delta* - When the parameter data has changed by a specified amount (delta) this will trigger.
+- *always* - This will always trigger when the triggers are fired.
+- *and* - This will perform an and operation on the data. Fires when the result of this operation is true.
+- *comparison* - Compares this parameter with another parameter on the same device. Triggers when the result is true. 
+Current supported operations are, greater than (g), greater than equal to (ge), less than (l), less than equal to
+  (le), equal (e).
+  
+#### Write
+Write triggers are triggers which when called write the parameter data to a device. They can have 1 state(validators). 
+Each process trigger states have different types. Write types describe when these events will trigger.
+
+
+- **Validators** - Validators will validate the parameter write trigger based on the trigger types passed to it. 
+
+##### Write Trigger Types
+- *range* - Triggers when the data to write is within the range specified. 
+- *in_list* - Triggers when the data is in the list of values provided.
+- *comparison* - Compares this parameter with another parameter on the same device. Triggers when the result is true. 
+Current supported operations are, greater than (g), greater than equal to (ge), less than (l), less than equal to
+  (le), equal (e).
+
+#### Collect
+Collect triggers are triggers which when called collect the parameter data. They can have 1 state 
+(read). This can have one trigger type.
+
+
+- **Read** - A read state will collect the parameter data on a read operation.
+
+##### Collect Trigger Types
+- *deadline* - When a deadline is reached this will trigger.
+
+
+## Sequencing
+
+Allows for sequencing operations for parameter operations
+
+### Write Sequencing
+Parameters that need to have a special way to be written can use write sequencing.
+Write sequencing is called after the validators are passed.
+This allows a small subset of operations that can be done every time the write_parameters call is done either through 
+code or MQTT Commands such as "set-parameters"
+```yaml
+  system-reset:
+    #...
+    sequences: # Negative pulse trigger (>100ms)
+      write:
+        - type: write_value
+          value: 1
+        - type: write_value
+          value: 0
+        - type: wait
+          seconds: 0.2
+        - type: write_value
+          value: 1
+```
+
+#### Write Sequencing Types
+- *write* - Writes the value as specified in the payload. This is the default operation if no sequence is specified
+- *write_value* - Writes a specified value to the parameter overriding the value set in the parameter payload.
+
+    - *value* - The value to set to the parameter 
+- *wait* - Waits the specified number of seconds before moving to the next step
+  
+    - *seconds* - The seconds to wait
+- *write_parameter_value* - Writes a specified value to another parameter by name
+
+    - *parameter* - The parameter name to write to
+    - *value* - The value to write to the parameter
+    
+- *write_parameter* - Writes the value from this parameter to another parameter by name
+
+    - *parameter* - The parameter name to write to
+    
+### Aggregations
+Aggregates can be applied to parameter data before being sent onwards to its destination. An example use of aggregation 
+can be seen in the sample device parameter file below,
+```yaml
+...
+parameters:
+  reg-0:
+    source: poll
+    form:
+      type: Param
+      address: 0
+      idx: reg-0
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 30]
+      aggregations:
+        - latest
+        - samples
+        - min
+        - max
+        - sum
+...
+```
+Aggregations is a list passed from the parameter to pyAWARE to inform pyAWARE that these aggregations are to be 
+performed.  
+Currently supported aggregations (**NOTE**: If aggregations are not defined, the default aggregation operations 
+performed are samples and latest),
+
+
+- **samples** - Returns the total number of samples taken (poll intervals) for the current sending operation as defined 
+  in triggers.
+- **latest** - Returns the latest sample for the current sending operation as defined in triggers.
+- **sum** - Returns the sumation of all samples for the current sending operation as defined in triggers.
+- **min** - Returns the minimum of all samples for the current sending operation as defined in triggers.
+- **max** - Returns the maximum of all samples for the current sending operation as defined in triggers.
+
+
+# Release Notes
+
+Release 4.7.0
+-----
+####AWARE-1310
+- Added optional parameter to set the topology interval
+- Set the default topology interval to 60 seconds
+
+####AWARE-1313
+- Add timestamp to gateway state
+
+####AWARE-1315
+- Updated iMAC input modules to send polled data at most once per hour
+
+Release 4.6.0
+-----
+####AWARE-996 Specify eth adapter for GGLive
+- Updated gateway_id in gglive example config to always be the external facing ethernet adapter mac address.
+
+####AWARE-997 Connection.yaml to fully resolve before attempting to initialise devices
+- Changed start up logic to remove a bunch of async functions that can be synchronous
+- Changed the device state message to not be cached as it was waiting for the DB to be initialised before sending.
+- Changed the device state message to send on each connection in case it gets lost due to cache not storing the message.
+- Fixed issue where state was sent twice at start up
+- Fixed issue where waiting for remote config would still happen even after receiving a blank config
+- Changed error reporting on MQTT setup tasks cancellation as it was not compatible with python 3.7
+- Run Modbus Device creation in a thread to prevent event loop locking up. Particularly for siemens boxes.
+- Fixed deferred gateway topics update reference
+
+Release 4.5.0
+-----
+
+####AWARE-949 Update documentation for offline preparation and installation
+- Added instructions for downloading the python installation various ways
+- Added bitbucket custom pipeline to generate bundled packages
+- Renamed package build to armv7 to indicate architecture
+- Added package build to production pipeline
+
+####AWARE-952 Update bypass logic
+- Send all bypass status every minute
+
+####AWARE-962 Pyaware start-up needs to subscribe to config topic before waiting for remote configuration
+- Fixed a bug where remote configuration was never being used in GCP applications.
+- Fixed a bug where remote configuration would not restart pyaware.
+- Updated tests.
+- Updated formatting.
+- Added logging for missing configuration files. Updated local remote configuration timeout to 2 seconds so that the remote config would update gateway.yaml before the local was parsed. Small timing fixes on start up to ensure the database was correctly initiated before actioned on. Updated mqtt config handling to take in the correct gateway config topic depending on gcp or local mqtt.
+- Removed logging configuration in gateway.yaml. This is to be revisited if it is required at some stage. Reverted change to restart pyaware on remote configuration received.
+- Reintroduced a pyaware stop when we receive new configuration from a config topic after config parsing.
+- Added setup waits to disk storage to ensure it is initialised before running
+
+####AWARE-973 Pim Integration
+- Added PIM module
+- Added collect triggers for pim
+
+####AWARE-980 Change Schneider Power Meters to IEC Power Factor
+- Changed from 4Q_FP_PF to the IEC Float version
+
+####AWARE-988 Gateway id from mac address to be deterministic
+- Put a check in to ensure that the configuration parameter for gateway_id was used over the default setting. If none is set then the program will attempt to be deterministic by selecting the last mac address that is not a loopback adapter to use.
+- Added a solution for an error state where gateway_id is never set.
+
+####AWARE-992
+- Fixed issue where data files weren't included on linux
+
+####AWARE-994
+- Added error check to parsing mac address from config so that it doesn't crash pyaware when processing gateway.yaml with invalid configuration.
+
+Release 4.4.0
+-----
+
+#### AWARE-619 - RTGM - RTS Auto restart if Fieldbus 0
+- Moved gateway state and heartbeat from gateway_ipc into mqtt client. These will be started by default when pyaware is started.
+- Added connection.yaml feature flag functionality.
+- Updated the mqtt client setup to send the network details to topology when state is changed.
+- Moved topology to gateway configuration. Moved GatewayIPC to Solar Cube dependant functionality as gateway configuration. Removed gateway IPC.
+- Fixed timing of sending topology messages. Further decoupled the topology messages from gateway IPC.
+- Gateway Heartbeat and State messages made default.
+- Moved Topology into imac auto_detect functionality.
+- Changed the gateway_id to the last mac address read from the device.
+- Fixed sequencing of mqtt storage database so that gateway state messages can be sent on startup.
+
+#### AWARE-880 - Potential pyaware defaults can cause issues with the defaults not being processed
+- Updated README with the correct database config information.
+- Added the ability to disable MQTT parsers. Made the ability to update MQTT parsers more explicit. Added documentation to the README for the above changes.
+- Re-enabled the ability for users to change the logging configuration through gateway yaml. Removed the unnecessary log_config dictionary of logging config.
+- Fixed comms params parsing to account for NoneTypes on read. This assumes that NoneTypes are not valid types to set to comms params.
+- Fixed an error where if a key error was present in parse_comms_params this did not always indicate a deferred parameter.
+- Fixed database defaults parsing issue if no config was present. Changed the object default database size from unlimited to a hard 500MB limit.
+
+#### AWARE-885 - PyAware - Safegas MQTT Messages - Add AIM as Sensor type
+- Updated process_safe_gas function documentation.
+- Added AIM module support for safegas data.
+
+#### AWARE-888 - RTGM - Missing MQTT messages from Pyaware
+- Added device_message flag to mqtt topics to allow for certain topics to be sent even though gateway config parsing is not complete. 
+- Added warning to gateway config parsing in the event the commands topic is never established. 
+- Increased mqtt timeout to 60 seconds due to this config parsing change.
+- Moved mqtt setup functions outside of setup loop. Kept mqtt network setup inside of setup loop. Improved error handling.
+- Added error messages for gateway command topic parsing errors. In the event of an error a topic subscription is still setup.
+- Added device_message flag to GCP state message so that it is sent on startup before device mqtt setup. 
+- Removed state message from setup tasks as it is not a setup task.
+
+#### AWARE-891 - Pyaware - Add Config Files
+- Added the ability for config files to be added to the wheel file.
+- Added local mqtt example config. Added README for local mqtt config.
+- Added gcp example. Added README for gcp example.
+- Changed recursive-include to recursive-exclude for .git files. Added a GGL example in example configs. 
+
+#### AWARE-898 - RTGM - How do we manage old version of pyaware sitting on spares shelf?
+- Removed unused MQTT models and topics. Added version strings to all MQTT messages. Made a note to migrate old version of MQTT models into new models when appropriate.
+- Repositioned `__version__` to align with PEP8 module level dunder names. Provided `__version__` on the state message mqtt model. Fixed mqtt model imports to align with new names.
+- Added version numbers to command request to ensure that there will be no validation errors with GCP. In theory, API should send this, overriding this field.
+- Removed snake-casing from MQTT models for camel casing. Updated tests.
+
+#### AWARE-904 - Pyaware has a dictionary modified while it is being iterated. Investigate
+- Fixed issue where the processing of the controller data would fail if a new module was added during processing.
+
+#### AWARE-917 - RTGM - AIM module address change causes data to stop sending
+ - Added logging for block and roll call lock acquire and release. 
+ - Forced all address roll calls to happen in sequence with no other block reads allowed.
+ - Broke imac addresses out into two states, online and rollcallable. This logical breakout is to solve iMAC modules going offline when there are only one of its addresses going offline for multi-address modules.
+
+Release 4.3.0
+-----
+This release removes the requirement for a gateway.yaml on startup and moves to connection.yaml as the primary way to
+set up the mqtt connection.
+
+#### AWARE-448 - Remove pymodbus client
+- Removed pymodbus and associated legacy code
+
+#### AWARE-750 - Move mqtt details out of gateway.yaml
+- Added parse_mqtt to config which will run before aware updates
+- Added connection.yaml as a base config for aware
+- Added gateway_config_received event to indicate when the configuration has been received.
+- Updated configuration parsing to more closely match the function
+- Updated MQTT to use configuration as raw
+- Improved error reporting
+- Changed logging order so it will log the mqtt connection information
+- Removed logging parameters from config as it is not loaded at this point
+- Fixed a bug where disk_storage would import None if the mqtt client was initialised before the database
+- Changed the mqtt local config topic to replace the device_id with gateway_id for the gateway. This allows us to target the gateway with configuration updates
+- Added default id for client_id for local mqtt
+- Added build_connection_yaml to build the new connection configuration from available data
+- Added a new parameter to mqtt config to set how long to wait for a remote gateway config before loading from disk
+- Fixed existing tests around configuration parsing
+- Added tests for auto generating connection.yaml
+- Added ability to change the default parsers more simply in connection.yaml
+- Added backwards compatibility to ensure that gateway_id can still be populated when only device_id is provided by legacy cloud.yaml
+- Added error checking for missing configuration file
+
+#### AWARE-784 - Command write parameters errors on invalid handles
+- Changed the parameter handles to have a default of holding register when not present in the config file
+- Changed the write handle to not error when there is no existing handle
+- Fixed issues with Async mocking
+
+#### AWARE-789 - Substation PLC Configuration Updates
+- Updated configuration file to correctly distinguish between coil and input registers
+- Updated address_shift to work with parameters with blank addresses
+- Added missing address for outlet-5-eflo-trip
+- Changed uint to float type
+- Added commission3.py to be compatible with async configuration loading
+- Updated requirements for aiomodbus fixed on coil reads
+- Changed the byte ordering based on hst feedback
+- Changed the variable names to line up with requests from HST
+
+#### AWARE-798 - Local/Remote Bypass indication not working
+- Fixed a bug with config parsing where mqtt config parameters that rely on information in gateway.yaml were not being parsed.
+- Fixed a bug where the bypass status was not correctly set when the unit was in local bypass.
+- Changed the subscription topics so that mqtt commands are done only if there is enough information to do so. General code cleanup.
+- Added an option to disable MQTT for instances of pyAWARE without it. This is contained in connection.yaml and is an explicit parameter called disable_mqtt.
+- Removed disable_mqtt if set to False as its not used in comms param parsing.
+- Updated formatting black. Removed duplicate import from requirements-test.txt
+- Changed the local and remote bypass bits to their correct values. Moved connection yaml parsing outside of mqtt_parse. Added type hinting. Changed update function on mqtt config dataclass to check that keys exist before updating.
+- Fixed a bug where commands topic was not being subscribed to if a connection.yaml was present that did not depend on gateway.yaml
+- Updated a test that required parse_mqtt to have parameter added to its import.
+
+#### AWARE-804 - RTGM third party integration
+- Added raw imac data to safegas message
+- Updated safegas to use 60 detectors
+- Grouped iMAC tests
+- Basic test to check that parameters exist as expected
+
+#### AWARE-811 - Fixes to connection.yaml topic parsers
+- Fixed issue where adding parsers to config would override all default parsers
+- Updated the config parsing flow so it only evaluates parameters it was unable to last pass
+
+Release 4.2.0
+-----
+
+##### AWARE-690 Write sequencing support for commands
+- Added controller base class to implement common parameter operations such as "set-parameters" and "get-parameters"
+- Added run_write_sequence which skips parameters that are written in a group
+- Added first pass Parameter implementation for generic read/write control across all parameters
+- Config parsing for the parameters
+- Added support for parameter validation
+- Changed parameter read/write handles to be properties that the controller has to set
+- Updated the Modbus Controller to parse the read/write handlers
+- Write parameters will look to the parent parameter to set it
+- Added get-parameters command to modbus controller
+- Fixed bugs found by test failures
+- Writes will now use current state for grouped parameters to ensure that they are not overwritten
+- Write sequences now work
+- Write parameter sequence now respects the target parameters write sequence
+- Added ParamBit
+- Parent/children parameters added
+- Documentation updates on TCP connections for modbus
+- Fixed bug where address masking was resulting in bits not clearing from the appropriate address
+- Changed parameter current state to refer to the same current state as the parent
+- Changed the current state to update every decode cycle as the parameters are not explicitly read when called from a block poll of the controller.
+- Test on ParamBit more able to pick up bitwise issues in encode/decode
+- Added multiple addresses return for datatypes that have multiple addresses
+- Added better data validation for missing parameters in set-parameters
+- Added ParamBool for coil registers
+- Added austech touchpro device configuration file
+- Fixed issue where the addresses were returned incorrectly for ParamCType
+- Updated documentation on parameter hierarchy and write sequencing
+- Removing dead code from controller sequences as they are implemented in the new parameter model
+- Fixed issues with trigger and aggregation parsing not working on children parameters
+- Fixed issues channel setup addresses
+- Added assertion to enforce contiguous addresses for the current implementation [No ParamBoolArray like in imac)
+- Black formatted
+- Made commands more robust to invalid payloads
+- Changed command ordering so that ack is sent if the message makes it though before trying to process it.
+- Updated command request model to have multiple data types
+- Updated CommandRequest model for cloud based to have the optional list type for parameter parsing
+- Fixed ParamText to return the appropriate amount of addresses
+- Fixed GetParameters to work correctly with dict and list
+- Trimmed touchpro mapping to 4 channels
+##### AWARE-713 SNMP Implementation
+- Refactored data types into its own module.
+- Added namespace for modbus to modbus parameters
+- Moved ParamDict to common as it is not a modbus parameter
+- Initial design idea. Added snmp to list of controllers. Added puresnmp to list of required packages. Added autocard.yaml.
+- Initial design idea. Added snmp to list of controllers. Added puresnmp to list of required packages. Added autocard.yaml.
+- Moved ParamStatic to Common data types.
+- Added SNMP datatypes integer32 and string. Added tests for these datatypes. Added these datatypes to parameter types list. Refactored shelfkit.yaml.
+- Initial shelfkit implementation for autocard 1.
+- Updated the SNMP datatypes to use the paramform base class. Implemented a bare bones snmp read controller.
+- Added controller methods. Added get_parameter method. Added a test method for this get_parameter method.
+- Added test for snmp controller read_parameters method. This resulted in a fix of the device config as it was incorrectly written. Fixed doc strings for read_parameters method on Modbus and SNMP controller.
+- Refactored naming on snmp decode encode methods.
+- Refactored naming of read_multi.
+- Added tests for read_multiple on SNMP device.
+- Added a write multiple parameters method to SNMP. Changed the encoding/decoding of SNMP to use puresnmp types as when encoded the data needs to use puresnmp types.
+- Implemented a write parameters and a set parameters command for snmp.
+- Implemented the get_parameters method, set_parameters method & set_parameter method on snmp device controller.
+- Implemented a test for the get_parameters method on the snmp controller.
+- Added tests for the snmp set parameter and set parameters methods.
+- Added test for write parameters on snmp device. Made the encoder factory optional for the parameter writer to remove necessary AddressMapUint16 encoder from global default.
+- Added documentation & typing for the snmp controller and snmp datatype.
+- Added documentation & typing for the snmp controller and snmp datatype.
+- Formatted black.
+- Added the rest of the nine autocards to shelfkit.yaml.
+- Added the rest of the 5 autocards to shelfkit.yaml.
+- Updated the send intervals in shelfkit.yaml
+- Updated the name of the shelf kit
+- Added link to the shelf kit MIB file in shelf_kit.yaml
+- Formatted black.
+- Changing patch to patch object to potentially fix a failed pipeline test
+- Put device inside test_get_parameter_not_strict_success method. To achieve isolation.
+- Changing patch to patch object to potentially fix a failed pipeline test
+- Attempt to fix test pipeline.
+- Reformatted black.
+- Removed autocard.yaml.
+- Removed AsyncMock from test_snmp_controller.py as it is not used.
+##### AWARE-745 Update Safegas Implementation
+- Added Scaled gas array for GG2 (not AIM)
+- Added address status array based on ModuleStatus Enum
+- Added ParamArray to have an array type for the address-data
+- Updated iMAC controller to process address-data
+- Updated safe-gas to use the address-data as a base for the analog values
+- Updated default flags register to 0xffff
+- Changed address-data to start at address 0 to match the address-status array
+- Reworked the poll loop so that process_safe_gas happens in the same thread to prevent a race condition when looping over the modules. This could cause an error during roll call if a module was discovered at the same time that safe gas was processing.
+- Updated the comments to more accurately reflect the payload contents
+- Updated documentation for ParamArray
+- Update aware safe gas array to use analog registers instead of flag registers
+
+Version 4.1.1
+-----
+This is release fixes the slow memory leak in the mqtt client
+##### AWARE-730
+- Improved memory profile snapshots
+- Added fix for a memory leak on the hbmqtt client
+- A more correct implementation of the mqtt fix so that cleanup on shutdown is successful
+##### AWARE-731
+- Changed the ordering of watchdog bindings so that if the protocol_lost or protocol_connected is called before it gets to add the watchdog it will not fail.
+- Tries to read 50 times to overcome issue with iMAC in recently discovered failure state which causes pyaware to never be able to read from it. Should restart in 1 minute if not available to read.
+##### AWARE-740
+- CommandRequestV1 now has data as an optional field to be complaint with commands that don't use the field
+##### AWARE-742
+- Updated requirements.txt to include known working versions of dependencies of hbmqtt 0.9.6
+##### AWARE-751
+- Changed imac_heartbeat_poll to still send mqtt messages even if the modbus reads are failing
+- Added a new parameter to watchdog.watch to allow the watchdog to be fed on entry to the function instead of just successfully completing the function
+
+Version 4.1.0
+-----
+This is the minimum required version for Real-time Gas Monitoring (RTGM).
+##### AWARE-693 RTGM - Gateway Heartbeat not Validating through Pydantic
+- Fixed a bug where the ip address was never being updated on network changes. 
+- Stopped the gateway state message from being sent twice on startup. Now only sent when valid IP Address is received.
+##### AWARE-691 Pyaware - Safegas array logic
+- Added enforcing of gas value index for safegas to ensure that gas values are within the 40 address range.
+- Added AIM module to safegas message. AIM module in the address range 41-80 should have a Gasguard 1 detector connected. This is not enforced through code, only through documentation.
+- Added raw data flags to the AIM module so that they can be read in and sent via safegas.
+##### AWARE-685 Add set-parameters command to modbus device
+- Add set-parameters to modbus device
+- Added command input validation
+- Changed sub topics to be a max of 3 topics as GCP seems to ignore topics in subscription messages after the fourth subscription.
+- Commands will get sent to the appropriate device based on command topic name
+- Added command response. Tested against aware-development pubsub topics  
+- Changed created_at in model from string to datetime
+- Fixed a bug where the subscriptions wouldn't happen if anything other than the device_id needed to be populated into the topic name
+-----
+Version 4.0.1
+-----
+##### AWARE-672 Update with PLC Device
+- Added hst substation plc device.
+- Updated PLC flag sending time to 5 minutes or change of state.
+##### AWARE-671 Update HST config for faster device data
+- Removed raw_values from TelemetryV1 and TelemetryV3 as it was causing a bug that prevented any aggregation other than samples and latest to be sent. Added a test for this specific case.
+
+-----
+Version 4.0.0
+-----
+##### AWARE-664 GG2 Telemetry Test Causing other GG2 detectors values to change
+- Changed Telemetry Test With timestamp to without due to an error with asyncio locks. The lock was released too soon resulting in the imac and associated modules being put in an unknown state. This resulted in random data being written to modules on the bus.
+##### AWARE-605 Review Bugs
+- Change of fieldbus address breaks RTS
+- Fixed issue where serial number changes would stop parameter triggers working
+- Changed rts schema matching to ensure that the address is inside the schema range before testing if all the addresses are online
+- Force RTS to restart pyaware if fieldbus address is 0
+##### AWARE-624 Bypass Behaviour
+- Added event for address-flags changing
+- Removed faulty code in update_specs for setting the remote and local bypass
+- Added parameter trigger for updating the remote and local bypass on address-flags change
+- Added meta field to parameters to house data specific to the implementation.
+- Imac modules now check the meta field of a parameter to check if the ignore-status field is set for parsing data in offline addresses.
+- bypass-local has the ignore-status set so that when a di4 moves addresses, the local bypass will clear when the module goes offline at the previous address.
+##### AWARE-612 Retain Messages Review
+- Changed all retain mqtt messages to not retained
+##### AWARE-647 Roll call on offline and remove devices on failure to respond
+- Added any address online to ImacModule to determine if the module needs to be disconnected on failed roll call
+- Now updates topology on removal of device
+- Now roll calls offline addresses to make sure that they will remove devices that are no longer connected
+- Added delete_missing_modules_at_address to force roll call
+- Added tests for roll call module deletion
+##### AWARE-648 Schedule roll call of system addresses and remove devices on failure to respond
+- Removed duplicate topology message from IPC
+- Added scheduled daily read of all system owned addresses
+- Changed it to only call remove_devices if a device is to be removed so that topology is not spammed
+##### AWARE-630 'Remote Bypass' Address clear
+- Added Address-Bypass addresses from 0-40 on the imac controller master.
+- Changed the address-bypass values from True/False to 1/0 for ease of reading. 
+- Changed the range of addresses read so that the array length is definitely 40 with 0 always false.
+##### AWARE-655 'SCADA' Integration using EIP CIP Library
+- Added a custom device topic to local MQTT parsers. This is to allow devices to publish specific topics dependent on their operation. Hence this use case is for writing gas values to safe gas. 
+- Pointed process_safe_gas to an appropriate MQTT custom topic.
+- Added data-flags register to safe-gas mqtt messages. 
+- Included the bypass flag at the end of the 16 bit value as a combination of local and remote bypass flags. 
+- Added int wrappers around address values in modules. 
+- Added comments to safegas function and data-flags initialisation so it is more easily picked up again if required.
+- Enforced address to be an int.
+- Added a way for local MQTT parsers to be defined in config. Removed the custom device topic from MQTT parsers.
+- Ensured that the default local MQTT parsers are overwritten with config defined parsers if config defined parsers are available.
+-----
+Version 3.5.8
+-----
+##### AWARE-378 Modbus TCP Server Creation
+- Created Modbus TCP Server and allowed it to run successfully in isolation.
+- Updated the modbus TCP server with dummy data, basic scaling and enum converting.
+- Implemented the encode method for ParamCType and a test case for the method.
+- Added support for Address maps in renaming keys. Created a test for this case. Created an eq method tied to Address maps that compares that the buffer objects are equal.
+- Added a test case for ParamCType Decode method to prove that it will support one and two length modbus addresses.
+- Added an overwrite option to the Address Map. This allows for current addresses to be overwritten if required else will raise a ValueError if there is overlap. Overwrite is set to False by default.
+- Updated typehinting on transformation "rename_keys".
+- Updated encode method for ParamCType to ensure the bytes and words are in the correct order.
+- Added an update server function in modbus device to update the server based on a mapping.
+- Removed overwrite option from AddressMap merge and added update functionality to the AddressMap.
+- Updated the modbus protocol with a server translator to separate the modbus server from all devices.
+- Added server translator to communications parsing.
+- Fixed comments on address map merge.
+- Reworked server and device translator.
+- Reworked rename keys transformations to apply to individual devices.
+- Added support for NemoD4Le Power Meter on Modbus TCP Server. Reformatted the file.
+- Updated ParamCType encode method to work with data types that are not multiples of 2.
+- Added an ethernet comms status for modbus devices which can be enabled through config. Enabled comms status for nemo-d4 Le power meter.
+- Updated the nemo powermeter to update on change of state. Moved read handle to cope with disconnect and reconnect events.
+- Allowed the device translator to set a poll interval for each device. Allowed the modbus client to tell all of its devices its connection state. Captured an error where the modbus device never recovered upon disconnection by giving it 1 second to attempt reconnect before next read. Renamed the horizon test power meter to match its cloud id.
+- Moved poll_pipeline to outside of Attribute Error exception. This ensures we still capture Attribute errors of poll_pipeline in logs.
+- Ensured integer is encoded on server translator.
+- Added a parambits test for encoding and initialised the input address map with the parameter address so that bitwise operations can be performed.
+- Added a grouping for parameters as a transform. This was specifically done to create a list of parameters to put into a bitmask. Added a test to test this function as well.
+- Added an error message to the ParamCType encode method to improve debugging. Fixed an issue with the group params transformation where the list of parameters would not reset with each grouping and instead continue growing for each parameter required to be grouped.
+- Added IPC heartbeat to modbus server. Heartbeat is stored as EPOCH time.
+- Added the generator controller for horizon into device config.
+- Added the generator controller to the modbus server.
+- Added a test for ParamLookup.
+- Added an option for bytes to be input into ParamLookup encode function. This was to allow ParamCType chars to be encoded into an ENUM without breaking the way it currently works. This is proven through the test.
+- Added a comms status flag for the ipc comms with google cloud mqtt.
+- Fixed a bug where if two instances of telemetry were running, validation checks would fail and not send data.
+- Added comms status to mdobus devices, ipc cloud mqtt and sp pro devices.
+- Updated modbus server table.
+- Added a new datatype. This is to take an array of addresses and interpret each address as the same enum. If the enum is in the data set that parameter to true else return false for that parameter. Returns enum as a bool dict.
+- Updated the SP PRO protocol to include service reason codes. Added these changes to the modbus server.
+- Moved modbus server address initialisation to config. Built to mirror device address map definitions. Updated NotImplementedError for ParamEnumBoolArray.
+- Moved server translator definitions to config.
+- Updated selectronic scaling.
+- Updated storage on sppro devices.
+- Fixed a bug where the cloud never connected due to an ondisconnect event.
+- Updated data type tests.
+- Updated ParamCType encode method to ensure no errors arise with unsigned and signed chars.
+- Updated storage triggers for Nemo D4-Le, SP Pro 2i, Intelilite MRS-16. Removed event trigger for serial comms status as it is not being used.
+- Removed cloud comms status awaiting introduction of watchdogs.
+- Added events enable to ModbusDevice.
+- Made comms parsing functions that are being used async. This is to reflect changes made in previous revisions of pyaware.
+- Updated poll interval for sp pro device and ModbusDevice. Set numeric type on modbus device and sp pro device by removing it from the if statement (was false on startup). Add read handle to modbus device with sleep time based on disconnect.
+- Preserved the ModbusTCPClient protocol if it had been intialised already. Moved the read handle in Modbus device to account for this and client disconnect event in the read loop.
+- Removed read handles. Replaced with read_registers, with a register type received from config. Added a client disconnect check while reading the modbus device, so that logs are not constantly generated from failed reads. Waits for restablished comms before attempting to read again.
+- Added watchdog to monitor ethernet comms status of all modbus devices. Added watchdog to monitor serial comms status of SP PRO devices. Added watchdog to monitor cloud communications status with gatewayipc only available if a reference to the cloud broker is added in config.
+- Added watchdog to monitor ethernet comms status on Modbus Device.
+##### AWARE-380 Add Selectronic Addresses to PyAWARE
+- Added selectronic devices to the modbus server. BMS parameters are the only parameters being read in at this stage.
+- Added Solar Inverter to selectronic Modbus Server Table.
+- Added the battery inverter addresses to the modbus server.
+##### AWARE-311 PyAWARE Slave Start Up Tasks
+- First pass at separating the definition between controllers (Which actuate the protocol) and protocol (Which is the line actuator)
+- Recreated the imac2 protocol to be more protocol specific and used it in the imac2 controller logic.
+- Updated the config file names and locations to work with the new setup
+- Renaming the Imac2Protocol to Imac2MasterController
+- Disabled RTS config parsing until it is fixed
+- Wait for the protocol to connect before doing a read
+- Created ImacControllerDevice for a stripped down imac functions.
+- Updated imac parameter spec file to match the code version and tested
+- Fixed imac protocol tests
+- Added tests for rest data
+- Improved auto detect so it returns the imac2 master controller if the SLP version matches
+- Added pytest mock to test requirements
+##### AWARE-312 RTS/iMAC update telemetry topic names - Slave
+- Removing the device_id from trigger_send and putting it as a parameter.
+- Now can format topic with all **kwargs (including device_id)
+- Command response also uses device_id as a parameter instead of a topic name
+- Topic formatting will now raise an error if it is missing a parameter
+- Added telemetry_serial which puts the serial number in the topic path
+- Fixed tests so they don't break the event loop on run causing it to hang
+- Fixed issue where swapped bytes could leave a null character in the string
+- Fixed a test where the serial number was not parsed to the controller correctly
+- Added new reference parameter so that the gateway can pull parameters from another parsed communication device. Eg get the serial number from an imac controller
+- Fixed the IPC to be able to send topics based on referenced devices with optional serial numbers in the topic names
+- Removed set fieldbus address from master
+- Removed start up fieldbus set from config for master.py
+- Removed RTS dynamic load and ip address config
+- Added RTS controller device
+- Fixed an issue where the client host configuration files were writing up too many folder levels now that the architecture has changed
+- Changed master-fieldbus-address location as we are no longer writing to it. This also keeps the same location between both the master and the rts
+- Added update_topology to RTS
+- Updated IPC to store the recent topology messages for each unique top level device (ones that send topology messages).
+- Added event message to ask for all the topologies for devices that are active in pyaware. This should allow us to invalidate old devices if needed.
+- Added rts migration tests
+- Migrating legacy imac into the tests to give permanance
+- Some fixes from the tests
+- Added RTS module in tests so we can separate the RTS that will live on the imac bus vs the RTS reporting directly via a moxa unit
+- Some fixes from the tests
+- Added recursive form parsing for deeply embedded parameters. Eg. bitmask parameters
+- Added recursive parameter parsing for lists
+- RTS Config now matches the original polling data
+- Updated the roll call to return the new RTS module
+- Separated controller logic from the device logic
+- Updated RTS triggers to send relay state more often and controller temperature less
+- Fixed issues related to RTS roll call not having enough parameters
+- Reverted change by delta on controller temperature back to change of state
+- Fixed issue where roll call address could be greater than 255 due to some imac quirk
+- Commands now have an optional destination so that you can address imac controllers and rts controllers by serial number
+- Added init method to all controllers and updated the _main method to call these on start-up. This allows us to sequence the start-up more sequentially allowing things like having the imac controller auto detect but not having messages missed because it read data and "sent" it before the mqtt broker was set up
+- Fixed issue with command destination not working for top level controller
+- Changing parameters so that the module type and controller type of RTS will reuse the same parameters.
+- Fixed issue where roll call would fail if the bit cleared before checking the bit was written correctly
+- All parameters on the imac module are now prefixed with l1 to indicate that the data is coming from the l1 bus
+- Moved imac controller device logic back into the RTS
+- Added static data polling to RTS so that parameters such as config addresses are published
+- Moved commands for remote bypass and remote trip from RTS Controller to RTS Module as they cannot be actuated on the RTS comms
+- Added last trip parameters
+- Changed all rts controller parameters that were prefix with l1 to postfix with l1 to avoid naming confusion with the parameters on the rts module
+- Added PLC heartbeat to RTS
+- Updated RTS device id to lower case to match topic names
+- Added resolve_static_data_types so that things like rts-config-address can resolve before the rest of the config that may depend on this addres
+- Added static data processing to imac module
+- All rts parameters now coming through MQTT
+- Fixed the tests around RTS parameters to match what was agreed to for the renaming of parameter from before the migration.
+##### AWARE-313 RTS Slave listen for relevant commands
+- Fixed issue where the trip reset was not correctly being executed
+- Changed the command destination to match the logical name of the RTS. This is so the same destination can be used whether it goes via the imac controller via l1 bus or directly to the moxa on the rts
+- Fixed a bug where porting the command from the rts controller to module did not fix the logical number not being part of an imac module.
+- Fixed a bug where the switch status was looking at the dip switches instead of the input switches
+##### AWARE-308 Changes as result of updated architecture
+- Added scaling to aim module power set points
+- Fixing rebase issues with config and storage
+- Added dev tag to the pipelines build
+- Fixing rebase issues related to retain messages not being sent
+- Fixing rebase issues related to retain messages not being sent
+- Added batchable parameter to force topics to not batch even when batching is set to true
+- Added write_by_serial_number_no_check
+- Fixed tests
+- Fixed issues with refactoring
+- Added client id to storage
+- Fixed issues with batchable topics
+- Fixed issues with batchable topics tests
+- Removed aiosppro driver from requirements
+- Added exception count to starve on exception
+- Changed watchdogs to more reasonable times for serial and ethernet
+- Fixed bitbucket-pipelines.yml develop build to have a more semantic versioning
+##### AWARE-411 Update comms status to push into heartbeat
+- Adding watchdog structure to set up watchdogs for communication statuses
+- WIP aggregated watchdog
+- Fixed issue with warnings being shown that the event wasn't scheduled
+- Stopping development and tests on aggregated watchdogs
+- Added watchdog manager
+- Added watch and watch_starve decorators to attach to a function
+- Added string formatting for watched dogs to match based on instance variables
+- Added watchdog call backs to be async
+- Added more tests for watchdog on classes
+- Implemented watchdogs on imac controller and rts controller
+- Updated tests to be less flaky for watch dog fed tests
+##### AWARE-414 Gateway state should be retained due to low frequency of messages on that topic
+- Changed form_message to support retained messages
+- Changed state and state_serial topology messages to retain
+- Added mqtt connected status that will send gateways/{device_id}/mqtt with {"connected": true} once setup and {"connected": false} once disconnected using the last will and testament mqtt connection packet
+##### AWARE-415 Gasguard sensor type sometimes displays as unknown
+- Removed detector-gas-analog as per request
+- Changed behaviour so that gasguard 2 doesn't send detector symbol units etc. Unless explicitly having read the detector type first
+- Changed start-up behaviour to read detector-type on startup so that gas values can be pushed through asap
+##### AWARE-416 IO errors during roll call can stop it completing or retrying
+- Added find-system command which will do a full system roll call like what is done at start up
+- Catches any error during system roll call and reschedules another system roll call
+- Each failed address based roll call will now reschedule that address to be roll called
+##### AWARE-417 Mqtt status message doesn't match the serial number type from other gateway messages
+- Updated mqtt broker to be able to use serial number as well as the logical device_id. Prefers serial number
+- Fixed temperature, humidity scaling on GG2
+- Fixed power set point alarms on aim
+##### AWARE-425 Feedback for Release 1 - pyAWARE
+- Detector gas value now sent on change of state or every 6 minutes. Only send if valid sensor head connected.
+- Added address-offline-count and address-clash-count
+- Changed address-resistance to have 0 resistance at address 0 instead of EOL resistance as it is misleading
+- Changed l1-data-block-just-complete to send every 60 seconds
+- Added write triggers for hysteresis config
+- Fixing an issue where sometimes the iMAC will report some bits in the high register of the address field causing the address to display wrong and it error on reads.
+- Fixed issue with rtd1 where address-flags and address-temp were the same address
+- Fixed issue where SIMP would not send the address
+- Add write validator triggers to RO4 to fix issue where the energize mask wouldn't write
+- Properly shift the relay timers
+- Fixed issue where relay timers could not be disabled (set to 0)
+- Fixed SIM-P command for updating parameters
+- Changed t90 test result to scale to seconds
+- Fixed issue where the detector-gas-value was returning as a list of values
+- Removed legacy RTS
+- Scaled last-t90-test-result
+##### AWARE-438 Slave Testing Feedback
+- Fixed a bug in non-batched mode which didn't have the appropriate topic parser
+- Turn off batching by default in local config as telemetry test results were delayed
+##### AWARE-441 Store and forward topic retrieval is pushing topic type back instead of topic name
+- Fixed issue where the backlog was storing the topic type instead of the topic in the topic field
+##### AWARE-440 Exception count watchdog addition doesn't seem to work
+- Discovered there is no issue with the starve on exception calling code. Added a test
+##### AWARE-439 Aiomodbus doesn't work after rebase
+- Added aiomodbus functionality to gglive just need to specify the client port in the config file
+##### AWARE-442 Add ability to mark certain topics to not be cached on disk such as heartbeats
+- Added optional cache parameter to config
+- Added feature to allow some messages to not get inserted into the database
+##### AWARE-432 Make rotary switch changes on RTS controller kill the pyaware process
+- Added rotary-sw event to kill pyaware if the switch position changes
+##### AWARE-444 Timestamp no longer encoding in latest develop
+- Updated ctype encode method to work with multiple parameters
+- Updated postbox reader to correctly return the parameters read
+##### AWARE-443 Add ability to only batch up responses from backlog and not from normal telemetry per topic
+- Added new parameter to mqtt config "batchable_backlog"
+- Changed the backlog and batch message manager to discriminate between backlog messages and normal messages for the purpose of batching.
+##### AWARE-446 Memory leak on slave when MQTT disconnected
+- Fixed issue where telemetry was v3 for local telemetry as uid are not provided
+- Fixed issue where memory leak happened when the mqtt broker was disconnected because it would block on adding it to the message manager queue and basically all messages remained in memory until the mqtt was cleared
+- Added basic memory line profiler to command line args
+- Changed the memory profile directory to match the cpu profile directory
+- Optimised form message by removing "remove_keys" and delegating it to the pydantic library. Reduces cpu usage from form_message for telemetry by 66%
+- Remove deepcopy for memory storage element for increased performance
+- Improved run_triggers performance by remoing iteration on every data item if it doesn't exist in the triggers
+- Parsing status was consuming significant CPU cycles. By moving to a lookup table we use slightly more RAM to gain big CPU improvements
+- Yanked network cables can cause cancelled errors to bubble up from underlying libraries. Catching this for purposes of cleanup can cause half shutdowns. Now relies fully on the stop event being set to clean up.
+##### AWARE-451 Changing detector type head result in very delayed updates and false representation of data
+- Fixed bug where imac modules would subscribe to parameter triggers multiple times if they were roll called more than once.
+- Added update detector method to GG2 to force scans of detector type when a hardware fault is cleared
+- Updated the detector type to unknown during a hardware fault
+##### AWARE-472 DI4 and RO4 are inconsistent in the relay representation
+- Fixed issue where relay status was inverting when RO4 does not actuate the line.
+##### AWARE-482 RTD Module causing Phantom RTS to appear
+- Added tests for roll call by address
+- Added failing case that must pass to change the RTS detection to rely on all addresses being online in the schema.
+- Added multiple address lookups for rts to improve robustness
+##### AWARE-489 Topology Message is being sent to the cloud
+- Updated the release notes. Removed topology message from gcp parsers.
+##### AWARE-454 Feedback for testing round 27-10-2020
+- Added retry to set parameters for the mismatched parameters for if the parameters in the module are not correctly set before being read back
+- Added state parameters to process_static_data so that current state objects can be sent on a poll loop.
+- Change logical_number to a state parameter so it doesn't change during the lifetime of the process
+- Updated gasguard triggers to reduce storage usage
+- Added error for when there is no module as the indicated address
+- Added test for bound method watchdog call
+- Added gas-value-invalid as it can be set without the hardware-fault being set when removing the gas head.
+- Added starve on exception for imac_eth_status and imac_ser_status
+- Improved response time for serial communication status to come back online. Reduced heartbeat 30->10 seconds
+- Only create RTSs if no modules are roll called and the address is online
+- Added check in system roll call to ensure that the online address in the RTS address range is actually an RTS
+- Changed from gas-value-invalid to detector-data-invalid for detection of change of head
+- Changed imac_module triggers to resolve all event triggers and modify the device data based on the return values. This allows things like changing the detector type to 0 to propagate into the current data processing.
+- Fixed issue where rts was returning as upper case instead of lower case making commands not work
+- Fixed issue set parameters were returning more parameters than were set was raising a mismatch error
+##### AWARE-430 Add write commands to Modbus TCP Server
+- Fixed missed error handling where if there was an attribute error in a comms object it would pass. Now it will be raised and the program will exit.
+- Added process write to modbus.py
+- Removed unused imports.
+- Moved translator to translator.py and reworked translator config.
+- Fixed encoding method inputs in translator and modbus writes.
+- Moved SP Pro device and translator to controllers. Updated translator publish and subscribe events to reference the id of their objects rather than their device/server ids given in config. This was to ensure uniqueness regardless of config.
+- Updated comap intelilite addresses from commissioning data. Added the ability for modbus devices to read discrete addresses from commissioning discoveries involving the binary input addresses on the comap intelilite controller.
+- Updated comap intelilite addresses from commissioning data. Fixed the discrete registers for pymodbus as they are read in as bits not addresses. Changed wording of "modbus-eth-status" to "modbus-comms-status" as serial devices use the same connection.
+- Tidied up read handle function on ModbusDevice. Added a TODO to remove pymodbus read functions in the future and exclusively use aiomodbus.
+- Fixed a spelling mistake with the pymodbus async wrapper for reading coils.
+- Added the ability for the ModbusDevice Client to use transformations. If no transforms exist in config the transformation pipeline will just pass the data through unchanged.
+- Fixed a bug where ParamCType's were not being encoded if data was a char.
+- Added support to aiomodbus for writing to addresses on ModbusDevice and integrated change with pymodbus in the form of wrapper functions. Tidied up translator write & modbusdevice process_write code.
+- Updated SP PRO device with same device process_write changes as the ModbusDevice and reformatted with black.
+- Updated write on sp pro device with comments.
+- Updated Selectronic and ComAp Gen Controller from commissioning.
+- Updated ParamBits encode method to work with previous pyAWARE changes.
+- Added a ParamBits encode change to ensure that server can read and write to these params. Changed the ParamBits test to include a decode aswell testing full functionality of the parameter. Fixed a bug where the blocks to write to where unordered causing errors in writing to modbus addresses.
+- Renamed pymodbus wrapper functions to indicate that they are private functions and part of pymodbus. Removed comments surrounding these.
+- Updated translator to use pyaware.transformations.transform.
+- Updated SP PRO config to include bms current param multiplication.
+- Hooked into Pymodbus set values method, to take advantage of server wirtes.
+- Added write addresses to both the Intelilite MRS16 and sppro 2i.
+- Fixed a bug on the ParamCType encode method where chars were not encoded back to integers for sending. This might need to be revised to determine whether unsigned or signed chars are best in this case. Unsigned chars have been chosen for now.
+- Added a new config reader to transformations.py to allow transformations to be built from a reference dictionary.
+- Added a reference for objects associated with translator.
+- Added modbus server writes to the translator, modbus devices and sp pro devices. Allowed for different modbus server register types.
+##### AWARE-473 AIM power set points command isn't scaled correctly
+- Changed aim power set point write triggers to match scaling on commands received
+- Fixed issue where scaling has to be done with integers
+- Fixed issue with ParamLookup datatype erroring if the parameter is not present
+##### AWARE-493 RTGM - Test RTD and LIM Modules
+- Updated rtd parameter specs to match datasheet
+- Cleaned up RTD module to use the imac module defaults
+- Changed comp_value in RTD1 to comp_ref_value to directly compare the value
+- Fixed issue where voltage-l1 was reading as address-flags
+- Fixed issue write validator was using the wrong comparison value
+- Fixed voltage-l1 scale for rtd1
+- Fixed ParamCTypeScale for encoding
+- Added some data_type tests
+##### AWARE-496 RTS module in imac are all responding to the remote bypass command. Make sure that the remote bypass is targeted
+- Fixed issue where remote trip and remote bypass were sending the command to all RTSs including phantom ones
+- Added l1 scan debug parameters. Sending on change of state as they only update at the end of the polling cycle.
+- Fixed topic name
+##### AWARE-497 Data returned from devices not on the bus after being disconnected physically
+- Added "remove-devices" command that can remove all references to the device from the polling and autodiscover
+##### AWARE-530 Add Support for Bender NGRM700
+- Add Device Bender NGRM
+##### AWARE-552 Industrial PC controller (IPC) causing cannot allocate memory error when getting IP address
+- Setting close_fds to True in case it isn't the default in order to potentially fix a file descriptor leak.
+##### AWARE-460 Horizon Solar Cube Commissioning
+- Added parameters to IME Nemo power meter for horizon's complete modbus table.
+- Updated intelilite MRS16 with complete horizon modbus table parameters.
+- Added complete horizon modbus table parameters to the sp pro battery inverter.
+- Removed send triggers from SP PRO parameters that are required locally but not for the cloud.
+- Removed send trigger from nemo power meter parameter as it is not required for the cloud, only locally.
+- Removed send triggers from intelilite_mrs16 parameters that are not required for cloud implementation only local.
+- Removed unnecessary parameters from intelilite_mrs16.yaml and sppro2i_spmc482_au.yaml.
+- Removed change of state triggers on parameters that did not need to be monitored continuously. These changes were made on intelilite_mrs16.yaml, nemo-d4Le.yaml and sppro2i_spmc482_au.yaml.
+- Updated intelite MRS-16 config file to correct formatting errors and remove address blocks that are not required.
+- Removed unused address blocks from sppro2i_spmc482_au.yaml
+- Fixed address blocks and data types for parameters in intelilite_mrs16.yaml and sppro2i_spmc482_au.yaml
+- Renamed watchdog ethernet to watchdog comms on ModbusDevice as comms encompasses the serial or tcp nature of the ModbusDevices.
+- Added a new datatype for decoding due to changes with the generator controller. Takes a list of string block addresses and determines whether an identifier is in them to set the parameter true or false.
+- Removed ParamTextToBool as it is no longer required.
+- Added alarms list to intelilite_mrs16.yaml config file so we know what alarms to trigger the fault reset alarm on. Added the fault reset button to acknowledge triggered alarms. Changed discrete poll to coils poll so they can be written to if required.
+- Changed the process_write function in ModbusDevice to allow writing from different registers. It will now use the handle given to the device in config to determine which register type to write to instead of using the register type it is given via events.publish. This way it is always guaranteed to be written to the right address.
+- Added a comap specific device to trigger on alarm events to acknowledge their occurance.
+- Updated the nemo-d4Le and intelilite_mrs16 to allow comms status to be retrieved via GCP.
+- Updated the intelilite_mrs16 to allow fault reset.
+- Added intelilite_mrs16.yaml fault reset command procedure to acknowledge alarms.
+- Added sp pro parameters that are being used on the CPS test device. This is to mainly maintain consistency.
+- Added warning logs for the Comap Alarm Acknowledgement process.
+- Moved fault reset command to the device class.
+- Added a metadata field to parameters. This is parsed separately from other parameter information. At this stage parameter kind is all that is stored here.
+- Moved ComApInteliliteMRS16 password definition to gateway.yaml as this is dependant upon user information.
+- Move the comap acknowledge alarm function into two logical pieces. The command execution and the alarm acknowledgement. Added function comments to comap commands.
+- Removed subprocesses from gateway heartbeat in replacement of ifaddr package. This is compatible with Linux and Windows.
+##### AWARE-555 On Fieldbus value change reboot Slave
+- Added stop on change of state for rts: fieldbus, serial_number, logical_number
+- Added stop on change of state for imac: fieldbus, serial_number
+- Removed telemetry for rts: fieldbus, serial_number, logical_number
+- Removed telemetry for imac: fieldbus, serial_number 
+##### AWARE-562 Update to Heartbeats
+- Added mac address param to config
+- Changed mqtt config to behave like a dictionary when unpacking (**self.config)
+- Changed the topic names to include the gateway_id in local topic names
+- Sub topics and form message now can use all the parameters in the mqtt config
+- Refactored mac address to not use subprocess. Non-linux ignores the interface parameter and bases it off the primary network adapter
+- Added break to interfaces so it doesn't go through all the interfaces
+- Removed mqtt retained status messages as per request
+- Fixed issue with watchdog where an exception on callback would cause pyaware to get stuck in an infinite loop
+- Changed the default callback function in watchdog to be a callable that does nothing
+- Added an Empty Payload model which returns a 0 length string no matter the message content
+- Added device heartbeats with data source
+- Added device watchdog heartbeats to imac and rts controllers
+- Fixed heartbeat not working on imac master
+- Fixed devices heartbeat topic prefix from gateways to devices
+- Changed the command topics to use the logical name with serial instead of the gateway id as the front end doesn't know where it is targeting.
+##### AWARE-583 Gateway IP Address not validating correctly
+- Ensured that the gateway fetch_ip address function returns the IP address as a string, not the IP object.
+##### AWARE-526 Test Fault Reset on Gen Controller
+- Fixed a bug where await was called outside of an asynchronous function.
+- Stopped modbus reads for write only addresses.
+- Updated fault reset addresses and removed the need for a password.
+- Updated comap fault reset functions.
+- Updated comap alarms.
+- Updated comap alarms to include global alarm acknowledgement parameter.
+- Updated the alarm acknowledgement parameters.
+##### AWARE-615 Test 3.5.8 release
+- Added tests for newly added transformation functions.
+- Added config read tests.
+- Added tests for comap commands. This is currently implemented in the Horizon Power Solar Cube.
+-----
+Version 3.5.7
+-----
+##### HOTFIX-AWARE-574
+- Added a config flag to disable initialising the backlog manager.
+
+-----
+Version 3.5.6
+-----
+##### HOTFIX-AWARE-544
+- Corrected insulation-fail mapping in IPC Device
+- added outlet-run in IPC Device
+-----
+Version 3.5.5
+-----
+##### HOTFIX-AWARE-540
+- Replaced the pip search with raw html parsing of pypi.org/simple/pyaware
+- Added beautifulsoup to requirements to parse the raw html
+- Added index_url optional parameter to config file to set where to search and update pyaware
+- Added try_except block around updates to ensure that a failed update will still run pyaware
+- Fixed tests to not lock up when calling init_db
+- Changed regex to use raw strings
+-----
+Version 3.5.4
+-----
+##### HOTFIX-AWARE-488
+- Added a DbVersionManager to do database migrations.
+- Made the default migration to delete the current database and start fresh.
+- Removed the WAL files as well to ensure that transactions in the WAL are not committed to db.
+-----
+Version 3.5.3
+-----
+##### HOTFIX-AWARE-489
+- Deletes store and forward db on startup to clear old messages 
+
+-----
+Version 3.5.2
+-----
+##### HOTFIX-3.5.2
+- Removed topology messages from default gcp parsers. 
+
+-----
+Version 3.5.1
+-----
+##### HOTFIX-3.5.1
+- Remove aiosppro from requirements.txt
+- Updated aiomodbus in requirements.txt
+-----
+Version 3.5.0
+-----
+##### AWARE-286 Store and forward
+- Renamed storage to memory_storage to better indicate that it isn't on-disk storage- Moved memory storage to it's own file- Preliminary skeleton structure for on disk management- Added delayed commits to prevent every message being pushed to disk- Added UUID to the disk storage- Added UUID to the disk storage
+- Updated acking to delete the reference in the db
+- Added UUID as unique constraint to the DB and ignored duplicate entries as already being ready for recall in the database (allows for new attempts at messages to not need to touch the files)- Moved most of the publish disk storage logic to the send method
+- Separated batch send vs single send methods (batch send yet to be implemented)
+- Now correctly sends single messages and puts into DB when delayed and clears once sent- Batching and cache to disk now works for standard mqtt send commands- Changed RuntimeError to StopException to stop catching RuntimeErrors that were not anticipated- Added max queue size for batched messages
+- Added task_done calls to the queue for better clean up in the future- Renamed hbmqtt to client as we are only running one client variant now
+- Moved the batch and single message handling into their own classes to make it easier to test and reason about- Added id back in as a primary key for easier sorting
+- Get all unsent now has batched queries and returns a dictionary- Changed from sqlalchemy to aiosqlite improves performance by order of magnitude
+- Memory usage is optimised for get_all_unsent 1000 batch_size is about 5MB extra memory see Jira issue comments for benchmarks- Changed default message retrieval from 100 messages to 1000
+- Added unique constraint on UUID- Implemented the backlog manager
+- Refactored the batch processing so it can do batch hold off for each topic
+- Added max in flight messages limit to prevent ever exploding RAM when doing the backlog processing
+- Added configurable path locations from config
+- Added disk storage manager
+- SQLite set to autocommit mode so that simultaneous queries will not all join into the same transaction.
+- Database Size Manager can hard limit the size of the database
+- Database Size Manager will delete a portion of the old messages as set by clean_up_portion
+- Failed inserts that hit the hard limit will wait for the clean up and then retry
+- Added clarifying comments
+- Adding storage tests
+- Added pytest mock to test requirements
+- Added test and fixed bug with page_count calculations
+- Added test for database clean up
+- Added storage clean up tests
+- Added mqtt insert test
+- Moved from global reference to disk storage to explicit function reference parsed into the class
+- Added aiosqlite to requirements
+- Added in flight messages limit to handle single messages
+- Added aiosqlite to requirements
+- Added in flight messages limit to handle single messages
+- Moving more of the publish logic to the message manage
+- Clearing in flight messages on disconnect so they get resent after the device setup is complete
+- Reworked setup event to work in message handler
+- Added disconnect callback to client to do clean up
+- Fixed bug where I accidentally had disconnect code in the connect code meaning that it would never connect properly
+- Backlog manager now waits for the mqtt device setup to be on before queueing messages to send
+- Improved logging for backlog manager to show how many messages it queued
+- Fixed a bug where the scheduled disconnect would conflict with the on_disconnect tasks
+- Refactored message managers to use a base class
+- Changed modbus timeouts to not log tracebacks as it was polluting the logs
+- Added ability for hbmqtt gcp to parse the config file parameters
+- Fixed issue with pyaware not correctly shutting down due to excessive exception capturing. Look to removing all BaseException captures when the errors are known.
+- Added batching to GCP
+- Attempt to fix issue with windows not getting the clean up signals
+- Removed sqlalchemy from requirements as now using exclusively aiosqlite
+- Updated black formatting
+- Added database cleanup so it doesn't hang on shutdown
+- Added default config to database initialisation to store in memory and limit it to 500MB
+- Fixed bug in store and forward where the CancelledError was raised at the top level not allowing the poll loops to continue after a cancelled failure. This was introduced trying to help the clean up functions.
+- Added better error handling to attempt to fix issue related to backlog messages not being sent on error
+##### AWARE-348 Telemetry Test Command
+- Added command response model and timestamp
+- Fixed strange bug where imac address would have a bit in the high byte set causing the whole roll call to not work. Needs to be fixed on the iMAC
+- Added reset to idle
+- Added unsafe parameter writing to get a more accurate start time for telemetry test
+- Added timestamp to telemetry test the moment the data is set to start the test
+- Added checks to make sure actions don't take place when another action is ongoing
+- Fixed tests to account for timestamp in commands
+##### AWARE-377 Add Power Meter Nemo D4-Le 
+- Added Power Meter Nemo D4-Le config file.
+- Fixed addressing and parameter naming conventions.
+- Removed scaling from nemo-d4Le config file. Scaling for this is moved to the front-end.
+##### AWARE-379 Add Selectronic Protocol SP-PRO
+- Added an SP Pro protocol device to device protocols. Updated config to parse this device from config.
+- Added a mock SP PRO device which is imported in place of pyserial. This is synchronous for the time being but replies with the expected responses. NOTE: This has been tested to work in place of an SP Pro device.
+- Added a test for the crc calculate function and read request creator function for the SP Pro protocol.
+- Added a read response validator for SP PRO protocol.
+- Updated the SP PRO device reference. Added a parse in config for the SP PRO client. Added aiosppro to list of dependencies.
+- Added Selectronic SP PRO 2i Battery Inverter SPMC48-AU config file.
+- Updated selectronic sp pro config file to fix formatting errors.
+- Added a reading poll interval to the SP PRO device mirrored from modbus device.
+- Added additional error checking for SP PRO read.
+- Added identify method to the SP PRO device so that it will appear on Topology call.
+- Updated trigger_send to prevent errors.
+- Updated the sppro config file to fix missing parameters and allow transformations.
+- Added transformations to allow pipeline functions to eb performed on each device.
+- Added a transformation pipeline on the SP PRO device. This allows for scaling, multiplying and removal of keys.
+- Removed SP PRO tests from test files as they are included in aiosppro.
+- Updated formatting.
+- Updated config file to remove the remove keys stage from transformation pipeline and added in change of state.
+- Added comments to transformation functions.
+-----
+Version 3.4.0
+-----
+##### AWARE-136 Telemetry Test
+- Fixed a bug in action-remote-telemetry-test where there would be an error if the payload did not include data.
+- hbmqtt port
+- topic name filters and fixes
+- Topology now working in topic separation
+- Commands and command responses now working in topic separation
+##### AWARE-230 iMAC module additions
+- Added ability to parse config file format into parameters grouped by data source
+- Added spec files for iMAC to approprite directory (Not moved yet as still moving over parsing the configs)
+- Added Parameter form to imac_module_parameter_spec mirroring the generic modbus parameter spec
+- Refactored block_specs into parameters["block"]
+- Updated default iMAC module to parse and store the config in the device
+- Updated default iMAC module to parse the param data types from the config file when present
+- Refactored imac controller and modules to use the config files in devices/ampcontrol/imac
+- Fixed issue in events where if there was no futures it would error when calling first or all
+- Added Lim parameter spec file
+- Fixed issue where ValidateParams would not validate due to block_specs no longer existing
+- Added proof of concept trigger for more trigger uses
+- Transitioning triggers to more powerful setup to accommodate the LIM
+- Moving triggers to legacy by default until new triggers implemented
+- Refactored triggers to return bools and update process_triggers to produce the desired output
+- New triggers with legacy definition working with modbus protocol test device
+- Added comparison and and triggers
+- Updated Lim to use comparison triggers so that digital and analog parameters are only sent in the appropriate mode
+- Moving imac to new triggers
+- Fixed triggers for imac modules
+- Added ability to add references to other parameters for the parameter form arguments
+- Updated the base ImacModule to parse the parameter specs on the update_specs() call so that address information can be encoded into the parameters
+- Removed event trigger from lim mode as the event methods are no longer needed
+- Added Sim-P using new address based parameter config parsing
+- Added missing meta field for modbus devices
+- Fixed issue with default imac module referencing data outside the modbus block ranges
+- Fixed some issues with config file data_type parsing
+- SIMG is now implemented in config
+- Added DO4
+- Added AIM Module
+- Fixed issues with detectors being mislabeled as infra-red when they were actually electrochemical
+- Removing legacy code
+- Refactored triggers into separate files
+- Removed legacy triggers
+- Fixed issue where process triggers were missing
+- Added write validator triggers so that the set-parameters command can use these triggers instead of custom code per device
+- Added write triggers for set-parameters command on imac modules
+- Update set parameters command to update_specs
+- Fixed config file where process triggers were blank
+- Fixed issue where write triggers were not being parsed correctly
+- Changed scheduled reads to retry once on failure and then schedule for 10 minutes in the future if it still fails. This ignores the configured deadlines in the config files
+- Fixes for parameter scheduling updates
+- Added 10 minute deadline to failed reads
+- Collect triggers refactor
+- Fixed an issue where the trigger_heartbeat did not stop when pyaware was meant to stop causing the program close to hang
+- Made auto discover more reliable by logging warnings instead of stopping the process when modules do not find the missing starting data. This can prevent issues where a module misbehaves for the missing data (eg. a GG2 without a sensor head)
+- Updated scheduled reads and collect triggers to work together
+- Changed write triggers so it can process multiple triggers in a list
+- Changed the validation error to InvalidCommandData so it raises the appropriate error code for the command
+- Fixed issue where it would error if the command was already processed (edge case of repeated command sends)
+- Code linting
+- Added read only parameter blocks for set point and display format configuration for SIM-G
+- Fixed process comparison function names
+- Added write comparison trigger
+- Updated comparison trigger to be able to trigger against set values instead of just the command values
+- Updated the LIM to have write validators
+- Updated the SIM-G to clarify that it is a modbus slave address and
+- Added write triggers to SIM-G
+- Changed range_int to range to closer represent that it now supports steps
+- Updated RO4 to use new parameter spec file
+- Removed RO4 code that is now handled by config
+- Fixed issues parsing by comparison found during testing
+- Fixed RO4 definitions to match datasheet
+- Fixed scaling range when scale was None
+- Fixed misnamed parameters in sim-g
+- Added flag parameter triggers
+- Removed store triggers when the send trigger was always
+- Added better feedback for failed lint checks
+- Fixed indentation issue with black linting that didn't appear on windows
+- Moxa only has openssl 1.0.1 installed. Cryptography 3.0 requires 1.1.1. Reverting until we can compile latest openssl for moxa box
+##### AWARE-258 Bugfix Gasguard Timestamp mismatch
+- Converted from ampcontrol timestamps to using integers packed into 32 bit registers for the timestamp
+- Removed unused imports
+- Converted from ampcontrol timestamps to using integers packed into 32 bit registers for the timestamp
+- Fixed issue where the timestamp didn't subtract the diff but just added the current time to the stamp
+- Code linting
+##### AWARE-267 Add pyaware linter
+- Reformatting with black
+- Added code format checks to the build process
+##### AWARE-270 Bugfix Linearity test time due no longer works
+- Removed linearity-test-time-due parameter. We can’t send through these values with the Moxa / Server architecture we will have. So we will remove this telemetry value (which was originally a helper function for the front end). The front end will now have to compensate it with the timestamp parsing logic that was done as part of AWARE-258
+##### AWARE-271 Bugfix topics missing slash when moving to hbmqtt
+- Added leading slashes back
+##### AWARE-272 Bugfix roll call system gets stuck in some hardware arrangements
+- Fixed issue with roll calling that could cause the imac2 to get in an infinite roll call loop. There is now a conditional lock during roll calls, enforces block reads only from the current generation in the roll call sequence
+##### AWARE-273 Bugfix Commands with hbmqtt don't work
+- Fixed the commands topic to include the device_id
+##### AWARE-276 Cleanup unused code and packages
+- First pass at deleting unused code
+- Removed sync vs async where it would swap based on the execution path
+- Updating requirements to remove all the additional packages and update the versions in order to test compatibility breaks
+- Removed some dead scripts
+- Reverted the removal of pymodbus config parsing as it is used in imac2 currently
+- Added cryptography back into requirements
+- Code linting
+##### AWARE-286 Store and forward
+- Added write validators to GG2 for set-parameters command
+- Fixed issue with gg2 config error
+- Added generic get parameters command
+- Added address-status-raw for unparsed address status reads
+- Changed the module status parser to be more explicit and only look at L1 line
+- L1 Mask removed as hard coded binary number and added as bitwise combination
+- Changed parse_status to match the logic in the javascript implementation on the imac controller
+- Changed parse_status to match the logic in the javascript implementation on the imac controller
+- Updated parse_status to cover all test cases and changed the logic to match
+##### AWARE-293 Remove leading slashes for topic names
+- Removed leading slashes in local topic definitions
+- Added send gateway heartbeat function that operates under imac2 protocol for now. Sends IP address (hard-coded for now) and timestamp every 30s via MQTT.
+- Error handling required for the function in future commits.
+- Function to be moved to gateway protocol in future commits.
+- Added error handling & logging around gateway heartbeat
+- Added ip address fetcher to fetch ip address from device command line. This is currently only supported on linux systems, in future to be supported on windows systems.
+- Updated the Topology MQTT message to include a top level Gateway device with the devices attached to it. Added support for generic gateway_ipc Added fetch function for gateway mac address. The gateway heartbeat in IMAC2 is to be removed, but is there for the sake of testing.
+- Removed gateway heartbeat from IMAC protocol into GatewayIPC. Updated device id of gateway to be the set id OR the id of the device it is connected to. Use Case: RTGM. Updated the topology to be updated with the IP-Address of the gateway.
+- Identify gateway during post init to remove invalid unconfigured mqtt messages through heartbeat.
+- Updated formatting -> black
+- Updated MQTT GCP topics to include state of device/gateway that is to be sent on startup or on change of ip address.
+- Added topics topology and gateway heartbeat to gcp mqtt to reduce errors. These can be removed if required.
+- Added device state to MQTT local parsers.
+##### AWARE-304 Slave ip address reporting
+- Remove slashes from topics
+##### AWARE-329 Bugfix AIM module not sending through analog data
+- Send through data-analog and data-power
+##### AWARE-330 Remove Slash from State topic
+- Removed reference to a dictionary where the data expected is an array.
+- Removed the gateway heartbeat from GCP Parsers as this is not required in these applications.
+- Added a check in topology factory to ensure that devices are in a List.
+- Refactored the topology message to ensure that the message is formatted correctly through the use of a pydantic model.
+- Updated checking if device has any data.
+- Updated identify method on modbus to work with current topology framework
+- Updated formatting
+- Changed topic name to gateways
+##### AWARE-343 Update the module status to match the iMAC 2 webpage
+- Fixed bug where numbers bigger than 8 bit would cause an error
+##### AWARE-346 Add build pipeline for develop and PRs
+- Add build steps for develop and all PRs (no pyz builds)
+- Added branch name to the pyaware version string
+##### AWARE-350 Bugfix IPM modbus mapping trip status 1 and 2
+- Updated trip status 1 & 2 to the correct trip bits.
+- Reformmatted code for pipeline
+##### AWARE-351 Bugfix Add Relay Running Status to IPM
+- Added Relay Running Status to IPM
+##### AWARE-361 Bugfix DI4 edit address not working
+- Simplified DI4 to more closely match RO4 configuration.
+- Fixed issue with edit address not working
+- Updated black formatting
+##### AWARE-374 Bugfix Gateway state message not sending to cloud
+- Fixed a bug where the state message was not sending via GCP. 
+- Fixed a bug where if a message had a topic that wasn't allowed for, it would attempt to send anyway.
+- Fixed formatting.
+-----
+Version 3.3.0
+-----
+##### AWARE-164
+- Fixed issue where adding a topic during a publish would cause a RuntimeError due to the dictionary changing size during the publish
+- Added system wide roll call on start-up
+- Delete various sync implementations (we only use async) to clean up code
+- Added special lock synchronisation object that will publish internal topics when acquired and release
+- Added roll-call-active to this new lock
+- Fixed issue where some parameters were returning 0-1 instead of False-True
+- Fixed issue ParamMaskBool would fail if the decoded data didn't exist
+##### AWARE-229
+- Added new fault states
+- Separated safe-gas integration as its own parameter
+- Removed detector-analog-diagnostic-state as it is a duplication of gas-value-invalid
+- Fixed issue with logged error raising it's own error
+- Changed find_missing_addresses to find_missing_starting_data.
+- Added base method to iMAC module for find_missing_starting_data that uses starting params so that each module doesn't need to implement the method individually
+##### AWARE-230
+- Added B30 config
+- Optimised ranges to read less data
+- Removed current-in-thd as per ben request
+-----
+Version 3.2.0
+-----
+##### AWARE-161
+- Refactored code to allow for multiple sources to schedule reads
+- Added postbox read to gasguard 2
+- Added postbox triggers for reading and sending
+- Refactored timestamp commands to use the new read parameters
+- Removed sync read/write versions from modules.py as they are no longer used and were clogging up the file
+- Renamed telemetry-time to telemetry-test-time to be clearer on the parameter naming
+- Renamed calibration-time to linearity-test-time to be clearer on the parameter naming
+- Fixed test due to changed command name
+- Added linearity test due parameter which is 6 months from the last linearity test
+- Refactored modbus config parsing to be able to parse multiple sources and specify which modbus read type to use
+- Changed from partial functions to a factory functions as partial functions were showing warnings during shutdown that they were not scriptable (This issue is fixed in python 3.8)
+##### AWARE-206
+- Cleaned up modbus read handler so it doesn't need to be grabbed each loop
+- Added EMAX2 config file
+- Added ekipelsig.yaml
+- Fixed some scaling factors to match datasheet
+- Added m2m.yaml
+- Fixed modbus blocks as there are empty registers in m2m data table
+- Parses through config parameters so you can point to a networked network broker
+- Added frequency to m2m as it is in cloud but not in confluence
+- Fixed word order and frequency scaling
+- Removed scaling in order to do it on the front end
+- Added the correct block read for total positive energy
+- Removed scaling from EKIPELSIG to move to front end scaling
+- Added little endian word order to EKIPELSIG
+- Removed scaling factors from ABB M2M
+##### AWARE-212 
+- First draft of IPD.yaml
+- Fixed issue where sum could cause an error when summing a string
+- Updated IPD addressing to match datasheet
+- Fixed references from IPB to IPD
+- Apparently IPSIs are weird and ignore your starting address. Eg. reading from address 258 as your start address will actually return address 257 but reading from address 257 will return 257. I've adjusted the block start to address 1 so that the modbus addresses line up the data sheet.
+- Updating IPB and IPC to use the numerical over current curve instead of strings
+- Removing sum aggregate as it should not be done here but should use aggregation framework
+- Updated over-current-curve to Param as it is now parsed on the cloud as an enum
+- Fixed IP relay mappings for IPSI
+##### AWARE-214
+- Fixes for unreliable reads from the m2m locking up the asyncio task
+##### AWARE-217
+- Added voltage-3-phase and phase to phase currents for m2m
+- Added phase to phase currents for i33
+- Added phase to phase currents for i35
+- Added PM710.yaml
+- Fixes for PM710.yaml based on testing
+- Added new datatype to support the signed power factor unsigned int
+##### AWARE-220
+- Fixed issue with imac protocol not using the correct aggregation method
+- Fixed issues with imac modules not parsing the config file for aggregations
+- Fixed issue where I was assuming that all params had an idx. ParamBits did not. Changing it so it doesn't rely on that parameter.
+- Added frequency
+- Fixed modbus blocks to stop illegal address errors due to devices not having modbus blocks throughout the whole address space
+##### AWARE-227
+- Updated to use modbus library with fixes to timeouts
+- Updated modbus to parse through address_shift to fix issue with IPDs not reading
+##### RTGM-232
+- Added aggregations to build from config
+- Added aggregations to devices before sending
+- Updated the MQTT models and factories to accommodate the changes
+- Changed the default aggregations to the test device to check all the aggregation types
+- Added some config tests
+- Updated dev_gcp config to use manual aware_version
+- Added the aggregation tests
+- Modified the all aggregation for more performance
+- Updated config files to always store data for substation monitoring devices
+- Added more tests for auto update so that dev versions don't get updated if they are a higher version but do update if it is the same version
+- Updated the storage triggers on most imac modules to take advantage of the send aggregations
+- Updated config files to no longer do unnecessary storage triggers as the send trigger will now correctly store the current data.
+-----
+Version 3.1.0
+-----
+- Cloud and modbus reliability fixes and optimisations. 
+- Auto restart added.
+##### AWARE-103
+- IPM Config fixes
+- Token disconnection and qos fixes for hbmqtt
+##### AWARE-119
+- Dev setup to test the mqtt disconnect logic
+- Created an auto disconnection after a specified interval from config
+- Fixed an issue where the performance degraded over time. Every time it reconnected to the server, a new virtual device was created. This meant that each reconnect would send more and more messages, breaking the devices over time
+- Hides the error that happens when the client schedules a disconnect before the jwt expires.
+- Added token life parameter so that the token expiry can be set via config
+- Updated dev config to match the local and cloud broker
+- Backported the virtual device accumulation fix to paho client
+- Improved logging showing resolved messages. Still seems to duplicate logs
+- Increased token life back to 60 minutes
+##### AWARE-142
+- Fixed issues with modbus race conditions (new aiomodbus)
+- Fixed issue with subscriptions from GCP errors
+- Changed the modbus device poll to only sleep the poll interval after the first round of reads
+- Changed logging config to print to console instead of file due to unresolved issues with logging
+- Updated H035 to have config files store always to fit with new dev version of send aggregates
+- Updated aiomodbus requirements
+- Refactored to optimise imports and hopefully speed up start-up time on Siemens boxes
+- Optimised imports so pymodbus isn't imported unless directly required
+- Optimised mqtt client to no longer need virtual devices
+- Removed issue where jwt token would generate twice
+- Optimised subscriptions into one packet instead of 3 per device
+- Added logging for the config initialisation
+- Revert version bump commit
+- Added optional profiler to aware to debug H035 issues
+- Added optional profiler to requirements
+- Added profiler run for H035 for debugging purposes
+- Updated config handling to cache the configurations read until a configuration save happens
+- Updated hbmqtt config handling to do string comparison instead of element by element to save CPU time
+- Removed json prettier formatting for output logs to optimise CPU usage
+- Fixed bug where the send data was sending empty payloads
+- Fixed bug where lru_cache was returning the exact same object dictionary which would modify it across all devices resulting in devices not having parameters parsed correctly
+- Added triggers config load to the use config loader
+- Changed json encoder and decoder to use orjson
+- Fixed issue with copying lru cache not having ability to clear the cache
+- Replacing orjson with rapidjson as orjson doesn't have a precompiled 32 bit wheel and requires rust installed to compile.
+- Changed rapidjson to an optional import as the performance benefits didn't play out for our current workloads
+- Added profiler dumps for H-035
+- Updated devices to always store so that the send aggregations reflect the samples taken
+##### AWARE-158
+- Fixed naming for current-thd parameters
+##### AWARE-175
+- Fixed modbus block range to include the full total-positive-energy register
+- Added phase to phase voltages
+##### AWARE-172
+- Removed deployments folder and moved to http://prwivsvn0.primatec.local/svn/automation/Ampcontrol IOT/Device Management/Deployments
+##### AWARE-174
+- Removing deployment data from H035 merged request
+##### AWARE-175
+- Added pm5110.yaml
+##### AWARE-191
+- Fixed issue with logger that did not correctly override the root logger settings to log to file and console
+- Fixed issue in hbmqtt where the resolved mqtt message was not showing in logging
+- Added config file logging parameters to be able to disable certain logging functions logging: to_file: true # Setting to false will stop the AWARE.log default logging to happen to_stdout: true # Setting to false will stop it showing in the console or journalctl mqtt_log: true # Setting to false will stop the mqtt messages logging to individual topic files and will be hidden from the other loggers
+- Added scheduled restart
+- Refactored auto update into maintenance
+- Fixed auto update tests
+- Added hour parameter for future proofing more refined scheduled restarts
+##### RTGM-200
+- Added ability for command data to be parsed to the topic task. Allows for responding with data and pulling out specific command metadata
+- Added command response success on completion of discover process with data payload determining if the module was found or not; as per comments on RTGM-200 issue.
+- Fixed a bug where if the send data trigger was not stored beforehand, the send trigger would happen repeatedly
+- Added the send_data to the payload even if it had not triggered a storage
+##### RTGM-203
+- Fixed DI4 and RO4 relay and switch status telemetry
+- Updated tests for storage to check for patching items
+- Updated triggers to use latest sample in the reference dictionary instead of the first in order to be able to more simply store the values in send state and store state
+- Update generic modbus device to store the data and pull from storage when triggering send
+- Updated test device to store always
+- Updated imac controller and modules to use storage data for triggering
+##### RTGM-224
+- Fixed Param lookup to check against scaled values in the lookup instead of raw
+- Streamlined ParamLookup decoder
+##### RTGM-230
+- Added the ability to push the topic to subscribers (helps with wildcard subscriptions)
+- Added peek to get storage results non-destructively
+- Added arbitrary nested dictionary storage
+-----
+Version 3.0.4
+-----
+Cloud reconnect fixes
+##### AWARE-103
+- Updating H335 standard config to use integrated IPM config instead of local IPM config
+- Updating H335 standard config to include Outlet4 I33
+- Updating remaining IPM config based devices to use the installed IPM config
+- Added credentials for H334
+- Added credentials for H314
+- Added credentials for H330
+- Added credentials for H332
+- Added credentials and config for SS002
+- Added IPC config file
+- Added H270 Config file
+- Added H316 Credentials
+- Removing H270 IPC devices until added to the library and cloud
+##### AWARE-119
+- Dev setup to test the mqtt disconnect logic
+- Created an auto disconnection after a specified interval from config
+- Fixed an issue where the performance degraded over time. Every time it reconnected to the server, a new virtual device was created. This meant that each reconnect would send more and more messages, breaking the devices over time
+- Hides the error that happens when the client schedules a disconnect before the jwt expires.
+- Added token life parameter so that the token expiry can be set via config
+- Updated dev config to match the local and cloud broker
+- Backported the virtual device accumulation fix to paho client
+- Improved logging showing resolved messages. Still seems to duplicate logs
+- Increased token life back to 60 minutes
+##### RTGM-203
+- Fixed DI4 and RO4 relay and switch status telemetry
+##### RTGM-224
+- Fixed Param lookup to check against scaled values in the lookup instead of raw
+- Streamlined ParamLookup decoder
+-----
+Version 3.0.3
+-----
+IPM Config Fixes
+##### AWARE-103
+- IPM Config fixes
+- Added missing I33 for H324
+-----
+Version 3.0.2
+-----
+WCX3 Config
+##### AWARE-103
+- Added IPM Config file
+- Added Config for WCX3 Underground Substations and DCBs
+-----
+Version 3.0.1
+-----
+Fixes for auto update
+##### AWARE-37 
+- H-266 update to config
+##### AWARE-114
+- Added wheel to the pip install requirements as pip 20.1 needs wheel installed to build some packages
+- Added aware_version: "manual" which will skip auto updates no matter what is installed
+- Added better error handling for pyaware.stop() to hbmqtt so it can escape during setup.
+- Added better logging for pyaware.stop() for hbmqtt client
+- pyaware.stop() will now raise an error the currently running task as well. This ensures that the process doesn't have to wait for an await signal to start cleaning up.
+- Added a _stopping variable to ensure that only one shutdown method attempts to happen at once. A second stop can happen after the first shutdown fails to complete.
+- Catches RuntimeError to prevent attempting to stop multiple times
+- Fixed Hbmqtt error regarding downloading config from GCP
+-----
+Version 3.0.0
+-----
+Major release for auto update feature.
+##### AWARE-7 
+- test 035 with best case connection settings
+- Added configurable QOS, keep alive, and clean session for cloud.yaml to override
+- Added keep alive to hbmqtt.py
+- Added example on how to override parameters for mqtt clients
+- Fixed reference to correct config for qos parameters
+##### AWARE-18 
+- Added H-546 commission files
+- Add Main.py for HST H-546
+- Added RSA key for H-546
+- H-546 Remove Main.py update credentials update config
+##### AWARE-107
+- H-233 added gateway.yaml and Commission file
+- Updated H-234 Config
+##### AWARE-108
+- Added subscriptions to system/reboot which will kill the pyaware process for gateway devices
+- Added example configuration with local MQTT and simple modbus device for easy testing
+- Fixed hbmqtt so it can now receive commands
+- Added error handling on main startup so if invalid config is present it doesn't lock up pyaware
+- Added topic wildcard matching for hbmqtt subscription callbacks
+- Now ignores commands in the default command handler with no payload as there is no correlation ID to work with.
+- Renaming reboot to stop to reflect the actual action taking place and leaving reboot available for OS reboot
+##### AWARE-110
+- Fixed issue with total-positive-energy scaling incorrectly
+##### AWARE-113
+- Created awaresupport accounts to pypi
+- Updated bitbucket-pipelines.yaml to include deployment to pypi
+- Tested integration to pypi and test pypi
+- Added Secured API tokens to bitbucket
+- Tried and removed atlassian/pypi-publish:0.2.13 integration as it doesn't work
+- Tested builds deploy to test pypi
+##### AWARE-114
+- Added version checker auto update using pip and pypi.org
+- Auto update uses the version logic as specified in AWARE-114 issue description
+- Added unit tests to check the auto update logic
+- Tested the auto update logic manually and confirmed to work
+##### RTGM-205 
+- Changed name of L1 Short circuit to include status
+
+-----
+Version 2.4.0
+-----
+##### AWARE-7
+- Setup now retries if an exception is raised (Does not resend message on timeout as that is not in MQT3.1.1 spec so I'm going to trust it)
+- Added file logging to AWARE.log for main entry point for config file based setups
+- Updated aiomodbus requirements
+- Added delay for failed setup
+##### AWARE-19 
+- updated gateway.yaml
+##### AWARE-37
+- Added Config file for IPB
+- Added no-authentication mode to hbmqtt for local debugging
+- aiomodbus rtu config parsing
+- Added address shifting to generic modbus device to support IPSI addressing
+- Updated IPB config to include processing triggers on the status register
+- Added Gateway config for H266
+- Updated ParamLookup to not return if the lookup value is invalid
+- Updated config to have separate comms parameter parsing
+- Changed the logging of modbus_device pipeline to only log on start and not each iteration
+- Bumped the aiomodbus version
+- Added commission2.py which does a full raw read based on the config files
+- Changed the cloud broker to hbmqtt
+- Fixed issue where changing the broker uri wasn't enough to get a clean session to GCP. Now has a fresh session each connect
+##### AWARE-44 
+- Update/Create all commission files for HST SS003
+##### AWARE-55 
+- Added main.py for H-270
+- Credentials added
+- Updates to H-270 deployment files
+##### AWARE-68
+- Added config parsers for local and cloud mqtt brokers for hbmqtt paho and gmqtt.py
+- Added on_connect and overrode connection method to allow for generating the uri username password for each reconnect
+- Moved paho client into it's own module WIP GMQTT basic implementation but does not work with GCP in current form
+- Added paho import for legacy entry point
+- Replaced the connected event with the one linked with the hbmqtt client.
+- Added error handling to the hbmqtt receive loop
+##### RTGM-200
+- Added find module by serial command method
+- Fixed issue with connect not checking the is_set correctly as it was left over from using it as a flag instead of an event
+- Added a clearer error message when the module doesn't appear to exist
+##### RTGM-203
+- add Raw DI values
+- Added switch-status and relay-status to reflect the switch and relay state without the inversion present from the invert bit
+- Added explicit read for invert status on module discovery
+- The processed relay-status and switch-status now only complete if invert-status is known
+##### RTGM-221
+- Added group validators for set-parameters
+- Added WriteAndValidateParams to do the writing, reading and validating parameters is one step
+- Updated the modules to use Group validators and WriteAndValidateParams for set-parameters command
+- Fixed the validators to work with 0 values and true/false
+-----
+Version 2.3.0
+-----
+- Added GCP config parsing
+- Improved logging throughout
+- Fixed issue with triggers always firing
+- Added HBMqtt as an alternate client
+- Added aiomodbus as an alternate client
+- Added configuration file device definition for substation monitoring
+- Refactored config and mqtt code
+-----
+Version 2.2.0
+-----
+- Address 0 Status will always be System Owned 
+- Set-Parameters no longer throws error for undefined parameters
+-----
+Version 2.0.0
+-----
+- Ensham first release
+- RTGM setup for phase 1 deployment
+- Huge changes overall, maintains backward compatibility with Substation Monitoring through legacy API (main.py)
+- Builds available for zip app deployment
+-----
+Version 1.2
+-----
+- Added GCP client
+- Added iMAC protocol
+- Skeleton structures
+ and implementation in preparation for Architecture 2.0
+- Added more parameters to I35
+- Added HpbSubPlc to devices
+- Cloud loading of configuration
+- Cleaner shutdowns
+- Saves and shutdown after new gateway configuration
+-----
+Version 1.1.1
+-----
+- Updated device data_info to new naming convention
+- Updated script to update database from configuration file
+- H363 specific deployment information
+-----
+Version 1.1
+-----
+This release is aimed at targeting the Real Time Gas Monitoring demo and will reflect the state of the library of the demo as it is deployed.
+
+
+- Added measurement scaling to SI units
+- Added Modbus device write/update
+- Added ModbusBitMask to break down registers into labelled individual bits
+- Added configuration files to eventually substitute main.py
+- Added ModbusTCP
+- Added better error handling and cleanup to the scheduler
+- Changed the default byte and word order of modbus to fit industry standard
+- Created script for updating mongodb from deployment configuration
+- Added the median aggregation
+
+

@@ -1,0 +1,463 @@
+sources:
+  poll:
+    poll_interval: 5
+    blocks:
+      - [1, 52]
+parameters:
+  pilot-forward-resistance:
+    source: poll
+    form:
+      type: Param
+      address: 4
+      idx: pilot-forward-resistance
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  megger-result:
+    source: poll
+    form:
+      type: Param
+      address: 51
+      idx: megger-result
+      scale: 1000000
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-leakage-current:
+    source: poll
+    form:
+      type: Param
+      address: 3
+      idx: earth-leakage-current
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  current-range-setting:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 18
+      idx: current-range-setting
+      table:
+        1: 60
+        2: 64
+        3: 68
+        4: 72
+        5: 76
+        6: 80
+        7: 84
+        8: 88
+        9: 92
+        10: 96
+        11: 100
+        12: 104
+        13: 108
+        14: 112
+        15: 116
+      table_reversed:
+        60: 1
+        64: 2
+        68: 3
+        72: 4
+        76: 5
+        80: 6
+        84: 7
+        88: 8
+        92: 9
+        96: 10
+        100: 11
+        104: 12
+        108: 13
+        112: 14
+        116: 15
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  current-multiplier-setting:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 19
+      idx: current-multiplier-setting
+      table:
+        1: 0.125
+        2: 0.25
+        3: 0.5
+        4: 1
+        5: 2
+        6: 4
+      table_reversed:
+        0.125: 1
+        0.25: 2
+        0.5: 3
+        1: 4
+        2: 5
+        4: 6
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  over-current-curve:
+    source: poll
+    form:
+      type: Param
+      address: 20
+      idx: over-current-curve
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  overload-time-parameter:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 21
+      idx: overload-time-parameter
+      table:
+        1: 0.05
+        2: 0.075
+        3: 0.1
+        4: 0.15
+        5: 0.2
+        6: 0.3
+        7: 0.4
+        8: 0.5
+        9: 0.6
+        10: 0.7
+        11: 0.9
+        12: 1.0
+        13: 0.04
+        14: 0.03
+        15: 0.02
+        16: 0.015
+        17: 0.01
+        18: 0.005
+      table_reversed:
+        0.05: 1
+        0.075: 2
+        0.1: 3
+        0.15: 4
+        0.2: 5
+        0.3: 6
+        0.4: 7
+        0.5: 8
+        0.6: 9
+        0.7: 10
+        0.9: 11
+        1.0: 12
+        0.04: 13
+        0.03: 14
+        0.02: 15
+        0.015: 16
+        0.01: 17
+        0.005: 18
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  short-circuit-trip-parameter:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 24
+      idx: short-circuit-trip-parameter
+      table:
+        1: 3.0
+        2: 3.5
+        3: 4.0
+        4: 4.5
+        5: 5.0
+        6: 5.5
+        7: 6.0
+        8: 6.5
+        9: 7.0
+        10: 7.5
+        11: 8.0
+        12: 8.5
+        13: 9.0
+        14: 9.5
+        15: 10.0
+      table_reversed:
+        3.0: 1
+        3.5: 2
+        4.0: 3
+        4.5: 4
+        5.0: 5
+        5.5: 6
+        6.0: 7
+        6.5: 8
+        7.0: 9
+        7.5: 10
+        8.0: 11
+        8.5: 12
+        9.0: 13
+        9.5: 14
+        10.0: 15
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  short-circuit-time-parameter:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 25
+      idx: short-circuit-time-parameter
+      table:
+        1: 20
+        2: 40
+        3: 60
+        4: 80
+        5: 100
+        6: 120
+        7: 160
+      table_reversed:
+        20: 1
+        40: 2
+        60: 3
+        80: 4
+        100: 5
+        120: 6
+        160: 7
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  status-register:
+    source: poll
+    form:
+      type: ParamBits
+      address: 2
+      bitmask:
+        earth-leakage-trip: 0
+        earth-continuity-trip: 1
+        earth-fault-lockout: 2
+        overload: 3
+        short-circuit: 4
+        mcf: 5
+        insulation-fail: 6
+        outlet-run: 7
+        ip2-ipsi-comms-ok: 8
+        ipsi-ipc-comms-ok: 9
+        fan-interlock-read: 10
+        ipc-stop: 11
+        ipc-reset: 12
+        ipc-lock: 13
+        ipc-mci: 14
+        ipc-start: 15
+  earth-leakage-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-continuity-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-fault-lockout:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  overload:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  short-circuit:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  mcf:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  insulation-fail:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ip2-ipsi-comms-ok:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ipsi-ipc-comms-ok:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  fan-interlock-read:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ipc-stop:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ipc-reset:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ipc-lock:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ipc-mci:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ipc-start:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  outlet-run:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-leakage-sensitivity:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 27
+      idx: earth-leakage-sensitivity
+      table:
+       1: 100
+       2: 150
+       3: 200
+       4: 250
+       5: 300
+       6: 350
+       7: 400
+       8: 450
+       9: 500
+      table_reversed:
+       100: 1
+       150: 2
+       200: 3
+       250: 4
+       300: 5
+       350: 6
+       400: 7
+       450: 8
+       500: 9
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-leakage-time:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 28
+      idx: earth-leakage-time
+      table:
+        1: 0
+        2: 150
+        3: 190
+        4: 230
+        5: 270
+        6: 310
+        7: 350
+        8: 390
+        9: 430
+        10: 470
+      table_reversed:
+        0: 1
+        150: 2
+        190: 3
+        230: 4
+        270: 5
+        310: 6
+        350: 7
+        390: 8
+        430: 9
+        470: 10
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]

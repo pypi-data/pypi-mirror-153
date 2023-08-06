@@ -1,0 +1,255 @@
+parameters:
+  logical-number:
+    source: roll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-remote-bypass-status:
+    source: poll
+    form:
+      type: ParamBits
+      address: 0x52A
+      bitmask:
+        l1-remote-bypass-status:
+          type: ref_param
+          param: logical-number
+          offset: -1
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  l1-remote-trip-status:
+    source: poll
+    form:
+      type: ParamBits
+      address: 0x52B
+      bitmask:
+        l1-remote-trip-status:
+          type: ref_param
+          param: logical-number
+          offset: -1
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-address-rts-config-0:
+    source: static
+    form:
+      type: ParamStatic
+      idx: l1-address-rts-config-0
+      value:
+        type: ref_param
+        param: logical-number
+        offset: 215
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-address-rts-config-1:
+    source: static
+    form:
+      type: ParamStatic
+      idx: l1-address-rts-config-1
+      value:
+        type: ref_param
+        param: logical-number
+        offset: 227
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-address-rts-config-2:
+    source: static
+    form:
+      type: ParamStatic
+      idx: l1-address-rts-config-2
+      value:
+        type: ref_param
+        param: logical-number
+        offset: 239
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-boundary-detectors:
+    source: poll
+    form:
+      type: ParamBoolArray
+      address:
+        - type: ref_param
+          param: l1-address-rts-config-0
+        - type: ref_param
+          param: l1-address-rts-config-1
+        - type: ref_param
+          param: l1-address-rts-config-2
+      idx: l1-boundary-detectors
+      length: 40
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-rts-status-bits:
+    source: poll
+    form:
+      type: ParamBits
+      address:
+        type: ref_param
+        param: l1-address-rts-config-2
+      bitmask:
+        l1-mcb-nc: 10
+        l1-mcb-no: 11
+        l1-mcb-bypass: 12
+        l1-tmr-trip: 13
+        l1-ar-state: 14
+        l1-gas-trip: 15
+  l1-mcb-nc:
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-mcb-no:
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-mcb-bypass:
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  l1-tmr-trip:
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-ar-state:
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-gas-trip:
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-master-fieldbus-number:
+    source: poll
+    form:
+      type: Param
+      idx: l1-master-fieldbus-number
+      address: 254
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  l1-resistance-rts-config-0:
+    source: poll
+    form:
+      type: Param
+      idx: l1-resistance-rts-config-0
+      address:
+        type: ref_param
+        param: l1-address-rts-config-0
+        offset: 0x200
+  l1-resistance-rts-config-1:
+    source: poll
+    form:
+      type: Param
+      idx: l1-resistance-rts-config-1
+      address:
+        type: ref_param
+        param: l1-address-rts-config-1
+        offset: 0x200
+  l1-resistance-rts-config-2:
+    source: poll
+    form:
+      type: Param
+      idx: l1-resistance-rts-config-2
+      address:
+        type: ref_param
+        param: l1-address-rts-config-2
+        offset: 0x200
+  l1-error-offline-count-rts-config-0:
+    source: poll
+    form:
+      type: ParamMask
+      idx: l1-error-offline-count-rts-config-0
+      address:
+        type: ref_param
+        param: l1-address-rts-config-0
+        offset: 0x300
+      mask: 0xff
+  l1-error-offline-count-rts-config-1:
+    source: poll
+    form:
+      type: ParamMask
+      idx: l1-error-offline-count-rts-config-1
+      address:
+        type: ref_param
+        param: l1-address-rts-config-1
+        offset: 0x300
+      mask: 0xff
+  l1-error-offline-count-rts-config-2:
+    source: poll
+    form:
+      type: ParamMask
+      idx: l1-error-offline-count-rts-config-2
+      address:
+        type: ref_param
+        param: l1-address-rts-config-2
+        offset: 0x300
+      mask: 0xff
+  l1-error-clashes-count-rts-config-0:
+    source: poll
+    form:
+      type: ParamMask
+      idx: l1-error-clashes-count-rts-config-0
+      address:
+        type: ref_param
+        param: l1-address-rts-config-0
+        offset: 0x300
+      mask: 0xff00
+      rshift: 8
+  l1-error-clashes-count-rts-config-1:
+    source: poll
+    form:
+      type: ParamMask
+      idx: l1-error-clashes-count-rts-config-1
+      address:
+        type: ref_param
+        param: l1-address-rts-config-1
+        offset: 0x300
+      mask: 0xff00
+      rshift: 8
+  l1-error-clashes-count-rts-config-2:
+    source: poll
+    form:
+      type: ParamMask
+      idx: l1-error-clashes-count-rts-config-2
+      address:
+        type: ref_param
+        param: l1-address-rts-config-2
+        offset: 0x300
+      mask: 0xff00
+      rshift: 8

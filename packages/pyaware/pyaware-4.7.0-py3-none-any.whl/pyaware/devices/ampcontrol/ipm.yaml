@@ -1,0 +1,390 @@
+sources:
+  poll:
+    poll_interval: 5
+    blocks:
+      - [4, 59]
+parameters:
+  trip-word:
+    source: poll
+    form:
+      type: ParamBits
+      address: 4
+      bitmask:
+        # Trip Status 1
+        "earth-leakage": 8
+        "earth-continuity-trip": 9
+        "insulat-test-trip": 10
+        "overload-trip": 11
+        "short-circuit-trip": 12
+        "current-balance-trip": 13
+        "residual-current-trip": 14
+        "main-contactor-fail": 15
+        # Trip Status 2
+        "external-stop": 0
+        "rtm-offline-trip": 1
+        "ipm-memory-error": 2
+        "rtm-memory-error": 3
+        "stopped-ipm": 4
+        "modbus-timeout": 5
+        "modbus-stop": 6
+        "rtm-ct-ratio-error": 7
+  relay-status-word:
+    source: poll
+    form:
+      type: ParamBits
+      address: 6
+      bitmask:
+        # Relay Status 1
+        "running": 14
+  pilot-forward-resistance:
+    source: poll
+    form:
+      type: Param
+      address: 9
+      idx: pilot-forward-resistance
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  megger-result:
+    source: poll
+    form:
+      type: Param
+      address: 11
+      idx: megger-result
+      scale: 1000000
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-leakage-current:
+    source: poll
+    form:
+      type: Param
+      address: 13
+      idx: earth-leakage-current
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  current-range-parameter:
+    source: poll
+    form:
+      type: Param
+      address: 47
+      idx: current-range-parameter
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  short-circuit-trip-parameter:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 48
+      idx: short-circuit-trip-parameter
+      table:
+        1: 3.0
+        2: 3.5
+        3: 4.0
+        4: 4.5
+        5: 5.0
+        6: 5.5
+        7: 6.0
+        8: 6.5
+        9: 7.0
+        10: 7.5
+        11: 8.0
+        12: 8.5
+        13: 9.0
+        14: 9.5
+        15: 10.0
+      table_reversed:
+        3.0: 1
+        3.5: 2
+        4.0: 3
+        4.5: 4
+        5.0: 5
+        5.5: 6
+        6.0: 7
+        6.5: 8
+        7.0: 9
+        7.5: 10
+        8.0: 11
+        8.5: 12
+        9.0: 13
+        9.5: 14
+        10.0: 15
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  short-circuit-time-parameter:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 49
+      idx: short-circuit-time-parameter
+      table:
+        1: 20
+        2: 40
+        3: 60
+        4: 80
+        5: 100
+        6: 120
+        7: 160
+      table_reversed:
+        20: 1
+        40: 2
+        60: 3
+        80: 4
+        100: 5
+        120: 6
+        160: 7
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  overload-time-parameter:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 50
+      idx: overload-time-parameter
+      table:
+        1: 3
+        2: 4
+        3: 5
+        4: 6
+        5: 7
+        6: 8
+        7: 10
+        8: 12
+        9: 14
+        10: 16
+        11: 20
+        12: 24
+        13: 28
+        14: 32
+        15: 40
+      table_reversed:
+        3: 1
+        4: 2
+        5: 3
+        6: 4
+        7: 5
+        8: 6
+        10: 7
+        12: 8
+        14: 9
+        16: 10
+        20: 11
+        24: 12
+        28: 13
+        32: 14
+        40: 15
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-leakage-sensitivity:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 57
+      idx: earth-leakage-sensitivity
+      table:
+        1: 25
+        2: 50
+        3: 100
+        4: 200
+        5: 500
+        6: 0
+      table_reversed:
+        25: 1
+        50: 2
+        100: 3
+        200: 4
+        500: 5
+        0: 6
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-leakage-time:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 58
+      idx: earth-leakage-time
+      table:
+        1: 0
+        2: 50
+        3: 100
+        4: 150
+      table_reversed:
+        0: 1
+        50: 2
+        100: 3
+        150: 4
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+# Relay Status 1
+  running:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+# Trip Status 1
+  earth-leakage:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  earth-continuity-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  insulat-test-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  overload-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  short-circuit-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  current-balance-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  residual-current-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  main-contactor-fail:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+# Trip Status 2
+  external-stop:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  rtm-offline-trip:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  ipm-memory-error:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  rtm-memory-error:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  stopped-ipm:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  modbus-timeout:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  modbus-stop:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]
+  rtm-ct-ratio-error:
+    source: poll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [time, 60]

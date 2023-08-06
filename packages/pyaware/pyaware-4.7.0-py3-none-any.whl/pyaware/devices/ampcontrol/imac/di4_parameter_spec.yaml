@@ -1,0 +1,232 @@
+# Triggers available
+# state: null
+# value: value that needs to change by in order to trigger
+# time: seconds since last trigger
+# [always]
+
+default_cos: &default_cos
+  [state]
+
+daily_sync: &daily_sync
+  [time, 86400]
+
+daily_deadline: &daily_deadline
+  [deadline, 86400]
+
+parameters:
+  dev_id:
+    source: roll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *daily_sync
+          - *default_cos
+  address-single:
+    source: block
+    form:
+      type: ParamMask
+      mask: 0xFF
+      address: 1038
+      idx: address-single
+      block: 0
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  switch-status-raw:
+    source: poll
+    form:
+      type: ParamBits
+      address: {type: ref_param, param: address-single, null_ref: 0}
+      idx: switch-status-raw
+      bitmask:
+        switch-status-raw-4: 3
+        switch-status-raw-3: 2
+        switch-status-raw-2: 1
+        switch-status-raw-1: 0
+  invert-status:
+    source: block
+    form:
+      type: ParamBits
+      address: 1039
+      idx: invert-status
+      block: 0
+      bitmask:
+        invert-status-4: 3
+        invert-status-3: 2
+        invert-status-2: 1
+        invert-status-1: 0
+  switch-status-1:
+    name: "Switch 1"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  switch-status-2:
+    name: "Switch 2"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  switch-status-3:
+    name: "Switch 3"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  switch-status-4:
+    name: "Switch 4"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  switch-status-raw-1:
+    name: "Switch 1"
+    source: poll
+    triggers:
+      process:
+        event:
+          - *default_cos
+          - [time, 60]
+        send:
+          - [state]
+          - [time, 3600]
+  switch-status-raw-2:
+    name: "Switch 2"
+    source: poll
+    triggers:
+        event:
+          - *default_cos
+        send:
+          - [state]
+          - [time, 3600]
+  switch-status-raw-3:
+    name: "Switch 3"
+    source: poll
+    triggers:
+        event:
+          - *default_cos
+        send:
+          - [state]
+          - [time, 3600]
+  switch-status-raw-4:
+    name: "Switch 4"
+    source: poll
+    triggers:
+        event:
+          - *default_cos
+        send:
+          - [state]
+          - [time, 3600]
+  invert-status-1:
+    name: "Switch 1 Invert"
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        event:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  invert-status-2:
+    name: "Switch 2 Invert"
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        event:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  invert-status-3:
+    name: "Switch 3 Invert"
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        event:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  invert-status-4:
+    name: "Switch 4 Invert"
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        event:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  voltage-l1:
+    name: "L1+ Voltage Setting"
+    source: block
+    form:
+      type: Param
+      address: 1041
+      idx: voltage-l1
+      block: 0
+      scale: 0.1
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 8
+            max: 21.5
+            step: 0.1
+            scale: 10

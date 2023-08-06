@@ -1,0 +1,114 @@
+# Triggers available
+# state: null
+# value: value that needs to change by in order to trigger
+# time: seconds since last trigger
+# [always]
+
+default_cos: &default_cos
+  [state]
+
+daily_sync: &daily_sync
+  [time, 86400]
+
+daily_deadline: &daily_deadline
+  [deadline, 86400]
+
+parameters:
+  dev_id:
+    source: roll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *daily_sync
+          - *default_cos
+  address-single:
+    source: block
+    form:
+      type: ParamMask
+      address: 1038
+      idx: address-single
+      block: 0
+      mask: 0xFF
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+  param2:
+    source: block
+    form:
+      type: Param
+      address: 1039
+      idx: param2
+      block: 0
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+  param3:
+    source: block
+    form:
+      type: Param
+      address: 1040
+      idx: param3
+      block: 0
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+  param4:
+    source: block
+    form:
+      type: Param
+      address: 1041
+      idx: param4
+      block: 0
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+  data:
+    source: poll
+    form:
+      type: Param
+      address: {type: ref_param, param: address-single, null_ref: 0}
+      idx: data
+    triggers:
+      process:
+        store:
+          - [state]
+        send:
+          - [state]
+          - [time, 86400]
+  resistance:
+    source: poll
+    form:
+      type: Param
+      address: {type: ref_param, param: address-single, offset: 0x200, null_ref: 0}
+      idx: resistance
+  error-offline-count:
+    source: poll
+    form:
+      type: ParamMask
+      address: {type: ref_param, param: address-single, offset: 0x300, null_ref: 0}
+      idx: error-offline-count
+      mask: 0xff
+  error-clashes-count:
+    source: poll
+    form:
+      type: ParamMask
+      address: {type: ref_param, param: address-single, offset: 0x300, null_ref: 0}
+      idx: error-clashes-count
+      mask: 0xff00
+      rshift: 8
+
+

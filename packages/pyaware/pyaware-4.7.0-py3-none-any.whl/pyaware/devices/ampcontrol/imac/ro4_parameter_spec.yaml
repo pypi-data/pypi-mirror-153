@@ -1,0 +1,267 @@
+# Triggers available
+# state: null
+# value: value that needs to change by in order to trigger
+# time: seconds since last trigger
+# [always]
+
+default_cos: &default_cos
+  [state]
+
+daily_sync: &daily_sync
+  [time, 86400]
+
+daily_deadline: &daily_deadline
+  [deadline, 86400]
+
+parameters:
+  dev_id:
+    source: roll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *daily_sync
+          - *default_cos
+  address-single:
+    source: block
+    form:
+      type: ParamMask
+      address: 1038
+      idx: address-single
+      block: 0
+      mask: 0xFF
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  relay-status-raw:
+    source: poll
+    form:
+      type: ParamBits
+      address: {type: ref_param, param: address-single, null_ref: 0}
+      idx: relay-status-raw
+      bitmask:
+        relay-status-4: 3
+        relay-status-3: 2
+        relay-status-2: 1
+        relay-status-1: 0
+  relay-status-1:
+    name: "Switch 1"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 600]
+  relay-status-2:
+    name: "Switch 2"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 600]
+  relay-status-3:
+    name: "Switch 3"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 600]
+  relay-status-4:
+    name: "Switch 4"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 600]
+  invert-status-1:
+    name: "Switch 1 Invert"
+    source: block
+    form:
+      type: ParamMask
+      address: 1039
+      idx: invert-status-1
+      block: 0
+      mask: 0x1
+      rshift: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  invert-status-2:
+    name: "Switch 2 Invert"
+    source: block
+    form:
+      type: ParamMask
+      address: 1039
+      idx: invert-status-2
+      block: 0
+      mask: 0x2
+      rshift: 1
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  invert-status-3:
+    name: "Switch 3 Invert"
+    source: block
+    form:
+      type: ParamMask
+      address: 1039
+      idx: invert-status-3
+      block: 0
+      mask: 0x4
+      rshift: 2
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  invert-status-4:
+    name: "Switch 4 Invert"
+    source: block
+    form:
+      type: ParamMask
+      address: 1039
+      idx: invert-status-4
+      block: 0
+      mask: 0x8
+      rshift: 3
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  relays-de-energize-mask:
+    name: "Relays to de-energize on loss of communication"
+    source: block
+    form:
+      type: ParamMask
+      block: 0
+      address: 1040
+      idx: relays-de-energize-mask
+      mask: 0xf
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 15
+  relays-de-energize-timer:
+    name: "Time in seconds for the masked relays to de-energize on loss of communication"
+    source: block
+    form:
+      type: ParamMaskScale
+      block: 0
+      address: 1040
+      idx: relays-de-energize-timer
+      mask: 0xff00
+      scale: 0.2
+      rshift: 8
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 51
+            step: 0.2
+            scale: 5
+  relays-energize-mask:
+    name: "Relays to energize on loss of communication"
+    source: block
+    form:
+      type: ParamMask
+      block: 0
+      address: 1041
+      idx: relays-energize-mask
+      mask: 0xf
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 15
+  relays-energize-timer:
+    name: "Time in seconds for the masked relays to energize on loss of communication"
+    source: block
+    form:
+      type: ParamMaskScale
+      block: 0
+      address: 1041
+      idx: relays-energize-timer
+      mask: 0xff00
+      scale: 0.2
+      rshift: 8
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 51
+            step: 0.2
+            scale: 5

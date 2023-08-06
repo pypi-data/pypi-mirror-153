@@ -1,0 +1,298 @@
+# Triggers available
+# state: null
+# value: value that needs to change by in order to trigger
+# time: seconds since last trigger
+# [always]
+
+default_cos: &default_cos
+  [state]
+
+daily_sync: &daily_sync
+  [time, 86400]
+
+daily_deadline: &daily_deadline
+  [deadline, 86400]
+
+parameters:
+  dev_id:
+    source: roll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *daily_sync
+          - *default_cos
+  address-single:
+    source: block
+    form:
+      type: ParamMask
+      mask: 0xFF
+      address: 1038
+      idx: address-single
+      block: 0
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  pressure-trip:
+    source: poll
+    form:
+      type: ParamMask
+      mask: 0x8000
+      address: {type: ref_param, param: address-flags, null_ref: 0}
+      idx: pressure-trip
+      rshift: 15
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - *default_cos
+          - [time, 60]
+  pressure-warn:
+    source: poll
+    form:
+      type: ParamMask
+      mask: 0x4000
+      address: {type: ref_param, param: address-flags, null_ref: 0}
+      idx: pressure-warn
+      rshift: 14
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - *default_cos
+          - [time, 60]
+  pressure:
+    source: poll
+    form:
+      type: ParamMask
+      mask: 0x1fff
+      address: {type: ref_param, param: address-flags, null_ref: 0}
+      idx: pressure
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - *default_cos
+          - [time, 60]
+  set-point-warn-360-bar:
+    source: block
+    form:
+      type: ParamMask
+      address: 1039
+      idx: set-point-warn
+      block: 0
+      mask: 0x1fff
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: comparison
+            ref_name: current_state
+            ref_key: hardware-type
+            comp_type: e
+            comp_value: 0
+          - trig_type: range
+            min: 0
+            max: 3600
+  set-point-warn-40-bar:
+    source: block
+    form:
+      type: ParamMask
+      address: 1039
+      idx: set-point-warn
+      block: 0
+      mask: 0x1fff
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: comparison
+            ref_name: current_state
+            ref_key: hardware-type
+            comp_type: e
+            comp_value: 1
+          - trig_type: range
+            min: 0
+            max: 400
+  set-point-trip-360-bar:
+    source: block
+    form:
+      type: ParamMask
+      address: 1040
+      idx: set-point-trip
+      block: 0
+      mask: 0x1fff
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: comparison
+            ref_name: current_state
+            ref_key: hardware-type
+            comp_type: e
+            comp_value: 0
+          - trig_type: range
+            min: 0
+            max: 3600
+  set-point-trip-40-bar:
+    source: block
+    form:
+      type: ParamMask
+      address: 1040
+      idx: set-point-trip
+      block: 0
+      mask: 0x1fff
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: comparison
+            ref_name: current_state
+            ref_key: hardware-type
+            comp_type: e
+            comp_value: 1
+          - trig_type: range
+            min: 0
+            max: 400
+#  Engineering Diagnostics
+  errors-soft:
+    source: block
+    form:
+      type: Param
+      address: 1039
+      idx: errors-soft
+      block: 31
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        process:
+          send:
+            - [always]
+  errors-hard:
+    source: block
+    form:
+      type: Param
+      address: 1040
+      idx: errors-hard
+      block: 31
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - [always]
+  voltage-line:
+    source: block
+    form:
+      type: ParamMask
+      address: 1042
+      idx: voltage-line
+      block: 31
+      mask: 0xff
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - [always]
+  hardware-type:
+    source: block
+    form:
+      type: ParamMask
+      address: 1039
+      idx: hardware-type
+      block: 32
+      mask: 0xff
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+  version-bootloader:
+    source: block
+    form:
+      type: ParamMask
+      address: 1041
+      idx: version-bootloader
+      block: 32
+      mask: 0xff
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+  version-app-custom:
+    source: block
+    form:
+      type: ParamMask
+      address: 1042
+      idx: version-app-custom
+      block: 32
+      mask: 0xff
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+  version-app-core:
+    source: block
+    form:
+      type: ParamMask
+      address: 1042
+      idx: version-app-custom
+      block: 32
+      mask: 0xff00
+      rshift: 8
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]

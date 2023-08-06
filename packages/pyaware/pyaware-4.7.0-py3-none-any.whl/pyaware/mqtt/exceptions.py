@@ -1,0 +1,2 @@
+class DeviceAttachError(TimeoutError):
+    pass

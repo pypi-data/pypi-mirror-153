@@ -1,0 +1,2159 @@
+default_cos: &default_cos
+  [state]
+  
+flag_send: &flag_send
+  [time, 300]
+  
+data_send: &data_send
+  [time, 60]
+
+read_slow_trigs: &read_slow_trigs
+  process:
+    send:
+      - [time, 3600]
+      - [state]
+
+sources:
+  coils:
+    type: poll
+    poll_interval: 5
+    handle: coils
+    blocks: 
+      - [1, 17]
+      - [21, 25]
+
+  holding:
+    type: poll
+    poll_interval: 5
+    handle: holding
+    blocks:
+      - [1, 25]
+      - [101, 125]
+      - [401, 425]
+      - [501, 525]
+      - [601, 625]
+      - [701, 725]
+      - [801, 813]
+      - [901, 913]
+      - [1001, 1073]
+
+parameters:
+  # System Alarms and Warnings
+  system-ok:
+    source: coils
+    form:
+      type: ParamBool
+      address: 1
+      idx: system-ok
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send
+  system-warn:
+    source: coils
+    form:
+      type: ParamBool
+      address: 2
+      idx: system-warn
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send
+  system-alarm:
+    source: coils
+    form:
+      type: ParamBool
+      address: 3
+      idx: system-alarm
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send          
+  system-fault:
+    source: coils
+    form:
+      type: ParamBool
+      address: 4
+      idx: system-fault
+  # Zone Alarms and Warnings
+  zone-1-warn:
+    source: coils
+    form:
+      type: ParamBool
+      address: 5
+      idx: zone-1-warn
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send  
+  zone-1-alarm:
+    source: coils
+    form:
+      type: ParamBool
+      address: 6
+      idx: zone-1-alarm
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send   
+  zone-2-warn:
+    source: coils
+    form:
+      type: ParamBool
+      address: 7
+      idx: zone-2-warn
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send  
+  zone-2-alarm:
+    source: coils
+    form:
+      type: ParamBool
+      address: 8
+      idx: zone-2-alarm
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send 
+  zone-3-warn:
+    source: coils
+    form:
+      type: ParamBool
+      address: 9
+      idx: zone-3-warn
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send  
+  zone-3-alarm:
+    source: coils
+    form:
+      type: ParamBool
+      address: 10
+      idx: zone-3-alarm
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send 
+  zone-4-warn:
+    source: coils
+    form:
+      type: ParamBool
+      address: 11
+      idx: zone-4-warn
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send  
+  zone-4-alarm:
+    source: coils
+    form:
+      type: ParamBool
+      address: 12
+      idx: zone-4-alarm
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send 
+  zone-5-warn:
+    source: coils
+    form:
+      type: ParamBool
+      address: 13
+      idx: zone-5-warn
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send  
+  zone-5-alarm:
+    source: coils
+    form:
+      type: ParamBool
+      address: 14
+      idx: zone-5-alarm
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send 
+  zone-6-warn:
+    source: coils
+    form:
+      type: ParamBool
+      address: 15
+      idx: zone-6-warn
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send  
+  zone-6-alarm:
+    source: coils
+    form:
+      type: ParamBool
+      address: 16
+      idx: zone-6-alarm
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *flag_send
+  # System Commands
+  system-reset:
+    source: coils
+    form:
+      type: ParamBool
+      address: 21
+      idx: system-reset
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+    sequences: # Negative pulse trigger (>100ms)
+      write:
+        - type: write_value
+          value: 1
+        - type: write_value
+          value: 0
+        - type: wait
+          seconds: 0.2
+        - type: write_value
+          value: 1
+  system-mute:
+    source: coils
+    form:
+      type: ParamBool
+      address: 22
+      idx: system-mute
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: in_list
+            lst: [0, 1, false, true]
+  save-all-settings:
+    source: coils
+    form:
+      type: ParamBool
+      address: 23
+      idx: save-all-settings
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+    sequences: # Positive pulse trigger (>100ms)
+      write:
+        - type: write_value
+          value: 0
+        - type: write_value
+          value: 1
+        - type: wait
+          seconds: 0.2
+        - type: write_value
+          value: 0
+  system-reboot:
+    source: coils
+    form:
+      type: ParamBool
+      address: 24
+      idx: system-reboot
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+    sequences: # Positive pulse trigger (>100ms)
+      write:
+        - type: write_value
+          value: 0
+        - type: write_value
+          value: 1
+        - type: wait
+          seconds: 0.2
+        - type: write_value
+          value: 0
+  # Channel Input Values
+  ch1-input-value:
+    source: holding
+    form:
+      type: ParamCType
+      address: 1
+      idx: ch1-input-value
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *data_send
+  ch2-input-value:
+    source: holding
+    form:
+      type: ParamCType
+      address: 3
+      idx: ch2-input-value
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *data_send
+  ch3-input-value:
+    source: holding
+    form:
+      type: ParamCType
+      address: 5
+      idx: ch3-input-value
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *data_send 
+  ch4-input-value:
+    source: holding
+    form:
+      type: ParamCType
+      address: 7
+      idx: ch4-input-value
+      data_type: float
+    triggers:
+        send:
+          - *default_cos
+          - *data_send
+  # Channel Setup Data
+  # Channel 1
+  ch1-setup:
+    source: holding
+    form:
+      type: ParamCType
+      address: 101
+      idx: ch1-setup
+      data_type: float
+    children:
+      # MSB
+      ch1-input-signal-type:
+        form:
+          type: ParamMask
+          address: 101
+          idx: ch1-input-signal-type
+          mask: 0b1110000000000000
+          rshift: 13
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 5
+      ch1-sensor-type:
+        form:
+          type: ParamMask
+          address: 101
+          idx: ch1-sensor-type
+          mask: 0b0001111110000000
+          rshift: 7
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 63
+      ch1-sensor-unit:
+        form:
+          type: ParamMask
+          address: 101
+          idx: ch1-sensor-unit
+          mask: 0b0000000001111000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 15
+      ch1-enable:
+        form:
+          type: ParamMask
+          address: 101
+          idx: ch1-enable
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-warn-function:
+        form:
+          type: ParamMask
+          address: 101
+          idx: ch1-warn-function
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-warn-direction:
+        form:
+          type: ParamMask
+          address: 101
+          idx: ch1-warn-direction
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      # LSB
+      ch1-warn-latch:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-warn-latch
+          mask: 0b1000000000000000
+          rshift: 15
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-warn-relay:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-warn-relay
+          mask: 0b0100000000000000
+          rshift: 14
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-alarm-function:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-alarm-function
+          mask: 0b0010000000000000
+          rshift: 13
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-alarm-direction:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-alarm-direction
+          mask: 0b0001000000000000
+          rshift: 12
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-alarm-latch:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-alarm-latch
+          mask: 0b0000100000000000
+          rshift: 11
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-alarm-relay:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-alarm-relay
+          mask: 0b0000010000000000
+          rshift: 10
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-high-alarm-function:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-high-alarm-function
+          mask: 0b0000001000000000
+          rshift: 9
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-high-alarm-direction:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-high-alarm-direction
+          mask: 0b0000000100000000
+          rshift: 8
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-high-alarm-latch:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-high-alarm-latch
+          mask: 0b0000000010000000
+          rshift: 7
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-high-alarm-relay:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-high-alarm-relay
+          mask: 0b0000000001000000
+          rshift: 6
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-assignment-to-zone-1:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-assignment-to-zone-1
+          mask: 0b0000000000100000
+          rshift: 5
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-assignment-to-zone-2:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-assignment-to-zone-2
+          mask: 0b0000000000010000
+          rshift: 4
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-assignment-to-zone-3:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-assignment-to-zone-3
+          mask: 0b0000000000001000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-assignment-to-zone-4:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-assignment-to-zone-4
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-assignment-to-zone-5:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-assignment-to-zone-5
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch1-assignment-to-zone-6:
+        form:
+          type: ParamMask
+          address: 102
+          idx: ch1-assignment-to-zone-6
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+  # Channel 2
+  ch2-setup:
+    source: holding
+    form:
+      type: ParamCType
+      address: 103
+      idx: ch2-setup
+      data_type: float
+    children:
+      # MSB
+      ch2-input-signal-type:
+        form:
+          type: ParamMask
+          address: 103
+          idx: ch2-input-signal-type
+          mask: 0b1110000000000000
+          rshift: 13
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 5
+      ch2-sensor-type:
+        form:
+          type: ParamMask
+          address: 103
+          idx: ch2-sensor-type
+          mask: 0b0001111110000000
+          rshift: 7
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 63
+      ch2-sensor-unit:
+        form:
+          type: ParamMask
+          address: 103
+          idx: ch2-sensor-unit
+          mask: 0b0000000001111000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 15
+      ch2-enable:
+        form:
+          type: ParamMask
+          address: 103
+          idx: ch2-enable
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-warn-function:
+        form:
+          type: ParamMask
+          address: 103
+          idx: ch2-warn-function
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-warn-direction:
+        form:
+          type: ParamMask
+          address: 103
+          idx: ch2-warn-direction
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      # LSB
+      ch2-warn-latch:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-warn-latch
+          mask: 0b1000000000000000
+          rshift: 15
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-warn-relay:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-warn-relay
+          mask: 0b0100000000000000
+          rshift: 14
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-alarm-function:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-alarm-function
+          mask: 0b0010000000000000
+          rshift: 13
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-alarm-direction:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-alarm-direction
+          mask: 0b0001000000000000
+          rshift: 12
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-alarm-latch:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-alarm-latch
+          mask: 0b0000100000000000
+          rshift: 11
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-alarm-relay:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-alarm-relay
+          mask: 0b0000010000000000
+          rshift: 10
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-high-alarm-function:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-high-alarm-function
+          mask: 0b0000001000000000
+          rshift: 9
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-high-alarm-direction:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-high-alarm-direction
+          mask: 0b0000000100000000
+          rshift: 8
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-high-alarm-latch:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-high-alarm-latch
+          mask: 0b0000000010000000
+          rshift: 7
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-high-alarm-relay:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-high-alarm-relay
+          mask: 0b0000000001000000
+          rshift: 6
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-assignment-to-zone-1:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-assignment-to-zone-1
+          mask: 0b0000000000100000
+          rshift: 5
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-assignment-to-zone-2:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-assignment-to-zone-2
+          mask: 0b0000000000010000
+          rshift: 4
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-assignment-to-zone-3:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-assignment-to-zone-3
+          mask: 0b0000000000001000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-assignment-to-zone-4:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-assignment-to-zone-4
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-assignment-to-zone-5:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-assignment-to-zone-5
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch2-assignment-to-zone-6:
+        form:
+          type: ParamMask
+          address: 104
+          idx: ch2-assignment-to-zone-6
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+  # Channel 3
+  ch3-setup:
+    source: holding
+    form:
+      type: ParamCType
+      address: 106
+      idx: ch3-setup
+      data_type: float
+    children:
+      # MSB
+      ch3-input-signal-type:
+        form:
+          type: ParamMask
+          address: 105
+          idx: ch3-input-signal-type
+          mask: 0b1110000000000000
+          rshift: 13
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 5
+      ch3-sensor-type:
+        form:
+          type: ParamMask
+          address: 105
+          idx: ch3-sensor-type
+          mask: 0b0001111110000000
+          rshift: 7
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 63
+      ch3-sensor-unit:
+        form:
+          type: ParamMask
+          address: 105
+          idx: ch3-sensor-unit
+          mask: 0b0000000001111000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 15
+      ch3-enable:
+        form:
+          type: ParamMask
+          address: 105
+          idx: ch3-enable
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-warn-function:
+        form:
+          type: ParamMask
+          address: 105
+          idx: ch3-warn-function
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-warn-direction:
+        form:
+          type: ParamMask
+          address: 105
+          idx: ch3-warn-direction
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      # LSB
+      ch3-warn-latch:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-warn-latch
+          mask: 0b1000000000000000
+          rshift: 15
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-warn-relay:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-warn-relay
+          mask: 0b0100000000000000
+          rshift: 14
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-alarm-function:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-alarm-function
+          mask: 0b0010000000000000
+          rshift: 13
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-alarm-direction:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-alarm-direction
+          mask: 0b0001000000000000
+          rshift: 12
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-alarm-latch:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-alarm-latch
+          mask: 0b0000100000000000
+          rshift: 11
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-alarm-relay:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-alarm-relay
+          mask: 0b0000010000000000
+          rshift: 10
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-high-alarm-function:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-high-alarm-function
+          mask: 0b0000001000000000
+          rshift: 9
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-high-alarm-direction:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-high-alarm-direction
+          mask: 0b0000000100000000
+          rshift: 8
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-high-alarm-latch:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-high-alarm-latch
+          mask: 0b0000000010000000
+          rshift: 7
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-high-alarm-relay:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-high-alarm-relay
+          mask: 0b0000000001000000
+          rshift: 6
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-assignment-to-zone-1:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-assignment-to-zone-1
+          mask: 0b0000000000100000
+          rshift: 5
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-assignment-to-zone-2:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-assignment-to-zone-2
+          mask: 0b0000000000010000
+          rshift: 4
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-assignment-to-zone-3:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-assignment-to-zone-3
+          mask: 0b0000000000001000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-assignment-to-zone-4:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-assignment-to-zone-4
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-assignment-to-zone-5:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-assignment-to-zone-5
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch3-assignment-to-zone-6:
+        form:
+          type: ParamMask
+          address: 106
+          idx: ch3-assignment-to-zone-6
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+  # Channel 4
+  ch4-setup:
+    source: holding
+    form:
+      type: ParamCType
+      address: 107
+      idx: ch4-setup
+      data_type: float
+    children:
+      # MSB
+      ch4-input-signal-type:
+        form:
+          type: ParamMask
+          address: 107
+          idx: ch4-input-signal-type
+          mask: 0b1110000000000000
+          rshift: 13
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 5
+      ch4-sensor-type:
+        form:
+          type: ParamMask
+          address: 107
+          idx: ch4-sensor-type
+          mask: 0b0001111110000000
+          rshift: 7
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 63
+      ch4-sensor-unit:
+        form:
+          type: ParamMask
+          address: 107
+          idx: ch4-sensor-unit
+          mask: 0b0000000001111000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: range
+                min: 0
+                max: 15
+      ch4-enable:
+        form:
+          type: ParamMask
+          address: 107
+          idx: ch4-enable
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-warn-function:
+        form:
+          type: ParamMask
+          address: 107
+          idx: ch4-warn-function
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-warn-direction:
+        form:
+          type: ParamMask
+          address: 107
+          idx: ch4-warn-direction
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      # LSB
+      ch4-warn-latch:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-warn-latch
+          mask: 0b1000000000000000
+          rshift: 15
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-warn-relay:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-warn-relay
+          mask: 0b0100000000000000
+          rshift: 14
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-alarm-function:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-alarm-function
+          mask: 0b0010000000000000
+          rshift: 13
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-alarm-direction:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-alarm-direction
+          mask: 0b0001000000000000
+          rshift: 12
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-alarm-latch:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-alarm-latch
+          mask: 0b0000100000000000
+          rshift: 11
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-alarm-relay:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-alarm-relay
+          mask: 0b0000010000000000
+          rshift: 10
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-high-alarm-function:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-high-alarm-function
+          mask: 0b0000001000000000
+          rshift: 9
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-high-alarm-direction:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-high-alarm-direction
+          mask: 0b0000000100000000
+          rshift: 8
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-high-alarm-latch:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-high-alarm-latch
+          mask: 0b0000000010000000
+          rshift: 7
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-high-alarm-relay:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-high-alarm-relay
+          mask: 0b0000000001000000
+          rshift: 6
+        triggers:
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-assignment-to-zone-1:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-assignment-to-zone-1
+          mask: 0b0000000000100000
+          rshift: 5
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-assignment-to-zone-2:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-assignment-to-zone-2
+          mask: 0b0000000000010000
+          rshift: 4
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-assignment-to-zone-3:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-assignment-to-zone-3
+          mask: 0b0000000000001000
+          rshift: 3
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-assignment-to-zone-4:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-assignment-to-zone-4
+          mask: 0b0000000000000100
+          rshift: 2
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-assignment-to-zone-5:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-assignment-to-zone-5
+          mask: 0b0000000000000010
+          rshift: 1
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+      ch4-assignment-to-zone-6:
+        form:
+          type: ParamMask
+          address: 108
+          idx: ch4-assignment-to-zone-6
+          mask: 0b0000000000000001
+          rshift: 0
+        triggers:
+          process:
+            send:
+              - *default_cos
+              - *flag_send
+          write:
+            validators:
+              - trig_type: in_list
+                lst: [0, 1, false, true]
+  # Channel High/Low Alarm Set Point
+  ch1-high-low-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 401
+      idx: ch1-high-low-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch2-high-low-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 403
+      idx: ch2-high-low-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch3-high-low-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 405
+      idx: ch3-high-low-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch4-high-low-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 407
+      idx: ch4-high-low-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  # Channel High/Low Alarm Set Point
+  ch1-low-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 501
+      idx: ch1-low-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch2-low-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 503
+      idx: ch2-low-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch3-low-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 505
+      idx: ch3-low-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch4-low-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 507
+      idx: ch4-low-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  # Channel High/Low Alarm Set Point
+  ch1-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 601
+      idx: ch1-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch2-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 603
+      idx: ch2-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch3-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 605
+      idx: ch3-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch4-warn-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 607
+      idx: ch4-warn-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  # Channel High/Low Alarm Set Point
+  ch1-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 701
+      idx: ch1-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch2-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 703
+      idx: ch2-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch3-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 705
+      idx: ch3-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  ch4-alarm-set-point:
+    source: holding
+    form:
+      type: ParamCType
+      address: 707
+      idx: ch4-alarm-set-point
+      data_type: float
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *flag_send
+      write:
+        validators:
+          - trig_type: writable
+  # Channel Calibration Due Dates
+  ch1-calibration-due-date:
+    source: holding
+    form:
+      type: Param
+      address: 801
+      idx: ch1-calibration-due-date
+    children:
+      ch1-calibration-due-year:
+        form:
+          type: ParamMask
+          address: 801
+          idx: ch1-calibration-due-year
+          mask: 0b1111111000000000
+          rshift: 9
+        triggers: *read_slow_trigs
+      ch1-calibration-due-month:
+        form:
+          type: ParamMask
+          address: 801
+          idx: ch1-calibration-due-month
+          mask: 0b0000000111100000
+          rshift: 5
+        triggers: *read_slow_trigs
+      ch1-calibration-due-day:
+        form:
+          type: ParamMask
+          address: 801
+          idx: ch1-calibration-due-day
+          mask: 0b0000000000011111
+          rshift: 0
+        triggers: *read_slow_trigs
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send 
+  ch2-calibration-due-date:
+    source: holding
+    form:
+      type: Param
+      address: 802
+      idx: ch2-calibration-due-date
+    children:
+      ch2-calibration-due-year:
+        form:
+          type: ParamMask
+          address: 802
+          idx: ch2-calibration-due-year
+          mask: 0b1111111000000000
+          rshift: 9
+        triggers: *read_slow_trigs
+      ch2-calibration-due-month:
+        form:
+          type: ParamMask
+          address: 802
+          idx: ch2-calibration-due-month
+          mask: 0b0000000111100000
+          rshift: 5
+        triggers: *read_slow_trigs
+      ch2-calibration-due-day:
+        form:
+          type: ParamMask
+          address: 802
+          idx: ch2-calibration-due-day
+          mask: 0b0000000000011111
+          rshift: 0
+        triggers: *read_slow_trigs
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send 
+  ch3-calibration-due-date:
+    source: holding
+    form:
+      type: Param
+      address: 803
+      idx: ch3-calibration-due-date
+    children:
+      ch3-calibration-due-year:
+        form:
+          type: ParamMask
+          address: 803
+          idx: ch3-calibration-due-year
+          mask: 0b1111111000000000
+          rshift: 9
+        triggers: *read_slow_trigs
+      ch3-calibration-due-month:
+        form:
+          type: ParamMask
+          address: 803
+          idx: ch3-calibration-due-month
+          mask: 0b0000000111100000
+          rshift: 5
+        triggers: *read_slow_trigs
+      ch3-calibration-due-day:
+        form:
+          type: ParamMask
+          address: 803
+          idx: ch3-calibration-due-day
+          mask: 0b0000000000011111
+          rshift: 0
+        triggers: *read_slow_trigs
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send 
+  ch4-calibration-due-date:
+    source: holding
+    form:
+      type: Param
+      address: 804
+      idx: ch4-calibration-due-date
+    children:
+      ch4-calibration-due-year:
+        form:
+          type: ParamMask
+          address: 804
+          idx: ch4-calibration-due-year
+          mask: 0b1111111000000000
+          rshift: 9
+        triggers: *read_slow_trigs
+      ch4-calibration-due-month:
+        form:
+          type: ParamMask
+          address: 804
+          idx: ch4-calibration-due-month
+          mask: 0b0000000111100000
+          rshift: 5
+        triggers: *read_slow_trigs
+      ch4-calibration-due-day:
+        form:
+          type: ParamMask
+          address: 804
+          idx: ch4-calibration-due-day
+          mask: 0b0000000000011111
+          rshift: 0
+        triggers: *read_slow_trigs
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send 
+  # Channel Status Flags
+  ch1-status-flag:
+    source: holding
+    form:
+      type: Param
+      address: 901
+      idx: ch1-status-flag
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *data_send
+  ch2-status-flag:
+    source: holding
+    form:
+      type: Param
+      address: 902
+      idx: ch2-status-flag
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *data_send   
+  ch3-status-flag:
+    source: holding
+    form:
+      type: Param
+      address: 903
+      idx: ch3-status-flag
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *data_send
+  ch4-status-flag:
+    source: holding
+    form:
+      type: Param
+      address: 904
+      idx: ch4-status-flag
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *data_send
+  # Channel IDs
+  ch1-id:
+    source: holding
+    form:
+      type: ParamText
+      address: 1001
+      idx: ch1-id
+      length: 6
+      swap_bytes: True
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send  
+  ch2-id:
+    source: holding
+    form:
+      type: ParamText
+      address: 1007
+      idx: ch2-id
+      length: 6
+      swap_bytes: True
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send  
+  ch3-id:
+    source: holding
+    form:
+      type: ParamText
+      address: 1013
+      idx: ch3-id
+      length: 6
+      swap_bytes: True
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send  
+  ch4-id:
+    source: holding
+    form:
+      type: ParamText
+      address: 1019
+      idx: ch4-id
+      length: 6
+      swap_bytes: True
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *data_send

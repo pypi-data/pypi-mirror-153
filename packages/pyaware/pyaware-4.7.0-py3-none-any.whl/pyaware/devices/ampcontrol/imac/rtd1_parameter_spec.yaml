@@ -1,0 +1,204 @@
+# Triggers available
+# state: null
+# value: value that needs to change by in order to trigger
+# time: seconds since last trigger
+# [always]
+
+default_cos: &default_cos
+  [state]
+
+daily_sync: &daily_sync
+  [time, 86400]
+
+daily_deadline: &daily_deadline
+  [deadline, 86400]
+
+parameters:
+  dev_id:
+    source: roll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *daily_sync
+          - *default_cos
+  address-flags:
+    source: block
+    form:
+      type: ParamMask
+      mask: 0xFF
+      address: 1038
+      idx: address-flags
+      block: 0
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        send:
+          - [always]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  data-flags:
+    source: poll
+    form:
+      type: ParamBits
+      address: {type: ref_param, param: address-flags, null_ref: 0}
+      idx: data-flags
+      bitmask:
+        alarm-temp-high: 5
+        alarm-temp-low: 4
+        alarm-temp-out-of-range: 3
+        rtd-sense-wire-fault: 2
+        rtd-open-circuit: 1
+        rtd-short-circuit: 0
+  voltage-l1:
+    source: block
+    form:
+      type: ParamMaskScale
+      mask: 0xFF
+      address: 1041
+      idx: voltage-l1
+      block: 0
+      scale: 0.1
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        send:
+          - [always]
+          - [time, 86400]
+  address-temp:
+    source: block
+    form:
+      type: ParamMask
+      mask: 0xFF
+      address: 1038
+      idx: address-temp
+      block: 1
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        send:
+          - [always]
+          - [time, 86400]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  temperature:
+    source: poll
+    form:
+      type: ParamCType
+      address: {type: ref_param, param: address-temp, null_ref: 0}
+      idx: temperature
+      data_type: short
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  set-point-low:
+    source: block
+    form:
+      type: ParamCType
+      address: 1039
+      idx: set-point-low
+      data_type: short
+      block: 1
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        send:
+          - [always]
+          - [time, 86400]
+      write:
+        validators:
+          - trig_type: comparison
+            comp_type: ge
+            comp_ref_value: -19
+          - trig_type: comparison
+            comp_type: le
+            comp_ref_value: 299
+  set-point-high:
+    source: block
+    form:
+      type: ParamCType
+      address: 1041
+      idx: set-point-high
+      data_type: short
+      block: 1
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        send:
+          - [always]
+          - [time, 86400]
+      write:
+        validators:
+          - trig_type: comparison
+            comp_type: ge
+            comp_ref_value: -19
+          - trig_type: comparison
+            comp_type: le
+            comp_ref_value: 299
+  alarm-temp-high:
+    name: "Temperature High Alarm"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  alarm-temp-low:
+    name: "Temperature Low Alarm"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  alarm-temp-out-of-range:
+    name: "Temperature out of range"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  rtd-sense-wire-fault:
+    name: "RTD Sense Wire Fault"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  rtd-open-circuit:
+    name: "RTD Open Circuit"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  rtd-short-circuit:
+    name: "RTD Short Circuit"
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]

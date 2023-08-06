@@ -1,0 +1,773 @@
+# Triggers available
+# state: null
+# value: value that needs to change by in order to trigger
+# time: seconds since last trigger
+# [always]
+default_cos: &default_cos
+  [state]
+
+daily_sync: &daily_sync
+  [time, 86400]
+
+daily_deadline: &daily_deadline
+  [deadline, 86400]
+parameters:
+  dev_id:
+    source: roll
+    triggers:
+      process:
+        store:
+          - [always]
+        send:
+          - *daily_sync
+          - *default_cos
+  data-analog:
+    source: poll
+    triggers:
+      process:
+        event:
+          - *default_cos
+          - [time, 30]
+        send:
+          - *daily_sync
+          - *default_cos
+          - [time, 120]
+  # Virtual Parameters from data-analog
+  detector-units:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  detector-gas-analog:
+    source: poll
+    triggers:
+      process:
+        store:
+          - *default_cos
+        send:
+          - [value, 15]
+          - [time, 300]
+  detector-gas-value:
+    source: poll
+    triggers:
+      process:
+        store:
+          - *default_cos
+        send:
+          - [state]
+          - [time, 300]
+  detector-zero:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 3600]
+  detector-span:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 3600]
+  detector-symbol:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  detector-sensor-type:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  detector-low-soft-fault:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  detector-under-range:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  detector-over-range:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  detector-high-soft-fault:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  detector-low-warm-up:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  detector-high-warm-up:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  detector-ndir-zero-shift-neg:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  # Flags
+  trip-status:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 60]
+  telemetry-test:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 3600]
+  hardware-fault:
+    source: poll
+    triggers:
+      process:
+        event:
+          - [state]
+        send:
+          - *default_cos
+          - [time, 300]
+  ch4-over-range-ndir-incomplete-calibration:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 3600]
+  linearity-test-overdue:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 3600]
+  detector-warm-up-busy:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 3600]
+  cal-cup-on:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 3600]
+  detector-data-invalid:
+    source: poll
+    triggers:
+      process:
+        event:
+          - [state]
+        send:
+          - *default_cos
+          - [time, 300]
+  gas-value-invalid:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  power-alarm-trip:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  power-alarm-warn:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 300]
+  set-point-2-not-3:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  set-point-not-1-not-2:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  set-point-alarm-3:
+    name: Set point 3 reached
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  set-point-alarm-2:
+    name: Set point 2 reached
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  set-point-alarm-1:
+    name: Set point 1 reached
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  # DI4
+  bypass-local:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 60]
+  bypass-remote:
+    source: poll
+    triggers:
+      process:
+        send:
+          - *default_cos
+          - [time, 60]
+  # Blocks
+  address-flags:
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        event:
+          - [state]
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 600]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  exception-trigger:
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+      write:
+        validators:
+          - trig_type: range
+            min: 100
+            max: 20000
+  address-bypass:
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  aim-compatibility-mode:
+    source: block
+    block: 0
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  address-analog:
+    source: block
+    block: 1
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 600]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  set-point-1:
+    source: block
+    block: 1
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 600]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 20000
+  set-point-2:
+    source: block
+    block: 1
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 600]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 20000
+  set-point-3:
+    source: block
+    block: 1
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 600]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 20000
+  address-power:
+    block: 2
+    source: block
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 255
+  power-point-alarm:
+    source: block
+    block: 2
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 600]
+  power-point-trip:
+    source: block
+    block: 2
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        send:
+          - *default_cos
+          - [time, 600]
+  hysteresis-config:
+    source: block
+    block: 2
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 15
+  healthy-config:
+    source: block
+    block: 2
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 4
+  warmup-config:
+    source: block
+    block: 2
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+      write:
+        validators:
+          - trig_type: range
+            min: 0
+            max: 1
+  address-rtc:
+    source: block
+    block: 2
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 600]
+      write:
+        validators:
+          - trig_type: in_list
+            lst: [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 16, 17, 18, 20, 21, 22, 24, 25, 26, 28, 29, 30, 32, 33,
+                  34, 36, 37, 38, 40, 41, 42, 44, 45, 46, 48, 49, 50, 52, 53, 54, 56, 57, 58, 60, 61, 62, 64, 65,
+                  66, 68, 69, 70, 72, 73, 74, 76, 77, 78, 80, 81, 82, 84, 85, 86, 88, 89, 90, 92, 93, 94, 96, 97,
+                  98, 100, 101, 102, 104, 105, 106, 108, 109, 110, 112, 113, 114, 116, 117, 118, 120, 121, 122,
+                  124, 125, 126, 128, 129, 130, 132, 133, 134, 136, 137, 138, 140, 141, 142, 144, 145, 146, 148,
+                  149, 150, 152, 153, 154, 156, 157, 158, 160, 161, 162, 164, 165, 166, 168, 169, 170, 172, 173,
+                  174, 176, 177, 178, 180, 181, 182, 184, 185, 186, 188, 189, 190, 192, 193, 194, 196, 197, 198,
+                  200, 201, 202, 204, 205, 206, 208, 209, 210, 212, 213, 214, 216, 217, 218, 220, 221, 222, 224,
+                  225, 226, 228, 229, 230, 232, 233, 234, 236, 237, 238, 240, 241, 242, 244, 245, 246, 248, 249,
+                  250, 252, 253, 254]
+  detector-temperature:
+    source: block
+    block: 3
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - [time, 600]
+  detector-pressure:
+    source: block
+    block: 3
+    triggers:
+      collect:
+        read:
+          - [deadline, 3600]
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - [time, 600]
+  detector-humidity:
+    source: block
+    block: 3
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - [time, 600]
+  command-register-code:
+    source: block
+    block: 3
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  command-register-result:
+    source: block
+    block: 3
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  last-t90-test-result:
+    source: block
+    block: 4
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  last-nata-cal-hours:
+    source: block
+    block: 4
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  last-cal-cup-seconds:
+    source: block
+    block: 4
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  power-supply-voltage:
+    source: block
+    block: 4
+    triggers:
+      collect:
+        read:
+          - [deadline, 600]
+      process:
+        store:
+          - [always]
+        send:
+          - *default_cos
+          - *daily_sync
+          - [time, 120]
+  postbox-selection:
+    source: block
+    block: 5
+  detector-type:
+    source: block
+    block: 5
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+  cal-cup-alarm-28-days:
+    source: block
+    block: 5
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  linearity-test-alarm-14-days:
+    source: block
+    block: 5
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  linearity-test-last-points:
+    source: block
+    block: 5
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  postbox-timestamp:
+    source: block
+    block: 5
+  detector-serial-number:
+    source: block
+    block: 6
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  detector-software-version:
+    source: block
+    block: 6
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  display-serial-number:
+    source: block
+    block: 7
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  display-base-software-version:
+    source: block
+    block: 7
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  display-application-version-lua:
+    source: block
+    block: 7
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - *default_cos
+          - *daily_sync
+  telemetry-test-time:
+    source: postbox
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+  rtc-time:
+    source: postbox
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+  t90-test-time:
+    source: postbox
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        send:
+          - [always]
+  linearity-test-time:
+    source: postbox
+    triggers:
+      collect:
+        read:
+          - *daily_deadline
+      process:
+        event:
+          - [always]
+        store:
+          - [always]
+        send:
+          - [always]

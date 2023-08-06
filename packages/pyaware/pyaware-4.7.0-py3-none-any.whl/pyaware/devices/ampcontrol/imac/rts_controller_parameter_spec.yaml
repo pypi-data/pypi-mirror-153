@@ -1,0 +1,772 @@
+parameters:
+  boundary-detectors:
+    source: poll
+    form:
+      type: ParamBoolArray
+      idx: boundary-detectors
+      address: [0x520, 0x521, 0x522]
+      length: 40
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 600]
+  gas-trip:
+    source: poll
+    form:
+      type: ParamMask
+      idx: gas-trip
+      address: 0x527
+      mask: 0b1
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  last-trip-boundary-detectors:
+    source: poll
+    form:
+      type: ParamBoolArray
+      idx: last-trip-boundary-detectors
+      address: [0x528, 0x529, 0x52A]
+      length: 40
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  last-trip:
+    source: poll
+    form:
+      type: ParamBits
+      idx: last-trip
+      address: 0x52A
+      bitmask:
+        last-trip-clash-boundary: 10
+        last-trip-offline-boundary: 11
+        last-trip-l2-timeout: 13
+        last-trip-no-boundary-enabled: 14
+        last-trip-no-boundary-online: 15
+  last-trip-clash-boundary:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  last-trip-offline-boundary:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  last-trip-l2-timeout:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  last-trip-no-boundary-enabled:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  last-trip-no-boundary-online:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  system-status:
+    source: poll
+    form:
+      type: ParamBits
+      address: 0x100
+#      idx: system-status
+      bitmask:
+        short-circuit-status-l1: 12
+        ar-state: 9
+        control-relay-state: 8
+  system-control:
+    source: poll
+    form:
+      type: ParamBits
+      address: 0x400
+      idx: system-control
+      bitmask:
+        mcb-bypass: 4
+        mcb-no: 6
+        mcb-nc: 5
+  system-id:
+    source: poll
+    form:
+      type: ParamBits
+      address: 0x401
+      idx: system-id
+      bitmask:
+        dip-sw-4: 7
+        dip-sw-3: 6
+        dip-sw-2: 5
+        dip-sw-1: 4
+  rotary-sw:
+    source: poll
+    form:
+      type: ParamMask
+      address: 0x401
+      idx: rotary-sw
+      mask: 0xF
+    triggers:
+      process:
+        event:
+          - [state]
+  logical-number:
+    source: state
+  address-rts-config-0:
+    source: static
+    form:
+      type: ParamStatic
+      idx: address-rts-config-0
+      value:
+        type: ref_param
+        param: logical-number
+        offset: 215
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  address-rts-config-1:
+    source: static
+    form:
+      type: ParamStatic
+      idx: address-rts-config-1
+      value:
+        type: ref_param
+        param: logical-number
+        offset: 227
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  address-rts-config-2:
+    source: static
+    form:
+      type: ParamStatic
+      idx: address-rts-config-2
+      value:
+        type: ref_param
+        param: logical-number
+        offset: 239
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  data-block-just-complete:
+    source: poll
+    form:
+      type: Param
+      address: 0x406
+      idx: data-block-just-complete
+  slp-loop-timer:
+    source: poll
+    form:
+      type: Param
+      address: 0x408
+      idx: slp-loop-timer
+  mcb-bypass:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  mcb-no:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  mcb-nc:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  # NVM
+  serial-protocol:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 0x500
+      idx: serial-protocol
+      mask: 0xFF
+      table:
+        0: not-configured
+        1: modbus-master
+        2: modbus-slave
+        3: ip2-protocol
+        4: maintenance-l1
+        5: maintenance-l2
+      table_reversed:
+        modbus-master: 1
+        modbus-slave: 2
+        ip2-protocol: 3
+        maintenance-l1: 4
+        maintenance-l2: 5
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  serial-baud-rate:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 0x500
+      idx: serial-baud-rate
+      mask: 0xFF00
+      rshift: 8
+      table:
+        0: 9600
+        1: 0
+        2: 600
+        3: 1200
+        4: 2400
+        5: 4800
+        6: 9600
+        7: 19200
+      table_reversed:
+        600: 2
+        1200: 3
+        2400: 4
+        4800: 5
+        9600: 6
+        1920: 7
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  serial-parity:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 0x501
+      idx: serial-parity
+      mask: 0xFF
+      table:
+        0: even
+        1: none
+        2: even
+        3: odd
+      table_reversed:
+        none: 1
+        even: 2
+        odd: 3
+        n: 1
+        e: 2
+        o: 3
+        N: 1
+        E: 2
+        O: 3
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  serial-stop-bits:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 0x501
+      idx: serial-stop-bits
+      mask: 0xFF00
+      rshift: 8
+      table:
+        0: 1
+        1: 1
+        2: 2
+      table_reversed:
+        1: 1
+        2: 2
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  serial-mode:
+    source: poll
+    form:
+      type: ParamLookup
+      address: 0x502
+      idx: serial-mode
+      mask: 0xFF
+      table:
+        0: RS232
+        1: RS485/RS422
+      table_reversed:
+        RS232: 0
+        RS485/RS422: 1
+        RS485: 1
+        RS422: 1
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  serial-slave-address:
+    source: poll
+    form:
+      type: ParamMask
+      address: 0x502
+      idx: serial-slave-address
+      mask: 0xFF00
+      rshift: 8
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  controller-hardware-flags:
+    source: poll
+    form:
+      type: ParamBits
+      address: 0x600
+#      idx: controller-hardware-flags
+      bitmask:
+        rtc-fault: 0
+        i2c-fault: 1
+        sc-card-fault: 2
+  controller-temperature:
+    source: poll
+    form:
+      type: Param
+      address: 0x601
+      idx: controller-temperature
+      scale: 0.01
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  controller-tag-name:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x638
+      idx: controller-tag-name
+      length: 19
+      padding: 0xA5
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  legacy-hardware-version:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x64C
+      idx: legacy-hardware-version
+      length: 10
+      padding: 0xA5
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  legacy-firmware-version:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x656
+      idx: legacy-firmware-version
+      length: 10
+      padding: 0xa5
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  legacy-software-version:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x660
+      idx: legacy-software-version
+      length: 10
+      padding: 0xa5
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  slp-version:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x66A
+      idx: slp-version
+      length: 10
+      padding: 0xa5
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  log-bootloader-name:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x674
+      idx: log-bootloader-name
+      length: 8
+      padding: 0x00
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  log-bootloader-version:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x67C
+      idx: log-bootloader-version
+      length: 3
+      padding: 0xa5
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  log-hardware-name:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x67F
+      idx: log-hardware-name
+      length: 8
+      padding: 0x20
+      strip_lagging: " "
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  log-hardware-version:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x689
+      idx: log-hardware-version
+      length: 3
+      padding: 0xa5
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  serial-number:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x68A
+      idx: serial-number
+      length: 8
+      padding: 0xa5
+      strip_leading: "0"
+      swap_bytes: true
+    triggers:
+      process:
+        event:
+          - [state]
+  log-application-name:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x692
+      idx: log-application-name
+      length: 8
+      padding: 0x00
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  log-application-version:
+    source: poll
+    form:
+      type: ParamText
+      address: 0x69A
+      idx: log-application-version
+      length: 8
+      padding: 0x00
+      swap_bytes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  master-fieldbus-number:
+    source: poll
+    form:
+      type: Param
+      address: 254 # This is the read field to read the fieldbus number from both master and slave
+#      address: 0x523 # This is the write field to set the fieldbus number
+      idx: master-fieldbus-number
+    triggers:
+      process:
+        event:
+          - [state]
+  plc-activity-word:
+    source: poll
+    form:
+      type: Param
+      address: 0x524
+      idx: plc-activity-word
+  # Rest Data
+  ethernet-dhcp:
+    source: rest
+    form:
+      type: ParamDict
+      key: P_DHCP
+      idx: ethernet-dhcp
+      table:
+        No: false
+        Yes: true
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  ethernet-ip-address:
+    source: rest
+    form:
+      type: ParamDict
+      key: P_IP_Address
+      idx: ethernet-ip-address
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  ethernet-ip-mask:
+    source: rest
+    form:
+      type: ParamDict
+      key: P_IP_Mask
+      idx: ethernet-ip-mask
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  ethernet-ip-gateway:
+    source: rest
+    form:
+      type: ParamDict
+      key: P_Gateway
+      idx: ethernet-ip-gateway
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  ethernet-mac-address:
+    source: rest
+    form:
+      type: ParamDict
+      key: P_MAC_Address
+      idx: ethernet-mac-address
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  line-speed-l1:
+    source: rest
+    form:
+      type: ParamDict
+      key: P_L1_Speed
+      idx: line-speed-l1
+      table:
+        "300": 300
+        "500": 500
+        "750": 750
+        "1000": 1000
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  # Virtual
+  dip-sw-1:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  dip-sw-2:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  dip-sw-3:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  dip-sw-4:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  fieldbus-healthy-l1:
+    name: "L1 Fieldbus healthy"
+    group: fieldbus
+    type: bool
+  fieldbus-fault-l1:
+    name: "L1 Fieldbus fault"
+    group: fieldbus
+    type: bool
+  ethernet-comms-status:
+    name: "Ethernet comms status"
+    description: "Ethernet communication is healthy"
+    group: status
+    type: bool
+    source: status
+    triggers:
+      process:
+        send:
+          - [always]
+  serial-comms-status:
+    name: "Serial comms status"
+    description: "Serial communication is healthy"
+    group: status
+    type: bool
+    source: status
+    triggers:
+      process:
+        send:
+          - [always]
+  roll-call-active:
+    name: "Roll Call Active"
+    description: "Roll Call Active"
+    group: status
+    type: bool
+    source: status
+    triggers:
+      process:
+        send:
+          - [always]
+  short-circuit-status-l1:
+    name: "L1 Fieldbus Short Circuit"
+    group: status
+    type: bool
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 600]
+  control-relay-state:
+    name: "Control relay (CR) state"
+    group: status
+    type: bool
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  ar-state:
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 60]
+  remote-bypass:
+
+    name: "Remote bypass"
+    description: "Indicates if a remote bypass was requested"
+    group: bypass
+    type: bool
+    source: poll
+  bypass-active:
+    name: "Bypass active"
+    description: "Indicates if any 'bypass' boundary sensor is active by either DI4 or IPC bypass"
+    group: bypass
+    type: bool
+    source: poll
+  error-offline-count:
+    name: "Error/Offline Count"
+    group: count
+    type: int
+    source: poll
+  error-clashes-count:
+    name: "Clash Count"
+    group: count
+    type: int
+    source: poll
+  master-backtrip-bypass:
+    name: "Master Backtrip AR Bypass"
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 3600]
+  address-status:
+    name: "Address status"
+    group: address
+    type: array # Array 0-255
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  address-status-raw:
+    name: "Address status raw"
+    group: address
+    type: array # Array 0-255
+    source: poll
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 300]
+  address-resistance:
+    name: "Address resistance"
+    group: address
+    type: array # Array 0-255
+    source: poll
+    triggers:
+      process:
+        store:
+          - [state]
+        send:
+          - [time, 300]
+  slave-surface-trip:
+    name: "Slave Surface Trip"
+    group: trip
+    type: bool
+    triggers:
+      process:
+        send:
+          - [state]
+          - [time, 600]
