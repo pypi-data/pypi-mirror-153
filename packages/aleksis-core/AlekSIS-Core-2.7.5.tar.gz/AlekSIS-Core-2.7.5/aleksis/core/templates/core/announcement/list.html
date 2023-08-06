@@ -1,0 +1,56 @@
+{# -*- engine:django -*- #}
+
+{% extends "core/base.html" %}
+
+{% load i18n %}
+
+{% block browser_title %}{% blocktrans %}Announcements{% endblocktrans %}{% endblock %}
+{% block page_title %}{% blocktrans %}Announcements{% endblocktrans %}{% endblock %}
+
+{% block content %}
+  <a class="btn green waves-effect waves-light" href="{% url "add_announcement" %}">
+    <i class="material-icons left">add</i>
+    {% trans "Publish new announcement" %}
+  </a>
+  <table class="highlight">
+    <thead>
+    <tr>
+      <th>{% trans "Title" %}</th>
+      <th>{% trans "Valid from" %}</th>
+      <th>{% trans "Valid until" %}</th>
+      <th>{% trans "Recipients" %}</th>
+      <th>{% trans "Actions" %}</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for announcement in announcements %}
+      <tr>
+        <td>{{ announcement.title }}</td>
+        <td>{{ announcement.valid_from }}</td>
+        <td>{{ announcement.valid_until }}</td>
+        <td>{{ announcement.recipients.all|join:", " }}</td>
+        <td>
+          <a class="btn-flat waves-effect waves-orange orange-text"
+             href="{% url "edit_announcement" announcement.id %}">
+            <i class="material-icons left">edit</i>
+            {% trans "Edit" %}
+          </a>
+          <form action="{% url "delete_announcement" announcement.id %}" method="post">
+            {% csrf_token %}
+            <button class="btn-flat waves-effect waves-re red-text" type="submit">
+              <i class="material-icons left">delete</i>
+              {% trans "Delete" %}
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="5">
+          <p class="flow-text center-align">{% trans "There are no announcements." %}</p>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

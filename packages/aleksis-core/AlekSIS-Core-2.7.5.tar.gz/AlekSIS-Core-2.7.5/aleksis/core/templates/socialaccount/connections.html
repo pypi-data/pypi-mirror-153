@@ -1,0 +1,43 @@
+{% extends "core/base.html" %}
+
+{% load i18n material_form %}
+
+{% block browser_title %}{% trans "Connections" %}{% endblock %}
+{% block page_title %}{% trans "Connections" %}{% endblock %}
+
+{% block content %}
+  {% if form.accounts %}
+    {% csrf_token %}
+    <div class="row">
+      {% for base_account in form.accounts %}
+      {% with base_account.get_provider_account as account %}
+        <div class="col s12 m6 l4 xl3">
+          <div class="card">
+            <div class="card-content">
+              <div class="card-title">{{ account.get_brand.name }}</div>
+                <p>
+                  {{ account }}
+                </p>
+            </div>
+            <div class="card-action">
+              <a href="{% url 'delete_social_account_by_pk' base_account.pk %}">
+                {% trans "Remove" %}
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <p>{% trans 'You currently have no third-party accounts connected to this account.' %}</p>
+  {% endif %}
+
+  <h2>{% trans 'Add a Third-party Account' %}</h2>
+
+  {% include "socialaccount/snippets/provider_list.html" with process="connect" %}
+
+{% include "socialaccount/snippets/login_extra.html" %}
+
+{% endblock %}

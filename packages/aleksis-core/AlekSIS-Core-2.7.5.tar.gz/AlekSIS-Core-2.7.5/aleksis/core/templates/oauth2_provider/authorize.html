@@ -1,0 +1,66 @@
+{% extends "core/base.html" %}
+
+{% load i18n material_form %}
+
+{% block browser_title %}{% blocktrans %}Authorize{% endblocktrans %}{% endblock %}
+
+{% block content %}
+
+  <div class="row">
+  {% if not error %}
+    <div class="col m1 l2 xl3"></div>
+    <div class="col s12 m10 l8 xl6">
+      <div class="card">
+        <div class="card-content">
+          {% if application.icon %}
+            <div class="center-via-flex margin-bottom">
+              <div class="application-circle materialboxed z-depth-2">
+                <img src="{{ application.icon.url }}" alt="{{ application.name }}" class="hundred-percent">
+              </div>
+            </div>
+          {% endif %}
+          <div class="card-title {% if application.icon %}center{% endif %}">
+            {% blocktrans with name=application.name %}Authorize {{ name }}{% endblocktrans %}
+          </div>
+          <p class="margin-bottom">{% trans "The application requests access to the following scopes:" %}</p>
+          {% for scope in scopes_descriptions %}
+            <p class="margin-bottom">
+              <i class="material-icons left">check</i>
+              {{ scope }}
+            </p>
+          {% endfor %}
+        </div>
+        <div class="card-action-light">
+          <form method="post">
+            {% csrf_token %}
+            {% form form=form %}
+              {% part form.allow %}<input type="hidden" value="true" name="allow">{% endpart %}
+            {% endform %}
+            <button type="submit" class="btn green waves-effect waves-light btn-margin">
+              <i class="material-icons left">done_all</i> {% trans "Allow" %}
+            </button>
+            <a class="btn red waves-effect waves-light btn-margin" href="{% block app-form-back-url %}{% url "oauth2_application" application.id %}{% endblock app-form-back-url %}">
+              <i class="material-icons left">cancel</i> {% trans "Disallow" %}
+            </a>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="container">
+      <div class="card red">
+        <div class="card-content white-text">
+          <div class="material-icons small left">error_outline</div>
+          <span class="card-title">{% trans "Error" %}: {{ error.error }}</span>
+          <p>
+            {{ error.description }}
+          </p>
+          <p>
+            Please verify if the application is configured correctly or contact one of your site administrators:
+          </p>
+          {% include "core/partials/admins_list.html" %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

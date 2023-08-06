@@ -1,0 +1,95 @@
+{# -*- engine:django -*- #}
+
+{% extends "core/base.html" %}
+
+{% load i18n material_form_internal %}
+
+{% block browser_title %}{% blocktrans %}Search{% endblocktrans %}{% endblock %}
+{% block page_title %}{% blocktrans %}Global Search{% endblocktrans %}{% endblock %}
+
+{% block content %}
+  <form method="get">
+    {#    {% form form=form %}{% endform %}#}
+
+    <input type="text" name="{{ form.q.name }}" id="{{ form.q.id }}" value="{% firstof form.q.value "" %}"
+           placeholder="{% trans "Search Term" %}">
+
+    {% include "components/chips.html" with form_field=form.models %}
+
+    <p>
+      <button type="submit" class="btn waves-effect waves-light green">
+        <i class="material-icons left">search</i>
+        {% blocktrans %}Search{% endblocktrans %}
+      </button>
+    </p>
+
+    <h2>{% trans "Results" %}</h2>
+
+    {% if query %}
+      <div class="collection">
+        {% for result in page_obj.object_list %}
+          <a href="{{ result.object.get_absolute_url|default:"#" }}" class="collection-item">
+            <i class="material-icons left">{{ result.object.icon_ }}</i>
+            {{ result.object }}
+          </a>
+        {% empty %}
+          <li class="collection-item">
+            <p class="flow-text">
+              {% trans "No search results could be found to your search." %}
+            </p>
+          </li>
+        {% endfor %}
+      </div>
+
+      {% if page_obj.has_other_pages %}
+        <ul class="pagination">
+          {% if page_obj.has_previous %}
+            <li class="waves-effect">
+              <a href="?q={{ query }}&amp;page={{ page_obj.previous_page_number }}">
+                <i class="material-icons">chevron_left</i>
+              </a>
+            </li>
+          {% else %}
+            <li class="disabled">
+              <a href="#"><i class="material-icons">chevron_left</i></a>
+            </li>
+          {% endif %}
+
+          {% for page_num in page_obj.paginator.page_range %}
+            {% if page_obj.number == page_num %}
+              <li class="active">
+                <a href="#">{{ page_num }}</a>
+              </li>
+            {% else %}
+              <li class="waves-effect">
+                <a href="?q={{ query }}&amp;page={{ page_num }}">{{ page_num }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <li class="waves-effect">
+              <a href="?q={{ query }}&amp;page={{ page_obj.next_page_number }}">
+                <i class="material-icons">chevron_right</i>
+              </a>
+            </li>
+          {% else %}
+            <li class="disabled">
+              <a href="#"><i class="material-icons">chevron_right</i></a>
+            </li>
+          {% endif %}
+        </ul>
+      {% endif %}
+    {% else %}
+      <ul class="collection">
+        <li class="collection-item">
+          <p class="flow-text">
+            {% trans "Please enter a search term above." %}
+          </p>
+        </li>
+      </ul>
+    {% endif %}
+
+
+  </form>
+{% endblock %}

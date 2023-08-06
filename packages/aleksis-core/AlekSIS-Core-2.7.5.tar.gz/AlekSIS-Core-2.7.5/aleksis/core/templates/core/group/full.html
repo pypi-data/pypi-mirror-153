@@ -1,0 +1,88 @@
+{# -*- engine:django -*- #}
+
+{% extends "core/base.html" %}
+{% load rules %}
+
+{% load i18n static material_form %}
+{% load render_table from django_tables2 %}
+
+{% block browser_title %}{{ group.name }}{% endblock %}
+
+{% block content %}
+  <h1>{{ group.name }} <small class="grey-text">{{ group.short_name }}</small></h1>
+
+  {% has_perm 'core.edit_group_rule' user group as can_change_group %}
+  {% has_perm 'core.change_group_preferences_rule' user group as can_change_group_preferences %}
+  {% has_perm 'core.delete_group_rule' user group as can_delete_group %}
+  {% has_perm 'core.view_group_stats_rule' user group as can_view_group_stats %}
+
+  {% if can_change_group or can_change_group_preferences or can_delete_group %}
+    <p>
+      {% if can_change_group %}
+        <a href="{% url 'edit_group_by_id' group.id %}" class="btn waves-effect waves-light">
+          <i class="material-icons left">edit</i>
+          {% trans "Edit" %}
+        </a>
+      {% endif %}
+
+      {% if can_delete_group %}
+        <a href="{% url 'delete_group_by_id' group.id %}" class="btn waves-effect waves-light red">
+          <i class="material-icons left">delete</i>
+          {% trans "Delete" %}
+        </a>
+      {% endif %}
+
+      {% if can_change_group_preferences %}
+        <a href="{% url "preferences_group" group.id %}" class="btn waves-effect waves-light">
+          <i class="material-icons left">settings</i>
+          {% trans "Change preferences" %}
+        </a>
+      {% endif %}
+    </p>
+  {% endif %}
+
+  <table>
+    <tr>
+      <th>
+        <i class="material-icons center" title="{% trans "Group type" %}">category</i>
+      </th>
+      <td>
+        {{ group.group_type }}
+      </td>
+    </tr>
+    <tr>
+      <th>
+        <i class="material-icons center" title="{% trans "Parent groups" %}">vertical_align_top</i>
+      </th>
+      <td>
+        {{ group.parent_groups.all|join:", " }}
+      </td>
+    </tr>
+  </table>
+
+  {% if can_view_group_stats %}
+    <h2>{% blocktrans %}Statistics{% endblocktrans %}</h2>
+    <ul>
+      <li>
+        {% trans "Count of members" %}: {{ stats.members }}
+      </li>
+      {% if stats.age_avg %}
+        <li>
+          {% trans "Average age" %}: {{ stats.age_avg|floatformat }}
+        </li>
+      {% endif %}
+      {% if stats.age_range_min %}
+        <li>
+          {% trans "Age range" %}: {{ stats.age_range_min }} {% trans "years to" %} {{ stats.age_range_max }} {% trans "years "%}
+        </li>
+      {% endif %}
+    </ul>
+  {% endif %}
+
+  <h2>{% blocktrans %}Owners{% endblocktrans %}</h2>
+  {% render_table owners_table %}
+
+  <h2>{% blocktrans %}Members{% endblocktrans %}</h2>
+  {% render_table members_table %}
+
+{% endblock %}

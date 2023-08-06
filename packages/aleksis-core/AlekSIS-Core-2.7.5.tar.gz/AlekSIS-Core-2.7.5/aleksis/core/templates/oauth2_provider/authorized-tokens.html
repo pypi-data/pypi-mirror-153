@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+
+{% load i18n %}
+
+{% block browser_title %}{% blocktrans %}Authorized applications{% endblocktrans %}{% endblock %}
+{% block page_title %}{% trans "Authorized applications" %}{% endblock %}
+
+{% block content %}
+  {% if authorized_tokens %}
+    <div class="row">
+      {% for authorized_token in authorized_tokens %}
+        <div class="col s12 m6 l4 xl3">
+          <div class="card">
+            <div class="card-content">
+              <div class="card-title">{{ authorized_token.application }}</div>
+              {% for scope_name, scope_description in authorized_token.scopes.items %}
+                <p>
+                  {{ scope_name }}: {{ scope_description }}
+                </p>
+              {% endfor %}
+            </div>
+            <div class="card-action">
+              <a href="{% url 'oauth2_provider:authorized-token-delete' authorized_token.pk %}">{% trans "Revoke access" %}</a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert info">
+      <p>
+        <i class="material-icons left">info</i>
+        {% trans "No authorized applications." %}
+      </p>
+    </div>
+  {% endif %}
+{% endblock %}

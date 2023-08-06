@@ -1,0 +1,154 @@
+{# -*- engine:django -*- #}
+
+{% extends "core/base.html" %}
+
+{% load i18n material_form %}
+
+{% block browser_title %}{% blocktrans %}Assign child groups to groups{% endblocktrans %}{% endblock %}
+{% block page_title %}
+  {% blocktrans %}Assign child groups to groups{% endblocktrans %}
+{% endblock %}
+
+
+{% block content %}
+  {% if not page %}
+    <div class="alert info">
+      <p>
+        <i class="material-icons left">info</i>
+        {% blocktrans %}
+          You can use this to assign child groups to groups. Please use the filters below to select groups you want to
+          change and click "Next".
+        {% endblocktrans %}
+      </p>
+    </div>
+
+    <form method="get">
+      {% csrf_token %}
+      {% form form=filter.form %}{% endform %}
+
+      <button type="submit" class="btn green waves-effect waves-light">
+        <i class="material-icons left">refresh</i>
+        {% trans "Update selection" %}
+      </button>
+      <a href="{% url "groups_child_groups" %}" class="btn red waves-effect waves-light">
+        <i class="material-icons left">clear</i>
+        {% trans "Clear all filters" %}
+      </a>
+    </form>
+
+    <h2>{% trans "Currently selected groups" %}</h2>
+
+    {% for group in filter.qs %}
+      <div class="chip">
+        {{ group }}
+      </div>
+    {% endfor %}
+
+    {% if filter.qs %}
+      <p>
+      <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-primary waves-effect waves-light" type="submit" name="page" value="1">
+          {% trans "Start assigning child groups for this groups" %}
+          <i class="material-icons right">arrow_forward</i>
+        </button>
+      </form>
+      </p>
+    {% else %}
+      <div class="alert warning">
+        <p>
+          <i class="material-icons left">warning</i>
+          {% blocktrans %}
+            Please select some groups in order to go on with assigning.
+          {% endblocktrans %}
+        </p>
+      </div>
+    {% endif %}
+  {% else %}
+    <form method="post">
+      <input type="hidden" name="old_page" value="{{ page.number }}">
+
+      <p class="flow-text">
+        {% trans "Current group:" %} {{ group }}
+      </p>
+
+      <div class="alert warning">
+        <p>
+          <i class="material-icons left">warning</i>
+          <strong>{% blocktrans %}Please be careful!{% endblocktrans %}</strong><br/>
+          {% blocktrans %}
+            If you click "Back" or "Next" the current group assignments are not saved.
+            If you click "Save", you will overwrite all existing child group relations for this group with what you
+            selected on this page.
+          {% endblocktrans %}
+        </p>
+
+      </div>
+
+      <div class="row">
+        <p class="left">
+          {% if page.has_previous %}
+            <button class="btn grey waves-effect waves-light" name="page" value="{{ page.previous_page_number }}">
+              <i class="material-icons left">arrow_back</i>
+              {% trans "Back" %}
+            </button>
+          {% endif %}
+          {% if page.has_next %}
+            <button class="btn grey waves-effect waves-light" type="submit" name="page"
+                    value="{{ page.next_page_number }}">
+              {% trans "Next" %}
+              <i class="material-icons right">arrow_forward</i>
+            </button>
+          {% endif %}
+        </p>
+        <p class="right">
+          <button class="btn green waves-effect waves-light" type="submit" name="save">
+            {% trans "Save" %}
+            <i class="material-icons left">save</i>
+          </button>
+          {% if page.has_next %}
+            <button class="btn green waves-effect waves-light" type="submit" name="save"
+                    value="{{ page.next_page_number }}">
+              {% trans "Save and next" %}
+              <i class="material-icons left">save</i>
+            </button>
+          {% endif %}
+        </p>
+      </div>
+
+
+      {% csrf_token %}
+
+      {% include "components/chips.html" with form_field=form.child_groups %}
+
+      <p class="left">
+        {% if page.has_previous %}
+          <button class="btn grey waves-effect waves-light" name="page" value="{{ page.previous_page_number }}">
+            <i class="material-icons left">arrow_back</i>
+            {% trans "Back" %}
+          </button>
+        {% endif %}
+        {% if page.has_next %}
+          <button class="btn grey waves-effect waves-light" type="submit" name="page"
+                  value="{{ page.next_page_number }}">
+            {% trans "Next" %}
+            <i class="material-icons right">arrow_forward</i>
+          </button>
+        {% endif %}
+      </p>
+      <p class="right">
+        <button class="btn green waves-effect waves-light" type="submit" name="save">
+          {% trans "Save" %}
+          <i class="material-icons left">save</i>
+        </button>
+        {% if page.has_next %}
+          <button class="btn green waves-effect waves-light" type="submit" name="save"
+                  value="{{ page.next_page_number }}">
+            {% trans "Save and next" %}
+            <i class="material-icons left">save</i>
+          </button>
+        {% endif %}
+      </p>
+    </form>
+  {% endif %}
+{% endblock %}
