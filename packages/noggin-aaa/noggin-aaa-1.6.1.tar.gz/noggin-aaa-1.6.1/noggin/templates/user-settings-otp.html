@@ -1,0 +1,164 @@
+{% extends "user-settings.html" %}
+
+{% import '_form_macros.html' as macros %}
+{% block settings_content %}
+
+{% if otp_uri %}
+<div class="modal fade" id="otp-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ _("Scan your new token") }}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        {# Only show the QR code when the user is ready, this gives them time to pick up their phone and check noone is looking over their shoulders #}
+        <p>{{ _("Your new token is ready. Click on the button below to reveal the QR code and scan it.") }}</p>
+        <div class="text-center"><button id="otp-toggle" class="btn btn-primary" data-toggle="button" aria-pressed="false">{{ _("Reveal") }}</button></div>
+        <div id="otp-qrcode" class="text-center mt-3"></div>
+        <p class="mb-1 mt-4">{{ _("or copy and paste the following token URL if you can't scan the QR code:") }}</p>
+        <input id="otp-uri" class="form-control" readonly value="{{otp_uri|safe}}" />
+        <form action="{{ url_for('.user_settings_otp', username=current_user.username) }}" method="post" class="py-3" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          {{ confirmotpform.secret() }}
+          {{ confirmotpform.description() }}
+          <div class="form-group">
+        {{ _("After enrolling the token in your application, verify it by generating your first code and entering it below:")}}
+          {{ macros.with_errors(confirmotpform.code, label=False, placeholder=_("Verification Code"), autocomplete="off")}}
+          </div>
+          <div>{{ macros.non_field_errors(confirmotpform) }}</div>
+          <div class="d-flex justify-content-between">
+          {{ confirmotpform.submit(color="primary") }}
+          <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-label="Cancel">
+            {{ _("Cancel") }}
+          </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif%}
+
+<div class="modal fade" id="add-token-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ _("Add OTP Token") }}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        {% if not tokens %}
+          <div class="alert alert-info">
+            <div><small>{{_("Creating your first OTP token enables two-factor authentication using OTP.")}}</small></div>
+            <div><small><strong>{{_("Once enabled, two-factor authentication cannot be disabled.")}}</strong></small></div>
+          </div>
+        {% endif %}
+        <form action="{{ url_for('.user_settings_otp', username=current_user.username) }}" method="post" class="px-4 py-3" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <div class="form-group">{{ macros.with_errors(addotpform.description, label=False, tabindex="2", placeholder=_("Token name"))}}</div>
+          <div class="form-group">{{ macros.with_errors(addotpform.password, label=False, tabindex="3", placeholder=_("Password"))}}</div>
+          {% if tokens %}
+          <div class="form-group">{{ macros.with_errors(addotpform.otp, label=False, tabindex="4", placeholder=_("One-Time Password"))}}</div>
+          {% endif %}
+          <div>{{ macros.non_field_errors(addotpform) }}</div>
+          {{ addotpform.submit(color="primary", class="btn-block", tabindex="5") }}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card-body">
+  <div class="d-flex">
+      <h5 id="pageheading">{{ _("OTP Tokens") }}</h5>
+      <div class="btn btn-primary btn-sm ml-auto" data-toggle="modal" data-target="#add-token-modal">{{_("Add OTP Token")}}</div>
+  </div>
+</div>
+
+<div class="list-group list-group-flush mt-3">
+{% for token in tokens %}
+  <div class="list-group-item {{'text-muted bg-light' if token.disabled}}">
+    <div class="row align-items-center">
+      <div class="col">
+        <div data-role="token-description" class="font-weight-bold otp-description">
+          {{token.description if token.description else _('(no name)')}}
+          <button class="btn btn-sm btn-outline-secondary ml-1" title="{{ _('Rename') }}"><i class="fa fa-edit"></i></button>
+        </div>
+        <div class="otp-rename-form d-none">
+          <form action="{{ url_for('.user_settings_otp_rename', username=current_user.username) }}" method="post" class="form-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="text" class="form-control form-control-sm mr-1" name="description" value="{{token.description if token.description}}" />
+            <button type="submit" class="btn btn-sm btn-primary" name="token" value="{{ token.uniqueid }}">{{ _("Rename") }}</button>
+          </form>
+        </div>
+        <div class="text-monospace">{{token.uniqueid}}</div>
+      </div>
+      <div class="col-auto">
+        {% if not token.disabled %}
+          <form action="{{ url_for('.user_settings_otp_disable', username=current_user.username) }}" method="post" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type='submit' class="btn btn-sm btn-outline-secondary" name="token" value="{{ token.uniqueid }}">{{ _("Disable") }}</button>
+          </form>
+        {% else %}
+          <form action="{{ url_for('.user_settings_otp_enable', username=current_user.username) }}" method="post" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type='submit' class="btn btn-sm btn-outline-secondary" name="token" value="{{ token.uniqueid }}">{{ _("Enable") }}</button>
+          </form>
+        {% endif %}
+        <form action="{{ url_for('.user_settings_otp_delete', username=current_user.username) }}" method="post" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <button type='submit' class="btn btn-sm btn-outline-danger" name="token" value="{{ token.uniqueid }}"><i class="fa fa-trash"></i></button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="list-group-item text-center bg-light text-muted font-weight-bold">
+    <div>{{ _("You have no OTP tokens") }}</div>
+    <div><small>{{ _("Add an OTP token to enable two-factor authentication on your account.") }}</small></div>
+  </div>
+{% endfor %}
+</div>
+
+{{ otp_notice() if otp_notice is defined and tokens }}
+
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% if otp_uri %}
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/vendor/jquery-qrcode-1.0/jquery.qrcode.min.js') }}"></script>
+  <script nonce="{{ csp_nonce() }}">
+    $(document).ready(function() {
+        $('#otp-modal').modal('show');
+        $('#otp-qrcode').hide().qrcode("{{ otp_uri|safe }}");
+        $('#otp-toggle').click(function() {
+          $('#otp-qrcode').slideToggle("fast");
+        });
+    });
+  </script>
+  {% endif %}
+
+  {# Show the modals if there are form errors #}
+  {% if addotpform.errors %}
+    <script nonce="{{ csp_nonce() }}">
+      $(document).ready(function() {$('#add-token-modal').modal('show');});
+    </script>
+  {% endif %}
+
+  <script nonce="{{ csp_nonce() }}">
+    $(document).ready(function() {
+        $(".otp-description button").click(function() {
+          let parent = $(this).parent().parent();
+          parent.find(".otp-description").addClass("d-none");
+          parent.find(".otp-rename-form").removeClass("d-none");
+        });
+    });
+  </script>
+
+{% endblock %}

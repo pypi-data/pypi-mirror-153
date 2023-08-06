@@ -1,0 +1,176 @@
+{% extends "main.html" %}
+
+{% block title %}{{_("Profile for %(username)s", username=user.username)}}{% endblock %}
+
+{% block content %}
+  {{ super() }}
+  <div class="container py-4">
+    <div class="row">
+      <div class="col-md-4">
+          <div class="text-center">
+            <img class="w-100 border d-none d-md-block" src="{{ gravatar(user.mail if user.mail else 'default', 400) }}" alt="gravatar"/>
+            <img class="w-50  border d-md-none" src="{{ gravatar(user.mail if user.mail else 'default', 400) }}" alt="gravatar"/>
+            <h3 class="mt-2 mb-0" id="user_fullname">{{ user.name if user.name else user.username }}</h3>
+            <h5 class="mb-2" id="user_username">{{ user.username }}</h5>
+            <h5 class="mb-3" id="user_mail"><a href="mailto:{{ user.mail }}">{{ user.mail }}</a></h5>
+            {% if user.username == current_user.username %}
+            <a href="{{ url_for('.user_settings_profile', username=user.username) }}" class="btn btn-outline-primary btn-block my-3">{{_("Edit Profile")}}</a>
+            {% endif %}
+          </div>
+          <ul class="list-group list-group-flush" id="user_attributes">
+              {% if user.pronouns %}
+                <li class="list-group-item d-flex justify-content-between">
+                  <strong title="{{_('Pronouns')}}">
+                    <i class="fa fa-fw fa-genderless"></i>
+                    {{_("Pronouns")}}
+                  </strong>
+                  <div class="text-right">
+                    {% for pronoun in user.pronouns %}
+                    <div class="mb-0 p-1">{{ pronoun }}</div>
+                    {% endfor %}
+                  </div>
+                </li>
+              {% endif %}
+              {% if user.timezone %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <strong title="{{_('Timezone')}}">
+                    <i class="fa fa-fw fa-globe"></i>
+                    {{_("Timezone")}}
+                  </strong>
+                  <div class="text-right">
+                    <div>{{ user.timezone }}</div>
+                  </div>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <strong title="{{_('Current Time')}}">
+                    <i class="fa fa-fw fa-clock-o"></i>
+                    {{_("Current Time")}}
+                  </strong>
+                  <div class="text-right">
+                    <div id="user-time">&nbsp;</div>
+                  </div>
+                </li>
+              {% endif %}
+              {% if user.ircnick %}
+                <li class="list-group-item d-flex justify-content-between">
+                  <strong title="{{_('Chat')}}">
+                    <i class="fa fa-fw fa-comments-o"></i> {{_("Chat")}}
+                  </strong>
+                  <div class="text-right">
+                    {% for ircnick in user.ircnick %}
+                    <div class="mb-0 text-monospace">{{ ircnick|nickname }}</div>
+                    {% endfor %}
+                  </div>
+                </li>
+              {% endif %}
+              {% if user.gpgkeys %}
+                <li class="list-group-item">
+                  <strong title='{{_("GPG Keys")}}'><i class="fa fa-fw fa-key"></i> {{_("GPG Keys")}}</strong>
+                  <div class="mt-1">
+                    {% for keyid in user.gpgkeys %}
+                      <pre class="mb-1 bg-light border px-2 py-1 rounded">{{ keyid }}</pre>
+                    {% endfor %}
+                  </div>
+                </li>
+              {% endif %}
+              {% if user.sshpubkeys %}
+                <li class="list-group-item">
+                  <strong title='{{_("SSH Keys")}}'><i class="fa fa-fw fa-key"></i> {{_("SSH Keys")}}</strong>
+                  <div class="mt-1">
+                    {% for key in user.sshpubkeys %}
+                      <pre class="mb-1 bg-light border px-2 py-1 rounded">{{ key }}</pre>
+                    {% endfor %}
+                  </div>
+                </li>
+              {% endif %}
+              {% if user.website_url %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <strong title='{{_("Website")}}'><i class="fa fa-fw fa-link" aria-hidden="true"></i> {{_("Website")}}</strong>
+                  <a href="{{ user.website_url }}" target="_blank">{{ user.website_url }}</a>
+                </li>
+              {% endif %}
+              {% if user.rhbz_mail %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <strong title='{{_("RHBZ")}}'><i class="fa fa-fw fa-bug"></i> {{_("RHBZ")}}</strong>
+                  {{ user.rhbz_mail }}
+                </li>
+              {% endif %}
+              {% if user.github %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <strong title="GitHub"><i class="fa fa-fw fa-github"></i> GitHub</strong>
+                  <a href="https://github.com/{{ user.github }}">@{{ user.github }}</a>
+                </li>
+              {% endif %}
+              {% if user.gitlab %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <strong title="GitLab"><i class="fa fa-fw fa-gitlab"></i> GitLab</strong>
+                  <a href="https://gitlab.com/{{ user.gitlab }}">@{{ user.gitlab }}</a>
+                </li>
+              {% endif %}
+              {{ userlinks() if userlinks is defined }}
+          </ul>
+      </div>
+      <div class="col-md-8">
+        <ul class="list-group h-100">
+          <li class="list-group-item text-right bg-light">
+              <strong>{{_("%(groupcount)s Group(s), %(agreementcount)s Agreement(s)", groupcount=groups|count, agreementcount=user.agreements|count)}}</strong>
+          </li>
+          {% for agreement in user.agreements %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div class="media align-items-center">
+                <i class="fa fa-fw fa-check-circle fa-2x text-muted mr-3"></i>
+                <div class="media-body">
+                    <div class="my-0 font-weight-bold">
+                      <a href="{{ url_for('.user_settings_agreements', username=user.username) }}">
+                        <span class="title">{{ agreement }}</span>
+                      </a>
+                    </div>
+                    {% if agreement.description %}
+                      <div>{{ agreement.description }}</div>
+                    {% endif %}
+                </div>
+              </div>
+              <div class="text-info px-2">{{ _('signed') }}</div>
+            </li>
+          {% endfor %}
+          {% for group in groups %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div class="media align-items-center">
+                  <i class="fa fa-fw fa-group fa-2x text-muted mr-3"></i>
+                  <div class="media-body">
+                      <div class="my-0 font-weight-bold">
+                        <a href="{{ url_for('.group', groupname=group.name) }}">
+                          <span class="title">{{ group.name }}</span>
+                        </a>
+                      </div>
+                      {% if group.description %}
+                        <div>{{ group.description }}</div>
+                      {% endif %}
+                  </div>
+                </div>
+                <div class="text-info ml-auto px-2 {{ 'invisible' if group not in managed_groups }}">{{ _('sponsor') }}</div>
+                <div class="text-success px-2 {{ 'invisible' if group not in member_groups }}">{{ _('member') }}</div>
+              </li>
+          {% else %}
+          <li class="list-group-item h4 text-muted h-100 text-center d-flex align-items-center justify-content-center bg-light">
+            {{user.username}} has no group memberships
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+{{super()}}
+{% if user.timezone %}
+  <script nonce="{{ csp_nonce() }}">
+    function generate_local_time(){
+      var currenttime = moment().tz("{{user.timezone}}").format('dddd, h:mm:ss a')
+      $("#user-time").html(currenttime)
+    }
+    setInterval(generate_local_time, 1000);
+  </script>
+{% endif %}
+{% endblock %}

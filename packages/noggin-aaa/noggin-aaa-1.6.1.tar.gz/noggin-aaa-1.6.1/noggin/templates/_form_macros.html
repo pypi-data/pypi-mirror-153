@@ -1,0 +1,65 @@
+{% macro form_field(field) %}
+  {% set css_class = kwargs.pop('class', '') %}
+  {% if field.type == 'BooleanField' %}
+    {% set css_class = css_class + ' form-check-input' %}
+  {% else %}
+    {% set css_class = css_class + ' form-control' %}
+  {% endif %}
+  {% if field.errors %}
+    {% set css_class = css_class + ' is-invalid ' %}
+  {% endif %}
+  {% if kwargs.pop('label', True) and field.type != "BooleanField" %}
+      {{ field.label }}
+  {% endif %}
+  {{ field(class=css_class, **kwargs) }}
+  {% if field.type == 'BooleanField' %}
+    <label class="form-check-label ml-1" for="{{ field.id }}">{{ field.label.text }}</label>
+  {% endif %}
+  {% if field.description %}
+    <small class="form-text text-muted">{{ field.description }}</small>
+  {% endif %}
+  {% if field.errors %}
+    <div class="invalid-feedback">
+      {{ field.errors|map('escape')|join(' ') }}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro with_errors(field) %}
+  {% if field.type == 'FieldList' %}
+    {% if kwargs.pop('label', True) %}
+      {{ field.label }}
+    {% endif %}
+    {% for subfield in field %}
+      {{ form_field(subfield, label=False, **kwargs) }}
+    {% endfor %}
+    {% if field.description %}
+      <small class="form-text text-muted">{{ field.description }}</small>
+    {% endif %}
+  {% else %}
+    {{ form_field(field, **kwargs) }}
+  {% endif %}
+{% endmacro %}
+
+{% macro non_field_errors(form) %}
+  {% if form.errors.non_field_errors %}
+    <div id="formerrors">
+    {% for error in form.errors.non_field_errors %}
+      <div class="text-danger text-center">{{ error|e }}</div>
+    {% endfor %}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro unsaved_changes() %}
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/vendor/jquery.dirty-0.7.2/jquery.dirty.js') }}"></script>
+<script nonce="{{ csp_nonce() }}">$("form").dirty({preventLeaving: true})</script>
+{% endmacro %}
+
+{% macro selectize_css() %}
+<link href="{{ url_for('static', filename='js/vendor/selectize-0.12.6/selectize.bootstrap3.css') }}" rel="stylesheet" type="text/css">
+{% endmacro %}
+
+{% macro selectize() %}
+<script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/vendor/selectize-0.12.6/selectize.min.js') }}"></script>
+{% endmacro %}
