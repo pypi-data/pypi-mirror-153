@@ -1,0 +1,92 @@
+{% load i18n %}
+<div class="player{% if not playlist %} is-empty{% endif %}" data-controller="player" data-player-loading-class="is-loading" data-player-playing-class="is-playing" data-player-autoplay-value="{{ autoplay|lower }}" data-player-url-value="{{ current.url }}">
+  <div class="player__container container">
+    <div class="player__container player__container--controls">
+      <button type="button" class="btn" aria-label="{% trans "Go to the previous song" %}"{% if not playlist.has_previous %} disabled{% endif %} unicorn:click="previous">
+        {% block previous_icon %}
+          <i class="fa fa-step-backward" aria-hidden="true"></i>
+        {% endblock %}
+      </button>
+
+      <button type="button" class="btn player-toggler" aria-label="{% trans "Toggle the playback" %}" disabled data-action="player#toggle" data-player-target="toggler" unicorn:ignore>
+        <span class="player-toggler__play">
+          {% block play_icon %}
+            <i class="fa fa-fw fa-play-circle" aria-hidden="true"></i>
+            <span class="visually-hidden">{% trans "Play" %}</span>
+          {% endblock %}
+        </span>
+        <span class="player-toggler__pause">
+          {% block pause_icon %}
+            <i class="fa fa-fw fa-pause-circle" aria-hidden="true"></i>
+            <span class="visually-hidden">{% trans "Pause" %}</span>
+          {% endblock %}
+        </span>
+        <span class="player-toggler__loading">
+          {% block loading_icon %}
+            <i class="fa fa-fw fa-circle-o-notch fa-spin" aria-hidden="true"></i>
+            <span class="visually-hidden">{% trans "Loading…" %}</span>
+          {% endblock %}
+        </span>
+      </button>
+
+      <button type="button" class="btn" aria-label="{% trans "Go to the next song" %}"{% if not playlist.has_next %} disabled{% endif %} unicorn:click="next">
+        {% block next_icon %}
+          <i class="fa fa-step-forward" aria-hidden="true"></i>
+        {% endblock %}
+      </button>
+
+      <time class="player-time player-time--current" data-player-target="currentTime" unicorn:ignore></time>
+
+      <div class="player-progress" unicorn:ignore>
+        <input type="range" class="player-progress__range" min="0" max="100" step="0.01" value="0" autocomplete="off" role="slider" aria-label="{% trans "Seek" %}" aria-valuenow="0" aria-valuemin="0" aria-valuemax="0" data-player-target="progressSlider">
+      </div>
+
+      <time class="player-time" data-player-target="duration" unicorn:ignore>{{ current.duration_str }}</time>
+    </div>
+    <div class="player__container player__container--current">
+      {% if current.thumbnail_url %}
+        <img src="{{ current.thumbnail_url }}" class="song__thumbnail">
+      {% endif %}
+
+      <div class="song-title">
+        <h5 class="song__title">{{ current.title }}</h5>
+        <h6 class="song__subtitle">{{ current.subtitle }}</h6>
+      </div>
+
+      {% if current.download_url %}
+      <a href="{{ current.download_url }}" class="btn" aria-label="{% trans "Download this song" %}">
+          {% block download_icon %}
+            <i class="fa fa-download" aria-hidden="true"></i>
+          {% endblock %}
+        </a>
+      {% endif %}
+
+      <button type="button" class="btn playlist-toggler" id="playlistToggler" aria-label="{% trans "Toggle the playlist display" %}" aria-expanded="false" data-player-target="playlistToggler" unicorn:ignore>
+        {% block playlist_icon %}
+          <i class="fa fa-list" aria-hidden="true"></i>
+        {% endblock %}
+      </button>
+
+      <nav class="playlist" aria-labelledby="playlistToggler">
+        {% for id, song in playlist.items %}
+          <div class="playlist__song{% if current_id == id %} playlist__song--current" aria-current="true{% endif %}">
+            <button type="button" class="song song-title"{% if current_id == id %} disabled{% endif %} unicorn:click="play({{ id }})">
+              <p class="song__title">{{ song.title }}</p>
+              <p class="song__subtitle">{{ song.subtitle }}</p>
+            </button>
+
+            {% if song.duration %}
+              <time class="song__time">{{ song.duration_str }}</time>
+            {% endif %}
+
+            <button type="button" class="btn btn-sm" aria-label="{% trans "Remove this song from the playlist" %}" unicorn:click="remove({{ id }})">
+              {% block delete_icon %}
+                <i class="fa fa-trash-o" aria-hidden="true"></i>
+              {% endblock %}
+            </button>
+          </div>
+        {% endfor %}
+      </nav>
+    </div>
+  </div>
+</div>

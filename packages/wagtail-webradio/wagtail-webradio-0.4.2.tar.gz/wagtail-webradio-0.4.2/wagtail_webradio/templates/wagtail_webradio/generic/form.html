@@ -1,0 +1,45 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{{ page_title }} {{ page_subtitle }}{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  {{ form.media.css }}
+  {% include "wagtailadmin/pages/_editor_css.html" %}
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  {{ form.media.js }}
+  {% include "wagtailadmin/pages/_editor_js.html" %}
+{% endblock %}
+
+{% block content %}
+  {% block header %}
+    {% include "wagtailadmin/shared/header.html" with title=page_title subtitle=page_subtitle icon=header_icon merged=1 only %}
+  {% endblock %}
+
+  <form action="{{ action_url }}" method="POST" novalidate{% if form.is_multipart %} enctype="multipart/form-data"{% endif %}>
+    {% csrf_token %}
+
+    {% block form %}{{ edit_handler.render_form_content }}{% endblock %}
+
+    {% block footer %}
+      <footer class="footer">
+        <ul>
+          <li class="actions footer__container">
+            {% block form_actions %}
+              <div class="dropdown dropup dropdown-button match-width">
+                <button type="submit" class="button action-save button-longrunning" data-clicked-text="{% trans "Saving…" %}">
+                  {% icon name="spinner" %}<em>{% trans "Save" %}</em>
+                </button>
+                {% block primary_action_dropdown %}{% endblock %}
+              </div>
+            {% endblock %}
+          </li>
+        </ul>
+      </footer>
+    {% endblock %}
+  </form>
+{% endblock %}
