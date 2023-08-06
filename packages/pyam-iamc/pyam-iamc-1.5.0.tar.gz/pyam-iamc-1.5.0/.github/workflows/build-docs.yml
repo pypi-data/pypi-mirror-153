@@ -1,0 +1,42 @@
+# This workflow installs the package and builds the docs
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: build the docs
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  pytest:
+    strategy:
+      matrix:
+        os:
+        - ubuntu-latest
+        python-version:
+        - '3.9'
+
+      fail-fast: false
+
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} py${{ matrix.python-version }}
+  
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Pandoc
+      uses: r-lib/actions/setup-pandoc@v1
+
+    - name: Install dependencies and package for building the docs
+      run: pip install -e .[tutorials,optional_plotting,docs]
+
+    - name: Build the docs
+      run: make --directory=doc html
