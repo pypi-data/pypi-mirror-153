@@ -1,0 +1,2 @@
+class NoTradeFeeError(Exception):
+    pass
