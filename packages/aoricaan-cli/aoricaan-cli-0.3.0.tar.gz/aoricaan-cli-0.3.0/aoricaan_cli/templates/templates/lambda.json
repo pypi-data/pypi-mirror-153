@@ -1,0 +1,53 @@
+{
+  "Type": "AWS::Lambda::Function",
+  "Properties": {
+    "Code": "{{code}}",
+    "Handler": "{{handler}}",
+    "Role": {
+      "Fn::GetAtt": [
+        "LmdRole",
+        "Arn"
+      ]
+    },
+    "Runtime": "python3.9",
+    "FunctionName": {
+      "Fn::Sub": "${Environment}-{{name}}"
+    },
+    "MemorySize": 128,
+    "Timeout": 30,
+    "Environment": {
+      "Variables": {
+        "ENVIRONMENT": {
+          "Ref": "Environment"
+        }
+      }
+    },
+    "VpcConfig": {
+      "SecurityGroupIds": [
+        {
+          "Fn::ImportValue": {
+            "Fn::Sub": "${NetworkStackParameter}-NoIngressSecurityGroup"
+          }
+        }
+      ],
+      "SubnetIds": {
+        "Fn::Split": [
+          ",",
+          {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${NetworkStackParameter}-PrivateSubnets"
+            }
+          }
+        ]
+      }
+    },
+    "Layers": [
+      {
+        "Ref": "LayerCore"
+      },
+      {
+        "Ref": "LayerDatabase"
+      }
+    ]
+  }
+}

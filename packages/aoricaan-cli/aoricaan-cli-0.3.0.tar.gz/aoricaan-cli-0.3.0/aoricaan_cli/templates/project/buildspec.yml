@@ -1,0 +1,24 @@
+version: 0.2
+env:
+  variables:
+    artifact_bucket: {{bucket_artifacts}}
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install --no-cache-dir -r requirements.txt
+
+  build:
+    commands:
+      - python console.py --install
+      - python console.py --synth
+      - aws cloudformation package --template-file projectTemplate.json  --s3-bucket $artifact_bucket  --output-template-file projectTemplate.json --use-json
+
+
+artifacts:
+  type: zip
+  files:
+    - './projectTemplate.json'
+
