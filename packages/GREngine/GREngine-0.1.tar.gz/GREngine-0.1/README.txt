@@ -1,0 +1,1 @@
+Easy python is for lazy person
