@@ -1,0 +1,84 @@
+{{- range $ingress := .Values.ingresses }}
+---
+apiVersion: {{ template "ingress.apiVersion" $ }}
+kind: Ingress
+metadata:
+  {{- if contains "." $ingress.host }}
+  name: {{ $ingress.host | replace "." "-" }}-{{ $.Release.Name }}-{{ $ingress.deployName }}
+  {{- else if $.Values.domain_suffix }}
+  name: {{ $ingress.host | replace "." "-" }}{{ $.Values.domain_suffix | replace "." "-" }}-{{ $.Release.Name }}-{{ $ingress.deployName }}
+  {{- else }}
+  name: {{ $ingress.host | replace "." "-" }}-{{ $.Values.domain | replace "." "-" }}-{{ $.Release.Name }}-{{ $ingress.deployName }}
+  {{- end }}
+  annotations:
+    {{- if hasKey $.Values "clusterIssuer" }}
+    cert-manager.io/cluster-issuer: {{ $.Values.clusterIssuer }}
+    {{- end }}
+    {{- if and (hasKey $.Values "ingressClass") (not $.Values.supportsIngressClassName | default false ) }}
+    kubernetes.io/ingress.class: {{ default $.Values.ingressClass $ingress.ingressClass }}
+    {{- end }}
+    {{- with $.Values.ingressAnnotations }}
+    {{- range $k, $v := $.Values.ingressAnnotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    {{- end }}
+    {{- with $ingress.annotations }}
+    {{- range $k, $v := $ingress.annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    {{- end }}
+  labels:
+    {{- include "chart.labels" $ | nindent 4 }}
+spec:
+  {{- if and (hasKey $.Values "ingressClass") ($.Values.supportsIngressClassName) }}
+  ingressClassName: {{ default $.Values.ingressClass $ingress.ingressClass }}
+  {{- end }}
+  {{- if hasKey $.Values "ingressTLSSecretName" }}
+  tls:
+    - secretName: {{ $.Values.ingressTLSSecretName }}
+  {{- end }}
+  {{- if hasKey $.Values "clusterIssuer" }}
+  tls:
+    - hosts:
+      {{- if contains "." $ingress.host }}
+      - '*.{{ regexReplaceAll "[^\\.]+\\.(.+)" $ingress.host "${1}" }}'
+      - '{{ regexReplaceAll "[^\\.]+\\.(.+)" $ingress.host "${1}" }}'
+      secretName: {{ regexReplaceAll "[^\\.]+\\.(.+)" $ingress.host "${1}" | replace "." "-" }}
+      {{- else if $.Values.domain }}
+      - "*.{{ $.Values.domain }}"
+      - "{{ $.Values.domain }}"
+      secretName: {{ $.Values.domain | replace "." "-" }}
+      {{- else }}
+      {{- fail "cannot infer tls config when domain is empty, use ingressTLSSecretName" }}
+      {{- end }}
+  {{- end }}
+  rules:
+    {{- if contains "." $ingress.host }}
+    - host: {{ $ingress.host }}
+    {{- else if $.Values.domain_suffix }}
+    - host: {{ $ingress.host }}{{ $.Values.domain_suffix }}
+    {{- else if $.Values.domain }}
+    - host: {{ $ingress.host }}.{{ $.Values.domain }}
+    {{- else }}
+    {{- fail "host is not a FQDN, then domain or domain_suffix must be defined" }}
+    {{- end }}
+      http:
+        paths:
+        {{- range $ingress.paths }}
+          - path: {{ . }}
+            {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+            pathType: Prefix
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $.Release.Name }}-{{ $ingress.deployName }}
+                port:
+                  number: {{ default 80 (index $.Values.deployments $ingress.deployName "nodePort") }}
+              {{- else }}
+              serviceName: {{ $.Release.Name }}-{{ $ingress.deployName }}
+              servicePort: {{ default 80 (index $.Values.deployments $ingress.deployName "nodePort") }}
+              {{- end }}
+        {{- end }}
+
+{{- end }}
