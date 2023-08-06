@@ -1,0 +1,71 @@
+{% load i18n %}
+<table id="id_opening_hours_table">
+    <thead>
+        <tr><th colspan="2">{% trans "Opening hours" %}</th></tr>
+    </thead>
+    <tbody>
+    {% if instance.always_open %}
+        <tr><td colspan="2">{% trans "Open 24/7" %}</td></tr>
+    {% else %}
+        {% for weekday_hour in weekday_hours %}
+            {% with time_ranges=weekday_hour.weekday_time_ranges.all time_ranges_nb=weekday_hour.weekday_time_ranges.count closed=weekday_hour.closed %}
+                {% if closed or time_ranges_nb == 0 %}
+                    <tr><th>{{ weekday_hour.get_week_day_display }}</th><td>{% if closed %}{% trans "Closed" %}{% else %}-{% endif %}</td></tr>
+                {% else %}
+                    {% for time_range in time_ranges %}
+                        <tr>
+                        {% if forloop.first %}
+                            <th rowspan="{{ time_ranges_nb }}">{{ weekday_hour.get_week_day_display }}</th>
+                        {% endif %}
+                            <td>{{ time_range.range_display }}</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        {% endfor %}
+    {% endif %}
+
+    {% with time_ranges=general_holidays_hours.general_holidays_time_ranges.all time_ranges_nb=general_holidays_hours.general_holidays_time_ranges.count closed=general_holidays_hours.closed %}
+        {% if instance.always_open and time_ranges_nb > 0 or closed or not instance.always_open %}
+            {% if closed or time_ranges_nb == 0 %}
+                <tr><th>{% trans "General holidays" %}</th><td>{% if closed %}{% trans "Closed" %}{% else %}-{% endif %}</td></tr>
+            {% else %}
+                {% for time_range in time_ranges %}
+                    <tr>
+                    {% if forloop.first %}
+                        <th rowspan="{{ time_ranges_nb }}">{% trans "General holidays" %}</th>
+                    {% endif %}
+                        <td>{{ time_range.range_display }}</td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+    {% endwith %}
+    </tbody>
+</table>
+
+{% if specific_period_hours %}
+<table id="id_specific_periods_table">
+    <thead>
+        <tr><th colspan="2">{% trans "Specific periods" %}</th></tr>
+    </thead>
+    <tbody>
+    {% for period_hour in specific_period_hours %}
+        {% with time_ranges=period_hour.specific_period_time_ranges.all time_ranges_nb=period_hour.specific_period_time_ranges.count closed=period_hour.closed %}
+            {% if closed or time_ranges_nb == 0 %}
+                <tr><th>{{ period_hour.period_display }}</th><td>{% if closed %}{% if period_hour.closure_reason %}{{ period_hour.get_closure_reason_display }}{% else %}{% trans "Closed" %}{% endif %}{% else %}-{% endif %}</td></tr>
+            {% else %}
+                {% for time_range in time_ranges %}
+                    <tr>
+                        {% if forloop.first %}
+                            <th rowspan="{{ time_ranges_nb }}">{{ period_hour.period_display }}</th>
+                        {% endif %}
+                        <td>{{ time_range.range_display }}</td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
