@@ -1,0 +1,96 @@
+#######################################################################
+# Blackstart scenario file
+#######################################################################
+blackstart:
+  name: blackstart
+  parent:
+  modules: [powergrid, sndata, weather, der]
+  custom_modules:
+    - [blackstart, midas.adapter.mango.blackstart:BlackstartModule]
+  step_size: 15*60
+  start_date: 2017-01-01 12:00:00+0100
+  forecast_horizon_hours: 0.75
+  end: 1000
+  mosaikdb_params:
+    filename: blackstart.hdf5
+  powergrid_params:
+    blackstartgrid:
+      gridfile: midas.adapter.mango.blackstartgrid.build_grid
+  sndata_params:
+    blackstartgrid:
+      land_mapping:
+        2: [[0, 0.15]]
+        3: [[3, 0.65]]
+      house_mapping: {}
+  weather_params:
+    bremen:
+      data_path: "C:\\Users\\sstark\\.midas\\midas_data\\"
+      weather_mapping:
+        WeatherCurrent:
+          - interpolate: False
+            randomize: False
+        WeatherForecast:
+          - interpolate: True
+            randomize: True
+            forecast_horizon_hours: 1.5
+            forecast_error: 0.05
+  der_params:
+    blackstartgrid_pv:
+      provide_flexibilities: True
+      flexibility_horizon_hours: 0.75
+      unit: "mw"
+      import_str: pysimmods.mosaik:FlexibilitySimulator
+      grid_name: blackstartgrid
+      mapping:
+        1: [[PV, 0.014], [PV, 0.014]]
+        2: [[PV, 0.05175]]
+        3: [[PV, 0.09195]]
+      weather_provider_mapping:
+        PV: [bremen, 0]
+      weather_forecast_mapping:
+        PV: [bremen, 0]
+  blackstart_params:
+    blackstartgrid:
+      host: localhost
+      port: 5556
+      check_inbox_interval: 0.1
+      holon_topology:
+        agent8:
+          - BlackstartSwitchAgent-6
+          - BlackstartSwitchAgent-7
+          - BlackstartSwitchAgent-8
+        agent3:
+          - BlackstartUnitAgent-2
+          - BlackstartUnitAgent-3
+        agent1:
+          - BlackstartUnitAgent-1
+          - BlackstartUnitAgent-5
+        agent2:
+          - BlackstartUnitAgent-0
+          - BlackstartUnitAgent-4
+      der_mapping:
+        "BlackstartUnitAgent-0": Pysimmods-0.Photovoltaic-0
+        "BlackstartUnitAgent-1": Pysimmods-0.Photovoltaic-1
+        "BlackstartUnitAgent-2": Pysimmods-0.Photovoltaic-2
+        "BlackstartUnitAgent-3": Pysimmods-0.Photovoltaic-3
+      load_mapping:
+        "BlackstartUnitAgent-4": [sndata, land, 2]
+        "BlackstartUnitAgent-5": [sndata, land, 3]
+      switch_mapping:
+        "BlackstartSwitchAgent-6":
+          own_bus: 1
+          adjacent_switches:
+            "switch-0": { "other_bus": 2, access: True }
+          assigned_speaker: BlackstartUnitAgent-2
+        "BlackstartSwitchAgent-7":
+          own_bus: 2
+          adjacent_switches:
+            "switch-0": { "other_bus": 1, access: False }
+            "switch-1": { "other_bus": 3, access: True }
+          assigned_speaker: BlackstartUnitAgent-0
+        "BlackstartSwitchAgent-8":
+          own_bus: 3
+          adjacent_switches:
+            "switch-1": { "other_bus": 2, access: False }
+          assigned_speaker: BlackstartUnitAgent-1
+      bc_agent_id: BlackstartSwitchAgent-7

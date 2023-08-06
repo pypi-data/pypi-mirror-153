@@ -1,0 +1,126 @@
+#######################################################################
+# Midas MV Base
+#######################################################################
+midasmv:
+  parent:
+  modules: [powergrid, sndata, comdata]
+  step_size: 15*60
+  start_date: 2009-01-01 00:00:00+0100
+  end: 1*24*60*60
+  mosaikdb_params:
+    filename: midasmv.hdf5
+  powergrid_params:
+    midasmv:
+      gridfile: midasmv
+  sndata_params:
+    midasmv:
+      randomize_data: True
+      randomize_cos_phi: True
+      land_mapping:
+        1: [[0, 1.0], [2, 1.0], [3, 2.0], [6, 2.0], [7, 1.0]]
+        3: [[2, 1.0], [3, 1.0], [6, 1.0], [7, 1.0]]
+        4: [[0, 2.0], [3, 2.0], [7, 1.0]]
+        5: [[3, 2.0], [7, 1.0]]
+        6: [[0, 2.0], [3, 1.0]]
+        7: [[0, 2.0], [2, 1.0], [3, 2.0], [7, 1.0]]
+        8: [[0, 1.0], [3, 1.0], [6, 1.0]]
+        9: [[2, 1.0], [3, 1.0], [6, 2.0], [7, 1.0]]
+        10: [[0, 2.0], [2, 1.0], [3, 1.0], [6, 2.0], [7, 1.0]]
+        11: [[0, 1.0], [2, 1.0], [3, 1.0], [6, 2.0], [7, 1.0]]
+  comdata_params:
+    midasmv:
+      interpolate: True
+      randomize_data: True
+      randomize_cos_phi: True
+      mapping:
+        13: [[SuperMarket, 3.0]]
+        14: [[SmallHotel, 2.0]]
+#######################################################################
+# Midas MV DER
+#######################################################################
+midasmv_der:
+  parent: midasmv
+  modules: [weather, der]
+  mosaikdb_params:
+    filename: midasmv_der.hdf5
+  weather_params:
+    bremen:
+      weather_mapping:
+        WeatherCurrent:
+          - interpolate: True
+            randomize: True
+  der_params:
+    midasmv:
+      grid_name: midasmv
+      mapping:
+        3: [[PV, 1], [HVAC, 1.279], [HVAC, 0.343]]
+        4: [[CHP, 0.4], [HVAC, 0.343]]
+        7: [[DIESEL, 1]]
+        8: [[CHP, 0.4], [PV, 1]]
+        9: [[HVAC, 0.23], [BAT, 0.08]]
+        11: [[Biogas, 2.05], [BAT, 0.555], [PV, 1]]
+        13: [[HVAC, 0.23], [PV, 1]]
+        14: [[PV, 1], [HVAC, 1.279]]
+      weather_provider_mapping:
+        PV: [bremen, 0]
+        HVAC: [bremen, 0]
+        BAT: [bremen, 0]
+        CHP: [bremen, 0]
+        Biogas: [bremen, 0]
+        DIESEL: [bremen, 0]
+#######################################################################
+# Midas MV with GOA and DER
+#######################################################################
+midasmv_goa:
+  name: midasmv_goa
+  parent: midasmv_der
+  modules:
+    - goa
+  goa_params:
+    sim_name: Operator
+    cmd: python
+    import_str: midas.core:GridOperatorSimulator
+    midasmv:
+      gridfile: midasmv
+      grid_load_sensor: True
+      grid_sgen_sensor: False
+      grid_busvm_sensor: True
+      grid_busload_sensor: False
+      unit_sgen_sensor: True
+      overvoltage: 1.1
+      undervoltage: 0.9
+  mosaikdb_params:
+    filename: midasmv_goa.hdf5
+#######################################################################
+# Midas MV Forecast
+#######################################################################
+midasmv_forecast:
+  name: midasmv_forecast
+  parent: midasmv_goa
+  modules: []
+  der_params:
+    midasmv:
+      import_str: pysimmods.mosaik:FlexibilitySimulator
+      provide_forecasts: True
+      weather_forecast_mapping:
+        PV: [bremen, 0]
+        HVAC: [bremen, 0]
+        BAT: [bremen, 0]
+        CHP: [bremen, 0]
+        Biogas: [bremen, 0]
+        DIESEL: [bremen, 0]
+  weather_params:
+    bremen:
+      weather_mapping:
+        WeatherForecast:
+          - forecast_horizon_hours: 0.5
+            forecast_error: 0.15
+            interpolate: True
+            randomize: True
+
+  goa_params:
+    midasmv:
+      unit_sgen_forecast_sensor: True
+      forecast_horizon_hours: 0.25
+  mosaikdb_params:
+    filename: midasmv_forecast.hdf5

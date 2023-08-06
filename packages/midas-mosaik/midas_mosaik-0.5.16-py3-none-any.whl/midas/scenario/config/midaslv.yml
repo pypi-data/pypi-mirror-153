@@ -1,0 +1,133 @@
+#######################################################################
+# Midas LV Base
+#######################################################################
+midaslv:
+  name: midaslv
+  parent:
+  modules: [powergrid, sndata, comdata]
+  with_db: True
+  start_date: 2017-01-01 00:00:00+0100
+  step_size: 15*60
+  end: 1*24*60*60
+  mosaikdb_params:
+    filename: midaslv.hdf5
+  powergrid_params:
+    midaslv:
+      gridfile: midaslv
+  sndata_params:
+    midaslv:
+      randomize_data: True
+      randomize_cos_phi: True
+      land_mapping: {}
+      household_mapping:
+        12: [[0, 1.0], [1, 1.0], [2, 1.0], [3, 1.0]]
+        16:
+          [
+            [4, 1.0],
+            [5, 1.0],
+            [6, 1.0],
+            [7, 1.0],
+            [8, 1.0],
+            [9, 1.0],
+            [10, 1.0],
+            [11, 1.0],
+            [12, 1.0],
+            [13, 1.0],
+            [14, 1.0],
+            [15, 1.0],
+            [16, 1.0],
+            [17, 1.0],
+            [18, 1.0],
+            [19, 1.0],
+            [20, 1.0],
+            [21, 1.0],
+            [22, 1.0],
+            [22, 1.0],
+          ]
+        17:
+          [
+            [23, 1.0],
+            [24, 1.0],
+            [25, 1.0],
+            [26, 1.0],
+            [27, 1.0],
+            [28, 1.0],
+            [29, 1.0],
+            [30, 1.0],
+            [31, 1.0],
+            [32, 1.0],
+            [33, 1.0],
+            [34, 1.0],
+            [35, 1.0],
+          ]
+        18: [[36, 1.0], [37, 1.0]]
+        19:
+          [
+            [38, 1.0],
+            [39, 1.0],
+            [40, 1.0],
+            [45, 1.0],
+            [46, 1.0],
+            [47, 1.0],
+            [48, 1.0],
+            [49, 1.0],
+            [50, 1.0],
+            [51, 1.0],
+            [52, 1.0],
+            [53, 1.0],
+            [54, 1.0],
+            [55, 1.0],
+            [56, 1.0],
+            [57, 1.0],
+          ]
+  comdata_params:
+    midaslv:
+      interpolate: True
+      randomize_data: True
+      randomize_cos_phi: True
+      mapping:
+        22: [[Hospital, 0.002]] # industrial subgrid
+        35: [[StripMall, 0.015]]
+        36: [[Warehouse, 0.015]]
+        37: [[SmallHotel, 0.0072]]
+        40: [[StandaloneRetail, 0.015]]
+        41: [[QuickServiceRestaurant, 0.0075]]
+        42: [[MidriseApartment, 0.012]]
+        43: [[SmallOffice, 0.021]]
+#######################################################################
+# Midas LV DER
+#######################################################################
+midaslv_der:
+  parent: midaslv
+  modules: [weather, der]
+  mosaikdb_params:
+    filename: midaslv_der.hdf5
+  weather_params:
+    bremen:
+      weather_mapping:
+        WeatherCurrent:
+          - interpolate: True
+            randomize: True
+
+  der_params:
+    midaslv_pv:
+      inverter_mode: capacitive
+      grid_name: midaslv
+      mapping:
+        12: [[PV, 0.00225], [CHP, 0.014], [CHP, 0.007]]
+        16: [[PV, 0.01], [CHP, 0.014], [CHP, 0.014], [HVAC, 0.06]]
+        17: [[PV, 0.014], [PV, 0.02], [HVAC, 0.06], [CHP, 0.007]]
+        18: [[PV, 0.00175]]
+        19: [[PV, 0.005], [CHP, 0.014], [HVAC, 0.06]]
+        35: [[PV, 0.007]]
+        36: [[PV, 0.02], [HVAC, 0.06]]
+        37: [[PV, 0.02], [PV, 0.02]]
+        40: [[PV, 0.01]]
+        41: [[CHP, 0.014], [CHP, 0.014]]
+        42: [[PV, 0.025]]
+        43: [[PV, 0.00225], [CHP, 0.007]]
+      weather_provider_mapping:
+        PV: [bremen, 0]
+        HVAC: [bremen, 0]
+        CHP: [bremen, 0]
+        BAT: [bremen, 0]
